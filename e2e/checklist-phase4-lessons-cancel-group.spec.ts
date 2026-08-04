@@ -1,4 +1,5 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/app/actions/lesson-cancellation.ts
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import {
@@ -75,6 +76,7 @@ const WHOLE_LESSON_NOTE = 'Arena flooded, the whole group is off.'
 const GROUP_FEE_WARNING =
   'Warning: No late cancellation fees are currently leveraged for group lessons.'
 const CANCELLED_BADGE = 'Cancelled'
+const GROUP_BADGE = 'Group'
 
 // Filled in by the seed.
 const lessonIds: Record<LessonKey, string> = {} as Record<LessonKey, string>
@@ -93,6 +95,21 @@ function hoursFromNow(hours: number): Date {
   return new Date(Date.now() + hours * 60 * 60 * 1000)
 }
 
+/**
+ * Both values must stay strictly inside their half of the boundary, and NEAR's lower bound is
+ * the one that is easy to lose, because breaking it fails **silently**.
+ *
+ * `isWithinLateCancellationWindow` is `lesson_at - now <= 24h`, so it is also true of a lesson
+ * already in the *past* — which makes "move NEAR back to be safely inside the window" look like a
+ * free simplification. It is not. `isLessonCancellationEligible` gates the cancel page on
+ * `lesson_at > now` **or** `payment_type === null`, and every lesson here comes from
+ * `addUnpaidLesson`, so a past NEAR would keep the page reachable through the unpaid escape hatch
+ * while no longer testing "booked <24h away" at all. Every assertion would go on passing.
+ *
+ * So NEAR is `+3h`: future (eligibility satisfied by the *upcoming* branch, not the unpaid one)
+ * and inside the window, with ~3h of margin below and ~21h above. FAR is `+72h`, 48h clear of the
+ * boundary, so neither can drift across it however long a run takes.
+ */
 const NEAR = () => hoursFromNow(3) // inside the 24h window
 const FAR = () => hoursFromNow(72) // outside it
 
@@ -119,8 +136,10 @@ const FAR = () => hoursFromNow(72) // outside it
  * The `.check()` calls stay — the checklist lines say "choose Cancelled by Rider" — but they are
  * no-ops confirming an already-selected state.
  *
- * The two lessons that *are* manager-instructed (`toggle`, `nearLabel`) are the ones whose lines
- * are about the instructor side or about switching between the two, where a click is the claim.
+ * `toggle` is the one manager-instructed lesson, and for the mirror-image reason: lines 304/305
+ * are about the **Cancelled by Instructor** description, which a manager-instructed lesson
+ * renders by default. Its `.check('instructor')` is a no-op too — no test in this file depends
+ * on a click *changing* the toggle except the one whose checklist line is the switch itself.
  */
 const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, { name: STANDARD_TIER, price: TIER_PRICE, isDefault: true })
@@ -152,7 +171,7 @@ const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, me
   // Read-only page states.
   await seed('toggle', FAR(), manager)
   await seed('picker', FAR(), trainer)
-  await seed('nearLabel', NEAR(), manager)
+  await seed('nearLabel', NEAR(), trainer)
   await seed('farLabel', FAR(), trainer)
 
   // Whole-lesson cancellation. Both are <24h out, so `$0` cannot be explained by anything the
@@ -206,9 +225,23 @@ function detailField(page: Page, label: string): Locator {
   return page.locator(`main dl dt:text-is("${label}") + dd`)
 }
 
+function detailHeader(page: Page): Locator {
+  return page.locator('main div:has(> h1)')
+}
+
 /** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
 function headerCancelledBadge(page: Page): Locator {
-  return page.locator('main div:has(> h1)').getByText(CANCELLED_BADGE, { exact: true })
+  return detailHeader(page).getByText(CANCELLED_BADGE, { exact: true })
+}
+
+/**
+ * The lesson-type badge, which every group lesson's header carries unconditionally. It exists
+ * only to be the positive control for a *zero* read of `headerCancelledBadge` — those two share
+ * the `main div:has(> h1)` root, so a header markup change that made the root resolve to nothing
+ * would otherwise let an absence claim pass while proving nothing.
+ */
+function headerTypeBadge(page: Page): Locator {
+  return detailHeader(page).getByText(GROUP_BADGE, { exact: true })
 }
 
 /** One `<li>` per enrolled rider, inside the detail page's Rider(s) field. */
@@ -231,16 +264,29 @@ function cancelTypeRadio(page: Page, value: 'instructor' | 'rider'): Locator {
 }
 
 /**
- * The group-only description paragraph, addressed structurally as the form's own `<p>` rather
- * than by the text it is about to be asserted on — selecting an element *by* the string you then
- * assert is #1202's tautology, and it would pass against a page rendering nothing else at all.
- * `CancelLessonFields` emits it as a direct child of the `<form>`; the amber label is the only
- * other `<p>` there and never renders alongside it on the pages this locator is used on (both
- * are Instructor-selected, and one is >24h out besides), so a second match is a strict-mode
- * failure rather than a silent wrong read.
+ * The group-only description paragraph, addressed by **position** rather than by the text it is
+ * about to be asserted on — selecting an element *by* the string you then assert is #1202's
+ * tautology, and it would pass against a page rendering nothing else at all.
+ *
+ * `CancelLessonFields` emits this `<p>` ahead of the Type fieldset, and it renders for *every*
+ * group lesson — only its string swaps with the toggle. The amber label is a second `<p>` under
+ * the same `<form>`, so a bare `main form > p` is ambiguous on any near lesson with Rider
+ * selected, and `:first-of-type` is what disambiguates: the description is always the first
+ * `<p>`, the amber label always the second.
+ *
+ * It is `:first-of-type` and **not** `:nth-child(1)` for a reason worth recording, because the
+ * first version of this locator was `:nth-child(1)` and matched nothing at all: React 19 injects
+ * a hidden `$ACTION_ID` input as the first child of a form bound to a Server Action, so the
+ * description is not the form's first *child* even though it is its first `<p>`.
+ *
+ * `:first-of-type` does share `.first()`'s weakness in principle — it would silently read the
+ * amber `<p>` if the description ever stopped rendering. What removes that is the assertion
+ * rather than the locator: both call sites match an anchored `^This will mark the lesson…`
+ * prefix, which the amber sentence cannot satisfy, so a wrong read fails loudly instead of
+ * quietly agreeing.
  */
 function groupDescription(page: Page): Locator {
-  return page.locator('main form > p')
+  return page.locator('main form > p:first-of-type')
 }
 
 /** The rider picker's own labels — one per still-active rider, or nothing when it is hidden. */
@@ -264,20 +310,33 @@ async function feeOnDetailPage(page: Page): Promise<string> {
 }
 
 /**
- * Open a lesson's Cancel page from its detail header, and leave the form ready to submit.
+ * Raise the budget for whichever test pays the cold compile of `/lessons/[id]/cancel`.
  *
- * `test.slow()` lives here rather than on individual tests: whichever test happens to compile
- * `/lessons/[id]/cancel` cold gets the raised budget, including under a standalone `--grep` of
- * any single caller. That is #1206's fix (`a97bd435`) for exactly this shape — a budget attached
- * to some call sites of a shared helper rather than to the helper itself — and putting it back
- * on the tests reintroduces a failure that shows up only under `--grep`.
+ * This sits on the **route**, not on one helper, because the route has two entry points —
+ * clicked through from the detail header, and navigated to directly — and attaching the budget
+ * to only one of them is #1206's bug (`a97bd435`) wearing a different hat. Six of this file's
+ * tests reach the cancel page directly and never touch `openCancelPage`; under a standalone
+ * `--grep` any one of them is the run that compiles the route cold, on a bare budget, against a
+ * dev server shared with three other workers. The first version of this file attached
+ * `test.slow()` to `openCancelPage` alone and its comment claimed the coverage this pair of
+ * helpers actually provides.
  *
  * No explicit timeout anywhere in this file: `actionTimeout` is 0, so every `waitFor*` is
  * already unbounded and a number could only tighten it (#1211).
  */
+async function gotoCancelPage(page: Page, key: LessonKey) {
+  test.slow()
+  await page.goto(cancelPath(key))
+}
+
+/** Open a lesson's Cancel page from its detail header, and leave the form ready to submit. */
 async function openCancelPage(page: Page, key: LessonKey) {
   test.slow()
   await page.goto(detailPath(key))
+  // `exact: true` is load-bearing, not decoration: `getByRole`'s name match is a
+  // case-insensitive **substring** by default, so a bare 'Cancel' also matches a
+  // 'Cancel Lesson' or 'Cancel Participation' control — and a locator resolving to the wrong
+  // sibling is a no-op wearing the costume of a synchronisation point (#1205).
   await page.locator('main').getByRole('link', { name: 'Cancel', exact: true }).click()
 }
 
@@ -307,8 +366,8 @@ async function landOnDetail(page: Page, key: LessonKey) {
 async function cancelWholeLesson(page: Page, key: LessonKey, notes?: string) {
   await openCancelPage(page, key)
   await cancelTypeRadio(page, 'instructor').check()
-  if (notes !== undefined) await page.getByLabel('Cancellation notes (optional)').fill(notes)
-  await page.getByRole('button', { name: 'Confirm Cancellation' }).click()
+  if (notes !== undefined) await page.getByLabel('Cancellation notes (optional)', { exact: true }).fill(notes)
+  await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
   await landOnDetail(page, key)
 }
 
@@ -323,7 +382,7 @@ async function cancelOneRider(page: Page, key: LessonKey, riderName: string) {
   await openCancelPage(page, key)
   await cancelTypeRadio(page, 'rider').check()
   await page.getByRole('radio', { name: riderName, exact: true }).check()
-  await page.getByRole('button', { name: 'Confirm Cancellation' }).click()
+  await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
   await landOnDetail(page, key)
 }
 
@@ -346,7 +405,7 @@ test('clicking_cancel_on_a_group_lesson_opens_the_same_cancel_type_toggle @manag
 // Playwright's text matching is substring-based (#1202). Requiring "…its fee for 3 enrolled
 // riders: " from the first character leaves no wrong count that satisfies it.
 test('choosing_cancelled_by_instructor_on_a_group_lesson_shows_the_affected_rider_count @manager', async ({ page }) => {
-  await page.goto(cancelPath('toggle'))
+  await gotoCancelPage(page, 'toggle')
   await cancelTypeRadio(page, 'instructor').check()
   await expect(groupDescription(page)).toHaveText(
     /^This will mark the lesson as cancelled and zero out its fee for 3 enrolled riders: /
@@ -359,7 +418,7 @@ test('choosing_cancelled_by_instructor_on_a_group_lesson_shows_the_affected_ride
 // ("Ivy appears") is satisfied by both a subset and a superset render (#1188), and full-set
 // equality on the parsed names is the one form that kills both.
 test('the_cancelled_by_instructor_description_lists_the_affected_riders_by_name @manager', async ({ page }) => {
-  await page.goto(cancelPath('toggle'))
+  await gotoCancelPage(page, 'toggle')
   await cancelTypeRadio(page, 'instructor').check()
   const description = (await settledTextContents(groupDescription(page)))[0]
   const listed = description
@@ -427,7 +486,7 @@ test('whole_lesson_cancellation_of_a_group_lesson_waives_the_fee @manager', asyn
 // every enrolled rider rather than the still-active ones fails on the extra name. A containment
 // check would have passed against exactly that bug.
 test('choosing_cancelled_by_rider_on_a_group_lesson_reveals_a_picker_of_still_active_riders @manager', async ({ page }) => {
-  await page.goto(cancelPath('picker'))
+  await gotoCancelPage(page, 'picker')
   await cancelTypeRadio(page, 'rider').check()
   const listed = (await settledTextContents(pickerLabels(page))).map((s) => s.trim())
   expect([...listed].sort()).toEqual([RIDERS[0], RIDERS[1]].sort())
@@ -462,30 +521,56 @@ test('cancelling_one_group_rider_shows_a_cancelled_badge_on_only_that_riders_row
 // out for a reason that is easy to miss: `cancel_rider_participation` runs
 // `IF NOT v_effective_is_late THEN UPDATE lessons SET fee = 0`, so on a lesson more than 24 hours
 // away one rider's cancellation zeroes the **whole group's** fee and the line would be false.
-// The fee string and the count of still-active rows are both positive readings, so the
-// zero-badge half cannot pass on a page that rendered nothing.
+// The fee string and the count of still-active rows are positive readings, but they come off
+// the `<dl>` and the zero comes off the header — a different locator root, so they prove the
+// page rendered without proving `main div:has(> h1)` resolves. `headerTypeBadges: 1` closes
+// that: it is the same root, unconditionally present on a group lesson, and it fails on exactly
+// the header markup change that would make the zero meaningless.
 test('the_rest_of_a_group_lesson_is_unaffected_when_one_of_its_riders_cancels @manager', async ({ page }) => {
   await cancelOneRider(page, 'restUnaffected', RIDERS[0])
   const rows = riderRows(page)
   await rows.first().waitFor()
   expect({
     lessonCancelledBadges: await headerCancelledBadge(page).count(),
+    headerTypeBadges: await headerTypeBadge(page).count(),
     fee: await feeOnDetailPage(page),
     riderRows: await rows.count(),
     ridersWithoutACancelledBadge: await rows.filter({ hasNotText: CANCELLED_BADGE }).count(),
-  }).toEqual({ lessonCancelledBadges: 0, fee: '$306', riderRows: 3, ridersWithoutACancelledBadge: 2 })
+  }).toEqual({
+    lessonCancelledBadges: 0,
+    headerTypeBadges: 1,
+    fee: '$306',
+    riderRows: 3,
+    ridersWithoutACancelledBadge: 2,
+  })
 })
 
 // Both sides of the boundary in one assertion, because a *policy* claim is not testable from one
 // side: a system that always zeroed the fee, and one that never did, each satisfy half of it.
 // The two lessons carry different seeded fees, so the retained value also proves which lesson
 // was read.
+//
+// The within-24h half needs one extra reading that the >24h half does not, and the asymmetry is
+// the #1202 ceiling rather than belt-and-braces. `$0` against a lesson seeded `$307` can only
+// have come from this code path. But `$308` **is** the seeded value, and every early bail in
+// `cancelRiderParticipationAction` redirects to exactly the URL the success path redirects to —
+// so a regression that refused to cancel inside the window would leave `$308` on a real,
+// rendering detail page and satisfy a bare fee check. The rider's Cancelled badge is what
+// distinguishes "the fee was left alone" from "nothing happened"; it is readable here precisely
+// because one of three riders cancelling does not cascade the lesson.
 test('the_24_hour_fee_policy_applies_to_a_group_rider_who_cancels @manager', async ({ page }) => {
   await cancelOneRider(page, 'feePolicyFar', RIDERS[0])
   const moreThan24hOut = await feeOnDetailPage(page)
   await cancelOneRider(page, 'feePolicyNear', RIDERS[0])
   const within24h = await feeOnDetailPage(page)
-  expect({ moreThan24hOut, within24h }).toEqual({ moreThan24hOut: '$0', within24h: '$308' })
+  const within24hRiderCancelled = await riderRow(page, RIDERS[0])
+    .getByText(CANCELLED_BADGE, { exact: true })
+    .count()
+  expect({ moreThan24hOut, within24h, within24hRiderCancelled }).toEqual({
+    moreThan24hOut: '$0',
+    within24h: '$308',
+    within24hRiderCancelled: 1,
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -495,27 +580,36 @@ test('the_24_hour_fee_policy_applies_to_a_group_rider_who_cancels @manager', asy
 // Full-string equality rather than a substring match: the label's text is a complete sentence and
 // any looser matcher would also accept a longer string that happened to contain it.
 test('selecting_cancelled_by_rider_on_a_group_lesson_within_24h_shows_the_group_fee_warning @manager', async ({ page }) => {
-  await page.goto(cancelPath('nearLabel'))
+  await gotoCancelPage(page, 'nearLabel')
   await cancelTypeRadio(page, 'rider').check()
   await expect(groupFeeWarning(page)).toHaveText(GROUP_FEE_WARNING)
 })
 
-// `before` is captured only after the label has actually appeared, so the positive control lives
-// inside the same assertion as the disappearance claim. A locator that were simply wrong would
-// report 0 for `before` and fail there, instead of reading as a clean pass on `after: 0`.
-// `expect.poll` re-reads `after` until it settles, which is what makes the unmount observable
-// without an explicit timeout.
+// Two controls, because `before` and `formStillThere` defend against different things and
+// neither covers the other. `before` is captured only after the label has actually appeared, so
+// a locator that were simply wrong reports 0 there and fails, instead of reading as a clean pass
+// on `after: 0` — but it is a *prior* reading, and it says nothing about the state of the
+// document at the moment `after` is taken. `formStillThere` is concurrent: if clicking the
+// instructor radio blew up the client and blanked `main`, `after` would read 0 and this test
+// would report "switching hides the warning" about a page that had died. `expect.poll` re-reads
+// both until they settle, which is what makes the unmount observable without an explicit timeout.
+//
+// This lesson is trainer-instructed, so Rider is the *server-rendered* default and `before: 1`
+// no longer depends on React having processed the first `.check()`. Only the disappearance does
+// — and that is the claim the checklist line makes, so hydration is load-bearing here by design
+// rather than by accident.
 test('switching_a_group_lesson_to_cancelled_by_instructor_hides_the_group_fee_warning @manager', async ({ page }) => {
-  await page.goto(cancelPath('nearLabel'))
+  await gotoCancelPage(page, 'nearLabel')
   await cancelTypeRadio(page, 'rider').check()
   await groupFeeWarning(page).waitFor()
   const before = await groupFeeWarning(page).count()
 
   await cancelTypeRadio(page, 'instructor').check()
-  await expect.poll(async () => ({ before, after: await groupFeeWarning(page).count() })).toEqual({
-    before: 1,
-    after: 0,
-  })
+  await expect.poll(async () => ({
+    before,
+    after: await groupFeeWarning(page).count(),
+    formStillThere: await cancelTypeFieldset(page).count(),
+  })).toEqual({ before: 1, after: 0, formStillThere: 1 })
 })
 
 // Two defences, because the near-lesson half only covers one of the two ways an absence check can
@@ -536,14 +630,14 @@ test('switching_a_group_lesson_to_cancelled_by_instructor_hides_the_group_fee_wa
 // for a reason that has nothing to do with the 24-hour window: the same value a correct pass
 // produces.
 test('selecting_cancelled_by_rider_on_a_group_lesson_more_than_24h_out_shows_no_group_fee_warning @manager', async ({ page }) => {
-  await page.goto(cancelPath('nearLabel'))
+  await gotoCancelPage(page, 'nearLabel')
   await cancelTypeRadio(page, 'rider').check()
   await groupFeeWarning(page).waitFor()
   const onNearLesson = await groupFeeWarning(page).count()
 
   // `.check()` is itself the render proof for this page: it auto-waits and throws if the radio
   // never appears, so a 404 or an unrendered route fails here rather than reaching the count.
-  await page.goto(cancelPath('farLabel'))
+  await gotoCancelPage(page, 'farLabel')
   await cancelTypeRadio(page, 'rider').check()
   const onFarLesson = await groupFeeWarning(page).count()
 
