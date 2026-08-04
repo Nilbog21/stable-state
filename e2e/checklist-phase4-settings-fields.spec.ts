@@ -5,6 +5,17 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/horses/[id]/**
+// covers: src/components/calendar/**
+// covers: src/components/documents/**
+//
+// The last two are shared components, not routes, and they are declared because this spec
+// asserts on their markup directly: `MonthCalendarPicker` supplies the `aria-label`ed day
+// cells and the `data-past` attribute the greying item reads (and the day the Time-field item
+// clicks), and `ReminderDueBadge` supplies the badge text the reminder item counts. Neither
+// directory is in `select-specs.sh`'s ALWAYS_FULL list — only `src/components/ui/**` and
+// `src/lib/**` are — so without these two lines a change to either component selects nothing
+// and this spec never runs for it. `--lint` cannot catch that: it proves a glob is well-formed
+// and matches something, never that a module the spec genuinely drives has a glob at all.
 //
 // The lessons/ and expenses/ globs are deliberately the whole subtree rather than `new/**`.
 // A `/**` glob is a literal string PREFIX (scripts/CLAUDE.md), and the components these tests
