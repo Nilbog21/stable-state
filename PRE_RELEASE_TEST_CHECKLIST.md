@@ -804,7 +804,7 @@ Calendar feed (#1018):
 
 ## Phase 5 — Trainer
 
-<!-- Asserting role: trainer only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation is stated as setup prose above the checkboxes it serves, so every checkbox here is a single trainer-eye assertion. -->
+<!-- Asserting role: trainer only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation gets its own tagged `Setup —` checkbox above the assertions it serves, so every asserting checkbox here is a single trainer-eye assertion. -->
 
 Switch role (interactive):
 
@@ -864,13 +864,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) The horse detail page shows **no Exhaustion Thresholds section**
 - [ ] (e2e-candidate) The Reminder Date column there is **read-only**
 - [ ] (e2e-candidate) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
-
-Setup (as manager, then switch back to the trainer): clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
 - [ ] (e2e-candidate) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
-
-Setup (as manager, then switch back to the trainer): grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
 - [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e-candidate) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
@@ -880,13 +876,9 @@ Setup (as manager, then switch back to the trainer): grant this trainer a horse-
 - [ ] (e2e-candidate) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo
 - [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
 - [ ] (e2e-candidate) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a non-manager
-
-Setup (as manager, then switch back to the trainer): set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the trainer's own barn instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the trainer's own barn instead
 - [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
-
-Setup (as manager, then switch back to the trainer): clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
 - [ ] (e2e-candidate) Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view
 - [ ] (e2e-candidate) That page shows no **Add Trainer**/**Add Rider** forms
@@ -915,7 +907,7 @@ Setup (as manager, then switch back to the trainer): clear Apple's **Registered 
 
 ## Phase 6 — Rider
 
-<!-- Asserting role: rider only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation is stated as setup prose above the checkboxes it serves, so every checkbox here is a single rider-eye assertion. -->
+<!-- Asserting role: rider only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation gets its own tagged `Setup —` checkbox above the assertions it serves, so every asserting checkbox here is a single rider-eye assertion. -->
 
 Switch role (pick **Dana** from the same member list as Phase 5):
 
@@ -932,17 +924,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
 - [ ] (e2e-candidate) Butter's detail page (Dana does **not** own her) displays her seeded photo
 - [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
-
-Setup (as manager, then switch back to Dana): set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead
 - [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
-
-Setup (as manager, then switch back to Dana): clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
-
-Setup (as manager, then switch back to Dana): make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
 - [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e-candidate) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
@@ -950,20 +936,15 @@ Setup (as manager, then switch back to Dana): make Dana the owning member of **C
 - [ ] (e2e-candidate) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e-candidate) (#1000) Clover no longer appears under Available/Unavailable
 - [ ] (e2e-candidate) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
-- [ ] (e2e-candidate) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds, and the photo displays afterwards
-
-Setup (as manager, then switch back to Dana): grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead.
-
+- [ ] (e2e-candidate) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
+- [ ] (e2e-candidate) (#1003) That photo then displays on Clover's detail page
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
 - [ ] (e2e-candidate) (#999) That horse's detail page now shows a **Documents** section for Dana
 - [ ] (e2e-candidate) (#999) That Documents section shows no **Add Document** button
-
-Setup (as manager, then switch back to Dana): change that same grant to `document_privileges='write'`.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — change that same grant to `document_privileges='write'`
 - [ ] (e2e-candidate) (#999) The **Add Document** button now appears in that horse's Documents section
 - [ ] (e2e-candidate) (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
-
-Setup (as manager, then switch back to Dana): grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
 - [ ] (e2e-candidate) (#999) That horse's detail page now shows an **Exhaustion** bar for Dana
 - [ ] (e2e-candidate) (#999) Tapping that Exhaustion bar expands it to show the ±3-day breakdown
 - [ ] (e2e-candidate) (#999) That same horse's page shows a collapsed **Upcoming Lessons** section at the bottom, listing its scheduled lessons
@@ -983,9 +964,7 @@ Setup (as manager, then switch back to Dana): grant Dana `lesson_read_privileges
 - [ ] (e2e-candidate) (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse does show an exertion rating
 - [ ] (e2e-candidate) (#999) That same horse shows its horse notes (if any) on that page
 - [ ] (e2e-candidate) (#999) On that page, other riders' rider and private notes stay hidden from Dana
-
-Setup (as manager, then switch back to Dana): cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead.
-
+- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead
 - [ ] (e2e-candidate) That lesson's detail page renders the same read-only **Cancellation Notes** row the manager gets
 - [ ] (e2e-candidate) An enrolled **group** lesson's detail page shows every co-rider's real name, not a blank or raw ID
 - [ ] (e2e-candidate) Visiting `/barn/dev-barn/lessons/[id]` directly for a lesson Dana is **not** enrolled in, with no horse she holds lesson-read privileges on, shows **404** rather than the lesson details
@@ -1019,8 +998,7 @@ Setup (as manager, then switch back to Dana): cancel a lesson Dana is enrolled i
 
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. Phase 2-4's own-photo check exercises this code path for real on **your own** profile (no impersonation) — the only locally-linked one, and there's no role branch in the path. The version where the self-writer is *someone other than you* needs a real second account and is verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — don't re-add a self-photo check to an impersonated phase.
 
-Setup: switch to Emery (`change-user.sh dev-barn` → Emery), who holds the Active Agreements from Phase 4, and switch back to Dana once these three lines are done. An e2e run seeds those agreements on the rider persona's own membership instead, so no switch is needed.
-
+- [ ] (e2e-candidate) Setup — switch to Emery (`change-user.sh dev-barn` → Emery), who holds the Active Agreements from Phase 4, and switch back to Dana once the next three lines are done. An e2e run seeds those agreements on the rider persona's own membership instead, so no switch is needed
 - [ ] (e2e-candidate) Her own member detail page renders the same Active Agreements cards from Phase 4
 - [ ] (e2e-candidate) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
 - [ ] (manual) Those cards carry no hover state — a visual affordance judgement, not a behavior a click path can assert
