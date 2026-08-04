@@ -30,7 +30,20 @@ const RIDER2_NAME = 'Test Rider2'
 // plus a builder-returned one, never as a literal currency string.
 const PLANNED_EXPENSE_AMOUNT = 42
 
-const TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
+/**
+ * The five Finances breakdown tabs, in the order `readTabExpenseTotals` visits them — its only
+ * consumer. `pill` is the tab's switcher label (finances/page.tsx); `column` is the table's
+ * first column header, which is the only header that differs between tabs (Gross/Expenses/Net
+ * are uniform), and so the only thing that says *which* tab is rendered.
+ */
+const TABS = [
+  // First entry is the tab a bare financesUrl() lands on (finances/page.tsx's `tab` default).
+  { pill: 'By Horse', column: 'Horse' },
+  { pill: 'By Tier', column: 'Tier' },
+  { pill: 'By Rider', column: 'Rider' },
+  { pill: 'By Instructor', column: 'Trainer' },
+  { pill: 'By Paid To', column: 'Recipient' },
+] as const
 
 /**
  * A custom timeout (the suite's other is members-access.spec.ts's), and only for the two
@@ -252,10 +265,33 @@ function footerTotalRow(page: Page) {
   return page.locator('tfoot tr').filter({ hasText: /^Total/ })
 }
 
+/** The one breakdown table on the page — the Outstanding tables have a thead but no tfoot. */
+function breakdownTable(page: Page) {
+  return page.locator('main table:has(tfoot)')
+}
+
+/**
+ * Every tab's Expenses Total, in TABS order. One `page.goto` and four pill clicks: the switcher
+ * is `<Pill href>` → a Next `Link`, so a tab change is a client-side soft nav, and the five
+ * `goto`s this used to do stood in for what the UI does with none (#1244).
+ *
+ * The header wait is load-bearing, not decoration. The read below is a one-shot `innerText`, so
+ * without it the re-render races the read and returns the *previous* tab's figure — the hazard
+ * checklist-phase4-finances-by-tier.spec.ts's by_tier_tab_lists_every_barn_tier documents.
+ * `toContainText`, because every breakdown table sorts by its first column by default, so that
+ * header also carries a sort glyph.
+ *
+ * No hydration barrier is needed, which is the property that makes this substitution safe
+ * everywhere: a pill is an anchor, so a click landing before React is listening navigates the
+ * document instead of being lost (the inverse of e2e/CLAUDE.md rule 10) — slower for that one
+ * tab, never wrong.
+ */
 async function readTabExpenseTotals(page: Page): Promise<number[]> {
+  await page.goto(financesUrl())
   const totals: number[] = []
-  for (const tab of TABS) {
-    await page.goto(`${financesUrl()}&tab=${tab}`)
+  for (const [i, tab] of TABS.entries()) {
+    if (i > 0) await page.getByRole('link', { name: tab.pill, exact: true }).click()
+    await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column)
     // Columns are uniform across every tab: label, Gross, Expenses, Net.
     totals.push(parseMoney(await footerTotalRow(page).locator('td').nth(2).innerText()))
   }
@@ -493,15 +529,6 @@ test.describe.serial('resolving a past-due planned expense', () => {
   })
 
   test('past_due_expense_still_outstanding_after_amount_entered_without_payment_type @manager', async ({ page }) => {
-    // The suite's heaviest single check — ~7 navigations (`readTabExpenseTotals`'s five, plus a
-    // form save and a further goto) — and the only one exempted from the 30s default. Measured
-    // 14.8s / 15.2s / 21.1s across three full runs at `workers: 4`, so the default leaves it
-    // one bad run from a timeout that would read as a regression rather than as its own cost.
-    // Deliberately per-test and not a config-wide bump: every other check keeps the 30s ceiling,
-    // which is what makes a genuine hang surface fast. The real fix is fewer navigations, and
-    // that means restructuring a describe.serial chain whose next test consumes the baseline
-    // this one reads — out of scope for #1238.
-    test.setTimeout(60_000)
     baselineTabExpenseTotals = await readTabExpenseTotals(page)
 
     await page.goto(`/barn/${barn.slug}/expenses/${seeded.plannedExpense.id}`)
