@@ -326,7 +326,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: deleting_an_unpaid_lesson_removes_it_from_outstanding_income_in_finances) That deleted lesson also disappears from Finances
 - [ ] (e2e: a_deleted_lesson_leaves_no_cancelled_badge_behind) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
 - [ ] (e2e: deleting_a_lesson_sends_no_notification_to_its_instructor_or_riders) No notification is sent to the instructor or riders for that delete
-- [ ] (e2e: delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson) **Delete** is reachable the same way on an already-cancelled lesson
+- [ ] (e2e: delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson) **Delete** is reachable the same way on an already-cancelled lesson whose fee survived — cancel one **late** (under 24h out) to get there, since a non-late cancellation zeroes the fee and lands on the `/delete` page below instead
 - [ ] (e2e: delete_on_a_paid_lesson_opens_the_delete_page_instead_of_a_browser_prompt) On a **paid** (or $0-fee) lesson's detail page, **Delete** lands on `/barn/dev-barn/lessons/[id]/delete` rather than raising a browser prompt
 - [ ] (e2e: the_lesson_delete_page_shows_the_amount_already_collected) That page shows the amount already collected for the lesson
 - [ ] (e2e: the_lesson_delete_pages_collected_record_checkbox_is_unchecked_by_default) Its "also delete the collected record" checkbox is unchecked by default

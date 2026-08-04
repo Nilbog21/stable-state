@@ -1,6 +1,16 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/actions/lessons.ts
 // covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/components/ExhaustionBar.tsx
+//
+// `ExhaustionBar` is declared because `waitForEditFormHydrated` below gates the two edit-and-save
+// tests on `getByRole('button', { name: /^Exhaustion: / })`, and that accessible name is that
+// component's own `aria-label` (`ExhaustionBar.tsx:57`). `src/components/**` is **not** in
+// select-specs.sh's ALWAYS_FULL — only `src/components/ui/**` is — so without this line a PR that
+// reworded that label would not select this spec, and both tests would break with no signal at
+// review time. Exactly the hole `--lint` cannot see: it catches a malformed glob, never a missing
+// one. (`checklist-phase4-lessons-detail.spec.ts` uses the same helper and omits it — that is a gap
+// in the sibling, not a licence.)
 //
 // `src/app/actions/lesson-cancellation.ts` is deliberately NOT declared. Every cancelled-lesson
 // state in this file is planted by the `cancelLesson` fixture — a service-role table write — and
@@ -446,7 +456,12 @@ async function waitForEditFormHydrated(page: Page) {
  * in `edit` mode the form is longer still.
  */
 async function saveLessonForm(page: Page) {
-  const save = page.getByRole('button', { name: 'Save' })
+  // `exact: true` and scoped to `main`, unlike the merged sibling this helper is otherwise copied
+  // from: `getByRole`'s name match is a case-insensitive **substring** by default, so a bare 'Save'
+  // would also match any future 'Save and close'/'Save draft' control. Latent rather than live
+  // today — no other button on the edit page contains 'Save' — and that is exactly when it is cheap
+  // to close.
+  const save = page.locator('main').getByRole('button', { name: 'Save', exact: true })
   await save.focus()
   await save.press('Enter')
 }
@@ -726,16 +741,22 @@ test('delete_on_a_paid_lesson_opens_the_delete_page_instead_of_a_browser_prompt 
   })
 })
 
-// Anchored end to end, so the fee is pinned rather than merely contained: an unanchored `$351`
-// is a substring of `$3510`, and Playwright's text matching is substring-based (#1202). The
-// expected value interpolates this file's own `FEES` constant, never anything the page returned.
+// Anchored at the start and terminated after "collected.", so the fee is pinned rather than merely
+// contained — Playwright's text matching is substring-based (#1202).
+//
+// **The boundary comes from the literal `" fee"` that follows the amount, not from an end anchor.**
+// A page rendering `$3510` produces "…$3510 fee…", which cannot satisfy `\$351 fee`; one rendering
+// `$35` cannot satisfy `\$351` at all. That is why this deliberately stops at "collected." instead
+// of anchoring the whole paragraph: the line claims the amount is shown and claims nothing about
+// the "Deleting the lesson cannot be undone." sentence after it, so pinning that second sentence
+// would fail this test on a legitimate reword of prose it is not about.
+//
+// The expected value interpolates this file's own `FEES` constant, never anything the page returned.
 test('the_lesson_delete_page_shows_the_amount_already_collected @manager', async ({ page }) => {
   await page.goto(deletePath('paidInspect'))
 
   await expect(page.locator('main > p')).toHaveText(
-    new RegExp(
-      `^This lesson's \\$${FEES.paidInspect} fee has already been collected\\. Deleting the lesson cannot be undone\\.$`,
-    ),
+    new RegExp(`^This lesson's \\$${FEES.paidInspect} fee has already been collected\\.`),
   )
 })
 
