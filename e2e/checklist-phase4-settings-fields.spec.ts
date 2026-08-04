@@ -173,8 +173,15 @@ const ZERO_INSTRUCTOR_CUT = '0'
 const SAVED_THRESHOLDS = { moderate: '3', high: '9' }
 const SAVED_SCHEDULE_BUFFER = '45'
 
-/** Line 689's rejected pair: moderate at the high value, the boundary the action refuses. */
-const REJECTED_THRESHOLDS = { moderate: '9', high: '9' }
+/**
+ * Line 689's rejected pair. Moderate is above High, not merely equal to it, and **neither
+ * number matches either stored value** — that second property is what the paired
+ * "stored values unchanged" item below rests on. An earlier draft used `9`/`9`, which shares
+ * its High with SAVED_THRESHOLDS: a server action that wrote High before validating would
+ * have left `{3, 9}` behind and the unchanged-check would have agreed with it on that field.
+ * Off-default on both axes means a partial write of *either* field is caught.
+ */
+const REJECTED_THRESHOLDS = { moderate: '9', high: '4' }
 const THRESHOLD_ERROR = 'Moderate threshold must be less than high threshold'
 
 /**
@@ -239,6 +246,17 @@ const REMINDER_DUE_BADGE = 'Reminder Due'
 
 let horse: Horse
 let boardingAgreement: Agreement
+/**
+ * The `expense_date` each seeded appointment actually landed on, taken from the builder's own
+ * return value rather than recomputed at assertion time.
+ *
+ * Recomputing `instantToLocalWallClock(Date.now() - 7d, EASTERN)` in the test agrees with the
+ * seed only while both fall on the same side of an Eastern midnight — so a run that straddles
+ * one reads a date the row does not have. Reading the builder's answer removes the window
+ * entirely, and is what this batch means by "expected values come from builder return values".
+ */
+let controlExpenseDate: string
+let discriminatorExpenseDate: string
 
 const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, members }) => {
   // The barn's settings are deliberately left at their schema defaults: lines 670, 687, 691
@@ -266,12 +284,16 @@ const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, me
   const aWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const aWeekAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  await addExpense(supabase, seededBarn, { ...CONTROL_EXPENSE, at: aWeekAgo, time: '12:00' })
-  await addExpense(supabase, seededBarn, {
-    ...DISCRIMINATOR_EXPENSE,
-    at: halfAnHourAgo,
-    time: instantToLocalWallClock(halfAnHourAgo, EASTERN).slice(11, 16),
-  })
+  controlExpenseDate = (
+    await addExpense(supabase, seededBarn, { ...CONTROL_EXPENSE, at: aWeekAgo, time: '12:00' })
+  ).expense_date
+  discriminatorExpenseDate = (
+    await addExpense(supabase, seededBarn, {
+      ...DISCRIMINATOR_EXPENSE,
+      at: halfAnHourAgo,
+      time: instantToLocalWallClock(halfAnHourAgo, EASTERN).slice(11, 16),
+    })
+  ).expense_date
   await addExpense(supabase, seededBarn, { ...FUTURE_EXPENSE, at: aWeekAhead, time: '12:00' })
 
   await addHorseDocument(supabase, seededBarn, horse.id, {
@@ -645,14 +667,8 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
   test('changing_the_barn_timezone_moves_a_newly_past_due_expense_into_outstanding_expenses @manager', async ({
     page,
   }) => {
-    const controlEntry = expenseEntry(
-      instantToLocalWallClock(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), EASTERN).slice(0, 10),
-      CONTROL_EXPENSE
-    )
-    const discriminatorEntry = expenseEntry(
-      instantToLocalWallClock(new Date(Date.now() - 30 * 60 * 1000), EASTERN).slice(0, 10),
-      DISCRIMINATOR_EXPENSE
-    )
+    const controlEntry = expenseEntry(controlExpenseDate, CONTROL_EXPENSE)
+    const discriminatorEntry = expenseEntry(discriminatorExpenseDate, DISCRIMINATOR_EXPENSE)
 
     // Precondition, not an assertion: with the barn still in Hawaii the discriminator's wall
     // clock is 5.5 hours in that zone's future, so only the control is past due. This is the
@@ -682,6 +698,17 @@ test.describe('Manage Barn — barn day versus device day', () => {
   // other 23 items stay in the runner's pinned zone (#1221), and never a
   // `playwright.config.ts` edit.
   test.use({ timezoneId: HAWAII })
+
+  // WHAT THESE SIX DO NOT COVER, measured rather than assumed. There are three zones in play,
+  // not two: the barn's, the device's, and the *host the dev server runs on*. The pin below
+  // separates the barn from the device, which is the axis these checklist lines are about. It
+  // does nothing about the third — and line 696 fixes the barn to Eastern, so on a host that
+  // is itself in Eastern (the developer machine this was written on: `America/New_York`) the
+  // barn's day and the host's day are equal by construction, and a regression that read the
+  // host's clock instead of `barns.timezone` would pass every one of these. #1224's own note
+  // in `ExpenseForm` records that the thing it replaced *was* the server host's UTC day, so
+  // that regression is not hypothetical. Not fixable inside these six without contradicting
+  // line 696's "set Barn Timezone to Eastern"; logged as a follow-up instead.
 
   // Line 696's "set Barn Timezone to Eastern", done as a write to this file's own barn rather
   // than through the UI: the settings-page path is already covered by the timezone items
