@@ -339,13 +339,20 @@ test('confirming_cancelled_by_rider_more_than_24h_out_zeroes_the_fee @manager', 
   expect(await feeOnDetailPage(page)).toEqual('$0')
 })
 
-// The strongest assertion in the file, and deliberately so: `$152` is the only expected value
-// here that is neither zero, nor the tier default, nor any other lesson's fee — so it cannot be
-// produced by a cancellation that no-opped, by a read of the wrong lesson, or by any fallback
-// the system has. A late rider cancellation is the one case where the fee survives.
+// The one fee outcome in this slice that the fee alone cannot prove, and the only test here
+// carrying a second reading — for a reason worth stating, because the asymmetry looks arbitrary
+// otherwise. Everywhere else the expected fee is `$0` against a lesson seeded non-zero, so the
+// value is itself proof the cancellation ran: nothing but this code path can produce it. Here
+// the expected value *is* the seeded value, so a Confirm that redirected without cancelling
+// anything would leave `$152` on the page and satisfy a bare fee check. Pairing the fee with the
+// Cancelled badge in one `toEqual` closes that: the badge proves the lesson was cancelled, the
+// fee proves the cancellation left it alone, and the line claims both halves.
 test('confirming_cancelled_by_rider_within_24h_leaves_the_fee_unaffected @manager', async ({ page }) => {
   await cancelFromDetail(page, 'riderNear', 'rider')
-  expect(await feeOnDetailPage(page)).toEqual('$152')
+  expect({
+    fee: await feeOnDetailPage(page),
+    cancelled: await headerCancelledBadge(page).count(),
+  }).toEqual({ fee: '$152', cancelled: 1 })
 })
 
 // `$0` against a lesson seeded at $163 — the zero can only have come from this cancellation,
