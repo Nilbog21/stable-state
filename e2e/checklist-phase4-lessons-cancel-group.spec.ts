@@ -125,21 +125,31 @@ const FAR = () => hoursFromNow(72) // outside it
  * re-seeds the barn. Designing the chain out of existence costs thirteen extra seed rows and
  * removes both.
  *
- * **Why almost every lesson is instructed by the trainer.** `CancelLessonPage` computes
- * `cancelledByInstructorDefault = isInstructorOfLesson(membership.id, lesson)`, so on a lesson
- * the manager does *not* instruct the Type toggle already defaults to **Cancelled by Rider** —
- * which means `CancelLessonFields` renders the rider picker, and suppresses or shows the amber
- * label, **during the server render**. Every per-rider flow and the far-lesson absence check
- * therefore read a property of the delivered HTML rather than of React state reached by a click.
- * #1191 found the failure this avoids: an unhydrated `.check()` sets the DOM but never reaches
- * React, leaving the label absent and the count reading the same `0` a correct pass produces.
- * The `.check()` calls stay — the checklist lines say "choose Cancelled by Rider" — but they are
- * no-ops confirming an already-selected state.
+ * **Who instructs which lesson is chosen per test, and the rule is not "always the trainer".**
+ * `CancelLessonPage` computes `cancelledByInstructorDefault = isInstructorOfLesson(membership.id,
+ * lesson)`, so on a lesson the manager does *not* instruct, the Type toggle already defaults to
+ * **Cancelled by Rider** — meaning `CancelLessonFields` renders the picker, and suppresses or
+ * shows the amber label, **during the server render**. Which default a test wants depends on
+ * whether its checklist line is about an *absence* or about a *reveal*, and the two want opposite
+ * things:
  *
- * `toggle` is the one manager-instructed lesson, and for the mirror-image reason: lines 304/305
- * are about the **Cancelled by Instructor** description, which a manager-instructed lesson
- * renders by default. Its `.check('instructor')` is a no-op too — no test in this file depends
- * on a click *changing* the toggle except the one whose checklist line is the switch itself.
+ * - **Absence claims are seeded so the state under test is the SSR default** (`farLabel`, and
+ *   `nearLabel` as its positive control). #1191 found the failure this avoids: an unhydrated
+ *   `.check()` sets the DOM but never reaches React, so the label is absent and the count reads
+ *   the same `0` a correct pass produces. Those `.check()` calls are no-ops confirming an
+ *   already-selected state, kept because the lines say "select Cancelled by Rider".
+ *
+ * - **Reveal claims are seeded so the state under test is NOT the default**, so the `.check()` is
+ *   a real transition and the test actually observes the thing its line names. `toggle`
+ *   (lines 304/305, "*choosing* Cancelled by Instructor shows the count") is therefore
+ *   **trainer**-instructed, and `picker` (line 308, "choosing Cancelled by Rider *reveals* a
+ *   rider picker") is **manager**-instructed. #1191's hazard does not reach these: it is specific
+ *   to absence assertions, where the unhydrated reading and the correct reading coincide. Here an
+ *   unhydrated click leaves the *other* state on screen — the rider sentence instead of the count
+ *   sentence, an empty picker instead of two labels — which every one of these assertions fails
+ *   loudly on. Seeding these as SSR defaults too would mean no test in this file ever exercises
+ *   `setCancelType` in the rider direction, while three checklist lines whose verb *is* that
+ *   interaction read as covered.
  */
 const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, { name: STANDARD_TIER, price: TIER_PRICE, isDefault: true })
@@ -168,9 +178,10 @@ const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, me
   const manager = members.manager.membershipId
   const trainer = members.trainer.membershipId
 
-  // Read-only page states.
-  await seed('toggle', FAR(), manager)
-  await seed('picker', FAR(), trainer)
+  // Read-only page states. `toggle` and `picker` are instructed by whoever makes the state each
+  // one's line is about the *reveal* of the non-default (see the docstring above).
+  await seed('toggle', FAR(), trainer)
+  await seed('picker', FAR(), manager)
   await seed('nearLabel', NEAR(), trainer)
   await seed('farLabel', FAR(), trainer)
 
@@ -294,9 +305,20 @@ function pickerLabels(page: Page): Locator {
   return page.locator('main form fieldset:has(input[name="rider_id"]) label')
 }
 
-/** The amber group-lesson fee note, which only ever renders on the cancel page. */
+/**
+ * The amber group-lesson fee note, addressed by **position** for the same reason
+ * `groupDescription` is: selecting an element *by* the string you then assert on is #1202's
+ * tautology, and `toHaveText(GROUP_FEE_WARNING)` against a locator that already matched that
+ * exact text cannot fail except by resolving to nothing — it is `toBeVisible()` wearing a text
+ * matcher.
+ *
+ * `CancelLessonFields` emits the amber `<p>` after the Type fieldset, and the description `<p>`
+ * before it, so the amber label is always the form's **second** `<p>` when it renders and there
+ * is no second `<p>` at all when it does not. That makes the same locator serve both the presence
+ * assertion and the absence counts, and leaves the text a real claim rather than a restatement.
+ */
 function groupFeeWarning(page: Page): Locator {
-  return page.locator('main').getByText(GROUP_FEE_WARNING, { exact: true })
+  return page.locator('main form > p:nth-of-type(2)')
 }
 
 /** A lesson card in one of the Lessons list's `<ul>`s, addressed by the lesson it points at. */
@@ -321,8 +343,12 @@ async function feeOnDetailPage(page: Page): Promise<string> {
  * `test.slow()` to `openCancelPage` alone and its comment claimed the coverage this pair of
  * helpers actually provides.
  *
- * No explicit timeout anywhere in this file: `actionTimeout` is 0, so every `waitFor*` is
- * already unbounded and a number could only tighten it (#1211).
+ * No explicit timeout anywhere in this file. For every `waitFor*` that is because
+ * `actionTimeout` is 0, so the wait is already unbounded and a number could only tighten it
+ * (#1211). The two `expect.poll`s are the exception worth naming: `expect.poll` is bounded by
+ * **expect's** own budget, not by `actionTimeout`, and `playwright.config.ts` sets no
+ * `expect.timeout` -- so they run on Playwright's 5s default. Still no number here: writing one
+ * is what #1211 forbids. Raise `test.slow()` if either ever needs longer.
  */
 async function gotoCancelPage(page: Page, key: LessonKey) {
   test.slow()
@@ -338,6 +364,11 @@ async function openCancelPage(page: Page, key: LessonKey) {
   // 'Cancel Lesson' or 'Cancel Participation' control — and a locator resolving to the wrong
   // sibling is a no-op wearing the costume of a synchronisation point (#1205).
   await page.locator('main').getByRole('link', { name: 'Cancel', exact: true }).click()
+  // Pins WHICH lesson's cancel page the link led to. The fieldset assertion downstream proves a
+  // group cancel page *rendered*, but a `Cancel` href wired to the wrong lesson id renders an
+  // identical fieldset and would satisfy it — 'commit' resolves before render, so the two halves
+  // are complementary and neither replaces the other (`e2e/support/test.ts`'s convention block).
+  await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}/cancel$`), { waitUntil: 'commit' })
 }
 
 /**
@@ -481,15 +512,29 @@ test('whole_lesson_cancellation_of_a_group_lesson_waives_the_fee @manager', asyn
 // The rider picker and per-rider cancellation
 // ---------------------------------------------------------------------------
 
-// Sorted full-set equality again, and here the *negative* half is the point: this lesson has
-// three enrolled riders, one of them already cancelled in the seed, so a picker that listed
-// every enrolled rider rather than the still-active ones fails on the extra name. A containment
-// check would have passed against exactly that bug.
+// The line has two halves and this reads both, because each is satisfied by a different bug.
+//
+// *Reveals* — this lesson is manager-instructed, so Instructor is the SSR default and the picker
+// genuinely is not on the page until the click. `hiddenBeforeChoosing: 0` is what makes the
+// `.check()` a real transition rather than a no-op confirming an already-rendered picker, and it
+// is the only assertion in this file that exercises `setCancelType` in the rider direction. The
+// `cancelTypeFieldset` wait before it is the render proof, so that zero is a measured absence on
+// a page that drew rather than a zero from a page that never arrived.
+//
+// *Still-active* — sorted full-set equality, where the *negative* half is the point: this lesson
+// has three enrolled riders, one already cancelled in the seed, so a picker listing every
+// enrolled rider rather than the still-active ones fails on the extra name. A containment check
+// would have passed against exactly that bug.
 test('choosing_cancelled_by_rider_on_a_group_lesson_reveals_a_picker_of_still_active_riders @manager', async ({ page }) => {
   await gotoCancelPage(page, 'picker')
+  await cancelTypeFieldset(page).waitFor()
+  const hiddenBeforeChoosing = await pickerLabels(page).count()
   await cancelTypeRadio(page, 'rider').check()
   const listed = (await settledTextContents(pickerLabels(page))).map((s) => s.trim())
-  expect([...listed].sort()).toEqual([RIDERS[0], RIDERS[1]].sort())
+  expect({ hiddenBeforeChoosing, listed: [...listed].sort() }).toEqual({
+    hiddenBeforeChoosing: 0,
+    listed: [RIDERS[0], RIDERS[1]].sort(),
+  })
 })
 
 // Each rider is read as a **pair** — is the row there, and does it carry a badge — rather than
@@ -539,7 +584,7 @@ test('the_rest_of_a_group_lesson_is_unaffected_when_one_of_its_riders_cancels @m
   }).toEqual({
     lessonCancelledBadges: 0,
     headerTypeBadges: 1,
-    fee: '$306',
+    fee: `$${FEES.restUnaffected}`,
     riderRows: 3,
     ridersWithoutACancelledBadge: 2,
   })
@@ -568,7 +613,7 @@ test('the_24_hour_fee_policy_applies_to_a_group_rider_who_cancels @manager', asy
     .count()
   expect({ moreThan24hOut, within24h, within24hRiderCancelled }).toEqual({
     moreThan24hOut: '$0',
-    within24h: '$308',
+    within24h: `$${FEES.feePolicyNear}`,
     within24hRiderCancelled: 1,
   })
 })
@@ -662,9 +707,9 @@ test('a_group_lesson_shows_no_cancelled_badge_while_any_rider_is_still_active @m
   await listCard(page, 'cancelledSibling').waitFor()
   expect({
     cardsForThisLesson: await listCard(page, 'listNoBadge').count(),
-    stillHasAnActiveRider: await listCard(page, 'listNoBadge').getByText(CANCELLED_BADGE, { exact: true }).count(),
+    cancelledBadgesOnThisLesson: await listCard(page, 'listNoBadge').getByText(CANCELLED_BADGE, { exact: true }).count(),
     cancelledInTheSeed: await listCard(page, 'cancelledSibling').getByText(CANCELLED_BADGE, { exact: true }).count(),
-  }).toEqual({ cardsForThisLesson: 1, stillHasAnActiveRider: 0, cancelledInTheSeed: 1 })
+  }).toEqual({ cardsForThisLesson: 1, cancelledBadgesOnThisLesson: 0, cancelledInTheSeed: 1 })
 })
 
 // Its own lesson, cancelled rider by rider the way the line describes, rather than a reading of
