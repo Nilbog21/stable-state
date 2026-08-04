@@ -4,7 +4,9 @@
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 // covers: src/app/barn/[slug]/(protected)/NavDrawer.tsx
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
+// covers: src/app/barn/[slug]/(protected)/nav-active.ts
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
+// covers: src/app/barn/[slug]/(protected)/BarnSwitcher.tsx
 // covers: src/components/useOutsideDismiss.ts
 // covers: src/components/ExhaustionBar.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/**
@@ -65,37 +67,55 @@ const MANAGER_NAV_LABELS = [
 ]
 
 /**
- * Three notifications, and every field of them is load-bearing.
+ * Four notifications, and every field of every one of them is load-bearing.
  *
- * **Distinct `type`s.** `addNotification` upserts on `(user_id, barn_id, type)`, so three rows
- * of one type would collapse to one and the whole "lists the notifications" claim would be
- * asserted against a single row.
+ * **Distinct `type`s.** `addNotification` upserts on `(user_id, barn_id, type)`, so four rows of
+ * one type would collapse to one and the whole "lists the notifications" claim would be asserted
+ * against a single row.
+ *
+ * **Exactly one of them is already read**, which is the only reason line 765's badge assertion
+ * says anything. `upsertNotification` hard-codes `read_at: null`, so with an all-unread fixture
+ * `unreadCount` and `notifications.length` are the same number — and a bell computing
+ * `notifications.length`, ignoring `read_at` entirely, renders an identical badge. The word the
+ * checklist line turns on is *unread*, so the fixture has to be able to tell those apart: the
+ * badge reads 3 while the list holds 4.
  *
  * **`day` is a fixed past date, never today.** The bell renders `formatBarnDate(created_at)`.
- * Seeded at today's date the assertion would be vacuous in the fourth shape: a bell that
- * ignored `created_at` entirely and stamped `now` renders identical DOM. A fixed past date is
- * reachable only from the fixture. Past rather than future because `prune-old-notifications`
- * only ever deletes *read* rows and these stay unread, so nothing sweeps them mid-run, while a
- * future date would be a claim about a state the app never produces.
+ * Seeded at today's date the assertion would be vacuous in the fourth shape: a bell that ignored
+ * `created_at` entirely and stamped `now` renders identical DOM. A fixed past date is reachable
+ * only from the fixture. Past rather than future because a future date would be a claim about a
+ * state the app never produces. `prune-old-notifications` deletes read rows older than 30 days,
+ * which the read row below is — but it is a nightly cron, never run by this suite, and a barn
+ * lives for one spec file.
  *
- * **The four orderings are all distinct**, which is what makes deleting `getNotifications`'
+ * **All five orderings are distinct**, which is what makes deleting `getNotifications`'
  * `ORDER BY created_at DESC` a genuine kill rather than a coin flip:
- *   - expected (created_at DESC): Jumping, Farrier, Overdue
- *   - alphabetical by title:      Farrier, Jumping, Overdue
- *   - reverse alphabetical:       Overdue, Jumping, Farrier
- *   - insertion order (below):    Overdue, Jumping, Farrier
+ *   - expected (created_at DESC): Jumping, Farrier, Overdue, Emergency
+ *   - created_at ascending:       Emergency, Overdue, Farrier, Jumping
+ *   - alphabetical by title:      Emergency, Farrier, Jumping, Overdue
+ *   - reverse alphabetical:       Overdue, Jumping, Farrier, Emergency
+ *   - insertion order (below):    Farrier, Overdue, Jumping, Emergency
  *
  * `rendered` is the literal string the bell must print, written out rather than computed with
- * `formatBarnDate`: importing the app's own formatter would make the test agree with any bug
- * in it. `time` is 10:00 barn-local so the rendered day cannot depend on the barn's zone.
+ * `formatBarnDate`: importing the app's own formatter would make the test agree with any bug in
+ * it. The seeded time is 10:00 barn-local so the rendered day cannot depend on the barn's zone.
  */
 const NOTIFICATIONS = [
+  {
+    type: 'expense_past_due' as const,
+    title: 'Farrier Visit Past Due',
+    body: 'A scheduled farrier appointment has passed its due date.',
+    day: '2026-02-10',
+    rendered: 'Feb 10, 2026',
+    read: false,
+  },
   {
     type: 'outstanding_payment' as const,
     title: 'Overdue Board Payment',
     body: 'Two board charges are still outstanding for this barn.',
     day: '2026-01-15',
     rendered: 'Jan 15, 2026',
+    read: false,
   },
   {
     type: 'lesson_cancelled' as const,
@@ -103,18 +123,23 @@ const NOTIFICATIONS = [
     body: 'The Thursday jumping lesson was called off by its instructor.',
     day: '2026-03-02',
     rendered: 'Mar 2, 2026',
+    read: false,
   },
   {
-    type: 'expense_past_due' as const,
-    title: 'Farrier Visit Past Due',
-    body: 'A scheduled farrier appointment has passed its due date.',
-    day: '2026-02-10',
-    rendered: 'Feb 10, 2026',
+    type: 'incomplete_profile' as const,
+    title: 'Emergency Contact Missing',
+    body: 'Your rider profile has no emergency contact on file yet.',
+    day: '2025-12-05',
+    rendered: 'Dec 5, 2025',
+    read: true,
   },
 ]
 
-/** Display order is `created_at` descending: Mar 2, then Feb 10, then Jan 15. */
-const IN_DISPLAY_ORDER = [NOTIFICATIONS[1], NOTIFICATIONS[2], NOTIFICATIONS[0]]
+/** Display order is `created_at` descending: Mar 2, Feb 10, Jan 15, then Dec 5. */
+const IN_DISPLAY_ORDER = [NOTIFICATIONS[2], NOTIFICATIONS[0], NOTIFICATIONS[1], NOTIFICATIONS[3]]
+
+/** What the badge must read — deliberately not `NOTIFICATIONS.length`. See the docstring. */
+const UNREAD_COUNT = NOTIFICATIONS.filter((n) => !n.read).length
 
 const barn = withBarn('phase4-notifications-profile', async ({ supabase, barn, members }) => {
   const managerUserId = members.manager.userId
@@ -128,13 +153,16 @@ const barn = withBarn('phase4-notifications-profile', async ({ supabase, barn, m
       title: n.title,
       body: n.body,
     })
-    // Inline rather than a `fixtures.ts` change (batch ruling 4): `addNotification` has no
-    // created_at parameter and twenty-odd slices share that file. Keyed on the same
-    // (user_id, barn_id, type) triple the builder upserts on.
+    // Inline rather than a `fixtures.ts` change (batch ruling 4): `addNotification` has neither a
+    // created_at nor a read_at parameter, and twenty-odd slices share that file. Keyed on the
+    // same (user_id, barn_id, type) triple the builder upserts on.
     mustSucceed(
       await supabase
         .from('notifications')
-        .update({ created_at: wallClockToInstant(`${n.day}T10:00:00`, barn.timezone).toISOString() })
+        .update({
+          created_at: wallClockToInstant(`${n.day}T10:00:00`, barn.timezone).toISOString(),
+          read_at: n.read ? wallClockToInstant(`${n.day}T11:00:00`, barn.timezone).toISOString() : null,
+        })
         .eq('user_id', managerUserId)
         .eq('barn_id', barn.id)
         .eq('type', n.type)
@@ -219,15 +247,18 @@ function currentVersionFromChangelog(): string {
 
 test('notification_bell_shows_an_unread_count_badge @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  await expect(unreadBadge(page)).toHaveText(String(NOTIFICATIONS.length))
+  // UNREAD_COUNT, not NOTIFICATIONS.length: with an all-unread fixture those are the same
+  // number and a bell that ignored `read_at` would pass. The read row is what separates them.
+  await expect(unreadBadge(page)).toHaveText(String(UNREAD_COUNT))
 })
 
 test('opening_the_bell_lists_the_notifications @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
   await bellButton(page).click()
-  // Exactly three, not at least three: a superset render satisfies a containment check
-  // silently, and the dropdown's rows do not exist at all until the click, so this also proves
-  // the reveal happened rather than reading a server-rendered list.
+  // Exactly four, not at least four: a superset render satisfies a containment check silently,
+  // and the dropdown's rows do not exist at all until the click, so this also proves the reveal
+  // happened rather than reading a server-rendered list. Four rows against a badge of three is
+  // also what pins the list to every notification rather than only the unread ones.
   await expect(notificationRows(page)).toHaveCount(NOTIFICATIONS.length)
 })
 
@@ -256,14 +287,14 @@ test('mark_all_read_clears_the_unread_badge @manager', async ({ page }) => {
   await bellButton(page).click()
   // Pre-state proof, and the guard that makes a mis-ordered run fail loudly instead of passing
   // against a barn something else already marked read.
-  await expect(unreadBadge(page)).toHaveText(String(NOTIFICATIONS.length))
+  await expect(unreadBadge(page)).toHaveText(String(UNREAD_COUNT))
 
   await page.getByRole('button', { name: 'Mark all read', exact: true }).click()
 
   // An absence assertion reached through an interaction, so it needs its positive half in the
   // same rendered document. It cannot be "another notification is still unread" —
   // markAllNotificationsReadAction marks every row in the barn, so no such row can exist by
-  // construction. The available positive control is the three rows still rendering in the
+  // construction. The available positive control is the four rows still rendering in the
   // still-open dropdown: same data path, so a blank or failed re-render cannot produce the
   // passing zero. Both halves are read inside one poll so they describe one render.
   await expect
@@ -280,22 +311,46 @@ test('avatar_menu_profile_opens_the_profile_page_with_the_barn_nav_bar @manager'
   await openAvatarMenu(page)
   await page.getByRole('link', { name: 'Profile', exact: true }).click()
   await page.waitForURL((url) => url.pathname === '/profile', { waitUntil: 'commit' })
-  // The nav bar, not the URL: `waitUntil: 'commit'` resolves before the new document renders,
-  // and the barn-name link exists only on the `?barn=` branch of ProfileLayout — the plain
-  // "← Back" branch is what a missing or inactive membership renders instead.
-  await expect(page.getByRole('link', { name: barn.data.barn.name, exact: true })).toBeVisible()
+  // Both halves in one poll, and the `heading` half is why. This is a soft navigation, so the
+  // previous tree is still mounted when the URL flips and `waitUntil: 'commit'` resolves before
+  // the destination renders — and the barn-name link is NOT destination-only: `BarnSwitcher`
+  // renders a link with exactly that accessible name on the barn dashboard we clicked from, in
+  // both its branches. On its own it was satisfiable by the page we left. "Edit Profile" is
+  // `ProfileForm`'s heading and appears nowhere on the dashboard, so it pins the document; the
+  // barn-name link is then the nav bar the checklist line actually asks about.
+  await expect
+    .poll(async () => ({
+      heading: await page.getByRole('heading', { name: 'Edit Profile', exact: true }).count(),
+      barnNavLink: await page.getByRole('link', { name: barn.data.barn.name, exact: true }).count(),
+    }))
+    .toEqual({ heading: 1, barnNavLink: 1 })
 })
 
-test('the_profile_nav_bar_carries_the_full_nine_link_manager_nav @manager', async ({ page }) => {
-  await page.goto(`/profile?barn=${barn.slug}`)
-  // `nav > div` also matches the trailing user-controls div; filtering on a link only the
-  // desktop row carries selects DesktopNavLinks' container. toHaveText with an array is
-  // full-string equality per element *and* an exact count, so it pins the set, the order and
-  // that nothing else is in the row.
-  const desktopNav = page
+/**
+ * `nav > div` also matches the trailing user-controls div; filtering on a link only the desktop
+ * row carries selects `DesktopNavLinks`' container.
+ */
+function desktopNavLabels(page: Page) {
+  const row = page
     .locator('nav > div')
     .filter({ has: page.getByRole('link', { name: 'Manage Barn', exact: true }) })
-  await expect(desktopNav.getByRole('link')).toHaveText(MANAGER_NAV_LABELS)
+  return settledTextContents(row.getByRole('link'))
+}
+
+test('the_profile_nav_bar_carries_the_full_nine_link_manager_nav @manager', async ({ page }) => {
+  // Both pages, because line 772 makes two claims: the nine links, *and* "same set as the
+  // regular barn pages". Reading only `/profile` leaves the second clause unasserted, and it is
+  // the clause a divergence between ProfileLayout's own `buildNavLinks` call and the protected
+  // layout's would break. Full arrays rather than a length or a containment check, so the
+  // comparison pins the set, the order, and that nothing else is in either row.
+  await page.goto(`/profile?barn=${barn.slug}`)
+  const onProfile = await desktopNavLabels(page)
+  await page.goto(`/barn/${barn.slug}`)
+  const onBarnPage = await desktopNavLabels(page)
+  expect({ onProfile, onBarnPage }).toEqual({
+    onProfile: MANAGER_NAV_LABELS,
+    onBarnPage: MANAGER_NAV_LABELS,
+  })
 })
 
 // This block writes `profiles.phone` on the shared `manager@e2e.test` row — the only identity
