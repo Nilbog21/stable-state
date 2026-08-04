@@ -347,14 +347,14 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: a_future_dated_planned_expense_with_no_amount_appears_in_the_list) At least one future-dated planned expense with no amount appears in the list
 - [ ] (e2e: tapping_an_expense_card_away_from_its_text_opens_its_edit_page) Tapping anywhere on an expense card opens its edit page
 - [ ] (e2e: the_expenses_list_has_no_row_level_delete_link) There is no separate row-level Delete link on the list
-- [ ] (e2e-candidate) On `/barn/dev-barn/expenses/new`, enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills
-- [ ] (e2e-candidate) That auto-filled Expense Type field flashes to draw attention to itself
-- [ ] (e2e-candidate) Leaving the amount blank saves a planned expense
-- [ ] (e2e-candidate) Re-opening that planned expense's form later lets you fill the amount in and save
-- [ ] (e2e-candidate) Checking **All** on the new-expense form disables the horse checkboxes
-- [ ] (e2e-candidate) Saving that expense shows "Entire Barn" on its card instead of specific horses
-- [ ] (e2e-candidate) On the new-expense form, setting the date to yesterday hides the Time field
-- [ ] (e2e-candidate) Changing it back to today or a future date brings the Time field back
+- [ ] (e2e: entering_a_recipient_seen_before_autofills_the_expense_type) On `/barn/dev-barn/expenses/new`, enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills
+- [ ] (e2e: the_autofilled_expense_type_field_flashes) That auto-filled Expense Type field flashes to draw attention to itself
+- [ ] (e2e: leaving_the_amount_blank_saves_a_planned_expense) Leaving the amount blank saves a planned expense
+- [ ] (e2e: reopening_a_planned_expense_lets_its_amount_be_filled_in) Re-opening that planned expense's form later lets you fill the amount in and save
+- [ ] (e2e: checking_all_disables_the_horse_checkboxes) Checking **All** on the new-expense form disables the horse checkboxes
+- [ ] (e2e: saving_a_barn_wide_expense_shows_entire_barn_on_its_card) Saving that expense shows "Entire Barn" on its card instead of specific horses
+- [ ] (e2e: setting_the_date_to_yesterday_hides_the_time_field) On the new-expense form, setting the date to yesterday hides the Time field
+- [ ] (e2e: setting_the_date_back_to_today_brings_the_time_field_back) Changing it back to today or a future date brings the Time field back
 
 **#1020 — month conflict calendar on the expense form's Date field.** All on `/barn/dev-barn/expenses/new` unless stated. Assumes the Phase 3 seeding above, which put lessons and a vet/farrier expense on known future days.
 
@@ -374,20 +374,20 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (#1020) Save after picking a day that way — the expense stores the day you tapped
 - [ ] (#1020) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
 - [ ] (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page
-- [ ] (e2e-candidate) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
-- [ ] (e2e-candidate) That form opens with the correct All / specific-horse checkbox state
-- [ ] (e2e-candidate) Change the recipient and save → the card shows the new recipient
-- [ ] (e2e-candidate) Change the amount and save → the card shows the new amount
-- [ ] (e2e-candidate) On the new-expense form, set a **Payment Type**, save → it persists on reload
-- [ ] (e2e-candidate) On the edit-expense form, set a **Payment Type**, save → it persists on reload
-- [ ] (e2e-candidate) From the edit page, **Delete** on a seeded expense with **no amount set** opens a confirmation page headed "Confirm Delete"
-- [ ] (e2e-candidate) That confirmation page carries no checkbox
-- [ ] (e2e-candidate) Confirming it removes the expense from the list
-- [ ] (e2e-candidate) Deleting a seeded expense **with an amount** shows an "Also delete the collected record from Finances" checkbox on the confirmation page
-- [ ] (e2e-candidate) That checkbox is unchecked by default
-- [ ] (e2e-candidate) Confirm that delete without checking the box — the expense is gone from the list
-- [ ] (e2e-candidate) Its record still shows up in Finances for that month
-- [ ] (e2e-candidate) Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
+- [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
+- [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
+- [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient
+- [ ] (e2e: changing_the_amount_and_saving_updates_the_card) Change the amount and save → the card shows the new amount
+- [ ] (e2e: a_payment_type_set_on_the_new_expense_form_persists) On the new-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e: a_payment_type_set_on_the_edit_expense_form_persists) On the edit-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e: the_delete_confirmation_page_is_headed_delete_expense) From the edit page, **Delete** on a seeded expense with **no amount set** opens a confirmation page headed "Delete Expense"
+- [ ] (e2e: the_unamounted_delete_confirmation_carries_no_checkbox) That confirmation page carries no checkbox
+- [ ] (e2e: confirming_an_unamounted_delete_removes_it_from_the_list) Confirming it removes the expense from the list
+- [ ] (e2e: deleting_an_amounted_expense_offers_the_finances_checkbox) Deleting a seeded expense **with an amount** shows an "Also delete the collected record from Finances" checkbox on the confirmation page
+- [ ] (e2e: the_finances_delete_checkbox_is_unchecked_by_default) That checkbox is unchecked by default
+- [ ] (e2e: confirming_without_the_checkbox_removes_the_expense_from_the_list) Confirm that delete without checking the box — the expense is gone from the list
+- [ ] (e2e: the_deleted_expenses_record_still_counts_in_finances_for_that_month) Its record still shows up in Finances for that month
+- [ ] (e2e: checking_the_box_also_removes_its_record_from_finances) Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
