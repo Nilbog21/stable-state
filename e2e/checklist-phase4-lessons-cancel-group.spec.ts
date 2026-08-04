@@ -614,10 +614,11 @@ test('cancelling_one_group_rider_shows_a_cancelled_badge_on_only_that_riders_row
 })
 
 // "The rest of the lesson" and "its other riders" are two subjects, so both are read here; the
-// fee is what makes the pair more than a restatement of the test above it. This lesson is <24h
-// out for a reason that is easy to miss: `cancel_rider_participation` runs
-// `IF NOT v_effective_is_late THEN UPDATE lessons SET fee = 0`, so on a lesson more than 24 hours
-// away one rider's cancellation zeroes the **whole group's** fee and the line would be false.
+// fee is what makes the pair more than a restatement of the test above it — and #1278 turned that
+// reading from a formality into the point. The lesson is seeded >24h out (see the seed), which is
+// the side where `cancel_rider_participation` used to run `IF NOT v_effective_is_late THEN UPDATE
+// lessons SET fee = 0` for a rider of any lesson type, zeroing the **whole group's** fee. That
+// write is now gated on `lesson_type = 'normal' OR` the cascade, so the seeded fee survives here.
 // The fee string and the count of still-active rows are positive readings, but they come off
 // the `<dl>` and the zero comes off the header — a different locator root, so they prove the
 // page rendered without proving `main div:has(> h1)` resolves. `headerTypeBadges: 1` closes
