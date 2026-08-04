@@ -24,6 +24,9 @@ const REGISTERED_NAME = 'Four-Leaf Clover'
 // Typed into Barn Name during a save the server must reject, so the "unchanged" assertion has
 // something to be unchanged *from* — a rejected save that changed nothing anyway proves nothing.
 const APPLE_REJECTED = 'Apple Rejected'
+// #1277 — typed once, then saved a second time without retyping. Distinct from APPLE_RENAMED so
+// a form that reverted to its page-load value shows APPLE_RENAMED and the assertion can see it.
+const APPLE_RENAMED_TWICE = 'Apple Bloom'
 const FEED_NOTES = 'Two flakes of hay, morning and night.'
 const MEDICATION_NOTES = 'Bute 1g with the evening feed.'
 
@@ -433,4 +436,25 @@ test('clearing_feed_notes_leaves_the_field_empty_on_reload @manager', async ({ p
   await page.reload()
 
   await expect(page.getByLabel('Feed Notes', { exact: true })).toHaveValue('')
+})
+
+// ---------------------------------------------------------------------------
+// #1277 — a second save in one page session
+// ---------------------------------------------------------------------------
+
+// Last in the chain: it renames Apple again, and nothing below reads the name. The second save
+// deliberately retypes nothing — `fill`ing between the saves would overwrite a reverted field and
+// mask the whole defect, which is that the form quietly holds the page-load name after save one
+// and writes it back on save two.
+test('a_second_save_keeps_the_first_saves_name @manager', async ({ page }) => {
+  await page.goto(horseHref(appleId))
+  await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED_TWICE)
+  await saveAndSettle(page)
+  // SavedIndicator self-hides after 2s. Waiting it out is what stops the second saveAndSettle
+  // from settling instantly on the first save's still-visible confirmation.
+  await savedIndicator(page).waitFor({ state: 'detached' })
+  await saveAndSettle(page)
+  await page.reload()
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(APPLE_RENAMED_TWICE)
 })

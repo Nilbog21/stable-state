@@ -91,4 +91,37 @@ describe('HorseNotesForm', () => {
     })
     expect(screen.queryByText(/saved/i)).toBeNull()
   })
+
+  // #1277 — this form carries no `key={saveCount}` remount, and doesn't need one: both of its
+  // fields are controlled, so React 19's post-action form reset restores them. These guard that
+  // property, so a field added here as uncontrolled goes red rather than shipping the revert.
+  describe('field values survive a save', () => {
+    async function save() {
+      await act(async () => {
+        fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+      })
+    }
+
+    it('should_keep_feed_notes_across_a_second_save', async () => {
+      render(<HorseNotesForm horse={horseWithoutNotes} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '1 flake AM only' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '2 flakes hay AM/PM' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('2 flakes hay AM/PM')
+    })
+
+    it('should_keep_medication_notes_across_a_second_save', async () => {
+      render(<HorseNotesForm horse={horseWithoutNotes} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Banamine PRN' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Bute 1g daily' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Bute 1g daily')
+    })
+  })
 })
