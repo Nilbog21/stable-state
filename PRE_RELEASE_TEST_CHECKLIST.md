@@ -699,17 +699,17 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: add_expense_hides_the_time_field_for_the_devices_already_past_day) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
 - [ ] (e2e: add_expense_date_prefills_the_barns_day) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
 - [ ] (e2e: add_lease_and_add_boarding_start_dates_prefill_the_barns_day) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
-- [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
-- [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
-- [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
-- [ ] (e2e-candidate) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker (#1222)
-- [ ] (e2e-candidate) Under that setup, saving that **Edit** form without changing anything leaves the stored time untouched (#1222)
-- [ ] (e2e-candidate) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
-- [ ] (e2e-candidate) Under that setup, **New Lesson**'s hour select opens on the barn's current hour, not your device's (#1222)
-- [ ] (e2e-candidate) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
-- [ ] (e2e-candidate) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
-- [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
-- [ ] (e2e-candidate) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
+- [ ] (e2e: lessons_list_shows_the_barn_local_four_pm_not_the_devices_ten_am) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
+- [ ] (e2e: lesson_detail_shows_the_barn_local_four_pm) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
+- [ ] (e2e: dashboard_calendar_card_shows_the_barn_local_four_pm) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
+- [ ] (e2e: edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_hour) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker (#1222)
+- [ ] (e2e: resaving_the_edit_form_unchanged_leaves_the_stored_time_untouched) Under that setup, saving that **Edit** form without changing anything leaves the stored time untouched (#1222)
+- [ ] (e2e: new_lesson_date_prefills_the_barns_day_not_the_devices) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
+- [ ] (e2e: new_lesson_hour_select_opens_on_the_barns_hour_not_the_devices) Under that setup, **New Lesson**'s hour select opens on the barn's current hour, not your device's (#1222)
+- [ ] (e2e: creating_a_lesson_at_four_pm_stores_four_pm_barn_local) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
+- [ ] (e2e: adding_an_expense_at_eleven_thirty_pm_stores_it_barn_local_in_transactions) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
+- [ ] (e2e: barn_event_row_on_manage_barn_shows_the_barn_local_four_pm) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
+- [ ] (e2e: barn_event_card_on_the_dashboard_shows_the_barn_local_four_pm) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e: add_event_form_checks_all_three_visible_to_roles_by_default) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e: creating_a_barn_event_lists_it_under_its_title) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e: barn_event_list_entry_shows_the_events_date_and_time) That list entry shows the correct date
