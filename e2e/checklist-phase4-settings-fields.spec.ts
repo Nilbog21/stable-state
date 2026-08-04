@@ -2,9 +2,16 @@
 // covers: src/app/barn/[slug]/(protected)/agreements/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
 // covers: src/app/barn/[slug]/(protected)/page.tsx
-// covers: src/app/barn/[slug]/(protected)/lessons/new/**
-// covers: src/app/barn/[slug]/(protected)/expenses/new/**
+// covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/horses/[id]/**
+//
+// The lessons/ and expenses/ globs are deliberately the whole subtree rather than `new/**`.
+// A `/**` glob is a literal string PREFIX (scripts/CLAUDE.md), and the components these tests
+// actually assert on — `lessons/LessonForm.tsx`'s month calendar and `expenses/ExpenseForm.tsx`'s
+// date prefill and past-date Time branch — sit one level ABOVE `new/`. Declaring `new/**` still
+// passes `select-specs.sh --lint`, because it matches `new/page.tsx`; it just silently fails to
+// select this spec when the form components themselves change, which is the case that matters.
 //
 // Manage Barn's accordion shell and the settings fields themselves
 // (PRE_RELEASE_TEST_CHECKLIST.md lines 665-675, 684-695 and 696-701): the eight collapsible
@@ -32,7 +39,7 @@ import {
   addTier,
   updateBarnSettings,
 } from './support/fixtures'
-import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type { Agreement, Horse } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -74,9 +81,30 @@ function shiftDay(date: string, days: number): string {
 }
 
 /**
+ * `barn-timezone.ts:barnToday`'s answer, computed here rather than imported.
+ *
+ * That module is not a neutral utility to this file — it is the code under test. All six
+ * barn-day items are server-rendered from `barnToday(barn.timezone)`, so importing it to build
+ * the expected value would make every one of them agree with any bug in it, in both
+ * directions, and the reminder-badge seed below would move with it too. Same reason `shiftDay`
+ * above refuses `local-day.ts:addDays`; this is the helper that carries the more weight of the
+ * two, so it gets the same treatment. Mirrors `barnToday`'s `en-CA` 2-digit shape, which is
+ * what yields "YYYY-MM-DD".
+ */
+function barnDay(at: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(at)
+  const get = (type: string) => parts.find((part) => part.type === type)!.value
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+/**
  * The barn's own calendar day, resolved from the real clock — the same value the *server*
- * computes when it renders any of the six barn-day items, since every one of them is
- * server-rendered from `barnToday(barn.timezone)` (dashboard heading, `LessonForm`'s
+ * computes when it renders any of the six barn-day items (dashboard heading, `LessonForm`'s
  * `todayStr`, `ReminderDueBadge`'s `today`, `ExpenseForm`'s `todayStr`, `AgreementForm`'s
  * `defaultStartDate`).
  *
@@ -85,14 +113,13 @@ function shiftDay(date: string, days: number): string {
  * same one rather than forking the clock-pinning decision — and it fails loudly rather than
  * passing wrongly.
  */
-const BARN_TODAY = barnToday(EASTERN)
+const BARN_TODAY = barnDay(new Date(), EASTERN)
 
 /** One day behind the barn: what the device is pinned to. See DEVICE_INSTANT. */
 const DEVICE_DAY = shiftDay(BARN_TODAY, -1)
 
 /**
- * 8pm Hawaii on the day before the barn's — line 696's "after 8pm Hawaii time (by then the
- * barn's own date is already tomorrow)", expressed as an instant.
+ * The instant the device's clock is pinned to: 1pm Hawaii on the day before the barn's.
  *
  * `page.clock.setFixedTime`, never `page.clock.install()`: `install` also fakes the timers
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
@@ -106,8 +133,19 @@ const DEVICE_DAY = shiftDay(BARN_TODAY, -1)
  * and fail. Without it the two agree roughly eighteen hours in twenty-four and the items are
  * green and worthless for most of the day — which is the exact failure mode #1222 existed to
  * remove.
+ *
+ * **1pm and not the 8pm line 696 names, and the difference is load-bearing.** Hawaii is UTC−10
+ * with no DST, so any Hawaii evening is already the *next* UTC day: 8pm on DEVICE_DAY is 06:00
+ * UTC on BARN_TODAY, and the browser's UTC calendar day would then equal the very value all six
+ * tests assert. A `new Date().toISOString().slice(0, 10)` implementation would render the right
+ * answer for the wrong reason and every one of these would stay green — and per the note on the
+ * describe below, the server host's UTC day is precisely the regression #1224 already shipped
+ * once. 1pm keeps Hawaii *and* UTC on DEVICE_DAY (23:00 UTC), so the pin separates the barn's
+ * day from the device's zone and from UTC together. 8pm is the manual recipe for producing the
+ * barn-ahead-of-device relationship by hand; pinning constructs that relationship directly, and
+ * is free to pick the hour that also closes the UTC axis.
  */
-const DEVICE_INSTANT = wallClockToInstant(`${DEVICE_DAY}T20:00:00`, HAWAII)
+const DEVICE_INSTANT = wallClockToInstant(`${DEVICE_DAY}T13:00:00`, HAWAII)
 
 /**
  * `local-day.ts:formatCalendarDate`'s output, rebuilt here rather than imported — the
@@ -174,14 +212,20 @@ const SAVED_THRESHOLDS = { moderate: '3', high: '9' }
 const SAVED_SCHEDULE_BUFFER = '45'
 
 /**
- * Line 689's rejected pair. Moderate is above High, not merely equal to it, and **neither
- * number matches either stored value** — that second property is what the paired
- * "stored values unchanged" item below rests on. An earlier draft used `9`/`9`, which shares
- * its High with SAVED_THRESHOLDS: a server action that wrote High before validating would
- * have left `{3, 9}` behind and the unchanged-check would have agreed with it on that field.
- * Off-default on both axes means a partial write of *either* field is caught.
+ * Line 689's rejected pair, and **neither number matches either stored value** — that property
+ * is what the paired "stored values unchanged" item below rests on. The first draft used
+ * `9`/`9`, which shares its High with SAVED_THRESHOLDS: a server action that wrote High before
+ * validating would have left `{3, 9}` behind and the unchanged-check would have agreed with it
+ * on that field. Off-default on both axes means a partial write of *either* field is caught.
+ *
+ * `7`/`7` rather than a strictly-greater pair, which was the draft after that one. The line says
+ * Moderate **≥** High and `actions.ts` implements `moderate >= high`, so the equality case is
+ * exactly where an off-by-one between `>` and `>=` would live — a strictly-greater pair leaves
+ * that regression uncaught. Nothing is given up to get it: 7 collides with neither field of
+ * `{3, 9}`, so the partial-write property above still holds. (`checklist-phase4-horses-detail`
+ * picks the boundary on the per-horse form for the same reason.)
  */
-const REJECTED_THRESHOLDS = { moderate: '9', high: '4' }
+const REJECTED_THRESHOLDS = { moderate: '7', high: '7' }
 const THRESHOLD_ERROR = 'Moderate threshold must be less than high threshold'
 
 /**
@@ -284,15 +328,20 @@ const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, me
   const aWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const aWeekAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-  controlExpenseDate = (
-    await addExpense(supabase, seededBarn, { ...CONTROL_EXPENSE, at: aWeekAgo, time: '12:00' })
-  ).expense_date
+  // Seeded discriminator-first, deliberately against the order the assertion expects.
+  // `getOutstandingExpenses` sorts ascending by wall clock, which would put the week-old
+  // control first anyway — but if insertion order and sort order agreed, the assertion would
+  // pass just as happily with that `.sort()` deleted. Seeding them the other way round makes
+  // the rendered order a property of the sort rather than of the seed.
   discriminatorExpenseDate = (
     await addExpense(supabase, seededBarn, {
       ...DISCRIMINATOR_EXPENSE,
       at: halfAnHourAgo,
       time: instantToLocalWallClock(halfAnHourAgo, EASTERN).slice(11, 16),
     })
+  ).expense_date
+  controlExpenseDate = (
+    await addExpense(supabase, seededBarn, { ...CONTROL_EXPENSE, at: aWeekAgo, time: '12:00' })
   ).expense_date
   await addExpense(supabase, seededBarn, { ...FUTURE_EXPENSE, at: aWeekAhead, time: '12:00' })
 
@@ -356,9 +405,18 @@ async function sectionStates(page: Page): Promise<[string | undefined, boolean][
 async function openSection(page: Page, title: string): Promise<Locator> {
   await page.goto(settingsUrl())
   const sec = section(page, title)
-  await sec.locator('summary').click()
+  await sectionHeading(page, sec, title).click()
   await sec.getByRole('button', { name: 'Save', exact: true }).waitFor()
   return sec
+}
+
+/**
+ * The `<h2>` inside a section's `<summary>` — the thing lines 666/667 name ("clicking a
+ * section's *heading*"). Clicking the heading rather than its `<summary>` parent is what the
+ * lines actually describe; the click bubbles and activates the `<details>` identically.
+ */
+function sectionHeading(page: Page, sec: Locator, title: string) {
+  return sec.getByRole('heading', { name: title, exact: true })
 }
 
 /**
@@ -377,7 +435,20 @@ async function openSection(page: Page, title: string): Promise<Locator> {
  * focus()+Enter rather than a raw pointer click, per #501/`04c64505`.
  */
 async function saveSection(page: Page, sec: Locator): Promise<void> {
-  const submitted = page.waitForResponse((response) => response.request().method() === 'POST')
+  // Narrowed to a non-failing POST to the settings route itself. A bare
+  // `method() === 'POST'` predicate is satisfied by any POST at all, including a 500 — so a
+  // save that blew up would still be "waited for", and a test whose expected value happens to
+  // equal the pre-state (the two "unchanged" items) would sail through it.
+  //
+  // `status() < 400` rather than `ok()`: these actions end in `redirect()`, and Playwright's
+  // `ok()` is 200-299, so requiring it waits for a response that never arrives. Measured — it
+  // timed out all five saving tests at once.
+  const submitted = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      response.url().includes(`/barn/${barn.slug}/settings`) &&
+      response.status() < 400
+  )
   await sec.getByRole('button', { name: 'Save', exact: true }).focus()
   await page.keyboard.press('Enter')
   await submitted
@@ -405,7 +476,7 @@ test.describe('Manage Barn — accordions', () => {
   test('clicking_a_section_heading_opens_that_section @manager', async ({ page }) => {
     await page.goto(settingsUrl())
     const sec = section(page, 'Schedule Buffer')
-    await sec.locator('summary').click()
+    await sectionHeading(page, sec, 'Schedule Buffer').click()
 
     await expect(sec).toHaveJSProperty('open', true)
   })
@@ -415,7 +486,7 @@ test.describe('Manage Barn — accordions', () => {
     // than a restatement of the pre-state: closed is the state the page loads in, so
     // `open === false` is satisfied by a section that never opened at all.
     const sec = await openSection(page, 'Schedule Buffer')
-    await sec.locator('summary').click()
+    await sectionHeading(page, sec, 'Schedule Buffer').click()
 
     await expect(sec).toHaveJSProperty('open', false)
   })
@@ -423,7 +494,7 @@ test.describe('Manage Barn — accordions', () => {
   test('opening_a_second_section_leaves_the_first_open @manager', async ({ page }) => {
     await openSection(page, 'Schedule Buffer')
     const second = section(page, 'Barn Timezone')
-    await second.locator('summary').click()
+    await sectionHeading(page, second, 'Barn Timezone').click()
     await second.getByRole('button', { name: 'Save', exact: true }).waitFor()
 
     // The whole eight-section state, not just the first one: line 668 claims the *other*
@@ -475,39 +546,62 @@ test.describe.serial('Manage Barn — Default Instructor Cut', () => {
     await expect(sec.locator('p')).toHaveText(INSTRUCTOR_CUT_HELPER)
   })
 
-  test('instructor_cut_accepts_zero @manager', async ({ page }) => {
-    const sec = await openSection(page, 'Default Instructor Cut')
-    await sec.locator(FIELD).fill(ZERO_INSTRUCTOR_CUT)
-    await saveSection(page, sec)
-
-    await expect(await openField(page, 'Default Instructor Cut', FIELD)).toHaveValue(
-      ZERO_INSTRUCTOR_CUT
-    )
-  })
-
+  // DECLARATION ORDER DEPARTS FROM CHECKLIST ORDER HERE, and it has to.
+  //
+  // The checklist runs 673 (try `0`) → 674 (try blank) → 675 (stored value unchanged). Follow
+  // that order and 675's pre-state is `0` — which is also exactly what a blank would store if
+  // the rejection leaked and an empty string were coerced to a number. The test would then be
+  // green against the very bug it exists to catch, and no mutation of it could go red: with
+  // `required` dropped the action's own `parseNonNegativeAmount('')` still returns null and
+  // writes nothing, and with the parser coercing instead, `0` is stored and `0` is expected.
+  //
+  // Running the blank pair while the stored value is still `42` makes 675 falsifiable: a
+  // coerced-blank write moves it to `0` and the assertion fails. Each line still asserts its
+  // own claim, and 675's "after that rejection" still names the test immediately above it.
   test('blank_instructor_cut_is_rejected_by_the_field @manager', async ({ page }) => {
     const sec = await openSection(page, 'Default Instructor Cut')
-    await sec.locator(FIELD).fill('')
+    const field = sec.locator(FIELD)
+    await field.fill('')
+    // Armed before the click: the browser fires `invalid` on a field whose constraint blocks a
+    // submit attempt. That event *is* the rejection, rather than a symptom of it.
+    await field.evaluate((el) => {
+      el.removeAttribute('data-invalid-fired')
+      el.addEventListener('invalid', () => el.setAttribute('data-invalid-fired', 'yes'))
+    })
+    // A real pointer click rather than saveSection's focus()+Enter (#501, 04c64505): that
+    // idiom exists to dodge scroll-into-view flake on long forms, and saveSection additionally
+    // waits for a POST — which is precisely what must NOT happen here, so it would hang.
     await sec.getByRole('button', { name: 'Save', exact: true }).click()
 
-    // The rejection is the browser's own constraint validation — the input is `required`, so
-    // no request is made at all. Reading the validity state is therefore reading the actual
-    // mechanism rather than a proxy for it, and it is falsifiable: drop `required` and both
-    // halves flip. The paired item below is what checks nothing was stored.
+    // `valueMissing` ALONE would not be an assertion about rejection at all: it is already true
+    // of an empty `required` input before any submit is attempted, so the click above would
+    // contribute nothing and the test would really be asserting "the field is required and
+    // currently empty". Pairing it with the `invalid` event is what makes the submit attempt
+    // load-bearing — that event cannot fire without one.
     expect(
-      await sec.locator(FIELD).evaluate((el) => {
-        const input = el as HTMLInputElement
-        return { valueMissing: input.validity.valueMissing, hasMessage: input.validationMessage !== '' }
-      })
-    ).toEqual({ valueMissing: true, hasMessage: true })
+      await field.evaluate((el) => ({
+        invalidFired: el.getAttribute('data-invalid-fired'),
+        valueMissing: (el as HTMLInputElement).validity.valueMissing,
+      }))
+    ).toEqual({ invalidFired: 'yes', valueMissing: true })
   })
 
   test('a_rejected_blank_instructor_cut_leaves_the_stored_value_unchanged @manager', async ({
     page,
   }) => {
-    // `0`, from the accepts-zero item above — a value the seed can never produce, so a worker
-    // restart between the two makes this fail against the re-seeded `25` rather than agreeing
-    // with it.
+    // `42`, from the persists-across-reload item above — see the ordering note. Also a value
+    // the seed can never produce, so a worker restart makes this fail against the re-seeded
+    // `25` rather than quietly agreeing with it.
+    await expect(await openField(page, 'Default Instructor Cut', FIELD)).toHaveValue(
+      SAVED_INSTRUCTOR_CUT
+    )
+  })
+
+  test('instructor_cut_accepts_zero @manager', async ({ page }) => {
+    const sec = await openSection(page, 'Default Instructor Cut')
+    await sec.locator(FIELD).fill(ZERO_INSTRUCTOR_CUT)
+    await saveSection(page, sec)
+
     await expect(await openField(page, 'Default Instructor Cut', FIELD)).toHaveValue(
       ZERO_INSTRUCTOR_CUT
     )
@@ -653,7 +747,21 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
   }
 
   test('barn_timezone_select_shows_the_barns_current_zone @manager', async ({ page }) => {
-    await expect(await openField(page, 'Barn Timezone', FIELD)).toHaveValue(EASTERN)
+    const select = await openField(page, 'Barn Timezone', FIELD)
+
+    // NOT `toHaveValue(EASTERN)` on its own, which would be entirely vacuous here: Eastern is
+    // `BARN_TIMEZONES[0]`, so it is also what a `<select>` reports when it has no value set at
+    // all. Delete `defaultValue={barn.timezone}` from the page and a bare value read still
+    // says "America/New_York" — the assertion could not tell "reads the barn's zone" from
+    // "ignores it". The selected-option marker is what distinguishes them: React renders
+    // `selected` on the option `defaultValue` picks, and on a select with no `defaultValue`
+    // no option carries it. Verified by breaking exactly that prop and watching this fail.
+    expect(
+      await select.evaluate((el) => {
+        const selected = el.querySelector('option[selected]')
+        return { value: (el as HTMLSelectElement).value, marked: selected?.getAttribute('value') }
+      })
+    ).toEqual({ value: EASTERN, marked: EASTERN })
   })
 
   test('saving_a_new_barn_timezone_persists_it_across_a_reload @manager', async ({ page }) => {
@@ -675,8 +783,15 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
     // same-document positive control the batch's absence rule requires — it proves the
     // section rendered on a page where the discriminator is genuinely missing, which a bare
     // "the discriminator is absent" read cannot distinguish from a page that rendered nothing.
+    // Two preconditions that THROW, not assertions — the repo's distinction is mechanical, so
+    // an `expect` here would simply be a second assertion however it were commented. Together
+    // they say what the "before" state has to be: the section rendered and holds the control
+    // (so a later absence cannot be the page rendering nothing), and the discriminator is not
+    // in it yet (so the change below is what puts it there).
     await page.goto(`/barn/${barn.slug}/finances`)
-    await expect(outstandingExpenses(page)).toHaveText([controlEntry])
+    const before = outstandingExpenses(page)
+    await before.filter({ hasText: CONTROL_EXPENSE.recipient }).waitFor()
+    await before.filter({ hasText: DISCRIMINATOR_EXPENSE.recipient }).waitFor({ state: 'detached' })
 
     const sec = await openSection(page, 'Barn Timezone')
     await sec.locator(FIELD).selectOption(EASTERN)
@@ -734,6 +849,19 @@ test.describe('Manage Barn — barn day versus device day', () => {
    * real day, so it pages back rather than being left as a latent flake. The BARN_TODAY wait
    * is the grid-rendered guard: that cell is always in its own month's grid.
    */
+  /**
+   * A day cell's past-ness, as both the seam and the appearance: `data-past` drives the
+   * `text-zinc-300` tint that line 697's "greys out" actually names, and asserting only the
+   * attribute would leave the visible half unchecked (#1205 set the precedent of asserting the
+   * class where a line names one).
+   */
+  async function dayCellState(cell: Locator) {
+    return {
+      past: await cell.getAttribute('data-past'),
+      greyed: ((await cell.getAttribute('class')) ?? '').includes('text-zinc-300'),
+    }
+  }
+
   async function dayCell(page: Page, date: string): Promise<Locator> {
     await page.getByRole('button', { name: BARN_TODAY, exact: true }).waitFor()
     const cell = page.getByRole('button', { name: date, exact: true })
@@ -758,16 +886,24 @@ test.describe('Manage Barn — barn day versus device day', () => {
 
   test('new_lesson_calendar_greys_out_the_devices_day_as_past @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/lessons/new`)
-    const deviceCell = await dayCell(page, DEVICE_DAY)
-    const barnCell = page.getByRole('button', { name: BARN_TODAY, exact: true })
+
+    // The barn's own cell is read FIRST, while the grid is still on the month it opened in.
+    // `dayCell` may page backwards to reach DEVICE_DAY (see its note), and paging back evicts
+    // BARN_TODAY from the grid — so reading it afterwards would auto-wait to a timeout on
+    // exactly the rare day the fallback exists for.
+    const barnState = await dayCellState(
+      page.getByRole('button', { name: BARN_TODAY, exact: true })
+    )
+    const deviceState = await dayCellState(await dayCell(page, DEVICE_DAY))
 
     // Both halves in one equality. "The device's day is greyed" alone is satisfied by a
     // calendar that greys every day; pairing it with the barn's own day being live is what
-    // pins the cutoff to exactly the barn's date.
-    expect({
-      deviceDay: await deviceCell.getAttribute('data-past'),
-      barnDay: await barnCell.getAttribute('data-past'),
-    }).toEqual({ deviceDay: 'true', barnDay: 'false' })
+    // pins the cutoff to exactly the barn's date. `greyed` reads the class the line actually
+    // names — `data-past` is the seam that drives it, but "greys out" is an appearance claim.
+    expect({ device: deviceState, barn: barnState }).toEqual({
+      device: { past: 'true', greyed: true },
+      barn: { past: 'false', greyed: false },
+    })
   })
 
   test('a_document_due_on_the_barns_day_shows_the_reminder_due_badge @manager', async ({ page }) => {
@@ -818,7 +954,7 @@ test.describe('Manage Barn — barn day versus device day', () => {
     await expect(page.locator('input[name="expense_date"]')).toHaveValue(BARN_TODAY)
   })
 
-  test('add_boarding_start_date_prefills_the_barns_day @manager', async ({ page }) => {
+  test('add_lease_and_add_boarding_start_dates_prefill_the_barns_day @manager', async ({ page }) => {
     const startDateFor = async (kind: string) => {
       await page.goto(`/barn/${barn.slug}/agreements/new?kind=${kind}`)
       const field = page.locator('#agreement-start-date')

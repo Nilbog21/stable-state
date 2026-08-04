@@ -698,7 +698,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: a_document_due_on_the_barns_day_shows_the_reminder_due_badge) Under that setup, a horse document whose Reminder Date is *tomorrow* by your machine's clock (i.e. the barn's current date) shows the amber **Reminder Due** badge on the horse detail page
 - [ ] (e2e: add_expense_hides_the_time_field_for_the_devices_already_past_day) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
 - [ ] (e2e: add_expense_date_prefills_the_barns_day) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
-- [ ] (e2e: add_boarding_start_date_prefills_the_barns_day) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
+- [ ] (e2e: add_lease_and_add_boarding_start_dates_prefill_the_barns_day) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
 - [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
 - [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
 - [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
