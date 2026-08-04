@@ -173,6 +173,14 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   // so a 2030 unpaid lesson would not reach the "N unpaid lessons" card either — but a paid
   // row cannot reach it under any clock at all, and two tests above assert that card's exact
   // text.
+  //
+  // That card has a second contributor whose guard is weaker, and it is worth naming because
+  // the obvious reading of the paragraph above would get it wrong: unpaidLessonsCount is
+  // outstandingLessons + outstanding *cancellation fees*, and
+  // getOutstandingCancellationFeeRows (lesson-finance-queries.ts) has **no date bound at
+  // all** — it takes every lesson_riders row in the barn with a non-null cancelled_at. So
+  // this row is held out of that count by being **uncancelled**, not by being future-dated
+  // and not by being paid. Don't cancel this lesson or its rider.
   await addPaidLesson(supabase, barn, {
     at: barnNoon('2030-05-14'),
     time: '09:00',
@@ -629,7 +637,17 @@ const pillRow = (page: Page) => calendarSection(page).locator('div').first()
  */
 const dateHeading = (page: Page) => calendarSection(page).getByRole('heading', { level: 2 }).nth(1)
 
-/** The Week view's seven per-day <section>s. */
+/**
+ * The Week view's seven per-day <section>s — nothing else in the calendar subtree renders a
+ * <section>.
+ *
+ * One edge worth knowing before reusing this: on a week with nothing on any day,
+ * CalendarWeekView returns a single EmptyState *instead* of the seven sections, so this
+ * resolves to zero. No test here visits an empty week through this locator — the two tint
+ * tests use the real current week, which always holds day 0's three seeded items — and a
+ * hypothetical one would fail loudly on a timeout rather than pass, since every use is a
+ * positive assertion.
+ */
 const daySections = (page: Page) => calendarSection(page).locator('section')
 
 /** Their per-day date headings — the only <h3>s the dashboard renders. */
@@ -644,8 +662,16 @@ const dayHeadings = (page: Page) => calendarSection(page).getByRole('heading', {
  * Shared deliberately between the two presence-rule tests, and asserted as a positive array in
  * both directions rather than as a count of zero. An absent-link assertion written as
  * toHaveCount(0) passes just as happily when the locator is wrong or the page never rendered;
- * this one demands two named elements be there in order, so a broken locator fails both tests
- * instead of silently satisfying the negative one.
+ * this one requires elements to be there, so a broken locator fails both tests instead of
+ * silently satisfying the negative one.
+ *
+ * Be precise about what the array proves, though, because it is less than it looks: these are
+ * plain <a>s, so each accessible name *is* its normalised text, and the locator already
+ * filters on exactly those three strings. The expectation therefore adds cardinality and DOM
+ * order, not the labels themselves — the real evidence is "three matches here, two there".
+ * That is still enough to falsify the checklist claim in both directions, which is why the
+ * locator stands; it is not enough to justify reading the assertion as proof that each
+ * control is correctly labelled.
  */
 const periodControls = (page: Page) =>
   calendarSection(page).getByRole('link', { name: /^(Day|Week|This Week)$/ })
@@ -692,12 +718,26 @@ test('dashboard_day_and_week_pill_switcher_appears_above_the_calendar @manager',
   await expect(pillRow(page).getByRole('link')).toHaveText(['Day', 'Week'])
 })
 
-// bg-zinc-900 is Pill.tsx's active-state class and appears in no inactive pill — pillInactive
-// carries hover:text-zinc-900, a different property. One array assertion therefore proves both
-// halves at once: that Day is the active pill, and that Week is not.
+// The line says the Day *view* is active, so the pill alone is not enough: which pill carries
+// pillActive and which body rendered are two different facts, and a page highlighting Day
+// while rendering the week body would satisfy a pill-only assertion. They happen to derive
+// from the same `view` variable in page.tsx today — but that is the code being trusted rather
+// than tested. So the expectation pairs them: the active pill's label, and the number of
+// per-day headings, which is 0 in Day view and 7 in Week view.
+//
+// bg-zinc-900 is Pill.tsx's active-state class and appears in no inactive pill (pillInactive
+// carries hover:text-zinc-900 — a different property), so the first element also proves Week
+// is *not* active. Note the probe is kept off Button.tsx's `variant="primary"`, which carries
+// bg-zinc-900 too, only by being scoped to the pill row: the "Today"/"This Week" control two
+// divs below would otherwise match. It isn't rendered on this no-?date= load at all, so there
+// is nothing to trip over today — but a wrapper div added around the pills would flip this
+// onto the wrong control, which is worth knowing before editing either file.
 test('dashboard_day_pill_is_the_active_view_on_load @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  await expect(pillRow(page).locator('[class*="bg-zinc-900"]')).toHaveText(['Day'])
+  const activePill = pillRow(page).locator('[class*="bg-zinc-900"]')
+  // textContent/count are one-shot reads with no auto-wait; the active pill settles the page.
+  await activePill.waitFor()
+  expect([await activePill.textContent(), await dayHeadings(page).count()]).toEqual(['Day', 0])
 })
 
 // Anchored on a Wednesday, which is what makes "calendar-aligned, not a rolling 7-day window"
@@ -709,9 +749,12 @@ test('dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_
   await expect(dayHeadings(page)).toHaveText(WEEK_DAY_HEADINGS)
 })
 
+// "Each of the 7 days shows **its own** heading" — so this counts day sections that contain a
+// heading, not headings in the section. A bare count of seven <h3>s is also satisfied by six
+// days where one carries two, or by seven headings stacked outside any day section.
 test('dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
-  await expect(dayHeadings(page)).toHaveCount(7)
+  await expect(daySections(page).filter({ has: page.getByRole('heading', { level: 3 }) })).toHaveCount(7)
 })
 
 // The bucketing assertion. One regex per day section, matched against that section's whole
@@ -722,27 +765,42 @@ test('dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days @manag
 // The seed inserts those three rows in reverse day order on purpose. Bucketing is a derived
 // property, and a derived property can be accidentally right — so the expected answer here is
 // one that neither insertion order, nor created_at, nor "everything in the first day" can
-// produce. [\s\S]* rather than .* so the match survives whatever whitespace normalisation
-// toHaveText applies to a multi-line section.
+// produce. [\s\S]* rather than .*: toHaveText normalises whitespace, but React emits no
+// inter-element whitespace here, so a section reads "Tuesday, May 149:00 AMApollo…".
+//
+// The three occupied days carry a negative lookahead for the *other two* days' markers, and
+// that half is what makes this the line's claim rather than a weaker one. Positive
+// containment alone says only "this day has its own item"; it cannot see a view that renders
+// every occupied day as the union of all occupied days, because each day would still contain
+// its own marker and the four empty days would be untouched. That is precisely "items listed
+// under a day that isn't theirs". The empty days need no lookahead — anything leaking into
+// one costs it the "Nothing scheduled" line, which the regex already demands.
 test('dashboard_week_view_lists_each_days_own_items_under_that_day @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
   await expect(daySections(page)).toHaveText([
     /Sunday, May 12[\s\S]*Nothing scheduled for this day\./,
     /Monday, May 13[\s\S]*Nothing scheduled for this day\./,
-    /Tuesday, May 14[\s\S]*9:00 AM[\s\S]*Apollo/,
+    /Tuesday, May 14(?![\s\S]*(?:Ridgeline Vet|Spring Open House))[\s\S]*9:00 AM[\s\S]*Apollo/,
     /Wednesday, May 15[\s\S]*Nothing scheduled for this day\./,
-    /Thursday, May 16[\s\S]*Ridgeline Vet/,
-    /Friday, May 17[\s\S]*Spring Open House/,
+    /Thursday, May 16(?![\s\S]*(?:Apollo|Spring Open House))[\s\S]*Ridgeline Vet/,
+    /Friday, May 17(?![\s\S]*(?:Apollo|Ridgeline Vet))[\s\S]*Spring Open House/,
     /Saturday, May 18[\s\S]*Nothing scheduled for this day\./,
   ])
 })
 
-// Four, not seven and not zero: W1 seeds Tuesday, Thursday and Friday, so the count is a
-// number only a view that renders the line on empty days and withholds it on occupied ones can
-// produce.
+// Names the four days rather than counting four occurrences. The claim is about "a day with
+// nothing scheduled", so *which* days carry the line is the whole of it — four lines rendered
+// on the wrong four days would satisfy a count. Naming them also proves the converse for free:
+// Tuesday, Thursday and Friday are absent from this list because they have items.
 test('dashboard_week_view_shows_nothing_scheduled_on_a_day_with_no_items @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
-  await expect(calendarSection(page).getByText('Nothing scheduled for this day.')).toHaveCount(4)
+  const emptyDays = daySections(page).filter({ hasText: 'Nothing scheduled for this day.' })
+  await expect(emptyDays.getByRole('heading', { level: 3 })).toHaveText([
+    'Sunday, May 12',
+    'Monday, May 13',
+    'Wednesday, May 15',
+    'Saturday, May 18',
+  ])
 })
 
 // "A single empty state instead of 7 empty lines" is one claim about two things, so it is one
