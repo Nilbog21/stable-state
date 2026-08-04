@@ -184,6 +184,8 @@ cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url 
 
 A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md`) — `scripts/ci.sh` fails without them.
 
+If this issue will **add** a `PRE_RELEASE_TEST_CHECKLIST.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — deciding it at step 4 instead strands the spec after the loop it was supposed to drive.
+
 1. **Write failing tests first** — following the project's TDD convention. Run the tests to confirm they are red before committing:
    ```
    cd /absolute/path/to/worktree && npx vitest run {test-file}
@@ -225,7 +227,7 @@ A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md
    - New or changed architectural patterns, abstractions, or dependencies
    - Removed or deprecated features
 
-   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. Stage and commit whatever you changed:
+   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `PRE_RELEASE_TEST_CHECKLIST.md` line, that section's born-automated-or-justified-manual rule applies: tag it `(e2e: <test name>)`, with the covering spec written in this same PR — through the red-green loop above, not here — or `(manual)` with the reason stated on the line. Leaving the line untagged and tagging it `(e2e-candidate)` are equally not options for a line you are adding. Stage and commit whatever you changed:
    ```
    cd /absolute/path/to/worktree && git add {changed-doc-files} && git commit --amend --no-edit
    ```
