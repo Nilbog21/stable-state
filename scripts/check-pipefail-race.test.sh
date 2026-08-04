@@ -122,6 +122,47 @@ else
 fi
 rm -rf "$REPO"
 
+# Tests 14-17: the early-exit flag doesn't have to be grep's *first* word. Each of these is a real
+# race, so the gate reading them as safe is the fail-open direction it exists to prevent.
+for variant in 'grep -i -q needle' 'grep -v --quiet x' 'grep --color=auto -q x' 'grep -A2 -m 1 x'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+git log | $variant")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_fail "pipefail + $variant: exits non-zero" "script exited 0 (expected non-zero)"
+  else
+    assert_pass "pipefail + $variant: exits non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Tests 18-19: the mirror image of 14-17 — several flag words and none of them early-exit. Guards
+# the broadening above against reading a q/m out of a flag that only happens to contain one.
+for variant in 'grep -c -i needle' 'grep --color=auto -c x'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+git log | $variant")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_pass "pipefail + $variant: exits 0"
+  else
+    assert_fail "pipefail + $variant: exits 0" "script exited non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Test 20: a pipe opening a continuation line, at column 0 — the `^` half of `(^|[^|])`. Every
+# other fixture's pipe has a space before it, so `[^|]` is what matches there.
+REPO="$(make_repo victim.sh '#!/usr/bin/env bash
+set -euo pipefail
+git log \
+| grep -q needle')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_fail "pipefail + line-leading pipe into grep -q: exits non-zero" "script exited 0 (expected non-zero)"
+else
+  assert_pass "pipefail + line-leading pipe into grep -q: exits non-zero"
+fi
+rm -rf "$REPO"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
