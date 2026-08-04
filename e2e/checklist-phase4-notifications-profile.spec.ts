@@ -439,15 +439,30 @@ test('the_back_link_on_privacy_returns_to_the_barn_list @manager', async ({ page
 //
 // test.use on a describe rather than a playwright.config.ts change or the pre-existing @mobile
 // project: #1221 owns the runner's config, and the @mobile project would dispatch this whole
-// file a second time and seed a second barn for four tests. `hasTouch` is what makes tap() a
-// real touch event — useOutsideDismiss listens on `touchstart` as well as `mousedown`, so the
-// dismiss half is genuine touch behaviour and not a click emulation artefact. `isMobile` is
-// deliberately *not* set: it would route the measurement below through Chromium's
-// meta-viewport emulation, which is not what these checklist items are about.
+// file a second time and seed a second barn for four tests. `hasTouch` is what lets `tap()`
+// dispatch touch events at all. `isMobile` is deliberately *not* set: it would route the
+// overflow measurement below through Chromium's meta-viewport emulation, which is not what
+// these checklist items are about.
+//
+// EVERY test in this block asserts the width it ran at, and that is not decoration. Measured,
+// not assumed: with the viewport swapped to 1280x800 and nothing else changed, all four of
+// these tests still passed — so before this pin the "at this width" half of each checklist line
+// was unasserted, and lines 790/791 in particular, whose entire claim is about a narrow
+// viewport, were being satisfied by a desktop-width render.
+//
+// A second measurement worth recording, because it bounds what the two tap tests prove:
+// deleting `useOutsideDismiss`'s `touchstart` listener does NOT fail them. Chromium's tap
+// emulation emits the compatibility mouse events after the touch sequence, so `mousedown`
+// serves the dismissal. That does not make the tests wrong — a real tap on a real phone emits
+// those same compatibility events, so "dismisses by tap" is exactly what is being asserted —
+// but they do not isolate *which* listener does the work, and a test claiming that would need
+// a synthetic touch event rather than user emulation.
 // ---------------------------------------------------------------------------
 
+const MOBILE_VIEWPORT = { width: 390, height: 844 }
+
 test.describe('mobile spot-check', () => {
-  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })
+  test.use({ viewport: MOBILE_VIEWPORT, hasTouch: true })
 
   /**
    * Taps the nav bar's own left padding — inside `<nav>`, outside both dropdowns' containers,
@@ -464,11 +479,18 @@ test.describe('mobile spot-check', () => {
     await expect(aboutMenuLink(page)).toHaveCount(1)
 
     await tapOutsideDropdowns(page)
-    // The dismissal is an absence, so it carries its positive half in the same read: the
-    // trigger must still be there. A page that failed to render satisfies the zero alone.
+    // Three things in one read. The dismissal is an absence, so it carries its positive half in
+    // the same rendered document — the trigger must still be there, or a page that failed to
+    // render satisfies the zero on its own. And `width` pins the viewport this ran at, without
+    // which the whole test passes identically at 1280px and the line's "at this width" clause
+    // asserts nothing.
     await expect
-      .poll(async () => ({ menu: await aboutMenuLink(page).count(), trigger: await avatarButton(page).count() }))
-      .toEqual({ menu: 0, trigger: 1 })
+      .poll(async () => ({
+        width: page.viewportSize()!.width,
+        menu: await aboutMenuLink(page).count(),
+        trigger: await avatarButton(page).count(),
+      }))
+      .toEqual({ width: MOBILE_VIEWPORT.width, menu: 0, trigger: 1 })
   })
 
   test('at_mobile_width_the_notification_bell_dropdown_opens_and_dismisses_by_tap @manager', async ({ page }) => {
@@ -478,8 +500,12 @@ test.describe('mobile spot-check', () => {
 
     await tapOutsideDropdowns(page)
     await expect
-      .poll(async () => ({ rows: await notificationRows(page).count(), trigger: await bellButton(page).count() }))
-      .toEqual({ rows: 0, trigger: 1 })
+      .poll(async () => ({
+        width: page.viewportSize()!.width,
+        rows: await notificationRows(page).count(),
+        trigger: await bellButton(page).count(),
+      }))
+      .toEqual({ width: MOBILE_VIEWPORT.width, rows: 0, trigger: 1 })
   })
 
   /**
@@ -489,15 +515,22 @@ test.describe('mobile spot-check', () => {
    * the measurement means nothing until seeded content is on screen. Measured on
    * `documentElement` because the repo's own convention is that wide content scrolls inside its
    * own `overflow-x: auto` container while the page body never does.
+   *
+   * `width` is in the expectation because without it this passes at any viewport at all — a
+   * 1280px render has no horizontal overflow either, and these two lines are *only* about a
+   * narrow one. Reported as an overflow *amount* rather than a boolean so a failure names how
+   * many pixels over it went.
    */
   async function expectNoHorizontalOverflow(page: Page, at: string) {
     await page.goto(at)
     await expect(page.getByText(HORSE, { exact: true }).first()).toBeVisible()
-    const measured = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }))
-    expect(measured.scrollWidth).toBeLessThanOrEqual(measured.clientWidth)
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    )
+    expect({ width: page.viewportSize()!.width, overflow }).toEqual({
+      width: MOBILE_VIEWPORT.width,
+      overflow: 0,
+    })
   }
 
   test('the_lessons_list_has_no_horizontal_overflow_at_mobile_width @manager', async ({ page }) => {
