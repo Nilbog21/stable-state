@@ -147,7 +147,7 @@ If the squash *did* re-express live history:
 
 Then the push itself:
 
-- [ ] `npx supabase db push` — never with `--include-all`
+- [ ] `bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push` — never with `--include-all`. This is the one place in the repo that push is *meant* to hit prod, so it takes the flag; the guard prints the linked ref rather than passing silently, which is the last chance to catch step 1 having linked the wrong project (#1291)
 - [ ] `npx supabase migration list` shows nothing pending
 - [ ] The `Migrate` workflow is re-enabled, if the reconciliation above disabled it
 
