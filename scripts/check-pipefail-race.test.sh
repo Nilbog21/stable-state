@@ -83,8 +83,9 @@ else
 fi
 rm -rf "$REPO"
 
-# Tests 6-10: the flag cluster doesn't have to *end* in q/m — these are the spellings the
-# consumers are actually written as, `grep -m1` being this repo's own house style.
+# Tests 6-10: the flag cluster doesn't have to *end* in q/m. No live site spells it this way — the
+# repo's own `grep -m1` copies are producers, not consumers (see scripts/CLAUDE.md's sweep note) —
+# so these fixtures are what the gate has to hold for next, not a replay of something it found.
 for variant in 'grep -qi needle' 'grep -qE needle' 'grep --quiet needle' 'grep -m1 needle' 'grep -m 1 needle'; do
   REPO="$(make_repo victim.sh "#!/usr/bin/env bash
 set -euo pipefail

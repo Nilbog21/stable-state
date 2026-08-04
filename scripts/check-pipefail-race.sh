@@ -11,9 +11,11 @@ cd "$(git rev-parse --show-toplevel)"
 # A line carrying `# pipefail-safe: <reason>` is exempt — that is where the polarity argument goes.
 #
 # The q/m match is a *prefix* of the flag cluster, not the whole of it, so `grep -qi`/`-qE`/`-im1`
-# and the no-space `-m1` this repo writes are all caught; the long forms have no cluster to prefix
-# and are listed out. `(^|[^|])` keeps `cmd || grep -q x` from reading as a pipe — a `||` fallback
-# has no producer to take SIGPIPE — while still matching a pipe opening a continuation line.
+# and the no-space `-m1` are all caught; the long forms have no cluster to prefix and are listed
+# out. `(^|[^|])` keeps `cmd || grep -q x` from reading as a pipe — a `||` fallback has no producer
+# to take SIGPIPE — while still matching a pipe opening a continuation line. That last alternative
+# also makes a line-leading `|` inside a quoted multi-line string matchable (workflow-ci-wait.sh's
+# jq filter has several); `# pipefail-safe:` is the answer if one ever collides with grep/head.
 
 CONSUMER='(^|[^|])\|[[:space:]]*(grep[[:space:]]+(-[[:alnum:]]*[qm]|--quiet|--silent|--max-count)|head([[:space:]]|$))'
 
