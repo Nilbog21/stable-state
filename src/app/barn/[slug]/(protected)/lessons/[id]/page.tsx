@@ -28,7 +28,7 @@ function RiderNotesBlock({
   const hasStaffNotes = canSeeNotes && (lr.rider_notes || lr.private_notes)
   if (!hasStaffNotes && !lr.cancellation_notes) return null
   return (
-    <div className="mt-1 flex flex-col gap-1">
+    <div className="mt-1 flex flex-col gap-1 pl-4">
       {canSeeNotes && lr.rider_notes && (
         <div>
           <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
@@ -213,7 +213,7 @@ export default async function LessonDetailPage({
                         <Badge tone="amber">Unavailable</Badge>
                       ) : null}
                       {(canSeeNotes || lh.exertion_level !== undefined) && lh.horses?.id && lh.horse_notes && (
-                        <div className="mt-1">
+                        <div className="mt-1 pl-4">
                           <p className="text-xs font-medium text-zinc-500">Horse Notes</p>
                           <p className="text-sm text-zinc-900 dark:text-zinc-50">{lh.horse_notes}</p>
                         </div>
