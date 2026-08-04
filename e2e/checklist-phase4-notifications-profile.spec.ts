@@ -4,6 +4,9 @@
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 // covers: src/app/barn/[slug]/(protected)/NavDrawer.tsx
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
+// covers: src/components/useOutsideDismiss.ts
+// covers: src/components/ExhaustionBar.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/guide/**
@@ -22,8 +25,16 @@
 // not by trusting `scripts/select-specs.sh --lint`: that lint catches a *missing* header and a
 // glob matching no path, and cannot catch a glob absent for a module the spec genuinely
 // exercises — the one failure that silently shrinks the blast radius (#1195 shipped exactly
-// that). `src/lib/**` and the protected layout are in the script's own ALWAYS_FULL list, so
-// they are deliberately not restated here.
+// that). `src/lib/**`, `src/components/ui/**` and the protected layout are in the script's own
+// ALWAYS_FULL list — verified rather than assumed — so they are deliberately not restated here.
+// `src/components/**` is *not* in that list, which is why `useOutsideDismiss` (both dropdowns'
+// open and tap-dismiss behaviour) and `ExhaustionBar` (rendered inside the horses-list overflow
+// measurement below) are declared explicitly. Before this file, `useOutsideDismiss.ts` was
+// declared by no spec in the repo at all — a change to it selected nothing.
+//
+// Every glob above was then checked mechanically, by feeding a real path to `select-specs.sh`
+// and confirming this spec comes back: a `/**` glob is a literal string *prefix*, so one that is
+// well-formed and `--lint`-green can still match nothing it was meant to.
 import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, withBarn, type Page } from './support/test'
@@ -293,6 +304,10 @@ test('the_profile_nav_bar_carries_the_full_nine_link_manager_nav @manager', asyn
 // reading it back. Never blanked: `isProfileIncomplete` treats a null phone as incomplete and
 // the auth callback would start rerouting every later run to /profile/complete.
 test.describe('editing your own profile', () => {
+  // Chosen to differ from the value `scripts/e2e-auth-users.ts` leaves on this row, measured
+  // rather than assumed: it is `555-0100`. That is what stops the `toHaveValue` guard below
+  // being vacuous — a fill lost to hydration would restore `555-0100` and fail it, whereas a
+  // fixture that happened to equal the stored value would pass whether the fill landed or not.
   const PHONE = '(555) 010-1207'
   let priorPhone: string | null | undefined
 
