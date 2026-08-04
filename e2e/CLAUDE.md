@@ -5,7 +5,7 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Ten things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in the
+Eleven things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in the
 places you would look for them, and each of which cost the #1187–#1252 batch at least one round
 — several rediscovered independently by two or three slices. Every one is measured, not
 inferred. The spec named after each fact carries the worked example.
@@ -79,6 +79,19 @@ once — see `checklist-phase4-horses-documents.spec.ts`'s `waitForHorseDetailHy
 `toPass` loop re-clicks until the `useState`-gated popover opens. Three specs hand-roll a
 barrier three different ways today; #1280 extracts the shared one, covering both this case
 and the page that has a zero-interaction signal. *(#1199)*
+
+**11. Switching a tab or filter is a click on its `Pill`, not a re-`goto` with a different
+query param.** The app's switchers are `<Pill href>` → a Next `Link`, so the user's tab change
+costs no document load and a spec that re-navigates is paying for one the UI never asks for —
+five of them, in the case this rule came from: `readTabExpenseTotals` in
+`checklist-phase4-finances-outstanding.spec.ts` is why the check calling it was the suite's
+slowest and the only one holding a timeout exemption. What makes the substitution safe
+unconditionally, unlike rule 10's button, is that a pill is an anchor: a click landing before
+React is listening navigates the document rather than being lost, so the worst case is the
+`goto` you were doing anyway. The one thing it does need is a settle barrier before any
+**one-shot** read — a soft nav's re-render races `innerText`/`textContent` and hands back the
+previous tab's figure — so wait on something that differs *between* tabs (a first column
+header, not a shared Gross/Expenses/Net one) with an auto-retrying matcher. *(#1244)*
 
 ## The rest of the e2e rules
 
