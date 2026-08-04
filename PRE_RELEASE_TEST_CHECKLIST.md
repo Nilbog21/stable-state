@@ -318,21 +318,21 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: a_group_lesson_shows_no_cancelled_badge_while_any_rider_is_still_active) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
 - [ ] (e2e: a_group_lesson_shows_a_cancelled_badge_on_the_lessons_list_once_its_final_rider_is_cancelled) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
 - [ ] (e2e: a_fully_cancelled_group_lesson_shows_the_cancelled_badge_on_its_detail_page) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
-- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
-- [ ] (e2e-candidate) That textarea does *not* appear when editing a non-cancelled lesson
-- [ ] (e2e-candidate) Edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
-- [ ] (e2e-candidate) Clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
-- [ ] (e2e-candidate) Open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
-- [ ] (e2e-candidate) That deleted lesson also disappears from Finances
-- [ ] (e2e-candidate) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
-- [ ] (e2e-candidate) No notification is sent to the instructor or riders for that delete
-- [ ] (e2e-candidate) **Delete** is reachable the same way on an already-cancelled lesson
-- [ ] (e2e-candidate) On a **paid** (or $0-fee) lesson's detail page, **Delete** lands on `/barn/dev-barn/lessons/[id]/delete` rather than raising a browser prompt
-- [ ] (e2e-candidate) That page shows the amount already collected for the lesson
-- [ ] (e2e-candidate) Its "also delete the collected record" checkbox is unchecked by default
-- [ ] (e2e-candidate) Confirm without checking it → the lesson is gone from the Lessons list
-- [ ] (e2e-candidate) Its income still shows up in Finances for that month
-- [ ] (e2e-candidate) Repeat on another paid lesson, this time checking the box → that lesson's income is also gone from Finances
+- [ ] (e2e: edit_lesson_on_a_cancelled_lesson_shows_a_cancellation_notes_textarea) Open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
+- [ ] (e2e: edit_lesson_on_a_non_cancelled_lesson_shows_no_cancellation_notes_textarea) That textarea does *not* appear when editing a non-cancelled lesson
+- [ ] (e2e: saving_edited_cancellation_notes_shows_them_read_only_on_the_detail_page) Edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
+- [ ] (e2e: clearing_cancellation_notes_and_saving_removes_the_row_from_the_detail_page) Clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
+- [ ] (e2e: deleting_an_unpaid_lesson_via_the_browser_prompt_removes_it_from_the_lessons_list) Open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
+- [ ] (e2e: deleting_an_unpaid_lesson_removes_it_from_outstanding_income_in_finances) That deleted lesson also disappears from Finances
+- [ ] (e2e: a_deleted_lesson_leaves_no_cancelled_badge_behind) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
+- [ ] (e2e: deleting_a_lesson_sends_no_notification_to_its_instructor_or_riders) No notification is sent to the instructor or riders for that delete
+- [ ] (e2e: delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson) **Delete** is reachable the same way on an already-cancelled lesson whose fee survived — cancel one **late** (under 24h out) to get there, since a non-late cancellation zeroes the fee and lands on the `/delete` page below instead
+- [ ] (e2e: delete_on_a_paid_lesson_opens_the_delete_page_instead_of_a_browser_prompt) On a **paid** (or $0-fee) lesson's detail page, **Delete** lands on `/barn/dev-barn/lessons/[id]/delete` rather than raising a browser prompt
+- [ ] (e2e: the_lesson_delete_page_shows_the_amount_already_collected) That page shows the amount already collected for the lesson
+- [ ] (e2e: the_lesson_delete_pages_collected_record_checkbox_is_unchecked_by_default) Its "also delete the collected record" checkbox is unchecked by default
+- [ ] (e2e: confirming_the_lesson_delete_page_removes_the_lesson_from_the_lessons_list) Confirm without checking it → the lesson is gone from the Lessons list
+- [ ] (e2e: deleting_a_paid_lesson_without_the_checkbox_keeps_its_income_in_finances) Its income still shows up in Finances for that month
+- [ ] (e2e: deleting_a_paid_lesson_with_the_checkbox_removes_its_income_from_finances) Repeat on another paid lesson, this time checking the box → that lesson's income is also gone from Finances
 
 Expenses (`/barn/dev-barn/expenses`):
 
