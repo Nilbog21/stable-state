@@ -48,7 +48,7 @@
 //    `unauthenticatedRequest` below is that third form, and throws if it ever stops being it.
 import type { APIRequestContext } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
-import { addTier, addHorse, addPaidLesson, addUnpaidLesson, daysFromNow } from './support/fixtures'
+import { addTier, addHorse, addPaidLesson, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'
 import type { Lesson } from '@/lib/db/types'
 
 // Mutually non-substring horse names: Playwright's text and accessible-name matching is
@@ -63,8 +63,17 @@ const ZEPHYR = 'Zephyr'
  */
 const LESSON_TIME = '21:00'
 
-/** `escapeIcsText` escapes a literal comma to `\,` (RFC 5545 §3.3.11), so the raw SUMMARY carries it. */
-const MANAGER_LESSON_SUMMARY = `Lesson - Test R.\\, ${COMET}`
+/**
+ * `get_calendar_feed` titles a normal lesson `Lesson - <rider initials>, <horses>`, where the
+ * initials are `first_name || ' ' || left(last_name, 1) || '.'`. Rebuilt from `E2E_USERS`
+ * rather than written out as `Test R.`: the rider's name belongs to the fixture, and the
+ * convention is that nothing a fixture owns gets hardcoded into an expectation.
+ *
+ * `escapeIcsText` escapes the literal comma to `\,` (RFC 5545 §3.3.11), so the RAW payload line
+ * carries the backslash — that escaping is part of what this expectation checks.
+ */
+const RIDER = E2E_USERS.rider
+const MANAGER_LESSON_SUMMARY = `Lesson - ${RIDER.firstName} ${RIDER.lastName[0]}.\\, ${COMET}`
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 
@@ -437,6 +446,8 @@ test.describe('the calendar feed payload', () => {
     // Every expected value is derived from the seeded lesson's own row, and the two DTs are
     // the barn-local-to-UTC conversion done explicitly — see note 1 in the file header.
     expect(veventFor(response.body, uidFor(managerLesson))).toEqual({
+      // The lookup key, so this field is documentation rather than a second check — the three
+      // below it are what carry the claim.
       uid: uidFor(managerLesson),
       dtstart: icsUtc(managerLesson.lesson_at),
       dtend: icsUtc(plusMinutes(managerLesson.lesson_at, 60)),
