@@ -9,8 +9,13 @@ cd "$(git rev-parse --show-toplevel)"
 # dangerous polarity) one that failed reads as a pass. See scripts/CLAUDE.md's "Shell hazards".
 #
 # A line carrying `# pipefail-safe: <reason>` is exempt — that is where the polarity argument goes.
+#
+# The q/m match is a *prefix* of the flag cluster, not the whole of it, so `grep -qi`/`-qE`/`-im1`
+# and the no-space `-m1` this repo writes are all caught; the long forms have no cluster to prefix
+# and are listed out. `(^|[^|])` keeps `cmd || grep -q x` from reading as a pipe — a `||` fallback
+# has no producer to take SIGPIPE — while still matching a pipe opening a continuation line.
 
-CONSUMER='\|[[:space:]]*(grep[[:space:]]+-[[:alnum:]]*[qm]|head)([[:space:]]|$)'
+CONSUMER='(^|[^|])\|[[:space:]]*(grep[[:space:]]+(-[[:alnum:]]*[qm]|--quiet|--silent|--max-count)|head([[:space:]]|$))'
 
 fail=0
 for f in scripts/*.sh; do
