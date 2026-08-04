@@ -777,6 +777,19 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
 
   test('saving_a_new_barn_timezone_persists_it_across_a_reload @manager', async ({ page }) => {
     const sec = await openSection(page, 'Barn Timezone')
+
+    // Throwing precondition: line 694 is a *change* claim, and a change claim tested against a
+    // select that already reads the target value asserts nothing — the save could be a no-op
+    // and the reload would still show the expected zone. Unlike the numeric settings above,
+    // whose saved values are visibly distinct constants, this one is an enum that shares its
+    // default with a legal target, so the pre-state is worth pinning rather than assuming.
+    const before = await sec.locator(FIELD).inputValue()
+    if (before === BARN_TIMEZONE_CHANGE) {
+      throw new Error(
+        `this test must change the zone, but the select already reads ${before} — nothing would be exercised`
+      )
+    }
+
     await sec.locator(FIELD).selectOption(BARN_TIMEZONE_CHANGE)
     await saveSection(page, sec)
 
