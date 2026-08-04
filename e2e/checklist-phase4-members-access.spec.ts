@@ -10,6 +10,12 @@ import { mustSucceed } from '@/lib/db/service-role'
 const REVOKE = 'Revoke Instructor Access'
 const GRANT = 'Grant Instructor Access'
 
+// The one assertion here that waits on a server action plus its revalidate rather than on a page
+// already loaded. `toHaveText` is a web-first matcher, so it runs on expect's 5s default and
+// `test.slow()` cannot raise it — the third tier in support/test.ts's Timeouts block, and the one
+// place a number *loosens*. Observed timing out at 5s under full-suite load, passing in 1s alone.
+const SETTLE_AFTER_WRITE = 15_000
+
 // The confirm text, likewise written out. Split into the two halves the checklist asks about
 // separately — line 501 claims the prompt names the trainer, line 502 claims it warns about
 // future lessons — plus the whole string, which line 511 asserts intact for the manager's own row.
@@ -231,7 +237,7 @@ test.describe.serial('a trainer\'s instructor access', () => {
     collectDialogs(page, 'accept')
     await page.goto(memberPage(trainerStubId))
     await instructorAccessButton(page).click()
-    await expect(instructorAccessButton(page)).toHaveText(GRANT)
+    await expect(instructorAccessButton(page)).toHaveText(GRANT, { timeout: SETTLE_AFTER_WRITE })
   })
 
   // The whole option list, not a zero-count over the revoked trainer: a select that failed to

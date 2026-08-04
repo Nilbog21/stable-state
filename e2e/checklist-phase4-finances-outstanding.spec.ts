@@ -32,8 +32,9 @@ const PLANNED_EXPENSE_AMOUNT = 42
 const TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 
 /**
- * The suite's only custom timeout, and only for the two assertions that follow a payment-type
- * `selectOption`. The 5s default is sized for a page assertion; those two wait on a server
+ * A custom timeout (the suite's other is members-access.spec.ts's), and only for the two
+ * assertions that follow a payment-type `selectOption`. The 5s default is sized for a page
+ * assertion; those two wait on a server
  * action *plus* the revalidate and RSC round trip it triggers, which has been observed
  * exceeding 5s in CI under parallel-worker load. With `retries: 0` that's a hard failure, not
  * a retry — so the wait is widened here rather than globally, where it would slow every
