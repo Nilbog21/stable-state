@@ -444,8 +444,15 @@ test('clearing_feed_notes_leaves_the_field_empty_on_reload @manager', async ({ p
 
 // Last in the chain: it renames Apple again, and nothing below reads the name. The second save
 // deliberately retypes nothing — `fill`ing between the saves would overwrite a reverted field and
-// mask the whole defect, which is that the form quietly holds the page-load name after save one
-// and writes it back on save two.
+// mask what this watches for, which is the form quietly holding the page-load name after save one
+// and writing it back on save two.
+//
+// Read this as a forward guard, not as #1277's proof. It passes both with and against #1277's fix
+// on a local dev server: React 19's post-action form reset resolves after revalidatePath's refresh
+// has landed there, so even the pre-fix uncontrolled field reverts to the *new* name. #1277's
+// discriminating coverage is the unit test, where the `horse` prop is frozen and the race is lost
+// by construction. What this test is still worth is the case where that ordering changes — a
+// framework upgrade, or a server slow enough to lose the race the way #759 once did.
 test('a_second_save_keeps_the_first_saves_name @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED_TWICE)
