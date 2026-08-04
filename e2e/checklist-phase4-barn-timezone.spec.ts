@@ -2,7 +2,19 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/settings/**
 // covers: src/app/barn/[slug]/(protected)/page.tsx
+// covers: src/app/actions/lessons.ts
+// covers: src/app/actions/lesson-form-parsing.ts
+// covers: src/app/actions/expenses.ts
 // covers: src/components/calendar/**
+// covers: src/components/useOutsideDismiss.ts
+//
+// The three `src/app/actions/` files are the SERVER ACTIONS behind the three forms this spec
+// submits, and they are reached by import rather than by path, so no route glob covers them:
+// `submitLesson`/`updateLessonAction` back items 706 and 709, `parseLessonFormData` is the code
+// that turns the hidden `lesson_at` input item 707 asserts into the instant item 709 asserts,
+// and `createExpenseAction` writes the row whose `transactions.occurred_at` item 710 reads.
+// A regression in `lesson-form-parsing.ts` is the single most likely way 707 and 709 break.
+// (`checklist-phase4-lessons-cancel-group.spec.ts` sets the per-file precedent.)
 //
 // The subtree globs are deliberately whole subtrees rather than `new/**`. A `/**` glob is a
 // literal string PREFIX (scripts/CLAUDE.md), and the components these tests actually assert on
@@ -12,10 +24,18 @@
 // spec when the form components themselves change, which is the only case that matters
 // (#1204 measured this on its own file).
 //
-// `src/components/calendar/**` is not a route. It is declared because `CalendarLessonCard`,
-// `CalendarEventCard` and `MonthCalendarPicker` supply markup asserted on here directly, and
-// that directory is not in `select-specs.sh`'s ALWAYS_FULL list. `src/lib/**` IS in that list,
-// so `format-date.ts` and `barn-timezone.ts` need no glob of their own.
+// The two `src/components/` entries are not routes. `ALWAYS_FULL` contains
+// `src/components/ui/**` — NOT `src/components/**` — so every other component a spec drives
+// needs its own glob and `--lint` will never say so. `calendar/**` supplies markup asserted on
+// directly (`CalendarLessonCard`, `CalendarEventCard`, `MonthCalendarPicker`);
+// `useOutsideDismiss.ts` is reached through `MonthCalendarPicker` and owns the open/close state
+// of the day popup that item 709's day selection drives, which is exactly the kind of module
+// you forget you drive because you reach it through a helper.
+//
+// `EmptyState` and `ExhaustionBar` render on these pages and are deliberately NOT declared: no
+// assertion here touches either, and over-declaring makes the selector run specs that cannot
+// detect the change. `src/lib/**` IS in ALWAYS_FULL, so `format-date.ts` and `barn-timezone.ts`
+// need no glob of their own.
 //
 // PRE_RELEASE_TEST_CHECKLIST.md lines 702-712: barn-local *instant* rendering and entry — the
 // display half of the viewer timezone frame #1222 deleted. Adjacent slices: #1204 owns 696-701
@@ -24,6 +44,7 @@
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
+import { settledTextContents } from './support/read'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import type { Lesson } from '@/lib/db/types'
 
@@ -254,15 +275,33 @@ assertPinArithmetic()
 let seededLesson: Lesson
 
 const barn = withBarn('phase4-barn-timezone', async ({ supabase, barn, members }) => {
+  // The one precondition the whole file rests on, and it is not decoration.
+  //
+  // Items 702-705 read a value the app both ENCODES and DECODES through `barns.timezone`: the
+  // seed writes an instant, and `formatBarnDateTime`/`formatBarnTime`/`LessonForm`'s pre-fill
+  // all render it back through `instant.tz`, which the DAL fills from that same column. Encode
+  // and decode therefore share one zone Z, and "4:00 PM" comes back unchanged for ANY Z — so
+  // if the barn's zone were ever Honolulu, those four items would go green in precisely the
+  // configuration under which they prove nothing at all. Nothing else in this file would catch
+  // it: `EASTERN` only enters through the direct-DB helpers, which items 706 and 709-712 use
+  // and 702-705 do not.
+  //
+  // Asserting the barn's zone once here closes it for all four, and the seed below then frames
+  // its instant in `EASTERN` rather than in whatever the row happens to say, so the expected
+  // value stops agreeing with the app on the one axis this file is about.
+  if (barn.timezone !== EASTERN) {
+    throw new Error(
+      `precondition: this barn's timezone is ${barn.timezone}, expected ${EASTERN}. Lines 702-712 ` +
+        'all say "under that setup", and that setup pins Barn Timezone to Eastern (line 696). With ' +
+        'any other zone, items 702-705 become a round trip through one shared zone and assert nothing.'
+    )
+  }
+
   const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
   const apollo = await addHorse(supabase, barn.id, HORSE_NAME)
 
-  // The seed instant is built from the barn's own zone, so the stored value is 4:00 PM Eastern
-  // whatever zone the runner is on. `time: '16:00'` would do the same via addUnpaidLesson's
-  // own atBarnLocalTime, but naming the instant here keeps the one wall clock this file cares
-  // about in one place.
   seededLesson = await addUnpaidLesson(supabase, barn, {
-    at: wallClockToInstant(LESSON_WALL_CLOCK, barn.timezone),
+    at: wallClockToInstant(LESSON_WALL_CLOCK, EASTERN),
     instructorId: members.trainer.membershipId,
     horseIds: [apollo.id],
     riderIds: [members.rider.membershipId],
@@ -368,10 +407,14 @@ function lessonCard(page: Page, id: string): Locator {
  * Waiting for a control the open section owns is a genuine proof, in the same document, that
  * the section opened before anything reads it.
  */
-async function openSection(page: Page, title: string): Promise<Locator> {
+async function openBarnEventsSection(page: Page): Promise<Locator> {
   await page.goto(`/barn/${barn.slug}/settings`)
-  const sec = page.locator('details').filter({ has: page.getByRole('heading', { name: title, exact: true }) })
-  await sec.getByRole('heading', { name: title, exact: true }).click()
+  const sec = page.locator('details').filter({ has: page.getByRole('heading', { name: 'Barn Events', exact: true }) })
+  await sec.getByRole('heading', { name: 'Barn Events', exact: true }).click()
+  // Scoped to this section's own Add Event link, which sits inside the `<details>` and so is
+  // genuinely hidden until it opens. Not parameterised by title: the open-proof is specific to
+  // this section, and a `title` argument would let a caller wait, inside a different section,
+  // for a control that can never appear there.
   await sec.getByRole('link', { name: 'Add Event', exact: true }).waitFor()
   return sec
 }
@@ -417,27 +460,7 @@ async function pickCalendarDay(page: Page, day: string): Promise<void> {
   await page.getByRole('button', { name: 'Close', exact: true }).click()
 }
 
-/**
- * Blocks until React has hydrated `DateHourPicker` and taken over its state.
- *
- * A precondition that throws, not an assertion — and it is not optional. Waiting for `#dh-hour`
- * to appear proves nothing about hydration: that element is in the SERVER-rendered HTML, so a
- * read taken straight after it sees the server's answer. That is #1191's "unsettled page"
- * hazard in its quietest form, because the server's answer is usually the right one, so the
- * assertion passes for the wrong reason.
- *
- * The barrier picks an hour the picker did not open on and waits for the hidden `lesson_at`
- * input to carry it. That write can only be produced by client-side React, so observing it is
- * genuine proof the component is live — and `selectOption` before hydration is a no-op on a
- * `<select>` whose change listener is not attached yet, which is exactly why the wait is on the
- * consequence rather than on the select's own value.
- *
- * It changes the HOUR and never the date, so the pre-fill under test is untouched. Its side
- * benefit is that the forced re-render also reconciles `aria-pressed`, which React leaves at
- * the server's value otherwise (measured — see the date test below).
- *
- * No explicit timeout (#1211): bounded by the test's own budget.
- */
+/** The hour the hour-axis barrier below selects. Never the picker's own default. */
 const HYDRATION_BARRIER_HOUR = 9
 
 /**
@@ -509,10 +532,24 @@ async function hydrateByChangingDay(page: Page): Promise<void> {
   await waitForPickerField(page, 0, 10, HYDRATION_BARRIER_DAY)
 }
 
-/** The `aria-label`s of every day cell the month grid currently reports as selected. */
+/**
+ * The `aria-label`s of every day cell the month grid reports as selected.
+ *
+ * Scoped to the picker's own grid rather than the page: `aria-pressed` is not unique to this
+ * component in `src/`, so an unscoped read would silently start collecting someone else's
+ * toggle the moment one appeared above the grid.
+ *
+ * `evaluateAll` keeps its inline `waitFor` guard, which is the condition `e2e/support/read.ts`
+ * attaches to using it instead of a settled helper — without it an unpainted grid reads `[]`
+ * and the caller's `[0]` is `undefined`, failing as a flake rather than on its real claim.
+ */
 function pressedDayLabels(page: Page): Promise<string[]> {
-  return page.locator('button[aria-pressed="true"]').evaluateAll((els) =>
-    els.map((el) => el.getAttribute('aria-label') ?? '')
+  const grid = page.locator('button[aria-label][data-past]')
+  return grid.first().waitFor().then(() =>
+    grid.evaluateAll((els) =>
+      els.filter((el) => el.getAttribute('aria-pressed') === 'true')
+        .map((el) => el.getAttribute('aria-label') ?? '')
+    )
   )
 }
 
@@ -524,7 +561,12 @@ function pressedDayLabels(page: Page): Promise<string[]> {
 // never `toContainText`: "4:00 PM" is a substring of nothing the app renders here, but the
 // batch's matcher-level vacuity finding is about the class, not the instance.
 
-test.describe.serial('A 4:00 PM lesson renders in the barn s zone', () => {
+// A plain `describe`, not `.serial`. Four of these five tests are read-only reads of the seeded
+// lesson, and the fifth's entire claim is that it changes NOTHING — so there is no mutated state
+// for a chain to share, which is the bar `.serial` is meant to clear. It also cost real
+// verification signal while it was serial: a probe killing the first test skipped the other four,
+// and two of them had to be re-probed in isolation to be reached at all.
+test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
   test('lessons_list_shows_the_barn_local_four_pm_not_the_devices_ten_am @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/lessons`)
 
@@ -554,11 +596,19 @@ test.describe.serial('A 4:00 PM lesson renders in the barn s zone', () => {
     await page.locator('#dh-hour').waitFor()
 
     // Both halves of line 705 in one equality. The hour is the discriminating half: a
-    // viewer-framed decode of this instant yields 10, and the select's structural default with
-    // no value set is its FIRST option, '0' — so '16' is unreachable both by the regression and
-    // by a control that ignored its input (the batch's seed-equals-default shape). The date
-    // half is asserted because the line names it, but 4:00 PM Eastern and 10:00 AM Honolulu are
-    // the same calendar day, so it does not discriminate on its own.
+    // viewer-framed decode of this instant yields 10, and a UTC one yields 20 (measured — a
+    // probe pointing the decode at the runtime's own zone produced exactly `hour: "20"`).
+    //
+    // The seed-equals-default question has a sharper answer here than "the select's first
+    // option is 0": `DateHourPicker` falls back to `instantToLocalWallClock(new Date(), tz)`,
+    // i.e. THE BARN'S CURRENT HOUR, when `initialHour` is absent. So a form that dropped the
+    // prop entirely renders '16' during the 16:00-16:59 barn-local hour and this half agrees
+    // with it. Narrow (1-in-24) and time-of-day dependent, so it reads as a flake rather than
+    // as vacuity — recorded here rather than papered over, since the obvious comment about
+    // option '0' is simply wrong about this control.
+    //
+    // The date half is asserted because the line names it, but 4:00 PM Eastern and 10:00 AM
+    // Honolulu are the same calendar day, so it does not discriminate on its own.
     expect({
       date: (await pressedDayLabels(page))[0],
       hour: await page.locator('#dh-hour').inputValue(),
@@ -632,11 +682,14 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     await hydrateByChangingDay(page)
 
     // The item this file leans on hardest. At the pinned instant the barn reads hour 1, the
-    // device reads 19 and UTC reads 5 — three distinct values — and the select's structural
-    // default with no value set is its first option, '0'. So this is the one assertion here
-    // that separates the barn's frame from the device's AND from UTC AND from an inert
-    // control, all at once, which is what closes the axis item 707 provably cannot (see
-    // assertPinArithmetic).
+    // device reads 19 and UTC reads 5 — three distinct values — so this is the one assertion
+    // here that separates the barn's frame from the device's AND from UTC at once, which is
+    // what closes the axis item 707 provably cannot (see assertPinArithmetic).
+    //
+    // One residue, stated rather than hidden: the SERVER renders this select from the real
+    // clock, not the pinned one, so during the 01:00-01:59 barn-local hour the server's own
+    // markup already says '1'. The barrier above is what makes the read a client read, and it
+    // is load-bearing for that window specifically.
     await expect(page.locator('#dh-hour')).toHaveValue(PIN_BARN_HOUR)
   })
 })
@@ -687,7 +740,7 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
 // because both lines say "matching what the Add Event form was given" — the form IS the
 // subject, and seeding the row directly would skip the entry half of the round trip.
 
-test.describe.serial('A barn event s time renders in the barn s zone', () => {
+test.describe.serial("A barn event's time renders in the barn's zone", () => {
   test('barn_event_row_on_manage_barn_shows_the_barn_local_four_pm @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/settings/events/new`)
     await page.locator('#event-title').fill(EVENT_TITLE)
@@ -698,7 +751,7 @@ test.describe.serial('A barn event s time renders in the barn s zone', () => {
 
     await requireEventStoredBarnLocal()
 
-    const section = await openSection(page, 'Barn Events')
+    const section = await openBarnEventsSection(page)
     const row = section
       .locator('tbody tr')
       .filter({ has: page.getByRole('cell', { name: EVENT_TITLE, exact: true }) })
@@ -717,6 +770,6 @@ test.describe.serial('A barn event s time renders in the barn s zone', () => {
     // an exact array: the time, then the title, and nothing else (the event carries no notes).
     // A superset render fails, and a card that did not render reads `[]`.
     const card = page.getByText(EVENT_TITLE, { exact: true }).locator('..')
-    expect(await card.locator('p').allTextContents()).toEqual([BARN_HOUR_DISPLAY, EVENT_TITLE])
+    expect(await settledTextContents(card.locator('p'))).toEqual([BARN_HOUR_DISPLAY, EVENT_TITLE])
   })
 })
