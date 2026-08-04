@@ -23,7 +23,7 @@
 // makes a filter for one silently match both.
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
-import type { Frame, Locator } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, assetPath } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
@@ -210,6 +210,49 @@ async function uploadDocument(
 }
 
 /**
+ * Block until this page's React root has hydrated.
+ *
+ * Measured, not assumed, and it cost this slice a debugging round: immediately after
+ * `page.goto` the reminder cell's `<input>` is present and fully actionable, yet the element
+ * carries no React props at all — its `onBlur` appears only about three seconds later. Inside
+ * that window `fill()` moves the DOM value and `blur()` reaches no handler, so
+ * ReminderDateCell's save never runs and no request is ever made. That is the *quiet* failure
+ * direction: every read the test can take is identical to a correct pass, and the only trace is
+ * the POST that never arrives — which is why the symptom was `waitForResponse` timing out rather
+ * than anything pointing at hydration. Not a cold-compile artifact: the route is already warm
+ * from the upload test above. This is the hazard `openAddDocument` documents, on the page this
+ * file reaches by `goto` rather than by a click.
+ *
+ * The ExhaustionBar's popover is the signal, because it is `useState`-gated and therefore
+ * *cannot* be open before hydration — an open popover strictly post-dates hydration rather than
+ * merely correlating with it (#1190's rationale for the same problem one page over). Nothing on
+ * this page renders differently on hydration unless it is driven, so an interaction-based signal
+ * is the only kind available here, and it has to be *retried*: a click dispatched before React is
+ * listening is simply lost, and nothing replays it.
+ *
+ * Driven through the ExhaustionBar rather than through the reminder input itself so that the
+ * retry writes nothing — a retried blur would issue duplicate saves. Toggled shut again so the
+ * page is left as it was found. No explicit timeout: `toPass` and every `waitFor` are already
+ * unbounded under `actionTimeout: 0`, so a number could only tighten them (#1211).
+ */
+async function waitForHorseDetailHydrated(page: Page): Promise<void> {
+  const bar = page.getByRole('button', { name: /^Exhaustion: / })
+  const openPopover = page.locator('[aria-label^="Exhaustion: "][aria-expanded="true"]')
+
+  await expect(async () => {
+    // Re-read before clicking, so an attempt whose re-render merely lagged the read is not
+    // undone by the next one — without this the toggle can oscillate instead of converging.
+    if ((await openPopover.count()) === 0) await bar.click()
+    // Non-retrying on purpose: `toPass` owns the pacing, and a web-first matcher here would
+    // spend the whole expect budget on every attempt that lands before hydration.
+    expect(await openPopover.count()).toBe(1)
+  }).toPass()
+
+  await bar.click()
+  await openPopover.waitFor({ state: 'detached' })
+}
+
+/**
  * Type a new reminder date into the inline cell and blur it, waiting for the save to land.
  *
  * The wait is on the server action's own POST rather than on anything rendered, because
@@ -217,8 +260,12 @@ async function uploadDocument(
  * so the cell shows the new date the instant it is typed whether or not it ever saved. Without
  * this the reload in the caller would race — and win — against an action still in flight.
  * Registered before the blur, since the response can arrive first.
+ *
+ * The hydration gate leads, because everything below it is a no-op until React is listening.
+ * It lives here rather than at each `goto` so no caller can forget it.
  */
 async function setReminderDate(page: Page, fileName: string, horseId: string, day: string): Promise<void> {
+  await waitForHorseDetailHydrated(page)
   const input = reminderDateInput(page, fileName)
   await input.fill(day)
   const saved = page.waitForResponse(
@@ -440,23 +487,29 @@ test.describe.serial('a horse document reminder date', () => {
 
   // "Without a page reload" is asserted the only way that cannot be faked by a URL read: a value
   // planted on `window` survives ReminderDateCell's router.refresh() (an RSC fetch and a
-  // re-render) and cannot survive a document load. The main-frame navigation count is the second,
-  // independent half — attached after the goto has settled, because one page.goto fires
-  // framenavigated twice for the same path (#1196).
+  // re-render) and cannot survive a document load. The document-load count is the second,
+  // independent half — the listener is attached after the goto has settled, so the page's own
+  // initial load is not among the events it can see.
+  //
+  // `load` rather than `framenavigated`, and this was measured rather than assumed: the App
+  // Router fires `framenavigated` for `router.refresh()` as well, so counting it reads exactly 1
+  // on a perfectly soft save and fails this test for the single behaviour it exists to permit.
+  // #1196 established `framenavigated` as the right instrument for proving a navigation *did*
+  // happen; it is the wrong one for proving a document did *not* reload, because it does not
+  // distinguish an RSC refresh from a document load. `load` fires only for the latter, which is
+  // precisely the line's claim.
   //
   // `persisted` is read after a deliberate reload, and it is what stops the other two from being
   // a pair of true statements about nothing: a save that silently did nothing would leave the
-  // marker intact and the navigation count at zero just as happily. All three are compared in one
+  // marker intact and the load count at zero just as happily. All three are compared in one
   // expectation because the claim is their conjunction — no reload *and* it still saved.
   test('the_inline_reminder_date_edit_saves_without_a_page_reload @manager', async ({ page }) => {
     await page.goto(horseUrl(juniperId))
     await reminderDateInput(page, TEST_PDF).waitFor()
 
-    const navigations: string[] = []
-    const recordNavigation = (frame: Frame) => {
-      if (frame === page.mainFrame()) navigations.push(frame.url())
-    }
-    page.on('framenavigated', recordNavigation)
+    const documentLoads: string[] = []
+    const recordLoad = () => documentLoads.push(page.url())
+    page.on('load', recordLoad)
     await page.evaluate(() => {
       ;(window as unknown as Record<string, string>).__noReloadMarker = 'planted'
     })
@@ -466,16 +519,16 @@ test.describe.serial('a horse document reminder date', () => {
       marker: await page.evaluate(
         () => (window as unknown as Record<string, string | undefined>).__noReloadMarker ?? null
       ),
-      navigations: navigations.length,
+      documentLoads: documentLoads.length,
     }
-    page.off('framenavigated', recordNavigation)
+    page.off('load', recordLoad)
 
     await page.reload()
     await reminderDateInput(page, TEST_PDF).waitFor()
 
     expect({ ...observed, persisted: await reminderDateInput(page, TEST_PDF).inputValue() }).toEqual({
       marker: 'planted',
-      navigations: 0,
+      documentLoads: 0,
       persisted: softSavedReminderDate,
     })
   })
