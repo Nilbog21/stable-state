@@ -292,7 +292,8 @@ async function readTabExpenseTotals(page: Page): Promise<number[]> {
   for (const [i, tab] of TABS.entries()) {
     if (i > 0) await page.getByRole('link', { name: tab.pill, exact: true }).click()
     await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column)
-    // Columns are uniform across every tab: label, Gross, Expenses, Net.
+    // Column *order* is uniform across every tab — label, Gross, Expenses, Net — so Expenses is
+    // always the third cell, even though the label header itself is what differs (see TABS).
     totals.push(parseMoney(await footerTotalRow(page).locator('td').nth(2).innerText()))
   }
   return totals

@@ -5,7 +5,7 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Ten things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in the
+Eleven things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in the
 places you would look for them, and each of which cost the #1187–#1252 batch at least one round
 — several rediscovered independently by two or three slices. Every one is measured, not
 inferred. The spec named after each fact carries the worked example.
@@ -84,8 +84,8 @@ and the page that has a zero-interaction signal. *(#1199)*
 query param.** The app's switchers are `<Pill href>` → a Next `Link`, so the user's tab change
 costs no document load and a spec that re-navigates is paying for one the UI never asks for —
 five of them, in the case this rule came from: `readTabExpenseTotals` in
-`checklist-phase4-finances-outstanding.spec.ts` was the suite's slowest check and the only one
-holding a timeout exemption, for exactly that reason. What makes the substitution safe
+`checklist-phase4-finances-outstanding.spec.ts` is why the check calling it was the suite's
+slowest and the only one holding a timeout exemption. What makes the substitution safe
 unconditionally, unlike rule 10's button, is that a pill is an anchor: a click landing before
 React is listening navigates the document rather than being lost, so the worst case is the
 `goto` you were doing anyway. The one thing it does need is a settle barrier before any
