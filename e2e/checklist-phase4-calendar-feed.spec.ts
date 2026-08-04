@@ -46,13 +46,14 @@
 //      - only `newContext({ storageState: { cookies: [], origins: [] } })` is empty, and its
 //        GET of `/profile` lands on `/login` where the other two land on `/profile`.
 //    `unauthenticatedRequest` below is that third form, and throws if it ever stops being it.
-import type { APIRequestContext } from '@playwright/test'
+import type { APIRequestContext, PlaywrightWorkerArgs } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addTier, addHorse, addPaidLesson, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'
 import type { Lesson } from '@/lib/db/types'
 
-// Mutually non-substring horse names: Playwright's text and accessible-name matching is
-// substring-based, and the horse name is the discriminating half of the ICS SUMMARY below.
+// One horse per lesson, and the horse name is the only term that differs between the two ICS
+// SUMMARY lines asserted below — both lessons carry the same rider, so if these two were equal
+// the summary half of that assertion would stop distinguishing the lessons at all.
 const COMET = 'Comet'
 const ZEPHYR = 'Zephyr'
 
@@ -73,17 +74,23 @@ const LESSON_TIME = '21:00'
  * carries the backslash — that escaping is part of what this expectation checks.
  */
 const RIDER = E2E_USERS.rider
-const MANAGER_LESSON_SUMMARY = `Lesson - ${RIDER.firstName} ${RIDER.lastName[0]}.\\, ${COMET}`
+const summaryFor = (horse: string) => `Lesson - ${RIDER.firstName} ${RIDER.lastName[0]}.\\, ${horse}`
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 
 /** The manager's own lesson — instructor is the manager membership, so this one IS "your own". */
 let managerLesson: Lesson
 /**
- * Instructed by the trainer, ridden by the managed rider2 stub, on the other horse. The
- * calling manager is neither its instructor nor one of its riders, so `get_calendar_feed`'s
- * `r.role = 'manager'` branch is the ONLY term that admits it — which is what makes line 801's
- * "not just your own" a real claim rather than a restatement of line 800.
+ * Instructed by the trainer, on the other horse. The calling manager is neither its instructor
+ * nor one of its riders, so `get_calendar_feed`'s `r.role = 'manager'` branch is the ONLY term
+ * that admits it — which is what makes line 801's "not just your own" a real claim rather than
+ * a restatement of line 800.
+ *
+ * Its rider is the same `rider` login as the manager's lesson, deliberately. The obvious
+ * alternative — the managed `rider2` stub — produces the *identical* initials (`Test Rider2`
+ * → `Test R.`), so an expectation built from `E2E_USERS.rider` would have matched it by
+ * coincidence rather than by derivation. That is the seed-equals-default trap one level out:
+ * the assertion would have been true while pointing at the wrong fixture.
  */
 let trainerLesson: Lesson
 
@@ -107,7 +114,7 @@ const barn = withBarn('calendar-feed', async ({ supabase, barn, members }) => {
     time: LESSON_TIME,
     instructorId: members.trainer.membershipId,
     horseIds: [zephyr.id],
-    riderIds: [members.rider2.membershipId],
+    riderIds: [members.rider.membershipId],
     fee: 60,
     tierName: tier.name,
   })
@@ -184,6 +191,12 @@ async function copyCalendarLink(page: Page): Promise<string> {
 async function copyFreshCalendarLink(page: Page, context: { grantPermissions: (p: string[]) => Promise<void> }) {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.goto(profileUrl())
+  // Guard on the SECTION, not on either button — `count()` does not retry, and a read landing
+  // before render returns 0, silently skipping the click and leaving `copyCalendarLink` to time
+  // out on a `Copy Link` that will never appear. That is precisely the re-seeded case this
+  // branch exists for, so the branch would fail in the shape it was written to prevent. The
+  // heading renders whichever button is showing, so the guard stays branch-agnostic.
+  await expect(page.getByRole('heading', { name: 'Calendar Feed', exact: true })).toBeVisible()
   const getLink = page.getByRole('button', { name: 'Get my calendar link', exact: true })
   if (await getLink.count()) await getLink.click()
   return copyCalendarLink(page)
@@ -199,7 +212,10 @@ function calendarUrlPattern(page: Page): RegExp {
 // The unauthenticated subscriber
 // ---------------------------------------------------------------------------
 
-type PlaywrightFixture = { request: { newContext: (options?: object) => Promise<APIRequestContext> } }
+// Playwright's own type, not a hand-rolled shape: an options bag typed as bare `object` would
+// let a typo'd `storageState` key type-check, and that key is the one thing note 3 says must
+// never silently regress. The throw below is then belt-and-braces rather than the only defence.
+type PlaywrightFixture = PlaywrightWorkerArgs['playwright']
 
 async function unauthenticatedRequest(playwright: PlaywrightFixture): Promise<APIRequestContext> {
   // The explicit empty storageState is the whole point — see note 3. Dropping it silently
@@ -235,8 +251,10 @@ async function fetchFeed(playwright: PlaywrightFixture, url: string) {
 /**
  * `buildIcsFeed` folds any content line over 75 octets onto a continuation line beginning with
  * a single space (RFC 5545 §3.1). Nothing this spec reads folds — the longest is `UID:` at 63
- * octets — and a folded continuation can never be mistaken for a property line, because it
- * always starts with that space. The long DESCRIPTION lines do fold and are not read here.
+ * octets, and the DESCRIPTION lines reach only 66-68 — so the only line that actually folds in
+ * this fixture is `X-WR-CALNAME`, whose barn name carries the long run-prefixed slug. None of
+ * them is read, and a folded continuation could not be mistaken for a property line anyway,
+ * because it always starts with that space.
  */
 function payloadLines(body: string): string[] {
   return body.split('\r\n')
@@ -350,15 +368,16 @@ test.describe.serial('the calendar feed link', () => {
     const section = page
       .locator('section')
       .filter({ has: page.getByRole('heading', { name: 'Calendar Feed', exact: true }) })
-    const buttons = section.getByRole('button')
-    // allInnerTexts does not auto-wait, so the first button has to be settled before it reads.
-    await expect(buttons.first()).toBeVisible()
-
     // Full-set equality rather than two containment checks: "alongside" is a claim about what
     // the section holds, and a third button appearing is as much a regression as a missing one.
     // Asserting the order is safe here and only here — these two are fixed JSX siblings, not
     // rows out of a query.
-    expect(await buttons.allInnerTexts()).toEqual(['Copy Link', 'Regenerate'])
+    //
+    // `toHaveText` on the array, never a bare `allInnerTexts()` (CLAUDE.md, #1243): the one-shot
+    // read does not retry, so an unrendered section yields `[]` and an assertion that accepts it
+    // passes on nothing. This matcher auto-retries, so it is its own settle guard as well as the
+    // assertion — which is why there is no separate `toBeVisible()` above it.
+    await expect(section.getByRole('button')).toHaveText(['Copy Link', 'Regenerate'])
   })
 
   test('copying_the_calendar_link_yields_a_calendar_ics_token_url @manager', async ({ page, context }) => {
@@ -443,16 +462,33 @@ test.describe('the calendar feed payload', () => {
   test('the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson @manager', async ({ page, context, playwright }) => {
     const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
 
-    // Every expected value is derived from the seeded lesson's own row, and the two DTs are
-    // the barn-local-to-UTC conversion done explicitly — see note 1 in the file header.
-    expect(veventFor(response.body, uidFor(managerLesson))).toEqual({
-      // The lookup key, so this field is documentation rather than a second check — the three
-      // below it are what carry the claim.
-      uid: uidFor(managerLesson),
-      dtstart: icsUtc(managerLesson.lesson_at),
-      dtend: icsUtc(plusMinutes(managerLesson.lesson_at, 60)),
-      summary: MANAGER_LESSON_SUMMARY,
-    })
+    // BOTH entries, because line 800 says "entries" — asserting one lesson would have been a
+    // silent narrowing of the line rather than a ratified one. Each block is located by UID and
+    // then placed in this array by the test, so the comparison order is the test's own and does
+    // not depend on the payload's (see note 2).
+    //
+    // Every expected value is derived from the seeded lesson's own row, and the four DTs are the
+    // barn-local-to-UTC conversion done explicitly — see note 1. The two lessons sit on
+    // different days, so this is two independent conversions rather than one repeated.
+    expect([
+      veventFor(response.body, uidFor(managerLesson)),
+      veventFor(response.body, uidFor(trainerLesson)),
+    ]).toEqual([
+      {
+        // The lookup key, so this field is documentation rather than a second check — the three
+        // below it are what carry the claim.
+        uid: uidFor(managerLesson),
+        dtstart: icsUtc(managerLesson.lesson_at),
+        dtend: icsUtc(plusMinutes(managerLesson.lesson_at, 60)),
+        summary: summaryFor(COMET),
+      },
+      {
+        uid: uidFor(trainerLesson),
+        dtstart: icsUtc(trainerLesson.lesson_at),
+        dtend: icsUtc(plusMinutes(trainerLesson.lesson_at, 60)),
+        summary: summaryFor(ZEPHYR),
+      },
+    ])
   })
 
   test('the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn @manager', async ({ page, context, playwright }) => {
