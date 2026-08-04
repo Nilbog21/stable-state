@@ -4,11 +4,8 @@
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 // covers: src/app/barn/[slug]/(protected)/NavDrawer.tsx
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
-// covers: src/app/barn/[slug]/(protected)/nav-active.ts
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
-// covers: src/app/barn/[slug]/(protected)/BarnSwitcher.tsx
 // covers: src/components/useOutsideDismiss.ts
-// covers: src/components/ExhaustionBar.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/guide/**
@@ -27,16 +24,24 @@
 // not by trusting `scripts/select-specs.sh --lint`: that lint catches a *missing* header and a
 // glob matching no path, and cannot catch a glob absent for a module the spec genuinely
 // exercises — the one failure that silently shrinks the blast radius (#1195 shipped exactly
-// that). `src/lib/**`, `src/components/ui/**` and the protected layout are in the script's own
-// ALWAYS_FULL list — verified rather than assumed — so they are deliberately not restated here.
-// `src/components/**` is *not* in that list, which is why `useOutsideDismiss` (both dropdowns'
-// open and tap-dismiss behaviour) and `ExhaustionBar` (rendered inside the horses-list overflow
-// measurement below) are declared explicitly. Before this file, `useOutsideDismiss.ts` was
-// declared by no spec in the repo at all — a change to it selected nothing.
+// that). `src/lib/**`, `src/components/ui/**` and the protected layout are in `ALWAYS_FULL` —
+// verified rather than assumed — so they are deliberately not restated. The REST of
+// `src/components/**` is not in that list, which is why `useOutsideDismiss` is declared
+// explicitly: the open and tap-dismiss state this file asserts on for both dropdowns is that
+// module's own state.
 //
-// Every glob above was then checked mechanically, by feeding a real path to `select-specs.sh`
-// and confirming this spec comes back: a `/**` glob is a literal string *prefix*, so one that is
-// well-formed and `--lint`-green can still match nothing it was meant to.
+// The list is what this spec DRIVES, not what it renders, and the difference is deliberate.
+// `ExhaustionBar`, `EmptyState` and `calendar/CalendarDayView` all render on pages loaded here
+// and none is declared, because no assertion in this file reads their output — the horses-list
+// check below measures the document's own scroll width, not any component's. Declaring them
+// would make a change to them select a spec that cannot detect it. Each is declared by the
+// specs that do assert on it.
+//
+// Every glob was then checked mechanically, by feeding a real path to `select-specs.sh` and
+// confirming this spec comes back: a `/**` glob is a literal string *prefix*, so one that is
+// well-formed and `--lint`-green can still match nothing it was meant to — and an exact path
+// carrying the wrong extension reports `mode=none`, which reads exactly like "no spec declares
+// this" when it in fact means "this path does not exist".
 import { readFileSync } from 'fs'
 import path from 'path'
 import { test, expect, withBarn, type Page } from './support/test'
