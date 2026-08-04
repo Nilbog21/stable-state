@@ -34,6 +34,11 @@ const barn = withBarn('phase4-members-list', async ({ supabase, barn }) => {
   // every other slice running concurrently. A stub of our own, demoted in place, is the
   // barn-local way to get there, and it mirrors a real state: a member who claimed their
   // invite and never filled the contact fields in.
+  //
+  // Not restored afterwards, and no leak either: teardownBarnData sweeps this barn's stub
+  // profiles by `user_id IS NULL` rather than `is_managed = true` (#1282), so a demotion no
+  // longer takes the row out of the sweep's reach. Before that fix this line leaked one profile
+  // per run per Playwright project.
   const blankTrainer = await addManagedMember(supabase, barn.id, { ...BLANK_TRAINER, role: 'trainer' })
   blankTrainerId = blankTrainer.membershipId
   mustSucceed(
