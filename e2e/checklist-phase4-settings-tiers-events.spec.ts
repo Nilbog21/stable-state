@@ -273,7 +273,8 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     page.once('dialog', (dialog) => dialog.accept())
     await page.getByRole('button', { name: 'Deactivate', exact: true }).click()
     // The action revalidates in place rather than redirecting; Activate replacing Deactivate
-    // is the rendered proof it landed.
+    // is the rendered proof it landed. A `waitFor` precondition rather than an `expect`, so
+    // the test keeps one assertion — the same choice `warningShows` above makes.
     //
     // `exact: true` is load-bearing here, not tidiness. getByRole's accessible-name match is a
     // case-insensitive *substring* by default, so `name: 'Activate'` also matches the
@@ -282,7 +283,7 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     // reasoned: on an active tier's edit page the loose locator counts 1 and the exact one
     // counts 0. It is why a mutation asserting Group Special was *still* offered after
     // deactivation passed. Every getByRole in this file is exact for the same reason.
-    await expect(page.getByRole('button', { name: 'Activate', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Activate', exact: true }).waitFor()
 
     // Exact equality, so the claim is "gone, and the others are still there" — a positive
     // containment set would be satisfied by a select rendering nothing.
@@ -294,7 +295,7 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.goto(tierEditUrl(group.id))
     await page.getByRole('button', { name: 'Activate', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('button', { name: 'Deactivate', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Deactivate', exact: true }).waitFor()
 
     await page.goto(`/barn/${barn.slug}/lessons/new`)
     await expect(tierOptions(page)).toHaveText([
