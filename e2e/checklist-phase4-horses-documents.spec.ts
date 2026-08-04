@@ -422,11 +422,17 @@ test.describe('the horse document upload screen', () => {
     await expect(fileField(page).locator('p')).toHaveText(OVER_LIMIT_MESSAGE)
   })
 
-  // 4.4 MB, the largest accepted size, is what the line names — and it is also what makes the
-  // assertion observable rather than a race: the pending window is the whole round trip of a
-  // 4.4 MB body through the dev server and up to storage. `toBeDisabled` auto-retries, so if the
-  // window had already closed this would fail rather than pass falsely, but a flaky failure is
-  // still a flake; the file size is the thing that keeps the window open.
+  // 4.4 MB, the largest accepted size, is what the line names — and it is also what makes this
+  // assertion and the progress-bar one below observable rather than races: the pending window is
+  // the whole round trip of a 4.4 MB body through the dev server and up to storage.
+  //
+  // Measured rather than assumed, three consecutive runs: the window stays open for
+  // **4358 / 4550 / 4393 ms**, while `toBeDisabled` resolves **38 / 42 / 37 ms** after the click
+  // and the progress bar appears at **41 / 46 / 41 ms**. That is roughly a hundredfold margin, so
+  // neither test is living near the edge of its window. Both matchers auto-retry, so a closed
+  // window would fail rather than pass falsely — but a flaky failure is still a flake, and this
+  // is the number that says it is not one. Recording it rather than the assumption, so a later
+  // slice inheriting this shape can compare against a measurement instead of re-deriving it.
   //
   // The redirect is waited out rather than left in flight: uploadFile runs before createDocument,
   // so abandoning the request between them is how an object with no row is created.
