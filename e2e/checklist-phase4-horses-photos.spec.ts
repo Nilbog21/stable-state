@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/documents/new/**
+// covers: src/components/EmptyState.tsx
 //
 // The horse photo lifecycle: the placeholder and Set Photo button with no photo set, the
 // photo-locked upload screen and its three absent fields, upload-on-choose, aspect-ratio-preserving
@@ -7,12 +8,16 @@
 // gone, remove restoring the placeholder, a non-image rejection, and #1003's owner lock
 // (PRE_RELEASE_TEST_CHECKLIST.md 401-418).
 //
-// Three horses, because the three flows need three different starting states and one must *stay*
-// in its starting state: Clover with no photo (the set/replace/remove chain), Apple owned by a
-// rider but with no photo (a manager may still write — the lock needs an owner *and* an
-// owner-uploaded photo), and Butter owned by a rider *with* a photo attributed to that owner
-// (locked). Reusing Apple for the lock would destroy the unlocked state its own two checkboxes
-// assert.
+// Four horses, because each flow needs a different starting state and two of them must *stay* in
+// theirs: Clover with no photo (the set/replace/remove chain), Apple owned by a rider but with no
+// photo (a manager may still write — the lock needs an owner *and* an owner-uploaded photo), and
+// then Butter and Daisy, the lock's matched pair. Reusing Apple for the lock would destroy the
+// unlocked state its own two checkboxes assert.
+//
+// Butter and Daisy are seeded identically — same owner, same photo, same asset — and differ in
+// exactly one column, `photo_uploaded_by`. That is what makes the lock assertion a controlled
+// comparison rather than two unrelated readings: the only thing that can explain a difference
+// between them is the column the lock keys on.
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { test, expect, withBarn, type Page } from './support/test'
@@ -25,6 +30,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 const CLOVER = 'Clover'
 const APPLE = 'Apple'
 const BUTTER = 'Butter'
+const DAISY = 'Daisy'
 
 // Every asset the checklist lines name, verbatim. scripts/CLAUDE.md's asset table assigns
 // harper-photo.png and emery-photo.jpg to *member* photo flows, but lines 416/417 name both files
@@ -69,6 +75,7 @@ const ASSET_BY_DIGEST = new Map(
 let cloverId: string
 let appleId: string
 let butterId: string
+let daisyId: string
 /** Captured in the seed so the storage probe in the reload test can't depend on `barn.data`. */
 let seedClient: SupabaseClient | null = null
 /** Clover's pre-replace storage object path, captured by the replace test and read by the next. */
@@ -95,6 +102,13 @@ const barn = withBarn('phase4-horses-photos', async ({ supabase, barn, members }
       .single(),
     'stamp Butter photo as set by its owning member'
   )
+
+  // Butter's control: identical in every respect except that nothing stamps photo_uploaded_by, so
+  // the photo reads as manager-set and the section stays editable. Deliberately *not* Apple — her
+  // photo is produced by another describe block, so borrowing her as the control would make this
+  // assertion depend on declaration order and fail under a standalone --grep of it.
+  daisyId = (await addHorse(supabase, barn.id, DAISY, { owningMemberId: members.rider2.membershipId })).id
+  await setHorsePhoto(supabase, barn, daisyId, BUTTER_PHOTO)
 })
 
 // ---------------------------------------------------------------------------
@@ -196,6 +210,17 @@ async function objectStillStored(path: string): Promise<boolean> {
   return !error
 }
 
+/** A horse's current photo_path, read service-role. Throws rather than returning null. */
+async function currentPhotoPath(horseId: string): Promise<string> {
+  if (!seedClient) throw new Error('no seeded service client')
+  const row = mustSucceed<{ photo_path: string | null }>(
+    await seedClient.from('horses').select('photo_path').eq('id', horseId).single(),
+    'read horse photo path'
+  )
+  if (!row.photo_path) throw new Error(`horse ${horseId} has no photo_path`)
+  return row.photo_path
+}
+
 // ---------------------------------------------------------------------------
 // Clover: no photo -> set -> replace -> remove
 // ---------------------------------------------------------------------------
@@ -203,6 +228,28 @@ async function objectStillStored(path: string): Promise<boolean> {
 // Serial: every step starts from the state its predecessor left behind, which is the checklist's
 // own framing ("With a photo set, tap Replace Photo…"). Safe because this file owns its barn.
 test.describe.serial('the horse photo lifecycle', () => {
+  // This chain ends with Clover's photo *removed*, and that is the one state teardown cannot
+  // reach: teardownBarnData sweeps horse photo storage by reading `horses.photo_path`, and the
+  // Remove has just nulled it. The object's only deletion is removeHorsePhoto's own best-effort
+  // `removeFile(...).catch(() => {})`, so if that ever regressed the bucket would accumulate one
+  // orphan per run with every test still green — the spec would be relying on the behaviour under
+  // test to clean up after itself.
+  //
+  // Swept by prefix rather than by a captured path, so it holds however the chain ended: a
+  // mid-chain failure that leaves a photo set is covered by the same call. A describe-scoped
+  // afterAll runs before the file-scoped one withBarn registers, so this happens while the barn
+  // still exists.
+  test.afterAll(async () => {
+    if (!seedClient || !cloverId) return
+    const prefix = `${barn.data.barn.id}/horse-photos/${cloverId}`
+    const { data, error } = await seedClient.storage.from('documents').list(prefix)
+    if (error) throw new Error(`list Clover photo objects: ${error.message}`)
+    const paths = (data ?? []).map((o) => `${prefix}/${o.name}`)
+    if (paths.length === 0) return
+    const { error: removeError } = await seedClient.storage.from('documents').remove(paths)
+    if (removeError) throw new Error(`remove orphaned Clover photo objects: ${removeError.message}`)
+  })
+
   // The placeholder is EmptyState's aria-hidden svg. Asserted with toBeVisible rather than a count:
   // an empty locator fails toBeVisible, and strict mode fails a locator matching more than one, so
   // the single assertion pins "exactly one icon, and it is rendered".
@@ -279,7 +326,9 @@ test.describe.serial('the horse photo lifecycle', () => {
   // (fleet ruling, #1196). The upload screen's h1 is "Set Photo — Clover", so an exact "Clover"
   // heading is false there and true here.
   test('choosing_a_photo_file_uploads_it_immediately_with_no_upload_click @manager', async ({ page }) => {
-    await page.goto(photoUploadUrl(cloverId))
+    await page.goto(horseUrl(cloverId))
+    await photoSection(page).getByRole('link', { name: 'Set Photo' }).click()
+    await page.waitForURL(atPhotoUpload(cloverId), { waitUntil: 'commit' })
     await uploadPhoto(page, cloverId, CLOVER_PHOTO)
 
     await expect(page.getByRole('heading', { name: CLOVER, exact: true })).toBeVisible()
@@ -348,6 +397,12 @@ test.describe.serial('the horse photo lifecycle', () => {
   // wasn't just a stale client-side preview". The reload forces a fresh server render, and the
   // storage probe is what makes "gone" an observation rather than an inference: replaceHorsePhoto
   // deletes the previous object, so its path must no longer download.
+  //
+  // `currentObjectStored` is that probe's positive control, and it is not decoration.
+  // objectStillStored returns false for *any* download error — a wrong bucket, a changed path
+  // convention, a transport blip — all indistinguishable from "deleted". Without a reading that
+  // must come back true, the absence half would pass just as happily against a probe that can
+  // only ever say false. Both readings go through the same function on the same run.
   test('the_replaced_horse_photo_survives_a_reload_and_the_old_one_is_gone @manager', async ({ page }) => {
     if (!cloverOldPhotoPath) throw new Error('the replace step never captured Clover\'s previous photo path')
 
@@ -357,7 +412,8 @@ test.describe.serial('the horse photo lifecycle', () => {
     expect({
       displayed: await displayedPhotoAsset(page, CLOVER),
       oldObjectStillStored: await objectStillStored(cloverOldPhotoPath),
-    }).toEqual({ displayed: BUTTER_PHOTO, oldObjectStillStored: false })
+      currentObjectStored: await objectStillStored(await currentPhotoPath(cloverId)),
+    }).toEqual({ displayed: BUTTER_PHOTO, oldObjectStillStored: false, currentObjectStored: true })
   })
 
   // deleteHorsePhotoAction revalidates rather than redirecting, so the section re-renders in place
@@ -379,9 +435,12 @@ test.describe.serial('the horse photo lifecycle', () => {
 // A non-image on the photo upload screen
 // ---------------------------------------------------------------------------
 
-// Its own block, and reached by goto rather than through the chain above: nothing it does mutates
-// Clover, and the upload screen renders identically whether or not a photo is set, so it neither
-// depends on nor disturbs the lifecycle chain's state.
+// Its own block, and run against Daisy rather than Clover: Daisy's photo state is fixed by the seed,
+// so the control to click is always "Replace Photo" no matter where the lifecycle chain got to, and
+// the rejection means nothing is written, so this disturbs nothing the lock block reads later.
+//
+// Clicked through rather than reached by goto, for the same hydration reason as the upload test
+// above: the rejection is raised by the server action that the file input's own onChange submits.
 //
 // The client-side accept="" filter is a file-picker hint that setInputFiles bypasses, so this
 // exercises the server's own validateFile(PHOTO_MIME_TYPES) rejection — the path a determined user
@@ -393,7 +452,9 @@ test.describe.serial('the horse photo lifecycle', () => {
 // that never reaches the assertion.
 test.describe('the photo upload screen', () => {
   test('selecting_a_pdf_on_the_photo_upload_screen_is_rejected_inline @manager', async ({ page }) => {
-    await page.goto(photoUploadUrl(cloverId))
+    await page.goto(horseUrl(daisyId))
+    await photoSection(page).getByRole('link', { name: 'Replace Photo' }).click()
+    await page.waitForURL(atPhotoUpload(daisyId), { waitUntil: 'commit' })
     await page.setInputFiles('input[type="file"]', assetPath(TEST_PDF))
 
     await expect(uploadForm(page).getByRole('alert')).toHaveText('Unsupported file type')
@@ -405,16 +466,54 @@ test.describe('the photo upload screen', () => {
 // ---------------------------------------------------------------------------
 
 test.describe.serial('an owned horse whose owner never set a photo', () => {
+  // The owner is asserted alongside the photo, in one object, rather than left to the seed.
+  //
+  // This line's whole point is its parenthetical — Apple *has* an owning rider, and the write
+  // still succeeds because the lock needs an owner **and** an owner-uploaded photo. An assertion
+  // on the photo alone would pass just as happily against an unowned horse, i.e. it would have
+  // full force and be about a weaker claim than the line makes. Nothing else in this file pins
+  // Apple's ownership: the lock block below proves she is *unlocked*, which is not the same thing.
+  //
+  // Read as the owner link's own href (page.tsx renders it only when owning_member_id is set), so
+  // the check is on rendered markup rather than on the seed value echoed back at itself. The
+  // photo read settles the document first, so the count that follows cannot be a premature zero.
   test('a_manager_can_set_a_photo_on_an_owned_horse_whose_owner_never_set_one @manager', async ({ page }) => {
+    const ownerHref = `/barn/${barn.slug}/members/${barn.data.members.rider.membershipId}`
+
     await page.goto(horseUrl(appleId))
     await photoSection(page).getByRole('link', { name: 'Set Photo' }).click()
     await page.waitForURL(atPhotoUpload(appleId), { waitUntil: 'commit' })
     await uploadPhoto(page, appleId, HARPER_PHOTO)
 
-    expect(await displayedPhotoAsset(page, APPLE)).toBe(HARPER_PHOTO)
+    expect({
+      displayed: await displayedPhotoAsset(page, APPLE),
+      ownerLinks: await page.locator(`main a[href="${ownerHref}"]`).count(),
+    }).toEqual({ displayed: HARPER_PHOTO, ownerLinks: 1 })
   })
 
-  test('a_manager_can_replace_a_photo_another_manager_set @manager', async ({ page }) => {
+  // The photo is re-attributed to a *third* membership before the replace, and that is the whole
+  // point of the test rather than setup noise.
+  //
+  // Line 417's claim is that manager-set photos never lock out **other** managers. E2E_USERS carries
+  // only one manager login, so without this stamp the manager would be replacing a photo it uploaded
+  // itself two tests ago — an assertion with full force, about a weaker claim. The lock predicate
+  // (`update_horse_photo`) compares photo_uploaded_by to the *owner*, not to the caller, so a
+  // regression narrowing it to "a manager may only overwrite their own uploads" would leave that
+  // version of the test green while breaking exactly what the line asserts. Attributing the photo to
+  // the trainer — neither the owner nor the caller — is the barn-local way to reach the state the
+  // line describes, and it keeps the horse unlocked (trainer is not the owning member).
+  test('a_manager_can_replace_a_manager_set_photo_on_an_owned_horse @manager', async ({ page }) => {
+    if (!seedClient) throw new Error('no seeded service client')
+    mustSucceed(
+      await seedClient
+        .from('horses')
+        .update({ photo_uploaded_by: barn.data.members.trainer.membershipId })
+        .eq('id', appleId)
+        .select('id')
+        .single(),
+      'attribute Apple photo to a membership that is neither the owner nor the caller'
+    )
+
     await page.goto(horseUrl(appleId))
     await photoSection(page).getByRole('link', { name: 'Replace Photo' }).click()
     await page.waitForURL(atPhotoUpload(appleId), { waitUntil: 'commit' })
@@ -432,18 +531,24 @@ test.describe.serial('an owned horse whose owner never set a photo', () => {
 //
 // A bare toHaveCount(1) on Butter would be defended by reasoning alone: nothing would ever have
 // executed this locator against a section that does render the controls, so a locator gone wrong
-// would report "locked" for every horse in the barn and pass. Apple — unlocked, and carrying a
-// photo by the time this block runs — is that positive control, read through the literally shared
-// locator: an editable section with a photo renders three (the img, the Replace link, the Remove
-// button), a locked one renders only the img, and a section that failed to resolve renders none.
+// would report "locked" for every horse in the barn and pass. Daisy is that positive control, read
+// through the literally shared locator: an editable section with a photo renders three (the img,
+// the Replace link, the Remove button), a locked one renders only the img, and a section that
+// failed to resolve renders none.
+//
+// Daisy rather than Apple, though Apple is also unlocked by now: Apple's photo is produced by the
+// *previous* describe block, so using her would make this test pass only in declaration order and
+// fail under a standalone --grep — against a perfectly healthy app. Daisy is seeded, so this block
+// depends on nothing but its own barn. She also differs from Butter in exactly one column, which
+// makes the pair a controlled comparison rather than two unrelated readings.
 test.describe('a horse whose photo was set by its owning member', () => {
   test('an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager @manager', async ({ page }) => {
     await page.goto(horseUrl(butterId))
     await photoImage(page, BUTTER).waitFor()
     const locked = await photoSection(page).locator('img, a, button').count()
 
-    await page.goto(horseUrl(appleId))
-    await photoImage(page, APPLE).waitFor()
+    await page.goto(horseUrl(daisyId))
+    await photoImage(page, DAISY).waitFor()
     const unlocked = await photoSection(page).locator('img, a, button').count()
 
     expect({ locked, unlocked }).toEqual({ locked: 1, unlocked: 3 })
