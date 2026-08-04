@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
 import { getTransactionRows, positiveAmount } from './transactions'
-import { instantToLocalWallClock } from '@/lib/barn-timezone'
-import type { ExpenseFinancialSummary, HorseExpenseDetailRow, RecipientExpenseSummary, RecipientExpenseDetailRow } from './types'
+import { barnDay } from '@/lib/barn-timezone'
+import type { CalendarDate, ExpenseFinancialSummary, HorseExpenseDetailRow, RecipientExpenseSummary, RecipientExpenseDetailRow } from './types'
 
 function applicableHorseIdsForExpense(
   expense: { id: string; expense_date: string; applies_to_all_horses: boolean },
@@ -58,7 +58,7 @@ async function fetchExpenseTransactionsInRange(
   startDate: Date,
   endDate: Date,
   timezone: string
-): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean; recipient: string | null; expense_type: string | null }[]> {
+): Promise<{ id: string; expense_date: CalendarDate; amount: number; applies_to_all_horses: boolean; recipient: string | null; expense_type: string | null }[]> {
   const rows = await getTransactionRows(
     barnId,
     ['expense'],
@@ -101,7 +101,7 @@ async function fetchExpenseTransactionsInRange(
       const details = row.expenseId ? detailsByExpenseId.get(row.expenseId) : undefined
       return {
         id: expenseId,
-        expense_date: instantToLocalWallClock(new Date(row.occurredAt), timezone).slice(0, 10),
+        expense_date: barnDay(new Date(row.occurredAt), timezone),
         amount: positiveAmount(row.kind, row.amount),
         applies_to_all_horses: details?.applies_to_all_horses ?? false,
         recipient: details?.recipient ?? null,

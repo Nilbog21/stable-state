@@ -16,8 +16,9 @@ import { useRouter } from 'next/navigation'
 import { updateChargeFeeAction, updateChargePaymentTypeAction } from '../../actions'
 import { ChargesTable } from '../ChargesTable'
 import { createMockAgreementCharge } from '@/test/fixtures'
+import { calendarDate } from '@/lib/local-day'
 
-const charge = createMockAgreementCharge({ id: 'charge-1', period: '2026-07-01', fee: 200, payment_type: null })
+const charge = createMockAgreementCharge({ id: 'charge-1', period: calendarDate('2026-07-01'), fee: 200, payment_type: null })
 
 beforeEach(() => {
   vi.mocked(updateChargeFeeAction).mockReset()

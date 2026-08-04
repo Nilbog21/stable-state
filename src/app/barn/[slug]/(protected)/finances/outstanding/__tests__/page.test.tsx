@@ -18,6 +18,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import OutstandingPage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -129,7 +130,7 @@ describe('OutstandingPage', () => {
 
   it('should_render_a_charge_row_with_its_type_and_rider_name', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -139,7 +140,7 @@ describe('OutstandingPage', () => {
 
   it('should_link_a_charge_row_to_its_agreement', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -150,7 +151,7 @@ describe('OutstandingPage', () => {
   it('should_not_link_a_charge_row_for_a_rider', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: riderMembership })
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -164,7 +165,7 @@ describe('OutstandingPage', () => {
       instructor_name: null, rider_names: [], fee: 75,
     }])
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', riderName: 'Dana Rider', fee: 200 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -178,7 +179,7 @@ describe('OutstandingPage', () => {
       instructor_name: null, rider_names: [], fee: 75,
     }])
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', riderName: 'Dana Rider', fee: 200 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -235,7 +236,7 @@ describe('OutstandingPage', () => {
 
     it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_timezone', async () => {
       vi.mocked(getOutstandingCharges).mockResolvedValue([
-        { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+        { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
       ])
       const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)

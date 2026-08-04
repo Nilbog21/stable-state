@@ -18,6 +18,7 @@ import { getMostCommonExpenseTypeAction } from '@/app/actions/expenses'
 import { ExpenseForm } from '../ExpenseForm'
 import { createMockScheduleItem } from '@/test/fixtures'
 import type { ScheduleItem } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 const horses = [
   { id: 'horse-1', name: 'Apple' },
@@ -40,8 +41,8 @@ function renderForm(overrides: Partial<Parameters<typeof ExpenseForm>[0]> = {}) 
       horses={horses}
       recentRecipients={recentRecipients}
       recentExpenseTypes={recentExpenseTypes}
-      defaultDate="2026-07-04"
-      todayStr="2026-07-04"
+      defaultDate={calendarDate('2026-07-04')}
+      todayStr={calendarDate('2026-07-04')}
       timezone="America/New_York"
       onSave={onSave}
       {...overrides}
@@ -59,7 +60,7 @@ describe('ExpenseForm', () => {
   // new-expense case), the field seeds from `todayStr` — the barn's own day — rather than from
   // the server host's UTC day, which runs ahead of every barn zone the picker offers.
   it('should_seed_the_date_field_from_todayStr_when_defaultDate_is_omitted', () => {
-    const { container } = renderForm({ defaultDate: undefined, todayStr: '2026-03-01' })
+    const { container } = renderForm({ defaultDate: undefined, todayStr: calendarDate('2026-03-01') })
     expect((container.querySelector('input[name="expense_date"]') as HTMLInputElement).value).toBe('2026-03-01')
   })
 
@@ -102,12 +103,12 @@ describe('ExpenseForm', () => {
   // The faked clock puts the viewer on 2026-07-04, so a barn already on 2026-07-05 is the
   // case #1149 is about: the date is past in barn time but not in the viewer's own (#1149).
   it('should_hide_time_field_when_date_is_past_in_barn_time', () => {
-    renderForm({ todayStr: '2026-07-05' })
+    renderForm({ todayStr: calendarDate('2026-07-05') })
     expect(screen.queryByLabelText(/time/i)).toBeNull()
   })
 
   it('should_show_time_field_when_date_is_not_yet_past_in_barn_time', () => {
-    renderForm({ todayStr: '2026-07-03' })
+    renderForm({ todayStr: calendarDate('2026-07-03') })
     expect(screen.queryByLabelText(/time/i)).not.toBeNull()
   })
 
@@ -323,28 +324,28 @@ describe('ExpenseForm', () => {
   })
 
   it('should_show_time_field_when_date_is_today', () => {
-    renderForm({ defaultDate: '2026-07-04' })
+    renderForm({ defaultDate: calendarDate('2026-07-04') })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
 
   it('should_show_time_field_when_date_is_in_the_future', () => {
-    renderForm({ defaultDate: '2026-07-05' })
+    renderForm({ defaultDate: calendarDate('2026-07-05') })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
 
   it('should_hide_time_field_when_date_is_strictly_before_today', () => {
-    renderForm({ defaultDate: '2026-07-03' })
+    renderForm({ defaultDate: calendarDate('2026-07-03') })
     expect(screen.queryByLabelText(/time/i)).toBeNull()
   })
 
   it('should_hide_time_field_after_changing_date_to_the_past', () => {
-    renderForm({ defaultDate: '2026-07-04' })
+    renderForm({ defaultDate: calendarDate('2026-07-04') })
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-03' } })
     expect(screen.queryByLabelText(/time/i)).toBeNull()
   })
 
   it('should_show_time_field_again_after_changing_date_back_to_today', () => {
-    renderForm({ defaultDate: '2026-07-03' })
+    renderForm({ defaultDate: calendarDate('2026-07-03') })
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-04' } })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
@@ -363,7 +364,7 @@ describe('ExpenseForm', () => {
 
   it('should_preserve_existing_time_in_form_data_when_editing_a_past_dated_expense', () => {
     const { container } = renderForm({
-      defaultDate: '2026-07-03',
+      defaultDate: calendarDate('2026-07-03'),
       initial: { recipient: '', expenseType: '', expenseTime: '14:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
     })
     const form = container.querySelector('form')!
@@ -423,7 +424,7 @@ describe('ExpenseForm', () => {
   // below always stated the barn-local answer; only the frame producing it has changed.
   describe('occurred_at wiring', () => {
     it('should_compute_occurred_at_in_the_barns_timezone_rather_than_the_hosts', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05', timezone: 'America/Los_Angeles' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05'), timezone: 'America/Los_Angeles' })
       fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
@@ -432,7 +433,7 @@ describe('ExpenseForm', () => {
     })
 
     it('should_include_a_hidden_occurred_at_field_computed_from_date_and_time_as_a_utc_instant', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
@@ -441,7 +442,7 @@ describe('ExpenseForm', () => {
     })
 
     it('should_default_occurred_at_to_midnight_local_when_time_is_blank', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       // midnight America/New_York (EDT, UTC-4) => 04:00 UTC
@@ -450,7 +451,7 @@ describe('ExpenseForm', () => {
 
     it('should_use_midnight_local_occurred_at_for_a_past_dated_expense_with_no_visible_time_field', () => {
       const { container } = renderForm({
-        defaultDate: '2026-07-03',
+        defaultDate: calendarDate('2026-07-03'),
         initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
       })
       const form = container.querySelector('form')!
@@ -464,7 +465,7 @@ describe('ExpenseForm', () => {
       // (UTC-4) dates used elsewhere in this test — catches a hardcoded offset.
       // It's also before the fake "now" (2026-07-04), so no time field is shown —
       // occurred_at falls back to midnight local, same as the blank-time case.
-      const { container } = renderForm({ defaultDate: '2026-01-15' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-01-15') })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBe('2026-01-15T05:00:00.000Z')
@@ -476,7 +477,7 @@ describe('ExpenseForm', () => {
       // built "…T20:30:00:00", an Invalid Date that threw out of wallClockToInstant and
       // 500'd the whole edit page.
       const { container } = renderForm({
-        defaultDate: '2026-07-05',
+        defaultDate: calendarDate('2026-07-05'),
         initial: { recipient: '', expenseType: '', expenseTime: '20:30:00', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
       })
       const form = container.querySelector('form')!
@@ -486,7 +487,7 @@ describe('ExpenseForm', () => {
     })
 
     it('should_omit_the_occurred_at_field_when_date_is_cleared', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '' } })
       const form = container.querySelector('form')!
       const fd = new FormData(form)

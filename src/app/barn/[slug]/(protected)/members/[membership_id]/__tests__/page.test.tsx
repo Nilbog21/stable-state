@@ -43,6 +43,7 @@ import { resolveHorseNames } from '@/lib/db/horses'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { deleteDocumentAction, revokeInviteTokenAction, removeMemberAction } from '../actions'
 import MemberDetailPage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const targetProfile = createMockProfile({ id: 'profile-2', user_id: 'user-trn', first_name: 'Bob', last_name: 'Trainer' })
@@ -408,7 +409,7 @@ describe('MemberDetailPage', () => {
   })
 
   it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
-    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: '2020-01-01' }, signedUrl: 'https://example.com/signed' }])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: calendarDate('2020-01-01') }, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByText(/reminder due/i)).toBeDefined()
@@ -433,7 +434,7 @@ describe('MemberDetailPage', () => {
       barn: { ...mockBarn, timezone: 'America/Los_Angeles' },
       membership: managerMembership,
     })
-    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: '2026-03-02' }, signedUrl: 'https://example.com/signed' }])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: calendarDate('2026-03-02') }, signedUrl: 'https://example.com/signed' }])
 
     try {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })

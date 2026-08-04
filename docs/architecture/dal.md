@@ -16,6 +16,22 @@
 
 Audit columns nothing displays stay plain strings — see `types.ts`'s `Instant` doc comment for the rule and its one exception. `backup.ts` is deliberately outside this scheme (see its row below): it needs zone-less wall-clock digits for an Excel serial, not a formatted string.
 
+**`CalendarDate` return types (#1223).** The other frame. A `DATE` column names a day on a wall calendar, not a moment on the timeline, so it needs no `timezone` parameter — but while it was a bare `string` the compiler could not stop it reaching a zoned path, or an instant reaching a UTC-forced one. Every reader returning a `DATE` column now returns `CalendarDate` (`types.ts`), which `format-date.ts`'s `formatShortDateOnly`/`formatChargePeriod` require:
+
+| Module | Branded field(s) |
+|---|---|
+| `documents.ts` | `HorseDocument`/`TrainerDocument`/`RiderDocument.reminder_date`, `DueDocument.reminderDate`; `getDueDocuments(barnId, today)` takes one too — the comparison is `CalendarDate` on both sides |
+| `agreements.ts` | `Agreement.start_date`, `AgreementCharge.period` |
+| `agreement-finances.ts` | `ChargeSummaryRow.period`, `PaidCharge.period`, `OutstandingCharge.period` |
+| `lesson-finances.ts` | `HorseChargeDetailRow.period`, `RiderChargeDetailRow.period` |
+| `expenses.ts` | `Appointment.expense_date`, and every shape extending it |
+| `expense-finances.ts` | `HorseExpenseDetailRow.expenseDate`, `RecipientExpenseDetailRow.expenseDate` |
+| `outstanding.ts` | `OutstandingItem`'s `lease`/`board` `date` (its `lesson`/`cancellation_fee` arms stay `Instant` — that union is where the two frames meet) |
+
+Unlike `Instant`, which is structurally constructed, a branded string needs an explicit mint wherever an unbranded value crosses into the frame. There are three and no more: `local-day.ts`'s `calendarDate` (unchecked, for a value PostgREST hands back as `string` that the DB already types `DATE`) and `isValidDateString` (a type predicate — the validating mint for a `?date=` search param), plus `barn-timezone.ts`'s `barnDay`/`barnToday`, the crossing from the instant frame into this one. A whole-row cast (`data as Agreement`) is not one of them and `grep` won't show it: it takes the DB's typing at its word for every field of the row at once, which is how `Instant` fields arrive too.
+
+Write inputs stay bare `string` — `ExpenseInput.expenseDate` and the agreement/document date parameters take unvalidated form text, and branding there would only move the lie earlier.
+
 | File | Domain |
 |---|---|
 | `auth.ts` | Auth session; `getAuthenticatedUser()` — wraps `supabase.auth.getUser()`, returns `User \| null` |

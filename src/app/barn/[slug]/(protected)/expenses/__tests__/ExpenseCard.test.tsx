@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ExpenseCard } from '../ExpenseCard'
 import { createMockExpenseWithHorses } from '@/test/fixtures'
+import { calendarDate } from '@/lib/local-day'
 
 afterEach(cleanup)
 
@@ -11,7 +12,7 @@ function renderCard(overrides = {}, now?: number) {
 
 describe('ExpenseCard', () => {
   it('should_render_formatted_expense_date', () => {
-    renderCard({ expense_date: '2026-07-01' })
+    renderCard({ expense_date: calendarDate('2026-07-01') })
     expect(screen.getByText(/Jul 1, 2026/)).toBeDefined()
   })
 
@@ -66,18 +67,18 @@ describe('ExpenseCard', () => {
   })
 
   it('should_not_style_no_amount_specified_as_amber_before_due', () => {
-    renderCard({ amount: null, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-06-01T00:00:00Z'))
+    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-06-01T00:00:00Z'))
     expect(screen.getByText('(no amount specified)').className).not.toContain('amber')
   })
 
   it('should_style_no_amount_specified_as_amber_and_show_past_due_badge_once_due_has_passed', () => {
-    renderCard({ amount: null, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
     expect(screen.getByText('(no amount specified)').className).toContain('amber')
     expect(screen.getByText('Past Due')).toBeDefined()
   })
 
   it('should_not_show_past_due_badge_when_amount_is_set', () => {
-    renderCard({ amount: 42.5, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+    renderCard({ amount: 42.5, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
     expect(screen.queryByText('Past Due')).toBeNull()
   })
 

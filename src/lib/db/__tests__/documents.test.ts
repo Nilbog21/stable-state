@@ -23,6 +23,7 @@ import {
   updateDocumentReminderDate,
   getDueDocuments,
 } from '../documents'
+import { calendarDate } from '@/lib/local-day'
 
 type EntityCase = {
   entity: 'horse' | 'rider' | 'trainer'
@@ -197,7 +198,7 @@ describe.each(CASES)('createDocument($entity)', ({ entity, entityId, recordType,
   it('should_pass_reminder_date_through_to_insert', async () => {
     const insert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { ...mockDoc, reminder_date: '2027-01-01' }, error: null }),
+        single: vi.fn().mockResolvedValue({ data: { ...mockDoc, reminder_date: calendarDate('2027-01-01') }, error: null }),
       }),
     })
     vi.mocked(createClient).mockResolvedValue({
@@ -209,7 +210,7 @@ describe.each(CASES)('createDocument($entity)', ({ entity, entityId, recordType,
       mockDoc.storage_path, mockDoc.file_name, mockDoc.file_size, null, '2027-01-01'
     )
 
-    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ reminder_date: '2027-01-01' }))
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ reminder_date: calendarDate('2027-01-01') }))
   })
 
   it('should_pass_null_reminder_date_through_to_insert_when_omitted', async () => {
@@ -276,7 +277,7 @@ describe.each(CASES)('updateDocumentReminderDate($entity)', ({ entity, entityId,
     } as any)
 
     await updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
-    expect(update).toHaveBeenCalledWith({ reminder_date: '2027-01-01' })
+    expect(update).toHaveBeenCalledWith({ reminder_date: calendarDate('2027-01-01') })
   })
 
   it('should_clear_reminder_date_when_null', async () => {
@@ -347,7 +348,7 @@ describe.each(CASES)('deleteDocument($entity)', ({ entity, entityId, mockDoc }) 
 })
 
 describe('getDueDocuments', () => {
-  const today = '2026-07-07'
+  const today = calendarDate('2026-07-07')
 
   const horseDoc = {
     id: 'doc-h1',
@@ -355,7 +356,7 @@ describe('getDueDocuments', () => {
     horse_id: 'horse-1',
     record_type: 'coggins',
     file_name: 'coggins.pdf',
-    reminder_date: '2026-01-01',
+    reminder_date: calendarDate('2026-01-01'),
   }
   const trainerDoc = {
     id: 'doc-t1',
@@ -363,7 +364,7 @@ describe('getDueDocuments', () => {
     trainer_id: 'mem-9',
     record_type: 'instructor_contract',
     file_name: 'contract.pdf',
-    reminder_date: '2026-02-01',
+    reminder_date: calendarDate('2026-02-01'),
   }
   const riderDoc = {
     id: 'doc-r1',
@@ -371,7 +372,7 @@ describe('getDueDocuments', () => {
     rider_id: 'mem-8',
     record_type: 'liability_waiver',
     file_name: 'waiver.pdf',
-    reminder_date: '2026-01-15',
+    reminder_date: calendarDate('2026-01-15'),
   }
 
   function makeDocsChain(data: unknown[] | null, error: Error | null = null) {
@@ -435,7 +436,7 @@ describe('getDueDocuments', () => {
         entity: 'horse',
         recordType: 'coggins',
         fileName: 'coggins.pdf',
-        reminderDate: '2026-01-01',
+        reminderDate: calendarDate('2026-01-01'),
         ownerName: 'Thunderbolt',
         ownerId: 'horse-1',
       },
@@ -454,7 +455,7 @@ describe('getDueDocuments', () => {
         entity: 'trainer',
         recordType: 'instructor_contract',
         fileName: 'contract.pdf',
-        reminderDate: '2026-02-01',
+        reminderDate: calendarDate('2026-02-01'),
         ownerName: 'Jane Trainer',
         ownerId: 'mem-9',
       },
@@ -473,7 +474,7 @@ describe('getDueDocuments', () => {
         entity: 'rider',
         recordType: 'liability_waiver',
         fileName: 'waiver.pdf',
-        reminderDate: '2026-01-15',
+        reminderDate: calendarDate('2026-01-15'),
         ownerName: 'Bob Rider',
         ownerId: 'mem-8',
       },

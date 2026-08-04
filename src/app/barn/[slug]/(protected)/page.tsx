@@ -11,11 +11,11 @@ import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
-import { isValidDateString, addDays, formatCalendarDate, getWeekDates } from '@/lib/local-day'
+import { isValidDateString, addDays, calendarDate, formatCalendarDate, getWeekDates } from '@/lib/local-day'
 import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
 import { CalendarDayView } from '@/components/calendar/CalendarDayView'
 import { CalendarWeekView } from '@/components/calendar/CalendarWeekView'
-import type { DueDocument } from '@/lib/db/types'
+import type { CalendarDate, DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/Pill'
@@ -44,16 +44,16 @@ export default async function BarnDashboardPage({
   const user = await getAuthenticatedUser()
 
   let dayItems: DayScheduleDisplayItem[] = []
-  let weekDays: { date: string; items: DayScheduleDisplayItem[] }[] = []
+  let weekDays: { date: CalendarDate; items: DayScheduleDisplayItem[] }[] = []
   let dueDocuments: DueDocument[] = []
   let unpaidLessonsCount = 0
   let unpaidChargesCount = 0
   let userRole: 'manager' | 'trainer' | 'rider' | null = null
   let membershipId: string | undefined
-  let selectedDate = ''
-  let todayStr = ''
+  let selectedDate = calendarDate('')
+  let todayStr = calendarDate('')
   let view: 'day' | 'week' = 'day'
-  let weekDates: string[] = []
+  let weekDates: CalendarDate[] = []
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)

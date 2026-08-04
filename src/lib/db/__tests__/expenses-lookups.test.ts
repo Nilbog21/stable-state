@@ -10,6 +10,7 @@ import {
   getRecentExpenseTypes,
   getMostCommonTypeForRecipient,
 } from '../expenses'
+import { calendarDate } from '@/lib/local-day'
 
 describe('getRecentRecipients', () => {
   beforeEach(() => {
@@ -48,8 +49,8 @@ describe('getRecentRecipients', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T00:00:00Z'))
     const { select } = makeChain([
-      { recipient: 'Old Vet', expense_date: '2025-01-01' },
-      { recipient: 'Recent Vet', expense_date: '2026-07-01' },
+      { recipient: 'Old Vet', expense_date: calendarDate('2025-01-01') },
+      { recipient: 'Recent Vet', expense_date: calendarDate('2026-07-01') },
     ])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
@@ -62,9 +63,9 @@ describe('getRecentRecipients', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T00:00:00Z'))
     const { select } = makeChain([
-      { recipient: 'Frequent', expense_date: '2025-01-01' },
-      { recipient: 'Frequent', expense_date: '2025-02-01' },
-      { recipient: 'Rare', expense_date: '2025-01-01' },
+      { recipient: 'Frequent', expense_date: calendarDate('2025-01-01') },
+      { recipient: 'Frequent', expense_date: calendarDate('2025-02-01') },
+      { recipient: 'Rare', expense_date: calendarDate('2025-01-01') },
     ])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
@@ -75,8 +76,8 @@ describe('getRecentRecipients', () => {
 
   it('should_tiebreak_alphabetically_when_all_counts_equal', async () => {
     const { select } = makeChain([
-      { recipient: 'Zebra Farrier', expense_date: '2025-01-01' },
-      { recipient: 'Apple Vet', expense_date: '2025-01-01' },
+      { recipient: 'Zebra Farrier', expense_date: calendarDate('2025-01-01') },
+      { recipient: 'Apple Vet', expense_date: calendarDate('2025-01-01') },
     ])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 

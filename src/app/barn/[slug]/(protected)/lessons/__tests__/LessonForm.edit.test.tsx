@@ -4,6 +4,7 @@ import type { LessonDetail, Horse } from '@/lib/db/types'
 import { createMockHorse, createMockLessonDetail, createMockLessonTier, instant } from '@/test/fixtures'
 import { LessonForm } from '../LessonForm'
 import { NavigationBlockerProvider, useNavigationBlocker } from '../../NavigationBlocker'
+import { calendarDate } from '@/lib/local-day'
 
 afterEach(cleanup)
 
@@ -45,7 +46,7 @@ const baseProps = {
   isManager: true,
   tiers: [mockTier],
   action: vi.fn().mockResolvedValue({ error: null }),
-  todayStr: '2026-06-01',
+  todayStr: calendarDate('2026-06-01'),
 }
 
 describe('LessonForm (edit mode)', () => {

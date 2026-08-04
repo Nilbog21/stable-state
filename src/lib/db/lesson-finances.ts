@@ -21,6 +21,7 @@ import { getChargesForSummary, getPaidCharges } from './agreement-finances'
 import type { PaidCharge } from './agreement-finances'
 import { getTiersByBarn } from './lesson-tiers'
 import type {
+  CalendarDate,
   FinancialSummary,
   HorseChargeDetailRow,
   HorseExpenseSummary,
@@ -317,7 +318,7 @@ interface EntityIncomeDetailRow {
 interface EntityIncomeChargeRow {
   chargeId: string
   agreementId: string
-  period: string
+  period: CalendarDate
   kind: PaidCharge['kind']
   fee: number
 }

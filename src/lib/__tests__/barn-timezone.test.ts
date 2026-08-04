@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { instantToLocalWallClock, wallClockToInstant, barnToday, BARN_TIMEZONES } from '../barn-timezone'
 import { getWeekDates } from '../local-day'
+import { calendarDate } from '@/lib/local-day'
 
 describe('instantToLocalWallClock', () => {
   it('should_convert_utc_instant_to_eastern_wall_clock_during_daylight_saving', () => {
@@ -143,7 +144,7 @@ describe('week-range day boundaries across a DST transition (#1016)', () => {
   })
 
   it('should_produce_seven_strictly_increasing_day_boundary_instants_spanning_the_spring_forward_transition', () => {
-    const weekDates = getWeekDates('2026-03-08') // Sun Mar 8 -> Sat Mar 14, week starts on the transition day itself
+    const weekDates = getWeekDates(calendarDate('2026-03-08')) // Sun Mar 8 -> Sat Mar 14, week starts on the transition day itself
     const instants = weekDates.map((d) => wallClockToInstant(`${d}T00:00:00`, 'America/New_York').getTime())
 
     for (let i = 1; i < instants.length; i++) {
@@ -155,7 +156,7 @@ describe('week-range day boundaries across a DST transition (#1016)', () => {
   })
 
   it('should_produce_seven_strictly_increasing_day_boundary_instants_spanning_the_fall_back_transition', () => {
-    const weekDates = getWeekDates('2026-11-01') // Sun Nov 1 -> Sat Nov 7, week starts on the transition day itself
+    const weekDates = getWeekDates(calendarDate('2026-11-01')) // Sun Nov 1 -> Sat Nov 7, week starts on the transition day itself
     const instants = weekDates.map((d) => wallClockToInstant(`${d}T00:00:00`, 'America/New_York').getTime())
 
     for (let i = 1; i < instants.length; i++) {

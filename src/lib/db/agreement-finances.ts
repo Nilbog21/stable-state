@@ -8,10 +8,11 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
 import { getTransactionRows, getOutstandingTransactionRows } from './transactions'
-import type { AgreementKind, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
+import { calendarDate } from '../local-day'
+import type { AgreementKind, CalendarDate, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
 
 export interface ChargeSummaryRow {
-  period: string
+  period: CalendarDate
   fee: number
   payment_type: PaymentType | null
 }
@@ -26,7 +27,7 @@ export async function getChargesForSummary(
 ): Promise<ChargeSummaryRow[]> {
   const rows = await getTransactionRows(barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate }, client)
   return rows.map((row) => ({
-    period: row.occurredAt.slice(0, 10),
+    period: calendarDate(row.occurredAt.slice(0, 10)),
     fee: row.amount,
     payment_type: row.paymentType,
   }))
@@ -35,7 +36,7 @@ export async function getChargesForSummary(
 export interface PaidCharge {
   chargeId: string
   agreementId: string
-  period: string
+  period: CalendarDate
   fee: number
   kind: AgreementKind
   riderId: string | null
@@ -76,7 +77,7 @@ export async function getPaidCharges(
     return {
       chargeId,
       agreementId: (row.agreementChargeId && agreementIdByChargeId.get(row.agreementChargeId)) ?? chargeId,
-      period: row.occurredAt.slice(0, 10),
+      period: calendarDate(row.occurredAt.slice(0, 10)),
       fee: row.amount,
       kind: row.kind === 'lease_charge' ? 'lease' : 'board',
       riderId: row.membershipId,
@@ -167,7 +168,7 @@ export async function getOutstandingCharges(
   return rows.map((row) => ({
     id: row.id,
     agreementId: row.agreement_id,
-    period: row.period,
+    period: calendarDate(row.period),
     kind: row.agreements.kind,
     riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,
     fee: row.fee,

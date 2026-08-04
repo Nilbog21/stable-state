@@ -86,6 +86,7 @@ import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership, createMockScheduleItem } from '@/test/fixtures'
 import type { ScheduleItem } from '@/lib/db/types'
 import BarnDashboardPage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '', timezone: 'America/New_York' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
@@ -234,7 +235,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_fetch_the_requested_date_when_a_valid_date_param_is_given', async () => {
-    await renderPage({ date: '2026-01-15' })
+    await renderPage({ date: calendarDate('2026-01-15') })
 
     const [, from] = vi.mocked(getScheduleForRange).mock.calls[0]
     // 2026-01-15 America/New_York (EST, UTC-5) midnight => 2026-01-15T05:00:00.000Z
@@ -316,7 +317,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_previous_day_link_with_the_expected_date_param', async () => {
-    const jsx = await renderPage({ date: '2026-07-23' })
+    const jsx = await renderPage({ date: calendarDate('2026-07-23') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Previous day' }) as HTMLAnchorElement
@@ -324,7 +325,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_next_day_link_with_the_expected_date_param', async () => {
-    const jsx = await renderPage({ date: '2026-07-23' })
+    const jsx = await renderPage({ date: calendarDate('2026-07-23') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Next day' }) as HTMLAnchorElement
@@ -332,7 +333,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_show_a_today_link_when_viewing_a_different_day', async () => {
-    const jsx = await renderPage({ date: '2026-01-01' })
+    const jsx = await renderPage({ date: calendarDate('2026-01-01') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Today' }) as HTMLAnchorElement
@@ -357,7 +358,7 @@ describe('BarnDashboardPage', () => {
     entity: 'horse' as const,
     recordType: 'coggins',
     fileName: 'coggins.pdf',
-    reminderDate: '2026-01-01',
+    reminderDate: calendarDate('2026-01-01'),
     ownerName: 'Thunderbolt',
     ownerId: 'horse-1',
   }
@@ -401,7 +402,7 @@ describe('BarnDashboardPage', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(new Date('2026-03-02T03:00:00Z'))
     vi.mocked(getDueDocuments).mockImplementation(async (_barnId: string, today: string) =>
-      [{ ...mockDueHorseDoc, reminderDate: '2026-03-02' }].filter((doc) => doc.reminderDate <= today)
+      [{ ...mockDueHorseDoc, reminderDate: calendarDate('2026-03-02') }].filter((doc) => doc.reminderDate <= today)
     )
     try {
       const jsx = await renderPage()
@@ -645,7 +646,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_fetch_a_seven_day_range_in_week_view', async () => {
-    await renderPage({ view: 'week', date: '2026-07-20' })
+    await renderPage({ view: 'week', date: calendarDate('2026-07-20') })
 
     const [, from, to] = vi.mocked(getScheduleForRange).mock.calls[0]
     expect(new Date(to as string).getTime() - new Date(from as string).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
@@ -653,7 +654,7 @@ describe('BarnDashboardPage', () => {
 
   it('should_anchor_the_week_view_range_to_the_calendar_weeks_sunday_for_a_mid_week_date', async () => {
     // 2026-07-23 is a Thursday; the calendar week containing it starts Sunday 2026-07-19
-    await renderPage({ view: 'week', date: '2026-07-23' })
+    await renderPage({ view: 'week', date: calendarDate('2026-07-23') })
 
     const [, from] = vi.mocked(getScheduleForRange).mock.calls[0]
     // 2026-07-19 America/New_York (EDT, UTC-4) midnight => 2026-07-19T04:00:00.000Z
@@ -670,7 +671,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_day_pill_pointing_at_the_day_view', async () => {
-    const jsx = await renderPage({ date: '2026-07-20' })
+    const jsx = await renderPage({ date: calendarDate('2026-07-20') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
@@ -679,7 +680,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_week_pill_pointing_at_the_week_view', async () => {
-    const jsx = await renderPage({ date: '2026-07-20' })
+    const jsx = await renderPage({ date: calendarDate('2026-07-20') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Week' }) as HTMLAnchorElement
@@ -698,7 +699,7 @@ describe('BarnDashboardPage', () => {
 
   it('should_land_the_day_pill_on_the_weeks_sunday_when_switching_from_a_week_view_that_does_not_include_today', async () => {
     // 2026-01-01 is a Thursday; the calendar week containing it starts Sunday 2025-12-28
-    const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-01-01') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
@@ -706,7 +707,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_mark_the_week_pill_active_in_week_view', async () => {
-    const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-20') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Week' })
@@ -714,7 +715,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_previous_week_link_stepping_by_seven_days', async () => {
-    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-23') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Previous week' }) as HTMLAnchorElement
@@ -723,7 +724,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_next_week_link_stepping_by_seven_days', async () => {
-    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-23') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'Next week' }) as HTMLAnchorElement
@@ -733,7 +734,7 @@ describe('BarnDashboardPage', () => {
 
   it('should_render_a_date_range_heading_in_week_view', async () => {
     // 2026-07-20 is a Monday; the calendar week containing it is Jul 19 (Sun) - Jul 25 (Sat)
-    const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-20') })
     render(jsx)
 
     const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
@@ -743,7 +744,7 @@ describe('BarnDashboardPage', () => {
 
   it('should_render_the_calendar_weeks_start_in_the_heading_regardless_of_the_selected_date', async () => {
     // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
-    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-23') })
     render(jsx)
 
     const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
@@ -752,7 +753,7 @@ describe('BarnDashboardPage', () => {
 
   it('should_render_the_calendar_weeks_end_in_the_heading_regardless_of_the_selected_date', async () => {
     // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
-    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-07-23') })
     render(jsx)
 
     const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
@@ -760,7 +761,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_show_a_this_week_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
-    const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
+    const jsx = await renderPage({ view: 'week', date: calendarDate('2026-01-01') })
     render(jsx)
 
     const link = screen.getByRole('link', { name: 'This Week' }) as HTMLAnchorElement

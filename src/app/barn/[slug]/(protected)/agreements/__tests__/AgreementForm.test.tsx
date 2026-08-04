@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createMockAgreement } from '@/test/fixtures'
 import { AgreementForm } from '../AgreementForm'
+import { calendarDate } from '@/lib/local-day'
 
 const riders = [{ id: 'rider-1', name: 'Dana Rider' }]
 const horses = [{ id: 'horse-1', name: 'Apple' }]
@@ -190,7 +191,7 @@ describe('AgreementForm - new mode', () => {
 })
 
 describe('AgreementForm - edit mode', () => {
-  const initialAgreement = createMockAgreement({ fee: 250, start_date: '2026-06-01', cadence: 'monthly' })
+  const initialAgreement = createMockAgreement({ fee: 250, start_date: calendarDate('2026-06-01'), cadence: 'monthly' })
 
   it('should_render_rider_name_as_text_in_edit_mode', () => {
     render(

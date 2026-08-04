@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../../agreements/actions'
 import { OutstandingTable } from '../OutstandingTable'
+import { calendarDate } from '@/lib/local-day'
 
 const lessonItem = {
   id: 'lesson-1',
@@ -34,7 +35,7 @@ const lessonItem = {
 const boardItem = {
   id: 'charge-1',
   itemType: 'board' as const,
-  date: '2026-06-01',
+  date: calendarDate('2026-06-01'),
   instructorName: null,
   riderNames: ['Carol Rider'],
   fee: 500,
@@ -43,7 +44,7 @@ const boardItem = {
 const leaseItem = {
   id: 'charge-2',
   itemType: 'lease' as const,
-  date: '2026-06-01',
+  date: calendarDate('2026-06-01'),
   instructorName: null,
   riderNames: ['Dana Rider'],
   fee: 200,

@@ -1,6 +1,6 @@
 import { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'
-import { addDays } from '@/lib/local-day'
-import type { ScheduleItem } from '@/lib/db/types'
+import { addDays, calendarDate } from '@/lib/local-day'
+import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
 
 /**
  * Pure month-grid + day-decoration model behind #1019's lesson-form conflict picker.
@@ -47,9 +47,9 @@ export interface DayDecorationOptions {
    *  on midnight, so the heatmap tracks the Hour dropdown the way ExhaustionBar does. */
   hour: number
   thresholdsByHorseId: Record<string, { high: number; moderate: number }>
-  /** "YYYY-MM-DD" for today in the barn's own timezone (#1149, `barnToday`) — the same frame
-   *  every other date on this grid is in. */
-  todayStr: string
+  /** Today in the barn's own timezone (#1149, `barnToday`) — the same frame every other date
+   *  on this grid is in, which #1223's brand now makes the compiler's problem. */
+  todayStr: CalendarDate
   /** The appointment form's barn-wide selection (#1020, labelled "All") — the mirror of #1147's
    *  barn-wide *item*.
    *  It normally ticks no horses, so without this the horse branch below is skipped and the grid
@@ -64,8 +64,8 @@ export interface DayDecorationOptions {
 
 /** All 42 dates of `month`'s ("YYYY-MM") Sunday-start grid, spilling into the
  *  neighbouring months at both ends. */
-export function getMonthGrid(month: string): string[] {
-  const first = `${month}-01`
+export function getMonthGrid(month: string): CalendarDate[] {
+  const first = calendarDate(`${month}-01`)
   const gridStart = addDays(first, -new Date(`${first}T00:00:00Z`).getUTCDay())
   return Array.from({ length: GRID_DAYS }, (_, i) => addDays(gridStart, i))
 }
@@ -113,7 +113,7 @@ function worstBand(
 }
 
 export function computeDayDecorations(
-  dates: string[],
+  dates: CalendarDate[],
   items: ScheduleItem[],
   opts: DayDecorationOptions
 ): Record<string, DayDecoration> {

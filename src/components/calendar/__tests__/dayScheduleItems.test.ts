@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarnEvent, createMockScheduleItem as scheduleItem } from '@/test/fixtures'
 import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay } from '../dayScheduleItems'
+import { calendarDate } from '@/lib/local-day'
 
 describe('mergeDayScheduleDisplayItems', () => {
   it('should_return_empty_array_when_no_items', () => {
@@ -59,15 +60,15 @@ describe('mergeDayScheduleDisplayItems', () => {
 })
 
 describe('groupScheduleItemsByDay', () => {
-  const dates = ['2026-07-20', '2026-07-21', '2026-07-22']
+  const dates = ['2026-07-20', '2026-07-21', '2026-07-22'].map(calendarDate)
 
   it('should_return_one_bucket_per_date_even_when_empty', () => {
     const result = groupScheduleItemsByDay(dates, [], [], [], [])
 
     expect(result).toEqual([
-      { date: '2026-07-20', items: [] },
-      { date: '2026-07-21', items: [] },
-      { date: '2026-07-22', items: [] },
+      { date: calendarDate('2026-07-20'), items: [] },
+      { date: calendarDate('2026-07-21'), items: [] },
+      { date: calendarDate('2026-07-22'), items: [] },
     ])
   })
 
@@ -78,9 +79,9 @@ describe('groupScheduleItemsByDay', () => {
     const result = groupScheduleItemsByDay(dates, items, [lesson], [], [])
 
     expect(result).toEqual([
-      { date: '2026-07-20', items: [] },
-      { date: '2026-07-21', items: [{ itemType: 'lesson', id: 'lesson-1', lesson }] },
-      { date: '2026-07-22', items: [] },
+      { date: calendarDate('2026-07-20'), items: [] },
+      { date: calendarDate('2026-07-21'), items: [{ itemType: 'lesson', id: 'lesson-1', lesson }] },
+      { date: calendarDate('2026-07-22'), items: [] },
     ])
   })
 
