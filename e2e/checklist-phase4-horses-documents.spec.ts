@@ -238,7 +238,8 @@ async function uploadDocument(
  * merely correlating with it (#1190's rationale for the same problem one page over). Nothing on
  * this page renders differently on hydration unless it is driven, so an interaction-based signal
  * is the only kind available here, and it has to be *retried*: a click dispatched before React is
- * listening is simply lost, and nothing replays it.
+ * listening is simply lost, and nothing replays it — e2e/CLAUDE.md's fact 10, stated there too,
+ * so a correction made here goes there as well (#1279).
  *
  * Driven through the ExhaustionBar rather than through the reminder input itself so that the
  * retry writes nothing — a retried blur would issue duplicate saves. Toggled shut again so the

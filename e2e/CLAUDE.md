@@ -59,12 +59,13 @@ the wrong reason. Found by a break-the-code probe that *passed*. See
 
 **8. A Server Action POST resolving does not imply React has committed the resulting state.**
 The response landing and the DOM reflecting it are separate events, and nothing bridges them.
-The control's own enabled/label flip is the only sound synchronisation point — a `Copied!`
-label, an `aria-expanded`, a warning that appears. Three specs hand-roll this three different
-ways today (`checklist-phase4-calendar-feed.spec.ts`,
-`checklist-phase4-horses-documents.spec.ts`'s `waitForHorseDetailHydrated`,
-`checklist-phase4-settings-tiers-events.spec.ts`'s `warningShows`); #1280 extracts the helper.
-*(#1199, #1205, #1208)*
+Where the control itself flips — an enabled state, a `Copied!` label — that flip is the sound
+synchronisation point: `checklist-phase4-calendar-feed.spec.ts`'s regenerate test awaits the
+POST and *then* `toBeEnabled()`, because `handleRegenerate` sets the new token and clears
+`pending` in one continuation, so the button being interactive again means the state has
+already advanced. Where nothing rendered changes at all, the POST *is* the only signal there
+is — `checklist-phase4-horses-documents.spec.ts`'s `setReminderDate`, whose cell holds the
+typed date in React state and shows it whether or not the save ever landed. *(#1208)*
 
 **9. Filling a React-controlled input immediately after `page.goto` can lose the fill to
 hydration.** On a page that hasn't hydrated, `fill()` moves the DOM value and nothing else — no
@@ -74,7 +75,10 @@ wait for a client-only consequence before the fill matters. *(#1205)*
 
 **10. A click dispatched before React is listening is simply lost, and nothing replays it.**
 This is why a hydration barrier on an interaction-only page has to *retry* rather than wait
-once — see `checklist-phase4-horses-documents.spec.ts`'s `toPass` loop. *(#1199)*
+once — see `checklist-phase4-horses-documents.spec.ts`'s `waitForHorseDetailHydrated`, whose
+`toPass` loop re-clicks until the `useState`-gated popover opens. Three specs hand-roll a
+barrier three different ways today; #1280 extracts the shared one, covering both this case
+and the page that has a zero-interaction signal. *(#1199)*
 
 ## The rest of the e2e rules
 
