@@ -6,7 +6,8 @@
 // Deliberately no `covers:` line for src/lib/db/backup.ts or document-backup.ts, the two
 // modules that actually build these files: select-specs.sh lists the whole of src/lib/** in
 // ALWAYS_FULL, so a change to either already selects every spec. A glob here would be dead
-// weight duplicating that, and its own comment says per-spec declarations are route globs.
+// weight duplicating that — and nothing more than that, since #1281 retired the rule that
+// per-spec declarations stay pure route globs.
 //
 // The workbook is read back with exceljs and the archive with jszip — the two libraries the
 // app itself builds them with (backup.ts moved off SheetJS in #1218), both already in

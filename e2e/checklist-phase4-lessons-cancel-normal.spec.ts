@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/page.tsx
 // covers: src/components/calendar/**
+// covers: src/app/actions/lesson-cancellation.ts
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'

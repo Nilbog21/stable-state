@@ -22,15 +22,20 @@ make_repo() {
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
-  mkdir -p "$dir/e2e/support" "$dir/src/app/barn/[slug]/finances" "$dir/src/lib/db" "$dir/src/components/calendar"
+  mkdir -p "$dir/e2e/support" "$dir/src/app/barn/[slug]/finances" "$dir/src/lib/db" "$dir/src/components/calendar" "$dir/src/app/actions"
 
   printf '// covers: src/app/barn/[slug]/finances/**\n' > "$dir/e2e/finances.spec.ts"
-  printf '// covers: src/components/calendar/CalendarDayView.tsx\n' > "$dir/e2e/calendar.spec.ts"
+  # Deliberately not a src/components/ path: those are always-full, so an exact glob there
+  # would never be the thing selecting a spec, and Test 2 would be asserting on nothing.
+  printf '// covers: src/app/barn/[slug]/NavigationBlocker.tsx\n' > "$dir/e2e/blocker.spec.ts"
   printf '// covers: src/app/barns/**\n' > "$dir/e2e/barns.spec.ts"
 
   touch "$dir/e2e/global-setup.ts" "$dir/e2e/support/test.ts" "$dir/playwright.config.ts"
   touch "$dir/src/app/barn/[slug]/finances/page.tsx"
+  touch "$dir/src/app/barn/[slug]/NavigationBlocker.tsx"
   touch "$dir/src/components/calendar/CalendarDayView.tsx"
+  touch "$dir/src/components/ExhaustionBar.tsx"
+  touch "$dir/src/app/actions/lessons.ts"
   touch "$dir/src/lib/db/types.ts"
   mkdir -p "$dir/src/app/barns" && touch "$dir/src/app/barns/page.tsx"
   mkdir -p "$dir/supabase/migrations" && touch "$dir/supabase/migrations/20260101000000_x.sql"
@@ -42,6 +47,12 @@ make_repo() {
 # Runs the selector inside $REPO with the given changed paths on stdin.
 select_specs() {
   printf '%s\n' "$@" | (cd "$REPO" && bash "$SCRIPT" 2>&1)
+}
+
+# Same, but stdout discarded — the warnings are the assertion, and merging the two
+# streams can't tell "warned about nothing" from "warned about everything".
+select_specs_stderr() {
+  printf '%s\n' "$@" | (cd "$REPO" && bash "$SCRIPT" 2>&1 >/dev/null)
 }
 
 # Test 1: a glob ending /** matches by literal prefix
@@ -57,9 +68,9 @@ rm -rf "$REPO"
 
 # Test 2: a glob with no /** matches the exact path only
 REPO="$(make_repo)"
-out="$(select_specs 'src/components/calendar/CalendarDayView.tsx')"
+out="$(select_specs 'src/app/barn/[slug]/NavigationBlocker.tsx')"
 if [ "$out" = "mode=scoped
-spec=e2e/calendar.spec.ts" ]; then
+spec=e2e/blocker.spec.ts" ]; then
   assert_pass "exact glob selects its spec"
 else
   assert_fail "exact glob selects its spec" "output=$out"
@@ -162,6 +173,51 @@ if [ "$code" -ne 0 ]; then
 else
   assert_fail "lint fails outside a git repository" "exit=$code output=$out"
 fi
+
+# Test 12: a src/components/ path outside ui/ is always-full
+# #1281 — ALWAYS_FULL carried only src/components/ui/**, so a component reached through a
+# shared helper (ExhaustionBar via waitForEditFormHydrated) was backstopped by nothing.
+REPO="$(make_repo)"
+out="$(select_specs 'src/components/ExhaustionBar.tsx')"
+if [ "$out" = "mode=full" ]; then
+  assert_pass "non-ui component path yields mode=full"
+else
+  assert_fail "non-ui component path yields mode=full" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 13: a src/app/actions/ path is always-full
+REPO="$(make_repo)"
+out="$(select_specs 'src/app/actions/lessons.ts')"
+if [ "$out" = "mode=full" ]; then
+  assert_pass "server action path yields mode=full"
+else
+  assert_fail "server action path yields mode=full" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 14: an input path matching nothing tracked is named on stderr
+# mode=none otherwise reads identically for "no spec declares this" and "this path does not
+# exist" — #1207 reported a declared module as undeclared off a typo'd extension.
+REPO="$(make_repo)"
+err="$(select_specs_stderr 'src/components/Nonexistent.tsx')"
+if echo "$err" | grep -q 'src/components/Nonexistent.tsx'; then
+  assert_pass "untracked input path warns on stderr"
+else
+  assert_fail "untracked input path warns on stderr" "stderr=$err"
+fi
+rm -rf "$REPO"
+
+# Test 15: a tracked input path warns about nothing
+# The guard on Test 14 — a warning that fires on every path is worse than no warning.
+REPO="$(make_repo)"
+err="$(select_specs_stderr 'src/lib/db/types.ts')"
+if [ -z "$err" ]; then
+  assert_pass "tracked input path emits no warning"
+else
+  assert_fail "tracked input path emits no warning" "stderr=$err"
+fi
+rm -rf "$REPO"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

@@ -7,9 +7,11 @@
 // (PRE_RELEASE_TEST_CHECKLIST.md 795-803).
 //
 // `src/lib/ics.ts` and `src/lib/db/calendar-feed.ts` are deliberately NOT declared above:
-// `select-specs.sh`'s ALWAYS_FULL already carries the whole of `src/lib/**` (and
-// `src/components/ui/**`, which is where Button lives), and that script's own comment asks
-// per-spec declarations to stay pure `src/app/` route globs.
+// `select-specs.sh`'s ALWAYS_FULL already carries the whole of `src/lib/**` (and, since #1281,
+// `src/components/**`, which is where Button lives), so a change to either already selects every
+// spec and a glob here would be dead weight duplicating that. Note #1281 also retired the rule
+// that per-spec declarations stay pure `src/app/` route globs — a glob under an always-full
+// prefix is now kept where it states something true about what the spec drives.
 //
 // ---------------------------------------------------------------------------
 // Three things about this file that are load-bearing rather than stylistic

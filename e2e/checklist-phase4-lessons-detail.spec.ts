@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
+// covers: src/components/ExhaustionBar.tsx
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
