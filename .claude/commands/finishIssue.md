@@ -130,6 +130,8 @@ For every migration filename found in the PR diff, confirm it appears in **both*
 
 Stop. Do not proceed to Step 2 until the user confirms the sync is done and this check passes.
 
+**Under `/fableFleet`, request a sync slot from the orchestrator rather than stopping** — it holds that lock fleet-wide and runs `/sync-migrations` itself; you are forbidden to. Reaching this point at all means the sync at `/testIssue` Step 1 didn't happen, so say so in the request.
+
 **If all of this PR's migrations already show in both columns**, continue to Step 2.
 
 ---
