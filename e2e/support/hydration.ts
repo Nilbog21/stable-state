@@ -29,6 +29,15 @@
 // mismatched *attribute* during hydration (e2e/CLAUDE.md fact 7), so a barrier gating on an
 // `aria-*`/`data-*` a client component computes reads the server's value and passes vacuously.
 //
+// A signal also has to be able to become **visible**, which is `support/read.ts`'s ceiling
+// (e2e/CLAUDE.md fact 2) reaching this module for the same reason: `waitForHydrated` bottoms out
+// in the same `waitFor()`, whose default is `state: 'visible'`. Point it at an `<option>` inside
+// a collapsed `<select>` (#1205) or anything inside a closed `<details>` (#1204) and it cannot
+// succeed — it can only run out the test's budget. Both are normal markup, not edge cases, and
+// the two hazards are independent: `useState`-gated markup inside a closed `<details>` is a
+// perfectly trustworthy hydration signal that this helper still cannot reach. For those, drive
+// the container open and use `hydrateByDriving`.
+//
 // ## No explicit timeouts
 //
 // `waitFor` is already unbounded under `actionTimeout: 0`, and `toPass` is unbounded for its own
@@ -40,7 +49,8 @@ import { expect, type Locator } from '@playwright/test'
 /**
  * Blocks until `signal` is visible, where `signal` is markup that **cannot** exist before
  * hydration — so its appearance strictly post-dates hydration rather than merely correlating
- * with it. See the module comment's signal section for what qualifies.
+ * with it. See the module comment's signal section for what qualifies, including the ceiling:
+ * a signal that can never become *visible* runs out the budget rather than failing.
  *
  * For a page that renders identically until it is driven, there is no such signal and this is
  * the wrong tool: use `hydrateByDriving`.

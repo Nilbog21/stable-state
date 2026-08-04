@@ -3,8 +3,11 @@ import type { Locator } from '@playwright/test'
 import { waitForHydrated, hydrateByDriving } from './hydration'
 
 /**
- * A `Locator` stand-in recording the order its methods are called in — `read.test.ts`'s shape,
- * for the same reason: the claim is about *sequencing*, which a call count can't express.
+ * A `Locator` stand-in recording which of its methods are called. `read.test.ts`'s shape, but
+ * not for its reason — a settled read makes two calls and the claim there is about their
+ * *order*, whereas `waitForHydrated` makes one. What the recording buys here is that the
+ * assertion pins the whole call list: a helper that also read or clicked would fail it, where a
+ * "was `waitFor` called" boolean would not.
  */
 function fakeLocator(): { locator: Locator; calls: string[] } {
   const calls: string[] = []
