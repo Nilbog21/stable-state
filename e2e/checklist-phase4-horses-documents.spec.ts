@@ -4,6 +4,7 @@
 // covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
 // covers: src/components/documents/**
 // covers: src/components/EmptyState.tsx
+// covers: src/components/ExhaustionBar.tsx
 //
 // The horse Documents section end to end: upload and redirect, the row appearing, the signed
 // link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
@@ -81,6 +82,14 @@ let seedBarnId = ''
 // getDueDocuments both compare against barnToday(barn.timezone), never the runner's or the
 // browser's clock. ±30/45/60/3 keeps every one of them clear of a midnight boundary, so a run
 // straddling barn-local midnight still sees the same side of "due" for each.
+//
+// `barnToday` is deliberately *not* an independent oracle here: it is the same call the horse
+// detail page and getDueDocuments make, so a barnToday that resolved the wrong calendar day
+// would shift the seed and the app together and these tests would still pass. That is the
+// house frame rather than a gap in this slice — `fixtures.ts`'s own `daysFromNow` is built on
+// the same function, and `src/lib/**` is in select-specs.sh's ALWAYS_FULL list, so a change to
+// it runs the entire suite rather than this spec alone. The margins above bound what such a
+// bug could hide to a misresolution of more than three days.
 let uploadedReminderDate = ''
 let editedReminderDate = ''
 let softSavedReminderDate = ''
@@ -238,6 +247,12 @@ async function uploadDocument(
 async function waitForHorseDetailHydrated(page: Page): Promise<void> {
   const bar = page.getByRole('button', { name: /^Exhaustion: / })
   const openPopover = page.locator('[aria-label^="Exhaustion: "][aria-expanded="true"]')
+
+  // Names the cause before the retry loop can bury it. Verified by removing the Exhaustion
+  // section from the page: without this the whole gate degrades to a bare test timeout inside
+  // `toPass`, with nothing saying the bar was missing rather than merely unhydrated. Still
+  // unbounded, so it tightens nothing.
+  await bar.waitFor()
 
   await expect(async () => {
     // Re-read before clicking, so an attempt whose re-render merely lagged the read is not
@@ -444,10 +459,13 @@ test.describe('the horse document upload screen', () => {
     await page.waitForURL(atHorseDetail(rowanId), { waitUntil: 'commit' })
   })
 
-  // Both halves of the line in one assertion. `bars` pins that exactly one appeared and is the
-  // proof the form resolved at all; `valueNow` is the *indeterminate* half — an indeterminate
-  // progressbar is precisely one carrying no aria-valuenow, and a determinate one would satisfy
-  // the count alone. The waitFor is satisfiable only once the submit is in flight.
+  // `valueNow` is where this assertion's force is: an indeterminate progressbar is precisely one
+  // carrying no aria-valuenow, and a determinate one would satisfy a bare existence check. The
+  // waitFor is satisfiable only once the submit is in flight, so it is also the proof the form
+  // resolved at all.
+  //
+  // `bars` is the weaker half and is kept only as an explicit record that one bar is expected —
+  // it can never read 2, because `bar.waitFor()` above is strict and would have thrown first.
   test('an_indeterminate_progress_bar_shows_while_a_horse_document_uploads @manager', async ({ page }) => {
     await openAddDocument(page, rowanId)
     await chooseFileAndSubmit(page, LARGEST_ACCEPTED_PDF)
