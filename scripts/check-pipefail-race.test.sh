@@ -83,6 +83,44 @@ else
 fi
 rm -rf "$REPO"
 
+# Tests 6-10: the flag cluster doesn't have to *end* in q/m — these are the spellings the
+# consumers are actually written as, `grep -m1` being this repo's own house style.
+for variant in 'grep -qi needle' 'grep -qE needle' 'grep --quiet needle' 'grep -m1 needle' 'grep -m 1 needle'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+git log | $variant")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_fail "pipefail + $variant: exits non-zero" "script exited 0 (expected non-zero)"
+  else
+    assert_pass "pipefail + $variant: exits non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Tests 11-12: `||` is not a pipe — neither has a producer to take SIGPIPE
+for fallback in '[ -f f ] || grep -q needle f' 'git log || head -1'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+$fallback")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_pass "|| fallback ($fallback): exits 0"
+  else
+    assert_fail "|| fallback ($fallback): exits 0" "script exited non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Test 13: a draining grep is still not a hazard — guards against over-broadening the flag match
+REPO="$(make_repo victim.sh '#!/usr/bin/env bash
+set -euo pipefail
+git log | grep -c needle')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "pipefail + grep -c: exits 0"
+else
+  assert_fail "pipefail + grep -c: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
