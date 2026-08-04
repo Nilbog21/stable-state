@@ -151,13 +151,24 @@ describe('findOrCreateAuthUser', () => {
 })
 
 // Generic chainable/thenable query-builder stub: every call returns itself except the
-// terminal `.then`, so one factory covers every select/delete/eq/in/not chain shape below
+// terminal `.then`, so one factory covers every select/delete/eq/in/not/is chain shape below
 // without hand-writing each depth (mirrors the real supabase-js query builder, which is
 // itself thenable).
-function chain(result: { data: unknown; error: unknown }) {
+//
+// Each call is also recorded into `log`, which is what lets a test assert on *which* filter a
+// query applied. Returning `builder` from every method is precisely what makes that invisible
+// otherwise — and the filter is the whole subject of the orphan-sweep tests below.
+type FilterCall = { table: string; method: string; args: unknown[] }
+
+function chain(result: { data: unknown; error: unknown }, table: string, log: FilterCall[]) {
   const builder: Record<string, unknown> = {}
-  const methods = ['select', 'delete', 'eq', 'in', 'not']
-  for (const m of methods) builder[m] = vi.fn(() => builder)
+  const methods = ['select', 'delete', 'eq', 'in', 'not', 'is']
+  for (const m of methods) {
+    builder[m] = vi.fn((...args: unknown[]) => {
+      log.push({ table, method: m, args })
+      return builder
+    })
+  }
   builder.then = (resolve: (v: unknown) => void) => resolve(result)
   return builder
 }
@@ -171,14 +182,15 @@ function buildClient(opts: {
   listUsersPages?: { id: string }[][]
 }) {
   const tableCallCounts: Record<string, number> = {}
+  const log: FilterCall[] = []
   const from = vi.fn((table: string) => {
     const entry = opts.tables[table]
     if (Array.isArray(entry)) {
       const idx = tableCallCounts[table] ?? 0
       tableCallCounts[table] = idx + 1
-      return chain(entry[Math.min(idx, entry.length - 1)])
+      return chain(entry[Math.min(idx, entry.length - 1)], table, log)
     }
-    return chain(entry ?? { data: [], error: null })
+    return chain(entry ?? { data: [], error: null }, table, log)
   })
 
   let listUsersCall = 0
@@ -191,6 +203,7 @@ function buildClient(opts: {
 
   return {
     from,
+    log,
     rpc: vi.fn().mockResolvedValue(opts.rpc ?? { data: null, error: null }),
     storage: { from: vi.fn().mockReturnValue({ remove: vi.fn().mockResolvedValue({ error: opts.storageError ?? null }) }) },
     auth: { admin: { listUsers, deleteUser: vi.fn().mockResolvedValue({ error: null }) } },
@@ -236,6 +249,51 @@ describe('teardownBarnData', () => {
     await teardownBarnData('barn-1', client)
 
     expect(client.storage.from('documents').remove).toHaveBeenCalledWith(['p/1.jpg'])
+  })
+
+  // Both the storage select and the delete, hence two entries — an assertion that only pinned
+  // one would pass on a sweep that removed the photo objects and then left the rows behind.
+  it('should_filter_orphaned_stub_profiles_on_null_user_id', async () => {
+    const client = buildClient({
+      tables: {
+        lesson_tiers: { data: [], error: null },
+        notifications: { data: [], error: null },
+        horse_documents: { data: [], error: null },
+        staff_documents: { data: [], error: null },
+        rider_documents: { data: [], error: null },
+        horses: { data: [], error: null },
+        barn_memberships: [{ data: [{ profile_id: 'p1' }], error: null }, { data: [], error: null }],
+        profiles: { data: [], error: null },
+      },
+    })
+
+    await teardownBarnData('barn-1', client)
+
+    expect(client.log.filter((c: { table: string; method: string }) => c.table === 'profiles' && c.method === 'is')).toEqual([
+      { table: 'profiles', method: 'is', args: ['user_id', null] },
+      { table: 'profiles', method: 'is', args: ['user_id', null] },
+    ])
+  })
+
+  // The negative half: a sweep that kept `is_managed` alongside the new filter would still miss
+  // every demoted stub, and the test above alone can't see that.
+  it('should_not_filter_orphaned_stub_profiles_on_is_managed', async () => {
+    const client = buildClient({
+      tables: {
+        lesson_tiers: { data: [], error: null },
+        notifications: { data: [], error: null },
+        horse_documents: { data: [], error: null },
+        staff_documents: { data: [], error: null },
+        rider_documents: { data: [], error: null },
+        horses: { data: [], error: null },
+        barn_memberships: [{ data: [{ profile_id: 'p1' }], error: null }, { data: [], error: null }],
+        profiles: { data: [], error: null },
+      },
+    })
+
+    await teardownBarnData('barn-1', client)
+
+    expect(client.log.filter((c: { table: string; method: string }) => c.table === 'profiles' && c.method === 'eq')).toEqual([])
   })
 
   it('should_throw_when_profile_photo_storage_removal_errors', async () => {
