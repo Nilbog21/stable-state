@@ -1,0 +1,530 @@
+// covers: src/app/barn/[slug]/(protected)/horses/**
+// covers: src/app/barn/[slug]/(protected)/documents/new/**
+// covers: src/app/barn/[slug]/(protected)/page.tsx
+// covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
+// covers: src/components/documents/**
+// covers: src/components/EmptyState.tsx
+//
+// The horse Documents section end to end: upload and redirect, the row appearing, the signed
+// link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
+// affordances, and then the expiration reminder lifecycle — set on upload, edited inline,
+// edited without a reload, driven past due, and surfacing as a Dashboard Reminders card that
+// links back to the horse (PRE_RELEASE_TEST_CHECKLIST.md 441-454).
+//
+// Three horses, because each block needs a starting state the others would destroy. Willow
+// carries the upload → list → open → delete chain and must end empty. Rowan takes the two
+// 4.4 MB pending-state uploads and the 4.6 MB rejection, so those large rows never crowd the
+// other two. Juniper must hold *exactly one* document for its whole chain — the reminder cell
+// and the dashboard card are both located without a per-row disambiguator, and a second
+// document on that horse would make either ambiguous or, worse, silently pick the wrong row.
+//
+// Three mutually non-substring names, deliberately: Playwright's text and accessible-name
+// matching is substring-based, so a fixture pair like the shared `Test Rider`/`Test Rider2`
+// makes a filter for one silently match both.
+import { createHash } from 'crypto'
+import { readFileSync } from 'fs'
+import type { Frame, Locator } from '@playwright/test'
+import { test, expect, withBarn, type Page } from './support/test'
+import { addHorse, assetPath } from './support/fixtures'
+import { mustSucceed } from '@/lib/db/service-role'
+import { barnToday } from '@/lib/barn-timezone'
+import { addDays } from '@/lib/local-day'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Seed inputs, not builder outputs — these are what the spec puts in, and what the horse
+// detail page's own h1 and the dashboard card's owner name are read back as below.
+const WILLOW = 'Willow'
+const ROWAN = 'Rowan'
+const JUNIPER = 'Juniper'
+
+// Every asset the checklist lines name, verbatim. The two large ones exist for exactly this
+// slice: 4,600,000 bytes is over DocumentUploadForm's 4,500,000 limit and 4,400,000 is the
+// largest accepted size (scripts/CLAUDE.md's asset table).
+const TEST_PDF = 'test_1_kb.pdf'
+const LARGEST_ACCEPTED_PDF = 'test_4_4_mb.pdf'
+const OVER_LIMIT_PDF = 'test_4_6_mb.pdf'
+
+/**
+ * Juniper's document is filed as Coggins rather than left on the form's default.
+ *
+ * RECORD_TYPE_OPTIONS.horse[0] is `insurance_binder`, so a regression that ignored the
+ * <select> entirely — or lost the hidden `record_type` input the controlled select feeds —
+ * would still produce "Insurance Binder" and leave a test expecting the default green. Picking
+ * the third option makes the dashboard card's middle segment a real reading of what was
+ * chosen (#1196's design-time defence, applied to a select rather than to an ordering).
+ */
+const JUNIPER_RECORD_TYPE = { value: 'coggins', label: 'Coggins' }
+
+/** The client-side over-limit message, from DocumentUploadForm's own file onChange. */
+const OVER_LIMIT_MESSAGE = 'File exceeds 4.5 MB limit'
+
+// en-US "MMM D, YYYY", which is what DocumentRemindersSection renders through formatShortDate.
+// Restated here from a literal table rather than by importing that formatter: an expected value
+// derived from the code under test agrees with any bug in it, and Intl is fenced off outside
+// the date modules anyway (eslint.config.mjs).
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function shortDate(day: string): string {
+  const [year, month, date] = day.split('-')
+  return `${MONTHS[Number(month) - 1]} ${Number(date)}, ${year}`
+}
+
+const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
+
+let willowId: string
+let rowanId: string
+let juniperId: string
+/** Captured in the seed so the storage sweep and the storage-path read can't depend on `barn.data`. */
+let seedClient: SupabaseClient | null = null
+let seedBarnId = ''
+
+// Four days on Juniper's one document, all in the *barn's* frame — ReminderDueBadge and
+// getDueDocuments both compare against barnToday(barn.timezone), never the runner's or the
+// browser's clock. ±30/45/60/3 keeps every one of them clear of a midnight boundary, so a run
+// straddling barn-local midnight still sees the same side of "due" for each.
+let uploadedReminderDate = ''
+let editedReminderDate = ''
+let softSavedReminderDate = ''
+let pastReminderDate = ''
+
+const barn = withBarn('phase4-horses-documents', async ({ supabase, barn }) => {
+  seedClient = supabase
+  seedBarnId = barn.id
+
+  willowId = (await addHorse(supabase, barn.id, WILLOW)).id
+  rowanId = (await addHorse(supabase, barn.id, ROWAN)).id
+  juniperId = (await addHorse(supabase, barn.id, JUNIPER)).id
+
+  const today = barnToday(barn.timezone)
+  uploadedReminderDate = addDays(today, 30)
+  editedReminderDate = addDays(today, 45)
+  softSavedReminderDate = addDays(today, 60)
+  pastReminderDate = addDays(today, -3)
+})
+
+// ---------------------------------------------------------------------------
+// Locators and helpers
+// ---------------------------------------------------------------------------
+
+const horseUrl = (horseId: string) => `/barn/${barn.slug}/horses/${horseId}`
+
+/**
+ * Both destinations, as RegExp rather than Playwright's URL glob — `?` is a wildcard there
+ * rather than the query separator the upload URL needs it to be (same reason #1197/#1201 give).
+ * The upload URL is anchored, so the `&type=photo` variant of the same route cannot match it.
+ */
+const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
+const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entity=horse&id=${horseId}$`)
+
+/** The <section> owning a given h2 — the horse detail page and the dashboard are both h2-partitioned. */
+function section(page: Page, heading: string) {
+  return page.locator('section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
+}
+
+const documentsSection = (page: Page) => section(page, 'Documents')
+const remindersSection = (page: Page) => section(page, 'Reminders')
+
+/** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
+const uploadForm = (page: Page) => page.locator('main form')
+
+/**
+ * The submit button, located structurally rather than by its accessible name.
+ *
+ * Not decoration: the label is `{pending ? 'Uploading…' : 'Upload'}`, so a name locator stops
+ * matching at exactly the moment lines 447/448 need it — and a *non-exact* name match would
+ * match "Uploading…" as a substring of nothing and "Upload" as a prefix of it, which is the
+ * containment hazard #1202 found, live in this form.
+ */
+const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
+
+/**
+ * The form's File field — its own child div, located by the file input it contains.
+ *
+ * The over-limit message is a bare <p> with no role, so it can only be reached structurally.
+ * Located by the field rather than by the message's own text: a locator built from the string
+ * it then asserts proves nothing.
+ */
+const fileField = (page: Page) =>
+  uploadForm(page).locator('> div').filter({ has: page.locator('input[type="file"]') })
+
+/** A document's row, addressed by the file-name link it contains. */
+const documentRow = (page: Page, fileName: string) =>
+  documentsSection(page).locator('tr').filter({ has: page.getByRole('link', { name: fileName, exact: true }) })
+
+/** That row's Reminder Date cell — the <td> holding the date input, which is what "next to the date" means. */
+const reminderDateCell = (page: Page, fileName: string) =>
+  documentRow(page, fileName).locator('td').filter({ has: page.locator('input[type="date"]') })
+
+const reminderDateInput = (page: Page, fileName: string) =>
+  reminderDateCell(page, fileName).locator('input[type="date"]')
+
+/**
+ * Reach the Add Document screen by *clicking through* from the horse page, never by goto.
+ *
+ * Three of this file's assertions are about client state — the over-limit rejection, the
+ * disabled submit button and the progress bar — and every one of them needs a hydrated form.
+ * DocumentUploadForm's size check runs in the file input's React onChange, and `pending` comes
+ * from useActionState; an unhydrated form has no onChange attached and submits as a native
+ * POST with no pending state at all, so a goto would race hydration and fail in the *quiet*
+ * direction on the rejection test (no error rendered, no crash either). Arriving by a
+ * client-side navigation means the destination is rendered by an already-running React root,
+ * so its handlers are attached before the first line of the test body runs (#1197).
+ *
+ * Waits on the submit button rather than the Choose File one: `input[type="file"]` also carries
+ * the button role and resolves to "Choose File" by accessible name, so that locator is a
+ * strict-mode violation rather than a guard (#1197, measured).
+ */
+async function openAddDocument(page: Page, horseId: string): Promise<void> {
+  await page.goto(horseUrl(horseId))
+  await documentsSection(page).getByRole('link', { name: 'Add Document', exact: true }).click()
+  await page.waitForURL(atDocumentUpload(horseId), { waitUntil: 'commit' })
+  await submitButton(page).waitFor()
+}
+
+/**
+ * Choose a file and submit, returning the submit button so a caller can assert on it mid-flight.
+ *
+ * test.slow() lives here rather than on the individual tests so whichever test actually pays
+ * for an upload gets the raised budget, including under a standalone `--grep` of one of them
+ * (#1206 — moving it back onto the tests reintroduces a failure that only appears when a
+ * downstream test is run alone). No explicit timeout anywhere below: every waitFor* defaults to
+ * unbounded under actionTimeout: 0, so a number could only tighten it (#1211).
+ */
+async function chooseFileAndSubmit(page: Page, asset: string): Promise<Locator> {
+  test.slow()
+  const submit = submitButton(page)
+  await page.setInputFiles('input[type="file"]', assetPath(asset))
+  await submit.click()
+  return submit
+}
+
+/** Choose, submit, and land back on the horse. */
+async function uploadDocument(
+  page: Page,
+  horseId: string,
+  opts: { asset: string; recordType?: string; reminderDate?: string }
+): Promise<void> {
+  if (opts.recordType) await uploadForm(page).locator('select').selectOption(opts.recordType)
+  if (opts.reminderDate) await uploadForm(page).locator('input[name="reminder_date"]').fill(opts.reminderDate)
+  await chooseFileAndSubmit(page, opts.asset)
+  await page.waitForURL(atHorseDetail(horseId), { waitUntil: 'commit' })
+}
+
+/**
+ * Type a new reminder date into the inline cell and blur it, waiting for the save to land.
+ *
+ * The wait is on the server action's own POST rather than on anything rendered, because
+ * nothing rendered changes for a future date: ReminderDateCell holds `value` in React state,
+ * so the cell shows the new date the instant it is typed whether or not it ever saved. Without
+ * this the reload in the caller would race — and win — against an action still in flight.
+ * Registered before the blur, since the response can arrive first.
+ */
+async function setReminderDate(page: Page, fileName: string, horseId: string, day: string): Promise<void> {
+  const input = reminderDateInput(page, fileName)
+  await input.fill(day)
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(`/horses/${horseId}`)
+  )
+  await input.blur()
+  await saved
+}
+
+/** A horse's single document's storage path, read service-role — storage shape, never an expected UI value. */
+async function storedDocumentPath(horseId: string): Promise<string> {
+  if (!seedClient) throw new Error('no seeded service client')
+  const row = mustSucceed<{ storage_path: string }>(
+    await seedClient.from('horse_documents').select('storage_path').eq('horse_id', horseId).single(),
+    'read horse document storage path'
+  )
+  return row.storage_path
+}
+
+// ---------------------------------------------------------------------------
+// Willow: upload -> listed -> opened by signed URL -> deleted
+// ---------------------------------------------------------------------------
+
+// Serial: every step starts from the state its predecessor left behind, which is the
+// checklist's own framing ("That document is listed…", "Delete it →…"). Safe because this file
+// owns its barn.
+test.describe.serial('a horse document', () => {
+  // This chain ends with the document *deleted*, and that is the one state teardown cannot
+  // reach: teardownBarnData removes storage by reading `storage_path` off the rows, and the
+  // Delete has just removed the row. The object's only deletion is deleteHorseDocumentAction's
+  // own best-effort `removeFile(...).catch(() => {})`, so if that ever regressed the bucket
+  // would accumulate one orphan per run, per Playwright project, with every test still green —
+  // the spec would be relying on the behaviour under test to clean up after itself (#1197).
+  //
+  // Swept by prefix rather than by a captured path, so it holds however the chain ended: a
+  // mid-chain failure that leaves the document in place is covered by the same call. A
+  // describe-scoped afterAll runs before the file-scoped one withBarn registers, so this
+  // happens while the barn still exists.
+  test.afterAll(async () => {
+    if (!seedClient || !seedBarnId || !willowId) return
+    const prefix = `${seedBarnId}/horses/${willowId}`
+    const { data, error } = await seedClient.storage.from('documents').list(prefix)
+    if (error) throw new Error(`list Willow document objects: ${error.message}`)
+    const paths = (data ?? []).map((object) => `${prefix}/${object.name}`)
+    if (paths.length === 0) return
+    const { error: removeError } = await seedClient.storage.from('documents').remove(paths)
+    if (removeError) throw new Error(`remove orphaned Willow document objects: ${removeError.message}`)
+  })
+
+  // Asserted on content that exists only on the destination rather than on the URL: the App
+  // Router commits pushState only after the RSC payload lands, so a URL read can pass before
+  // the landing (fleet ruling, #1196). The upload screen's own h1 is "Add Document — Willow",
+  // so an `exact` "Willow" heading is false there and true here — which makes it a render proof
+  // rather than a heading that happens to exist on both pages. uploadDocument's waitForURL
+  // supplies the identity half; this supplies liveness.
+  test('uploading_a_horse_document_redirects_back_to_the_horse_page @manager', async ({ page }) => {
+    await openAddDocument(page, willowId)
+    await uploadDocument(page, willowId, { asset: TEST_PDF })
+
+    await expect(page.getByRole('heading', { name: WILLOW, exact: true })).toBeVisible()
+  })
+
+  test('the_uploaded_horse_document_is_listed_in_the_documents_section @manager', async ({ page }) => {
+    await page.goto(horseUrl(willowId))
+    await expect(documentsSection(page).getByRole('link', { name: TEST_PDF, exact: true })).toBeVisible()
+  })
+
+  // Narrowed (standing ruling 1): "open the document via its link" is a target=_blank handoff to
+  // Chromium's PDF viewer, which is browser chrome outside the page. The invariant underneath is
+  // that the href the page rendered is a *signed URL over this document's own stored object* —
+  // identity, which the test below pairs with liveness. Both halves are asserted together
+  // because a signed URL for the wrong object is exactly as broken as an unsigned one.
+  //
+  // The storage path is read service-role: it is storage shape, and the expected *rendered*
+  // value is still the page's own href. Read through `.single()`, which throws unless Willow has
+  // exactly one document, so a chain that uploaded twice can't quietly compare the wrong row.
+  test('the_horse_document_link_is_a_signed_url_for_its_stored_object @manager', async ({ page }) => {
+    const storagePath = await storedDocumentPath(willowId)
+
+    await page.goto(horseUrl(willowId))
+    const href = await documentsSection(page)
+      .getByRole('link', { name: TEST_PDF, exact: true })
+      .getAttribute('href')
+    if (!href) throw new Error(`no href on the ${TEST_PDF} document link`)
+    const url = new URL(href)
+
+    expect({ path: url.pathname, signed: url.searchParams.has('token') }).toEqual({
+      path: `/storage/v1/object/sign/documents/${storagePath}`,
+      signed: true,
+    })
+  })
+
+  // Narrowed to the shape this batch pre-ratified (#1201, and this issue's own acceptance
+  // criteria): Chromium's PDF viewer is outside the page, so "renders with no failed-to-load
+  // error" becomes the signed URL actually serving the file. Asserted by SHA-256 of the response
+  // body rather than by "non-zero bytes" — that is the same claim at full strength, and it
+  // carries its own negative half, since matching this asset's digest excludes every other.
+  // The expected digest comes from the committed file, never from the app.
+  test('the_horse_document_signed_url_serves_the_stored_pdf @manager', async ({ page }) => {
+    await page.goto(horseUrl(willowId))
+    const href = await documentsSection(page)
+      .getByRole('link', { name: TEST_PDF, exact: true })
+      .getAttribute('href')
+    if (!href) throw new Error(`no href on the ${TEST_PDF} document link`)
+
+    const response = await page.request.get(href)
+    expect({
+      status: response.status(),
+      contentType: response.headers()['content-type'],
+      digest: digestOf(await response.body()),
+    }).toEqual({
+      status: 200,
+      contentType: 'application/pdf',
+      digest: digestOf(readFileSync(assetPath(TEST_PDF))),
+    })
+  })
+
+  // The empty-state wait is this test's vacuity guard, and it is chosen because it is satisfiable
+  // only *after* the deletion — a guard that could be satisfied by pre-existing content would let
+  // the count read fire before the revalidate landed (#1194). It also sits inside the Documents
+  // section, so a section locator gone wrong fails here rather than supplying a passing zero.
+  //
+  // The row assertion itself is left as a count of zero rather than folded into the guard: this
+  // line's claim is the row's disappearance, and a mutation of it must go to a count the DOM can
+  // never reach (2), never to 1 — 1 is transiently true between the click and the revalidate,
+  // which is exactly the mutation that survived on #1201.
+  test('deleting_a_horse_document_removes_its_row @manager', async ({ page }) => {
+    await page.goto(horseUrl(willowId))
+    await documentsSection(page).getByRole('button', { name: 'Delete', exact: true }).click()
+    await documentsSection(page).getByText('No documents yet', { exact: true }).waitFor()
+
+    await expect(documentsSection(page).getByRole('link', { name: TEST_PDF, exact: true })).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Rowan: the Add Document screen's size limit and its two pending affordances
+// ---------------------------------------------------------------------------
+
+// Not serial and not chained — each of the three reaches the upload screen for itself, and the
+// two large uploads leave rows on Rowan that nothing here reads. Rowan rather than Willow so
+// those rows can't disturb the `.single()` read above, and rather than Juniper so they can't
+// make its reminder row ambiguous.
+test.describe('the horse document upload screen', () => {
+  // The client-side accept="" filter is a file-picker hint that setInputFiles bypasses, so this
+  // exercises the size check in the input's own onChange — the path a determined user reaches.
+  // The message renders *inside the live form*, so its presence is simultaneously the "inline
+  // error" half of the line and the "not a crash" half.
+  test('an_over_limit_horse_document_is_rejected_inline @manager', async ({ page }) => {
+    await openAddDocument(page, rowanId)
+    await page.setInputFiles('input[type="file"]', assetPath(OVER_LIMIT_PDF))
+
+    await expect(fileField(page).locator('p')).toHaveText(OVER_LIMIT_MESSAGE)
+  })
+
+  // 4.4 MB, the largest accepted size, is what the line names — and it is also what makes the
+  // assertion observable rather than a race: the pending window is the whole round trip of a
+  // 4.4 MB body through the dev server and up to storage. `toBeDisabled` auto-retries, so if the
+  // window had already closed this would fail rather than pass falsely, but a flaky failure is
+  // still a flake; the file size is the thing that keeps the window open.
+  //
+  // The redirect is waited out rather than left in flight: uploadFile runs before createDocument,
+  // so abandoning the request between them is how an object with no row is created.
+  test('the_upload_button_disables_while_a_horse_document_uploads @manager', async ({ page }) => {
+    await openAddDocument(page, rowanId)
+    const submit = await chooseFileAndSubmit(page, LARGEST_ACCEPTED_PDF)
+
+    await expect(submit).toBeDisabled()
+    await page.waitForURL(atHorseDetail(rowanId), { waitUntil: 'commit' })
+  })
+
+  // Both halves of the line in one assertion. `bars` pins that exactly one appeared and is the
+  // proof the form resolved at all; `valueNow` is the *indeterminate* half — an indeterminate
+  // progressbar is precisely one carrying no aria-valuenow, and a determinate one would satisfy
+  // the count alone. The waitFor is satisfiable only once the submit is in flight.
+  test('an_indeterminate_progress_bar_shows_while_a_horse_document_uploads @manager', async ({ page }) => {
+    await openAddDocument(page, rowanId)
+    await chooseFileAndSubmit(page, LARGEST_ACCEPTED_PDF)
+
+    const bar = uploadForm(page).locator('[role="progressbar"]')
+    await bar.waitFor()
+    const observed = { bars: await bar.count(), valueNow: await bar.getAttribute('aria-valuenow') }
+    await page.waitForURL(atHorseDetail(rowanId), { waitUntil: 'commit' })
+
+    expect(observed).toEqual({ bars: 1, valueNow: null })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Juniper: the reminder date, from upload through the dashboard card
+// ---------------------------------------------------------------------------
+
+// Serial, and it stays one block through the dashboard: the card exists only because the step
+// four tests above it drove this document's reminder date into the past, which is the
+// checklist's own framing ("A card for it shows up…").
+test.describe.serial('a horse document reminder date', () => {
+  test('an_uploaded_reminder_date_persists_in_the_reminder_date_column @manager', async ({ page }) => {
+    await openAddDocument(page, juniperId)
+    await uploadDocument(page, juniperId, {
+      asset: TEST_PDF,
+      recordType: JUNIPER_RECORD_TYPE.value,
+      reminderDate: uploadedReminderDate,
+    })
+
+    await expect(reminderDateInput(page, TEST_PDF)).toHaveValue(uploadedReminderDate)
+  })
+
+  // The reload is the assertion, not scaffolding. ReminderDateCell keeps `value` in React state,
+  // so the cell displays whatever was typed whether or not the action ever ran; only a fresh
+  // server render can distinguish "saved" from "typed".
+  test('editing_the_reminder_date_inline_saves_the_new_date @manager', async ({ page }) => {
+    await page.goto(horseUrl(juniperId))
+    await setReminderDate(page, TEST_PDF, juniperId, editedReminderDate)
+    await page.reload()
+
+    await expect(reminderDateInput(page, TEST_PDF)).toHaveValue(editedReminderDate)
+  })
+
+  // "Without a page reload" is asserted the only way that cannot be faked by a URL read: a value
+  // planted on `window` survives ReminderDateCell's router.refresh() (an RSC fetch and a
+  // re-render) and cannot survive a document load. The main-frame navigation count is the second,
+  // independent half — attached after the goto has settled, because one page.goto fires
+  // framenavigated twice for the same path (#1196).
+  //
+  // `persisted` is read after a deliberate reload, and it is what stops the other two from being
+  // a pair of true statements about nothing: a save that silently did nothing would leave the
+  // marker intact and the navigation count at zero just as happily. All three are compared in one
+  // expectation because the claim is their conjunction — no reload *and* it still saved.
+  test('the_inline_reminder_date_edit_saves_without_a_page_reload @manager', async ({ page }) => {
+    await page.goto(horseUrl(juniperId))
+    await reminderDateInput(page, TEST_PDF).waitFor()
+
+    const navigations: string[] = []
+    const recordNavigation = (frame: Frame) => {
+      if (frame === page.mainFrame()) navigations.push(frame.url())
+    }
+    page.on('framenavigated', recordNavigation)
+    await page.evaluate(() => {
+      ;(window as unknown as Record<string, string>).__noReloadMarker = 'planted'
+    })
+
+    await setReminderDate(page, TEST_PDF, juniperId, softSavedReminderDate)
+    const observed = {
+      marker: await page.evaluate(
+        () => (window as unknown as Record<string, string | undefined>).__noReloadMarker ?? null
+      ),
+      navigations: navigations.length,
+    }
+    page.off('framenavigated', recordNavigation)
+
+    await page.reload()
+    await reminderDateInput(page, TEST_PDF).waitFor()
+
+    expect({ ...observed, persisted: await reminderDateInput(page, TEST_PDF).inputValue() }).toEqual({
+      marker: 'planted',
+      navigations: 0,
+      persisted: softSavedReminderDate,
+    })
+  })
+
+  // "Next to the date" is read as *inside the same cell*, which is what the page renders — the
+  // badge and the date input are siblings in one <td>. Asserting the date alongside the badge is
+  // what makes that structural claim rather than a page-wide "a badge exists somewhere", and
+  // inputValue() throws rather than returning a falsy default if the cell failed to resolve, so
+  // neither half can go vacuous.
+  test('a_past_reminder_date_shows_a_reminder_due_badge @manager', async ({ page }) => {
+    await page.goto(horseUrl(juniperId))
+    await setReminderDate(page, TEST_PDF, juniperId, pastReminderDate)
+
+    const cell = reminderDateCell(page, TEST_PDF)
+    const badge = cell.getByText('Reminder Due', { exact: true })
+    await badge.waitFor()
+
+    expect({ badges: await badge.count(), dateValue: await cell.locator('input[type="date"]').inputValue() }).toEqual({
+      badges: 1,
+      dateValue: pastReminderDate,
+    })
+  })
+
+  // `count: 1` is a real claim, not a formality: getDueDocuments is barn-wide across horse,
+  // trainer and rider documents, and this barn's only other documents (Rowan's two 4.4 MB
+  // uploads) carry no reminder date at all — so exactly one card is the whole filter asserted.
+  //
+  // The text is compared as a full string rather than by containment (#1202: Playwright's text
+  // matching is substring-based), which pins the owner name, the record type and the date
+  // together in the order the card renders them. Coggins rather than the form's default is what
+  // makes the middle segment a reading of what was chosen; see JUNIPER_RECORD_TYPE.
+  test('a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}`)
+    const cards = remindersSection(page).getByRole('link')
+    await cards.first().waitFor()
+
+    expect({ count: await cards.count(), text: await cards.first().innerText() }).toEqual({
+      count: 1,
+      text: `${JUNIPER} — ${JUNIPER_RECORD_TYPE.label} — ${shortDate(pastReminderDate)}`,
+    })
+  })
+
+  // Deliberately not `.first()`: an unqualified locator makes Playwright's strict mode fail if a
+  // second card ever appears, which is a stronger guarantee than picking one and hoping. The href
+  // is compared as a full string, so it pins *which* horse rather than merely that it points at
+  // some horse page.
+  test('the_dashboard_reminder_card_links_back_to_the_horse @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}`)
+
+    await expect(remindersSection(page).getByRole('link')).toHaveAttribute('href', horseUrl(juniperId))
+  })
+})
