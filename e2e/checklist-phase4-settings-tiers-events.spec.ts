@@ -47,6 +47,12 @@ const GROUP = { name: 'Group Special', price: 55 }
 const WINTER = { name: 'Winter Intensive', price: 80 }
 const SEEDED_TIER_CUT = 12
 
+// TierForm's two non-retroactive warnings, verbatim. Shared between each "warning appears"
+// assertion and its paired "warning disappears" positive control, so the two halves are
+// literally the same string against the same locator.
+const PRICE_WARNING = 'Changing the price will not affect past lessons'
+const INSTRUCTOR_CUT_WARNING = 'Changing the instructor cut will not affect past lessons'
+
 // How LessonForm renders each option: `{name} - ${price}`.
 const ARENA_OPTION = 'Arena Basics - $40'
 const GROUP_OPTION = 'Group Special - $55'
@@ -118,6 +124,23 @@ function fieldBlock(page: Page, inputId: string) {
   return page.locator(`div:has(> #${inputId})`)
 }
 
+/**
+ * Same-document positive control for the two "warning disappears" items.
+ *
+ * Both warnings are React state — `priceChanged`/`instructorCutChanged` derive from an
+ * `onChange`-backed `useState` — so on a page that never hydrated, `fill()` moves the DOM
+ * value and nothing else, no warning ever renders, and the disappearance assertion passes
+ * for entirely the wrong reason, with the same text a correct pass produces. A control in
+ * the paired *appear* test does not close this: it proves a different document hydrated. So
+ * each revert test watches its own warning appear first, in its own page instance, before
+ * reverting. `waitFor` rather than `expect`, so the test keeps one assertion and this stays
+ * what it is — a precondition that throws. Verified it can fail: pointed at a string the
+ * block never renders, the revert test times out here rather than reaching its assertion.
+ */
+async function warningShows(block: Locator, warning: string) {
+  await block.getByText(warning, { exact: true }).waitFor()
+}
+
 function tierEditUrl(tierId: string) {
   return `/barn/${barn.slug}/settings/tiers/${tierId}`
 }
@@ -186,17 +209,18 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.goto(tierEditUrl(arena.id))
     await page.locator('#tier-price').fill('99')
 
-    await expect(fieldBlock(page, 'tier-price')).toHaveText(
-      'PriceChanging the price will not affect past lessons'
-    )
+    await expect(fieldBlock(page, 'tier-price')).toHaveText(`Price${PRICE_WARNING}`)
   })
 
   test('reverting_a_tier_price_removes_the_warning @manager', async ({ page }) => {
     await page.goto(tierEditUrl(arena.id))
+    const block = fieldBlock(page, 'tier-price')
     await page.locator('#tier-price').fill('99')
+    await warningShows(block, PRICE_WARNING)
+
     await page.locator('#tier-price').fill(String(ARENA.price))
 
-    await expect(fieldBlock(page, 'tier-price')).toHaveText('Price')
+    await expect(block).toHaveText('Price')
   })
 
   test('changing_a_tier_instructor_cut_warns_that_past_lessons_are_unaffected @manager', async ({
@@ -206,16 +230,19 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.locator('#tier-instructor-cut').fill('99')
 
     await expect(fieldBlock(page, 'tier-instructor-cut')).toHaveText(
-      'Instructor CutChanging the instructor cut will not affect past lessons'
+      `Instructor Cut${INSTRUCTOR_CUT_WARNING}`
     )
   })
 
   test('reverting_a_tier_instructor_cut_removes_the_warning @manager', async ({ page }) => {
     await page.goto(tierEditUrl(arena.id))
+    const block = fieldBlock(page, 'tier-instructor-cut')
     await page.locator('#tier-instructor-cut').fill('99')
+    await warningShows(block, INSTRUCTOR_CUT_WARNING)
+
     await page.locator('#tier-instructor-cut').fill(String(SEEDED_TIER_CUT))
 
-    await expect(fieldBlock(page, 'tier-instructor-cut')).toHaveText('Instructor Cut')
+    await expect(block).toHaveText('Instructor Cut')
   })
 
   test('new_tier_form_prefills_instructor_cut_from_the_barn_default @manager', async ({ page }) => {
