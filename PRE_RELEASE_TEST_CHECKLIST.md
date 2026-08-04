@@ -398,24 +398,24 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: tapping_the_bar_again_dismisses_the_breakdown) Tapping the bar again dismisses the breakdown
 - [ ] (e2e: tapping_elsewhere_dismisses_the_breakdown) Tapping elsewhere dismisses the breakdown
 - [ ] (e2e: tapping_the_bar_does_not_navigate_to_the_horse_detail_page) Tapping the bar does not navigate to the horse detail page
-- [ ] (e2e-candidate) Clover's detail page (no photo seeded) shows a placeholder icon
-- [ ] (e2e-candidate) It also shows a **Set Photo** button
-- [ ] (e2e-candidate) Tapping **Set Photo** navigates to the same upload screen used for horse documents
-- [ ] (e2e-candidate) On that screen Document Type is locked to "Photo" with no dropdown
-- [ ] (e2e-candidate) That screen has no Notes field
-- [ ] (e2e-candidate) That screen has no Expiration reminder date field
-- [ ] (e2e-candidate) Tap **Choose File** and select `scripts/data/clover-photo.png` (non-square) → the upload starts immediately, with no separate Upload button to click
-- [ ] (e2e-candidate) You land back on the horse detail page with the photo displayed
-- [ ] (e2e-candidate) That photo is scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
-- [ ] (e2e-candidate) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
-- [ ] (e2e-candidate) The displayed word changes from `clover` to `butter`
-- [ ] (e2e-candidate) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
-- [ ] (e2e-candidate) With a photo set, tap **Remove** → the placeholder icon returns
-- [ ] (e2e-candidate) The **Set Photo** button returns with it
-- [ ] (e2e-candidate) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
-- [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
-- [ ] (e2e-candidate) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
-- [ ] (e2e-candidate) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
+- [ ] (e2e: clovers_photo_section_shows_a_placeholder_icon_when_no_photo_is_set) Clover's detail page (no photo seeded) shows a placeholder icon
+- [ ] (e2e: clovers_photo_section_shows_a_set_photo_button_when_no_photo_is_set) It also shows a **Set Photo** button
+- [ ] (e2e: tapping_set_photo_opens_the_horse_document_upload_screen) Tapping **Set Photo** navigates to the same upload screen used for horse documents
+- [ ] (e2e: the_photo_upload_screen_locks_document_type_to_photo_with_no_dropdown) On that screen Document Type is locked to "Photo" with no dropdown
+- [ ] (e2e: the_photo_upload_screen_has_no_notes_field) That screen has no Notes field
+- [ ] (e2e: the_photo_upload_screen_has_no_expiration_reminder_date_field) That screen has no Expiration reminder date field
+- [ ] (e2e: choosing_a_photo_file_uploads_it_immediately_with_no_upload_click) Tap **Choose File** and select `scripts/data/clover-photo.png` (non-square) → the upload starts immediately, with no separate Upload button to click
+- [ ] (e2e: the_uploaded_horse_photo_displays_on_the_horse_detail_page) You land back on the horse detail page with the photo displayed
+- [ ] (e2e: the_horse_photo_is_scaled_to_a_fixed_height_with_its_aspect_ratio_preserved) That photo is scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
+- [ ] (e2e: replacing_the_horse_photo_uploads_the_new_file_immediately) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
+- [ ] (e2e: the_replaced_horse_photo_displays_the_new_image) The displayed word changes from `clover` to `butter`
+- [ ] (e2e: the_replaced_horse_photo_survives_a_reload_and_the_old_one_is_gone) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
+- [ ] (e2e: removing_the_horse_photo_restores_the_placeholder_icon) With a photo set, tap **Remove** → the placeholder icon returns
+- [ ] (e2e: removing_the_horse_photo_restores_the_set_photo_button) The **Set Photo** button returns with it
+- [ ] (e2e: selecting_a_pdf_on_the_photo_upload_screen_is_rejected_inline) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
+- [ ] (e2e: a_manager_can_set_a_photo_on_an_owned_horse_whose_owner_never_set_one) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
+- [ ] (e2e: a_manager_can_replace_a_manager_set_photo_on_an_owned_horse) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] (e2e: an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
 - [ ] (e2e: manager_form_and_exhaustion_thresholds_share_one_save_button) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
 - [ ] (e2e: renaming_apple_with_threshold_overrides_updates_the_heading) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
 - [ ] (e2e: threshold_overrides_update_from_the_same_save) The thresholds update from that same Save
