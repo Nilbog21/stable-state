@@ -417,6 +417,98 @@ async function pickCalendarDay(page: Page, day: string): Promise<void> {
   await page.getByRole('button', { name: 'Close', exact: true }).click()
 }
 
+/**
+ * Blocks until React has hydrated `DateHourPicker` and taken over its state.
+ *
+ * A precondition that throws, not an assertion — and it is not optional. Waiting for `#dh-hour`
+ * to appear proves nothing about hydration: that element is in the SERVER-rendered HTML, so a
+ * read taken straight after it sees the server's answer. That is #1191's "unsettled page"
+ * hazard in its quietest form, because the server's answer is usually the right one, so the
+ * assertion passes for the wrong reason.
+ *
+ * The barrier picks an hour the picker did not open on and waits for the hidden `lesson_at`
+ * input to carry it. That write can only be produced by client-side React, so observing it is
+ * genuine proof the component is live — and `selectOption` before hydration is a no-op on a
+ * `<select>` whose change listener is not attached yet, which is exactly why the wait is on the
+ * consequence rather than on the select's own value.
+ *
+ * It changes the HOUR and never the date, so the pre-fill under test is untouched. Its side
+ * benefit is that the forced re-render also reconciles `aria-pressed`, which React leaves at
+ * the server's value otherwise (measured — see the date test below).
+ *
+ * No explicit timeout (#1211): bounded by the test's own budget.
+ */
+const HYDRATION_BARRIER_HOUR = 9
+
+/**
+ * A day in the same calendar month as the barn's today, so it is always inside the rendered
+ * grid without paging. `getMonthGrid` starts at the 1st minus its weekday, so a neighbouring
+ * day in an ADJACENT month is only sometimes present — and a month always has at least 28
+ * days, so at least one of ±1 stays inside it.
+ */
+const HYDRATION_BARRIER_DAY =
+  shiftDay(BARN_TODAY, 1).slice(0, 7) === BARN_TODAY.slice(0, 7)
+    ? shiftDay(BARN_TODAY, 1)
+    : shiftDay(BARN_TODAY, -1)
+
+/**
+ * Waits until the hidden `lesson_at` input reports the given barn-local field, which only
+ * client-side React can write. `slice` picks the field: `[0, 10]` for the date, `[11, 13]` for
+ * the hour.
+ */
+async function waitForPickerField(page: Page, from: number, to: number, expected: string): Promise<void> {
+  await page.waitForFunction(
+    ([zone, want, start, end]) => {
+      const el = document.querySelector('input[name="lesson_at"]') as HTMLInputElement | null
+      if (!el?.value) return false
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: zone as string,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+      }).formatToParts(new Date(el.value))
+      const get = (t: string) => parts.find((p) => p.type === t)!.value
+      const wall = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
+      return wall.slice(start as number, end as number) === want
+    },
+    [EASTERN, expected, from, to] as const
+  )
+}
+
+/**
+ * Blocks until React has hydrated `DateHourPicker` and taken over its state.
+ *
+ * A precondition that throws, not an assertion — and it is not optional. Waiting for `#dh-hour`
+ * to appear proves nothing about hydration: that element is in the SERVER-rendered HTML, so a
+ * read taken straight after it sees the server's answer. That is #1191's "unsettled page"
+ * hazard in its quietest form, because the server's answer is usually the right one, so the
+ * assertion passes for the wrong reason. Both barriers below were forced by probes that PASSED.
+ *
+ * Each barrier perturbs the axis the test it serves does NOT assert, then waits for the hidden
+ * `lesson_at` input to carry the change — a write only client-side React can produce, so
+ * observing it is genuine proof the component is live. `selectOption`/`click` before hydration
+ * is a no-op on a control whose listener is not attached yet, which is exactly why the wait is
+ * on the consequence rather than on the control's own value.
+ *
+ * What it does NOT do — measured, after an earlier version of this comment claimed otherwise —
+ * is reconcile `aria-pressed`. That attribute keeps the server's value through hydration and
+ * through the barrier's own re-render alike; only a month-nav round trip was observed to move
+ * it. So the barrier makes the hidden input trustworthy and leaves the day cell exactly as
+ * stale as it was.
+ *
+ * No explicit timeout (#1211): bounded by the test's own budget.
+ */
+async function hydrateByChangingHour(page: Page): Promise<void> {
+  await page.locator('#dh-hour').selectOption(String(HYDRATION_BARRIER_HOUR))
+  await waitForPickerField(page, 11, 13, String(HYDRATION_BARRIER_HOUR).padStart(2, '0'))
+}
+
+/** The date-axis barrier, for the test that asserts the HOUR and so must not perturb it. */
+async function hydrateByChangingDay(page: Page): Promise<void> {
+  await page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await waitForPickerField(page, 0, 10, HYDRATION_BARRIER_DAY)
+}
+
 /** The `aria-label`s of every day cell the month grid currently reports as selected. */
 function pressedDayLabels(page: Page): Promise<string[]> {
   return page.locator('button[aria-pressed="true"]').evaluateAll((els) =>
@@ -510,39 +602,34 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
   test('new_lesson_date_prefills_the_barns_day_not_the_devices @manager', async ({ page }) => {
     await page.clock.setFixedTime(PIN_INSTANT)
     await page.goto(`/barn/${barn.slug}/lessons/new`)
-    await page.locator('#dh-hour').waitFor()
+    await hydrateByChangingHour(page)
 
-    // Both the day cell the user sees selected and the date the form will actually submit.
+    // The pre-filled date, read as the barn-local date of the value the form will submit.
     //
-    // **The second half is the one that discriminates, and that is a measured finding rather
-    // than a design choice.** `aria-pressed` is an ATTRIBUTE, and React 19 does not reconcile
-    // mismatched attributes during hydration — it keeps the server's. So the selected cell is
-    // whatever the SERVER computed, and a `DateHourPicker` reading the device's day would still
-    // show the barn's day there. Measured directly: with the date default broken to
-    // `toLocaleDateString('en-CA')` and the clock pinned, the cell read `2026-08-04` (server)
-    // while the hidden input read `2026-08-03T05:00:00.000Z` (client), and the cell only caught
-    // up after a month-nav click forced a re-render. A first pass asserting the cell alone
-    // passed that probe — green for the wrong reason, and the pin was doing nothing for it.
+    // **Not `aria-pressed`, and that is the finding this test cost two probes to reach.** A
+    // first version asserted the selected day cell straight after `#dh-hour` appeared, and a
+    // probe breaking the date default to the DEVICE's day PASSED against it — twice over: the
+    // read happened before hydration, and `aria-pressed` is an ATTRIBUTE that React 19 leaves
+    // at the server's value on a hydration mismatch anyway. Measured: under that probe the cell
+    // read `2026-08-04` (server) while the hidden input already read `2026-08-03T05:00:00.000Z`
+    // (client), and the cell still read `2026-08-04` after the barrier below. The pin was doing
+    // nothing and the assertion was green for the wrong reason.
     //
-    // `input[name="lesson_at"]`'s value is a React-controlled PROPERTY, which React does sync,
-    // so it carries the browser's computation — and it is also the value the form submits, so
-    // it is the pre-fill that actually decides anything. Asserted as its barn-local date: with
-    // the clock pinned, a control reading the DEVICE's day yields `BARN_TODAY - 1` here.
-    //
-    // The cell half is kept rather than dropped: line 707 names the visible pre-fill, both
-    // values are genuinely the barn's day in a correct app, and asserting only the hidden input
-    // would stop covering the affordance the line describes.
+    // The cell was then dropped from the assertion rather than kept alongside: past the barrier
+    // it provably still carries the server's answer, so asserting it adds a claim that cannot
+    // fail for the reason line 707 is about — #1204's F1 shape, an assertion whose expected
+    // value the component produces whether or not it read its input. `input[name="lesson_at"]`
+    // is a React-controlled PROPERTY, so it carries the browser's computation, and it is also
+    // the value the form submits — the pre-fill that actually decides anything. With the clock
+    // pinned, a control resolving the default in the DEVICE's zone answers `BARN_TODAY - 1`.
     const submitted = await page.locator('input[name="lesson_at"]').inputValue()
-    expect({
-      selectedCell: (await pressedDayLabels(page))[0],
-      submittedDate: barnWallClock(new Date(submitted), EASTERN).slice(0, 10),
-    }).toEqual({ selectedCell: BARN_TODAY, submittedDate: BARN_TODAY })
+    expect(barnWallClock(new Date(submitted), EASTERN).slice(0, 10)).toBe(BARN_TODAY)
   })
 
   test('new_lesson_hour_select_opens_on_the_barns_hour_not_the_devices @manager', async ({ page }) => {
     await page.clock.setFixedTime(PIN_INSTANT)
     await page.goto(`/barn/${barn.slug}/lessons/new`)
-    await page.locator('#dh-hour').waitFor()
+    await hydrateByChangingDay(page)
 
     // The item this file leans on hardest. At the pinned instant the barn reads hour 1, the
     // device reads 19 and UTC reads 5 — three distinct values — and the select's structural
