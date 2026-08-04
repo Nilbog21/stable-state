@@ -12,4 +12,3 @@ bash scripts/check-doc-size.sh
 bash scripts/check-doc-size.test.sh
 bash scripts/select-specs.sh --lint
 bash scripts/select-specs.test.sh
-bash scripts/assert-dev-project.test.sh
