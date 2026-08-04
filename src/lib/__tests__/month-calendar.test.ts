@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { getMonthGrid, shiftMonth, computeDayDecorations, type DayDecorationOptions } from '../month-calendar'
 import { createMockScheduleItem as item } from '@/test/fixtures'
+import { calendarDate } from '../local-day'
 
 const baseOpts: DayDecorationOptions = {
   selectedHorseIds: [],
   selectedRiderIds: [],
   hour: 12,
   thresholdsByHorseId: {},
-  todayStr: '2026-03-01',
+  todayStr: calendarDate('2026-03-01'),
   excludeItemId: null,
 }
 
@@ -49,13 +50,13 @@ describe('shiftMonth', () => {
 
 describe('computeDayDecorations — past days', () => {
   it('should_mark_a_day_before_today_as_past', () => {
-    const result = computeDayDecorations(['2026-02-28'], [], { ...baseOpts, todayStr: '2026-03-01' })
+    const result = computeDayDecorations(['2026-02-28'], [], { ...baseOpts, todayStr: calendarDate('2026-03-01') })
 
     expect(result['2026-02-28'].past).toBe(true)
   })
 
   it('should_not_mark_today_itself_as_past', () => {
-    const result = computeDayDecorations(['2026-03-01'], [], { ...baseOpts, todayStr: '2026-03-01' })
+    const result = computeDayDecorations(['2026-03-01'], [], { ...baseOpts, todayStr: calendarDate('2026-03-01') })
 
     expect(result['2026-03-01'].past).toBe(false)
   })

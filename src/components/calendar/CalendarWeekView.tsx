@@ -2,7 +2,7 @@ import { CalendarDayView } from './CalendarDayView'
 import { EmptyState } from '@/components/EmptyState'
 import { formatCalendarDate } from '@/lib/local-day'
 import type { DayScheduleDisplayItem } from './dayScheduleItems'
-import type { Role } from '@/lib/db/types'
+import type { CalendarDate, Role } from '@/lib/db/types'
 
 // The Week view: a vertical stack of 7 day sections (mobile-first -- a side-by-side
 // 7-column grid doesn't fit a ~400px screen). Each section reuses CalendarDayView, the
@@ -16,8 +16,8 @@ export function CalendarWeekView({
   slug,
   viewerMembershipId,
 }: {
-  days: { date: string; items: DayScheduleDisplayItem[] }[]
-  todayStr: string
+  days: { date: CalendarDate; items: DayScheduleDisplayItem[] }[]
+  todayStr: CalendarDate
   role: Role
   slug: string
   viewerMembershipId?: string

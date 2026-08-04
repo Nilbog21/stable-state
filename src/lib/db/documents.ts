@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSignedUrl } from './document-storage'
 import { resolveHorseNames } from './horses'
 import { resolveMemberNames } from './member-names'
+import { calendarDate } from '../local-day'
 import type {
   DueDocument,
   HorseDocument,
@@ -210,7 +211,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       entity: 'horse' as const,
       recordType: d.record_type,
       fileName: d.file_name,
-      reminderDate: d.reminder_date as string,
+      reminderDate: calendarDate(d.reminder_date as string),
       ownerName: horseNames.get(d.horse_id) ?? d.horse_id,
       ownerId: d.horse_id,
     })),
@@ -219,7 +220,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       entity: 'trainer' as const,
       recordType: d.record_type,
       fileName: d.file_name,
-      reminderDate: d.reminder_date as string,
+      reminderDate: calendarDate(d.reminder_date as string),
       ownerName: namesByMembershipId.get(d.trainer_id) ?? 'Unknown Member',
       ownerId: d.trainer_id,
     })),
@@ -228,7 +229,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       entity: 'rider' as const,
       recordType: d.record_type,
       fileName: d.file_name,
-      reminderDate: d.reminder_date as string,
+      reminderDate: calendarDate(d.reminder_date as string),
       ownerName: namesByMembershipId.get(d.rider_id) ?? 'Unknown Member',
       ownerId: d.rider_id,
     })),

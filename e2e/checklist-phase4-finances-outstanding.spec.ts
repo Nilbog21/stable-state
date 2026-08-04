@@ -17,6 +17,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
+import { calendarDate } from '@/lib/local-day'
 import type { Agreement, Horse, Lesson } from '@/lib/db/types'
 
 // The stub rider addMemberships seeds (first_name 'Test', last_name 'Rider2'). Used instead
@@ -346,7 +347,7 @@ test('outstanding_income_lease_charge_date_renders_as_plain_calendar_date @manag
   await page.goto(financesUrl())
   const leaseRow = outstandingIncome(page).locator('tbody tr').filter({ hasText: 'Lease' })
   await expect(leaseRow.locator('td').first()).toHaveText(
-    formatShortDateOnly(`${seeded.lease.start_date.slice(0, 7)}-01`)
+    formatShortDateOnly(calendarDate(`${seeded.lease.start_date.slice(0, 7)}-01`))
   )
 })
 

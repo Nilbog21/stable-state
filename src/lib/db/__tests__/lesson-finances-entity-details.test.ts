@@ -22,6 +22,7 @@ import {
 import { resolveMemberNames } from '../member-names'
 import { resolveHorseNames } from '../horses'
 import { getPaidCharges } from '../agreement-finances'
+import { calendarDate } from '@/lib/local-day'
 
 describe('getHorseIncomeDetail', () => {
   beforeEach(() => {
@@ -164,13 +165,13 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 },
       ])
     })
 
@@ -178,7 +179,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-2' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-2' },
       ])
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
@@ -191,7 +192,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
@@ -236,7 +237,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
@@ -413,13 +414,13 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 },
       ])
     })
 
@@ -427,7 +428,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-2', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-2', horseId: 'horse-1' },
       ])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
@@ -440,7 +441,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
@@ -485,7 +486,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
-        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')

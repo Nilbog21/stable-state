@@ -79,6 +79,7 @@ import {
   setHorseOwnerAction,
 } from '../actions'
 import HorseDetailPage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -460,7 +461,7 @@ describe('HorseDetailPage', () => {
 
     it('should_not_flag_a_reminder_as_due_when_it_is_still_future_in_barn_time', async () => {
       vi.mocked(getDocumentsWithUrls).mockResolvedValue([
-        { doc: { ...mockDoc, reminder_date: '2026-03-02' }, signedUrl: 'https://example.com/signed' },
+        { doc: { ...mockDoc, reminder_date: calendarDate('2026-03-02') }, signedUrl: 'https://example.com/signed' },
       ] as any)
 
       const jsx = await HorseDetailPage({ params: pageParams })
@@ -471,7 +472,7 @@ describe('HorseDetailPage', () => {
 
     it('should_flag_a_reminder_already_reached_in_barn_time_as_due', async () => {
       vi.mocked(getDocumentsWithUrls).mockResolvedValue([
-        { doc: { ...mockDoc, reminder_date: '2026-03-01' }, signedUrl: 'https://example.com/signed' },
+        { doc: { ...mockDoc, reminder_date: calendarDate('2026-03-01') }, signedUrl: 'https://example.com/signed' },
       ] as any)
 
       const jsx = await HorseDetailPage({ params: pageParams })
@@ -655,7 +656,7 @@ describe('HorseDetailPage', () => {
   })
 
   it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
-    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockDoc, reminder_date: '2020-01-01' }, signedUrl: 'https://example.com/signed' }] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockDoc, reminder_date: calendarDate('2020-01-01') }, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText(/reminder due/i)).toBeDefined()

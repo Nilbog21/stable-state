@@ -15,6 +15,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseIncomeDetail } from '@/lib/db/lesson-finances'
 import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import HorseIncomePage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
 const mockUser = createMockUser()
@@ -80,7 +81,7 @@ describe('HorseIncomePage', () => {
   it('should_not_render_empty_state_when_only_expenses_exist', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
       total: 75,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -162,7 +163,7 @@ describe('HorseIncomePage', () => {
     })
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-01', amount: 30, horseCount: 1, splitAmount: 30 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-01'), amount: 30, horseCount: 1, splitAmount: 30 }],
       total: 30,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -198,7 +199,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 500,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -210,7 +211,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 500,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -222,7 +223,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', fee: 200 }],
       total: 200,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -235,7 +236,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', fee: 200 }],
       total: 200,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -247,7 +248,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 600,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -258,7 +259,7 @@ describe('HorseIncomePage', () => {
   it('should_render_expense_row_date_in_table', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
       total: 75,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -269,7 +270,7 @@ describe('HorseIncomePage', () => {
   it('should_render_expense_row_amount_in_parens', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
       total: 75,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -280,7 +281,7 @@ describe('HorseIncomePage', () => {
   it('should_render_expense_row_split_in_parens', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 90, horseCount: 3, splitAmount: 30 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 90, horseCount: 3, splitAmount: 30 }],
       total: 30,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -291,7 +292,7 @@ describe('HorseIncomePage', () => {
   it('should_render_expense_row_horse_count', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 90, horseCount: 3, splitAmount: 30 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 90, horseCount: 3, splitAmount: 30 }],
       total: 30,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -302,7 +303,7 @@ describe('HorseIncomePage', () => {
   it('should_render_expense_type_label', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
       total: 75,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -313,7 +314,7 @@ describe('HorseIncomePage', () => {
   it('should_link_expense_date_to_expense_detail', async () => {
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
       total: 75,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -330,7 +331,7 @@ describe('HorseIncomePage', () => {
     })
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-05', amount: 40, horseCount: 1, splitAmount: 40 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-05'), amount: 40, horseCount: 1, splitAmount: 40 }],
       total: 40,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -357,7 +358,7 @@ describe('HorseIncomePage', () => {
       vi.mocked(getHorseIncomeDetail).mockResolvedValue({
         horseName: 'Thunderbolt',
         rows: [],
-        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
         total: 500,
       })
       const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -368,7 +369,7 @@ describe('HorseIncomePage', () => {
     it('should_keep_an_expense_rows_date_utc_anchored_regardless_of_timezone', async () => {
       vi.mocked(getHorseExpenseDetail).mockResolvedValue({
         horseName: 'Thunderbolt',
-        rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+        rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-12'), amount: 75, horseCount: 1, splitAmount: 75 }],
         total: 75,
       })
       const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })

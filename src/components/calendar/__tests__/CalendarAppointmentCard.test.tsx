@@ -10,10 +10,11 @@ vi.mock('next/link', () => ({
 import { CalendarAppointmentCard } from '../CalendarAppointmentCard'
 import { formatExpenseTime } from '@/lib/format-expense'
 import { makeExpense } from '@/test/fixtures'
+import { calendarDate } from '@/lib/local-day'
 
 describe('CalendarAppointmentCard', () => {
   it('should_render_formatted_time', () => {
-    render(<CalendarAppointmentCard appointment={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" />)
+    render(<CalendarAppointmentCard appointment={makeExpense({ expense_date: calendarDate('2026-07-15'), expense_time: '14:00:00' })} slug="green-acres" />)
     expect(screen.getByText(formatExpenseTime('14:00:00'))).toBeDefined()
   })
 

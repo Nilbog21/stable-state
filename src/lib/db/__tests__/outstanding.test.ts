@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getOutstandingLessonRows, getOutstandingCancellationFeeRows, getLessonJunctionRows } from '../lesson-finance-queries'
 import { resolveMemberNames } from '../member-names'
 import { mergeOutstandingItems, getOutstandingLessons, getOutstandingCancellationFees } from '../outstanding'
+import { calendarDate } from '@/lib/local-day'
 
 describe('getOutstandingLessons', () => {
   beforeEach(() => {
@@ -320,19 +321,19 @@ describe('mergeOutstandingItems', () => {
   it('should_map_a_charge_row_to_an_outstanding_item', () => {
     const result = mergeOutstandingItems(
       [],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-06-01'), kind: 'board', riderName: 'Alice Rider', fee: 500 }],
       [], 'America/New_York'
     )
 
     expect(result).toEqual([
-      { id: 'charge-1', itemType: 'board', date: '2026-06-01', instructorName: null, riderNames: ['Alice Rider'], fee: 500, linkId: 'agreement-1' },
+      { id: 'charge-1', itemType: 'board', date: calendarDate('2026-06-01'), instructorName: null, riderNames: ['Alice Rider'], fee: 500, linkId: 'agreement-1' },
     ])
   })
 
   it('should_map_a_lease_charge_row_with_lease_item_type', () => {
     const result = mergeOutstandingItems(
       [],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }],
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-06-01'), kind: 'lease', riderName: 'Alice Rider', fee: 200 }],
       [], 'America/New_York'
     )
 
@@ -342,7 +343,7 @@ describe('mergeOutstandingItems', () => {
   it('should_sort_merged_items_by_date_ascending', () => {
     const result = mergeOutstandingItems(
       [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-15T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 }],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-06-01'), kind: 'board', riderName: 'Alice Rider', fee: 500 }],
       [], 'America/New_York'
     )
 
@@ -368,7 +369,7 @@ describe('mergeOutstandingItems', () => {
   it('should_sort_cancellation_fee_items_alongside_lessons_and_charges', () => {
     const result = mergeOutstandingItems(
       [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-20T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 }],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-06-01'), kind: 'board', riderName: 'Alice Rider', fee: 500 }],
       [{ id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-06-10T10:00:00Z', instructorName: null, riderName: 'Bob Rider', fee: 50 }],
       'America/New_York'
     )
@@ -388,7 +389,7 @@ describe('mergeOutstandingItems instant branding', () => {
   })
 
   it('should_leave_a_charge_rows_date_only_period_unbranded', () => {
-    const charge = { id: 'c-1', kind: 'board' as const, period: '2026-07-01', riderName: 'Ann', fee: 10, agreementId: 'a-1' }
+    const charge = { id: 'c-1', kind: 'board' as const, period: calendarDate('2026-07-01'), riderName: 'Ann', fee: 10, agreementId: 'a-1' }
 
     const [item] = mergeOutstandingItems([], [charge], [], 'America/New_York')
 

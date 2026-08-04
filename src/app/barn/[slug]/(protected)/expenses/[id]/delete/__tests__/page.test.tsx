@@ -13,6 +13,7 @@ import { getExpenseById } from '@/lib/db/expenses'
 import { notFound } from 'next/navigation'
 import DeleteExpensePage from '../page'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 
@@ -24,7 +25,7 @@ const mockManagerMembership = createMockMembership({
 const mockExpense = {
   id: 'expense-1',
   barn_id: 'barn-1',
-  expense_date: '2026-07-01',
+  expense_date: calendarDate('2026-07-01'),
   expense_time: null,
   amount: 100,
   recipient: 'Dr. Smith',

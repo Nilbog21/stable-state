@@ -10,7 +10,7 @@
  * This module sits inside the eslint fence (`eslint.config.mjs`), which is why the
  * `Intl.DateTimeFormat` calls below are legal here and nowhere outside the date modules.
  */
-import type { Instant } from './db/types'
+import type { CalendarDate, Instant } from './db/types'
 
 const DATE_PARTS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 const TIME_PARTS: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' }
@@ -44,13 +44,13 @@ export function formatShortDate(isoString: string): string {
   return new Intl.DateTimeFormat('en-US', { ...DATE_PARTS, timeZone: 'UTC' }).format(new Date(isoString))
 }
 
-export function formatShortDateOnly(dateOnly: string): string {
+export function formatShortDateOnly(dateOnly: CalendarDate): string {
   return formatShortDate(`${dateOnly}T00:00:00Z`)
 }
 
 // "Jul 2026" for an `agreement_charges.period` — a DATE naming a billing month, so UTC-forced
 // like the two above. Lives here rather than beside its one caller so the fence has nothing
 // to make an exception for.
-export function formatChargePeriod(period: string): string {
+export function formatChargePeriod(period: CalendarDate): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(period))
 }

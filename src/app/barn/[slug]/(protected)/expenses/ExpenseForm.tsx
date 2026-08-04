@@ -7,7 +7,7 @@ import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays } from '@/lib/local-day'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
-import type { PaymentType, ScheduleItem } from '@/lib/db/types'
+import type { CalendarDate, PaymentType, ScheduleItem } from '@/lib/db/types'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
 
@@ -35,7 +35,7 @@ type ExpenseFormProps = {
    *  device timezone differs from the barn's. #1224 made it the new-expense date default too:
    *  the day being pre-filled is a day of *barn* business, and the alternative it replaced was
    *  the server host's UTC day, which runs ahead of every zone the barn picker offers. */
-  todayStr: string
+  todayStr: CalendarDate
   /** The barn's `barns.timezone`. Required, and the frame the entered date and time resolve
    *  in: they mean that wall clock *at the barn*, same as `DateHourPicker`'s (#1222). */
   timezone: string

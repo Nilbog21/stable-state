@@ -19,6 +19,25 @@
  */
 export type Instant = { at: string; tz: string }
 
+/**
+ * A zoneless calendar day — a `DATE` column (`agreement_charges.period`,
+ * `appointments.expense_date`, `agreements.start_date`, a document's `reminder_date`) or a
+ * "YYYY-MM-DD" string the calendar views do arithmetic on. The other half of the timezone
+ * work `Instant` above started (#1223): "the July 2026 billing period" is a label on a wall
+ * calendar, not a moment on the timeline — it has no timezone and must never acquire one.
+ * #923 is what happens when a zoneless value gets rendered through a zoned path.
+ *
+ * While both frames were plain `string`, a function signed `(date: string)` accepted either
+ * and the compiler could not object. The brand closes that in one direction only: a
+ * `CalendarDate` still flows anywhere a `string` is wanted, so friction appears only where
+ * one is *required*.
+ *
+ * Three mints, and only three — `local-day.ts`'s `calendarDate` (unchecked, for a value the
+ * DB already types as `DATE`) and `isValidDateString` (validating, for user input), plus
+ * `barn-timezone.ts`'s `barnDay`/`barnToday`. Grep those to enumerate every producer.
+ */
+export type CalendarDate = string & { __brand: 'CalendarDate' }
+
 export type Role = 'manager' | 'trainer' | 'rider'
 export type NotificationType =
   | 'outstanding_payment'
@@ -236,7 +255,7 @@ export interface RiderIncomeSummary {
 export interface OutstandingCharge {
   id: string
   agreementId: string
-  period: string
+  period: CalendarDate
   kind: AgreementKind
   riderName: string
   fee: number
@@ -268,8 +287,8 @@ interface OutstandingItemBase {
 export type OutstandingItem =
   | (OutstandingItemBase & { itemType: 'lesson'; date: Instant })
   | (OutstandingItemBase & { itemType: 'cancellation_fee'; date: Instant })
-  | (OutstandingItemBase & { itemType: 'lease'; date: string })
-  | (OutstandingItemBase & { itemType: 'board'; date: string })
+  | (OutstandingItemBase & { itemType: 'lease'; date: CalendarDate })
+  | (OutstandingItemBase & { itemType: 'board'; date: CalendarDate })
 
 export type ScheduleItemType = 'lesson' | 'expense' | 'event'
 
@@ -315,7 +334,7 @@ export interface BarnEventInput {
 export interface HorseChargeDetailRow {
   chargeId: string
   agreementId: string
-  period: string
+  period: CalendarDate
   kind: AgreementKind
   fee: number
 }
@@ -323,7 +342,7 @@ export interface HorseChargeDetailRow {
 export interface RiderChargeDetailRow {
   chargeId: string
   agreementId: string
-  period: string
+  period: CalendarDate
   kind: AgreementKind
   fee: number
 }
@@ -371,7 +390,7 @@ export interface HorseDocument {
   file_name: string
   file_size: number
   notes: string | null
-  reminder_date: string | null
+  reminder_date: CalendarDate | null
   created_at: string
   updated_at: string
 }
@@ -385,7 +404,7 @@ export interface TrainerDocument {
   file_name: string
   file_size: number
   notes: string | null
-  reminder_date: string | null
+  reminder_date: CalendarDate | null
   created_at: string
   updated_at: string
 }
@@ -399,7 +418,7 @@ export interface RiderDocument {
   file_name: string
   file_size: number
   notes: string | null
-  reminder_date: string | null
+  reminder_date: CalendarDate | null
   created_at: string
   updated_at: string
 }
@@ -409,7 +428,7 @@ export interface DueDocument {
   entity: 'horse' | 'trainer' | 'rider'
   recordType: string
   fileName: string
-  reminderDate: string
+  reminderDate: CalendarDate
   ownerName: string
   ownerId: string
 }
@@ -438,7 +457,7 @@ export interface Agreement {
   fee: number
   kind: AgreementKind
   cadence: AgreementCadence
-  start_date: string
+  start_date: CalendarDate
   is_active: boolean
   created_at: string
   updated_at: string
@@ -448,7 +467,7 @@ export interface AgreementCharge {
   id: string
   barn_id: string
   agreement_id: string
-  period: string
+  period: CalendarDate
   fee: number
   payment_type: PaymentType | null
   created_at: string
@@ -459,7 +478,7 @@ export interface AgreementCharge {
 export interface Appointment {
   id: string
   barn_id: string
-  expense_date: string
+  expense_date: CalendarDate
   expense_time: string | null
   recipient: string
   expense_type: string
@@ -489,6 +508,8 @@ export interface ScheduledAppointment extends ExpenseWithHorses {
 }
 
 export interface ExpenseInput {
+  // Write inputs stay bare `string` (#1223 scope ruling): a form field is unvalidated text
+  // until something checks it, and branding it here would only move the lie earlier.
   expenseDate: string
   expenseTime?: string | null
   amount?: number | null
@@ -514,7 +535,7 @@ export interface ExpenseFinancialSummary {
 
 export interface HorseExpenseDetailRow {
   expenseId: string
-  expenseDate: string
+  expenseDate: CalendarDate
   amount: number
   horseCount: number
   splitAmount: number
@@ -527,7 +548,7 @@ export interface RecipientExpenseSummary {
 
 export interface RecipientExpenseDetailRow {
   expenseId: string
-  expenseDate: string
+  expenseDate: CalendarDate
   expenseType: string
   amount: number
 }

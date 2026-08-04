@@ -43,7 +43,8 @@ describe('the Instant brand', () => {
 describe('the CalendarDate brand', () => {
   it('should_reject_a_bare_string_where_a_calendar_date_is_required', () => {
     // @ts-expect-error — a bare string could equally be an instant or a wall clock; only a
-    // value minted as a calendar day may reach a UTC-forced formatter.
+    // value minted as a calendar day may reach a UTC-forced formatter. Deliberately unminted:
+    // wrapping this in `calendarDate()` is what the assertion exists to forbid.
     expect(formatShortDateOnly('2026-07-15')).toBe('Jul 15, 2026')
   })
 

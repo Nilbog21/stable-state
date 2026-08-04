@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { DocumentRemindersSection } from '../DocumentRemindersSection'
 import type { DueDocument } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 afterEach(cleanup)
 
@@ -10,7 +11,7 @@ const pastDueHorseDoc: DueDocument = {
   entity: 'horse',
   recordType: 'coggins',
   fileName: 'coggins.pdf',
-  reminderDate: '2020-01-01',
+  reminderDate: calendarDate('2020-01-01'),
   ownerName: 'Thunderbolt',
   ownerId: 'horse-1',
 }

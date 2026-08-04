@@ -18,6 +18,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { settledTextContents } from './support/read'
 import { addBarnEvent, addHorse, addTier, updateBarnSettings } from './support/fixtures'
 import type { LessonTier } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 // ---------------------------------------------------------------------------
 // Seed inputs and the display forms they are expected to produce
@@ -72,7 +73,7 @@ const CUSTOM_OPTION = 'Custom'
 // is in (#1222).
 const NEW_EVENT = {
   title: 'Spring Show Day',
-  date: '2030-05-14',
+  date: calendarDate('2030-05-14'),
   hour: '14',
   notes: 'Bring your own tack.',
 }

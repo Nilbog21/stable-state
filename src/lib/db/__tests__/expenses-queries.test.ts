@@ -12,6 +12,7 @@ import {
   getOutstandingExpenses,
   getExpensesByIds,
 } from '../expenses'
+import { calendarDate } from '@/lib/local-day'
 
 // appointment_costs lookup (#1148): select → eq(barn_id) → in(appointment_id) → resolves.
 // A trainer's session gets zero rows back from it, not an error — appointment_costs is
@@ -397,7 +398,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_include_a_past_due_appointment_with_no_cost_row', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment], []) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')
@@ -406,7 +407,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_include_a_past_due_appointment_whose_cost_is_unpaid', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: '10:00:00' })
     const costs = [{ appointment_id: appointment.id, amount: 150, payment_type: null }]
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment], costs) } as any)
 
@@ -416,7 +417,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_exclude_a_past_due_appointment_whose_cost_is_already_paid', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: '10:00:00' })
     const costs = [{ appointment_id: appointment.id, amount: 150, payment_type: 'venmo' }]
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment], costs) } as any)
 
@@ -426,7 +427,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_flatten_the_attached_amount_onto_an_outstanding_row', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: '10:00:00' })
     const costs = [{ appointment_id: appointment.id, amount: 150, payment_type: null }]
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment], costs) } as any)
 
@@ -436,7 +437,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_exclude_row_whose_combined_datetime_is_after_now', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-11', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-11'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment]) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')
@@ -445,7 +446,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_default_null_expense_time_to_end_of_day_when_checking_past_due', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-10', expense_time: null })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-10'), expense_time: null })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment]) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')
@@ -454,7 +455,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_include_null_time_row_once_its_day_has_fully_passed', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: null })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: null })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment]) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')
@@ -463,8 +464,8 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_sort_ascending_by_combined_datetime', async () => {
-    const later = createMockAppointment({ id: 'expense-2', expense_date: '2026-07-08', expense_time: '10:00:00' })
-    const earlier = createMockAppointment({ id: 'expense-1', expense_date: '2026-07-02', expense_time: '09:00:00' })
+    const later = createMockAppointment({ id: 'expense-2', expense_date: calendarDate('2026-07-08'), expense_time: '10:00:00' })
+    const earlier = createMockAppointment({ id: 'expense-1', expense_date: calendarDate('2026-07-02'), expense_time: '09:00:00' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([later, earlier]) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')
@@ -479,7 +480,7 @@ describe('getOutstandingExpenses', () => {
   })
 
   it('should_throw_when_the_cost_lookup_errors', async () => {
-    const appointment = createMockAppointment({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-09'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment], null, { costsError: new Error('cost error') }) } as any)
 
     await expect(getOutstandingExpenses('barn-1', 'America/New_York')).rejects.toThrow('cost error')
@@ -490,7 +491,7 @@ describe('getOutstandingExpenses', () => {
     // after fake "now" (2026-07-10T12:00:00Z). A naive `...Z` cast would read the digits
     // as 10:00 AM UTC (2026-07-10T10:00:00Z), which is before "now" and would wrongly
     // flag it as already past due.
-    const appointment = createMockAppointment({ expense_date: '2026-07-10', expense_time: '10:00:00' })
+    const appointment = createMockAppointment({ expense_date: calendarDate('2026-07-10'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom([appointment]) } as any)
 
     const result = await getOutstandingExpenses('barn-1', 'America/New_York')

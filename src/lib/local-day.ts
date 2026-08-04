@@ -1,10 +1,21 @@
 // Zoneless calendar-day helpers. A "YYYY-MM-DD" string is not a real instant, so nothing
 // here involves a timezone. #1222 deleted `localToday` along with the viewer frame — every
 // "what day is it" question is barn-local now, and `barn-timezone.ts:barnToday` answers it.
+// #1223 branded the frame: everything below deals in `CalendarDate`, not bare strings.
+import type { CalendarDate } from './db/types'
+
+// The unchecked mint — for a value the DB already types as `DATE`, and for test fixtures.
+// Two other producers exist and no more: `isValidDateString` below (validating, for user
+// input) and `barn-timezone.ts`'s `barnDay`/`barnToday`.
+export function calendarDate(s: string): CalendarDate {
+  return s as CalendarDate
+}
 
 // Validates a "YYYY-MM-DD" calendar-date string, e.g. a `?date=` search param, rejecting
 // both malformed input and out-of-range values (a naive regex alone would accept "2026-02-30").
-export function isValidDateString(s: string): boolean {
+// A type predicate rather than a plain boolean, so a validated search param narrows to
+// `CalendarDate` at the `if` and reaches the rest of the module without a cast.
+export function isValidDateString(s: string): s is CalendarDate {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
   const d = new Date(s + 'T00:00:00Z')
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
@@ -12,14 +23,14 @@ export function isValidDateString(s: string): boolean {
 
 // Pure calendar-day arithmetic on a "YYYY-MM-DD" string — not a real instant, so no
 // timezone is involved (unlike wallClockToInstant, which anchors to a barn's zone).
-export function addDays(date: string, delta: number): string {
+export function addDays(date: CalendarDate, delta: number): CalendarDate {
   const d = new Date(date + 'T00:00:00Z')
   d.setUTCDate(d.getUTCDate() + delta)
-  return d.toISOString().slice(0, 10)
+  return calendarDate(d.toISOString().slice(0, 10))
 }
 
 // The Sunday-start calendar week (Sun-Sat) containing the given date.
-export function getWeekDates(date: string): string[] {
+export function getWeekDates(date: CalendarDate): CalendarDate[] {
   const dayOfWeek = new Date(date + 'T00:00:00Z').getUTCDay() // 0 = Sunday
   const weekStart = addDays(date, -dayOfWeek)
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -39,7 +50,7 @@ export function formatItemTime(start: string): string {
 }
 
 // Shared by the Day view's single heading and the Week view's per-day-cell headings.
-export function formatCalendarDate(date: string): string {
+export function formatCalendarDate(date: CalendarDate): string {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${date}T00:00:00Z`)
   )

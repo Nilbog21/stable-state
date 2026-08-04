@@ -1,4 +1,5 @@
 import type { Agreement, Appointment, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
@@ -29,7 +30,7 @@ export function createMockAgreement(overrides: Partial<Agreement> = {}): Agreeme
     fee: 200,
     kind: 'lease',
     cadence: 'monthly',
-    start_date: '2026-07-01',
+    start_date: calendarDate('2026-07-01'),
     is_active: true,
     created_at: '',
     updated_at: '',
@@ -42,7 +43,7 @@ export function createMockAgreementCharge(overrides: Partial<AgreementCharge> = 
     id: 'charge-1',
     barn_id: 'barn-1',
     agreement_id: 'agreement-1',
-    period: '2026-07-01',
+    period: calendarDate('2026-07-01'),
     fee: 200,
     payment_type: null,
     created_at: '',
@@ -265,7 +266,7 @@ export function createMockAppointment(overrides: Partial<Appointment> = {}): App
   return {
     id: 'expense-1',
     barn_id: 'barn-1',
-    expense_date: '2026-07-01',
+    expense_date: calendarDate('2026-07-01'),
     expense_time: null,
     recipient: 'Dr. Smith',
     expense_type: 'Veterinary',

@@ -11,6 +11,7 @@ import {
   updateExpense,
   deleteExpense,
 } from '../expenses'
+import { calendarDate } from '@/lib/local-day'
 
 describe('createExpense', () => {
   beforeEach(() => {
@@ -23,7 +24,7 @@ describe('createExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false,
       expenseTime: '14:00', amount: 100, expenseType: 'Farrier', notes: 'note', horseIds: ['horse-1'],
     })
 
@@ -39,7 +40,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_expense_type).toBe('Unspecified')
   })
@@ -49,7 +50,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_expense_time).toBeNull()
   })
@@ -59,7 +60,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_amount).toBeNull()
   })
@@ -69,7 +70,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_notes).toBeNull()
   })
@@ -79,7 +80,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: true })
 
     expect(mockRpc.mock.calls[0][1].p_horse_ids).toBeNull()
   })
@@ -89,7 +90,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    const result = await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    const result = await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(result).toEqual(expense)
   })
@@ -99,7 +100,7 @@ describe('createExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
-      createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+      createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
     ).rejects.toThrow('rpc failed')
   })
 
@@ -110,7 +111,7 @@ describe('createExpense', () => {
 
     const result = await createExpense(
       'barn-1',
-      { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false },
+      { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false },
       mockClient
     )
 
@@ -122,7 +123,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'venmo' })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'venmo' })
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBe('venmo')
   })
@@ -132,7 +133,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
   })
@@ -143,7 +144,7 @@ describe('createExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false,
       occurredAt: '2026-07-01T18:00:00.000Z',
     })
 
@@ -155,7 +156,7 @@ describe('createExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await createExpense('barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_occurred_at).toBeNull()
   })
@@ -172,7 +173,7 @@ describe('updateExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateExpense('expense-1', 'barn-1', {
-      expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false,
+      expenseDate: calendarDate('2026-07-01'), recipient: 'New Vet', appliesToAllHorses: false,
       expenseTime: '14:00', amount: 100, expenseType: 'Farrier', notes: 'note', horseIds: ['horse-1'],
     })
 
@@ -188,7 +189,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_expense_type).toBe('Unspecified')
   })
@@ -198,7 +199,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_expense_time).toBeNull()
   })
@@ -208,7 +209,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_amount).toBeNull()
   })
@@ -218,7 +219,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_notes).toBeNull()
   })
@@ -228,7 +229,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: true })
 
     expect(mockRpc.mock.calls[0][1].p_horse_ids).toBeNull()
   })
@@ -238,7 +239,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    const result = await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false })
+    const result = await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'New Vet', appliesToAllHorses: false })
 
     expect(result).toEqual(expense)
   })
@@ -248,7 +249,7 @@ describe('updateExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
-      updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+      updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
     ).rejects.toThrow('rpc failed')
   })
 
@@ -260,7 +261,7 @@ describe('updateExpense', () => {
     const result = await updateExpense(
       'expense-1',
       'barn-1',
-      { expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false },
+      { expenseDate: calendarDate('2026-07-01'), recipient: 'New Vet', appliesToAllHorses: false },
       mockClient
     )
 
@@ -272,7 +273,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'cash' })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'cash' })
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBe('cash')
   })
@@ -282,7 +283,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
   })
@@ -293,7 +294,7 @@ describe('updateExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateExpense('expense-1', 'barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false,
       occurredAt: '2026-07-01T18:00:00.000Z',
     })
 
@@ -305,7 +306,7 @@ describe('updateExpense', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: calendarDate('2026-07-01'), recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_occurred_at).toBeNull()
   })

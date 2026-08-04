@@ -25,6 +25,7 @@ import { getHorsesByBarn } from '@/lib/db/horses'
 import { getExpenseById, getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { notFound } from 'next/navigation'
 import EditExpensePage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -135,7 +136,7 @@ describe('EditExpensePage as a trainer', () => {
     id: 'expense-1',
     recipient: 'Valley Farrier',
     expense_type: 'Farrier',
-    expense_date: '2026-07-15',
+    expense_date: calendarDate('2026-07-15'),
     expense_time: '14:00:00',
     notes: 'Front shoes only',
     horse_ids: ['horse-2'],

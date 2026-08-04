@@ -9,13 +9,15 @@ vi.mock('../OlderExpensesToggle', () => ({ OlderExpensesToggle: () => null }))
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpensesByBarn } from '@/lib/db/expenses'
 import ExpensesPage from '../page'
+import { calendarDate } from '@/lib/local-day'
+import type { CalendarDate } from '@/lib/db/types'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
 
-function dateOffsetDays(days: number): string {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+function dateOffsetDays(days: number): CalendarDate {
+  return calendarDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
 }
 
 describe('ExpensesPage', () => {

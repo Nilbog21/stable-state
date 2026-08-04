@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
-import { formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
+import { calendarDate, formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { Button } from '@/components/ui/Button'
-import type { ScheduleItem } from '@/lib/db/types'
+import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
 
 /**
  * Month grid used as a form date field (#1019): each cell is tinted from the caller's
@@ -51,12 +51,12 @@ export function MonthCalendarPicker({
   label: string
 }) {
   const { open, setOpen, ref } = useOutsideDismiss()
-  const [popupDate, setPopupDate] = useState('')
+  const [popupDate, setPopupDate] = useState(calendarDate(''))
 
   const days = getMonthGrid(month)
   const popupItems = items.filter((item) => item.start.slice(0, 10) === popupDate)
 
-  function handleDayTap(date: string) {
+  function handleDayTap(date: CalendarDate) {
     onChange(date)
     setPopupDate(date)
     setOpen(true)

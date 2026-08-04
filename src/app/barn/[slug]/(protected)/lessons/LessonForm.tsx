@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
-import type { Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
+import type { CalendarDate, Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
 import { DateHourPicker } from './DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
@@ -67,7 +67,7 @@ export function LessonForm({
   /** The barn's own calendar day ("YYYY-MM-DD"), computed server-side via `barnToday` — the
    *  month calendar's past-day cutoff, which has to sit in the same frame as every other date
    *  on that grid (#1149). */
-  todayStr: string
+  todayStr: CalendarDate
   /** `barns.timezone` — the frame the lesson's date/hour are entered and decoded in (#1222). */
   timezone: string
   initialLesson?: LessonDetail

@@ -43,6 +43,7 @@ import type {
   LessonBackupRow,
   TransactionBackupRow,
 } from '../backup'
+import { calendarDate } from '@/lib/local-day'
 
 const TIMEZONE = 'America/New_York'
 
@@ -440,7 +441,7 @@ describe('getBarnBackupData', () => {
     setupFrom({
       horses: { data: [] },
       lessons: { data: [] },
-      agreement_charges: { data: [createMockAgreementCharge({ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01' })] },
+      agreement_charges: { data: [createMockAgreementCharge({ id: 'charge-1', agreement_id: 'agreement-1', period: calendarDate('2026-07-01') })] },
       barn_memberships: { data: [] },
       profiles: { data: [] },
     })
@@ -468,7 +469,7 @@ describe('getBarnBackupData', () => {
     setupFrom({
       horses: { data: [] },
       lessons: { data: [] },
-      agreement_charges: { data: [createMockAgreementCharge({ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01' })] },
+      agreement_charges: { data: [createMockAgreementCharge({ id: 'charge-1', agreement_id: 'agreement-1', period: calendarDate('2026-07-01') })] },
       barn_memberships: { data: [] },
       profiles: { data: [] },
     })
@@ -488,7 +489,7 @@ describe('getBarnBackupData', () => {
     const result = await getBarnBackupData('barn-1', TIMEZONE)
 
     expect(result.agreementCharges).toEqual([
-      expect.objectContaining({ rider: 'Alice', horse: 'Thunderbolt', kind: 'board', period: '2026-07-01', collected: true, paymentType: 'venmo' }),
+      expect.objectContaining({ rider: 'Alice', horse: 'Thunderbolt', kind: 'board', period: calendarDate('2026-07-01'), collected: true, paymentType: 'venmo' }),
     ])
   })
 
@@ -565,7 +566,7 @@ describe('getBarnBackupData', () => {
       profiles: { data: [] },
     })
     vi.mocked(getExpensesByBarn).mockResolvedValue([
-      createMockExpenseWithHorses({ expense_date: '2026-07-15', expense_time: '07:30:00' }),
+      createMockExpenseWithHorses({ expense_date: calendarDate('2026-07-15'), expense_time: '07:30:00' }),
     ])
 
     const result = await getBarnBackupData('barn-1', TIMEZONE)
@@ -582,7 +583,7 @@ describe('getBarnBackupData', () => {
       profiles: { data: [] },
     })
     vi.mocked(getExpensesByBarn).mockResolvedValue([
-      createMockExpenseWithHorses({ expense_date: '2026-07-15', expense_time: null }),
+      createMockExpenseWithHorses({ expense_date: calendarDate('2026-07-15'), expense_time: null }),
     ])
 
     const result = await getBarnBackupData('barn-1', TIMEZONE)
@@ -665,7 +666,7 @@ describe('getBarnBackupData', () => {
     vi.mocked(getAllBarnDocuments).mockResolvedValue({
       horse: [{ id: 'd1', barn_id: 'barn-1', horse_id: 'horse-1', record_type: 'coggins', storage_path: 's', file_name: 'coggins.pdf', file_size: 1, notes: null, reminder_date: null, created_at: '2026-01-01T00:00:00Z', updated_at: '' }],
       trainer: [],
-      rider: [{ id: 'd2', barn_id: 'barn-1', rider_id: 'rider-1', record_type: 'liability_waiver', storage_path: 's', file_name: 'waiver.pdf', file_size: 1, notes: null, reminder_date: '2026-08-01', created_at: '2026-01-02T00:00:00Z', updated_at: '' }],
+      rider: [{ id: 'd2', barn_id: 'barn-1', rider_id: 'rider-1', record_type: 'liability_waiver', storage_path: 's', file_name: 'waiver.pdf', file_size: 1, notes: null, reminder_date: calendarDate('2026-08-01'), created_at: '2026-01-02T00:00:00Z', updated_at: '' }],
     })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['rider-1', 'Alice']]))
@@ -674,7 +675,7 @@ describe('getBarnBackupData', () => {
 
     expect(result.documents).toEqual([
       expect.objectContaining({ ownerType: 'Horse', owner: 'Thunderbolt', recordType: 'coggins' }),
-      expect.objectContaining({ ownerType: 'Member', owner: 'Alice', recordType: 'liability_waiver', reminderDate: '2026-08-01' }),
+      expect.objectContaining({ ownerType: 'Member', owner: 'Alice', recordType: 'liability_waiver', reminderDate: calendarDate('2026-08-01') }),
     ])
   })
 
@@ -981,7 +982,7 @@ describe('buildBarnDataWorkbook', () => {
   })
 
   const chargeRow = (overrides: Partial<AgreementChargeBackupRow> = {}): AgreementChargeBackupRow => ({
-    rider: 'Alice', horse: 'Thunderbolt', kind: 'board', period: '2026-03-01',
+    rider: 'Alice', horse: 'Thunderbolt', kind: 'board', period: calendarDate('2026-03-01'),
     fee: 500, collected: true, paymentType: 'cash', ...overrides,
   })
 

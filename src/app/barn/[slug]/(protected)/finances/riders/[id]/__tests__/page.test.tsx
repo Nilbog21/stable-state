@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 import { requireMembership } from '@/lib/auth/guard'
 import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import RiderIncomePage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
 const mockUser = createMockUser()
@@ -162,7 +163,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 500,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -174,7 +175,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 500,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -186,7 +187,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', fee: 200 }],
       total: 200,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -199,7 +200,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', fee: 200 }],
       total: 200,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -211,7 +212,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, riderCount: 1, splitAmount: 100 }],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
       total: 600,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -223,7 +224,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-20T10:00:00Z'), fee: 100, riderCount: 1, splitAmount: 100 }],
-      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-05', kind: 'board', fee: 40 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-05'), kind: 'board', fee: 40 }],
       total: 140,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -250,7 +251,7 @@ describe('RiderIncomePage', () => {
       vi.mocked(getRiderIncomeDetail).mockResolvedValue({
         riderName: 'Alice',
         rows: [],
-        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', fee: 500 }],
         total: 500,
       })
       const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })

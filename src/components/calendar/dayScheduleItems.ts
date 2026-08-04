@@ -1,4 +1,4 @@
-import type { ScheduleItem, LessonWithDetails, ExpenseWithHorses, ScheduledAppointment, BarnEvent } from '@/lib/db/types'
+import type { CalendarDate, ScheduleItem, LessonWithDetails, ExpenseWithHorses, ScheduledAppointment, BarnEvent } from '@/lib/db/types'
 
 export type DayScheduleDisplayItem =
   | { itemType: 'lesson'; id: string; lesson: LessonWithDetails }
@@ -41,12 +41,12 @@ export function mergeDayScheduleDisplayItems(
 // conversion needed, since `start` is already a barn-local wall-clock string (see
 // ScheduleItem's own doc comment in types.ts).
 export function groupScheduleItemsByDay(
-  dates: string[],
+  dates: CalendarDate[],
   items: ScheduleItem[],
   lessons: LessonWithDetails[],
   expenses: ExpenseWithHorses[],
   events: BarnEvent[]
-): { date: string; items: DayScheduleDisplayItem[] }[] {
+): { date: CalendarDate; items: DayScheduleDisplayItem[] }[] {
   return dates.map((date) => {
     const dayItems = items.filter((item) => item.start.slice(0, 10) === date)
     return { date, items: mergeDayScheduleDisplayItems(dayItems, lessons, expenses, events) }

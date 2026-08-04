@@ -8,6 +8,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { getScheduleForRange, mergeScheduleItems, intervalsOverlap, isLessonNearby, getNearbyInstructorMembershipIds, scopeScheduleItemsForRole, LESSON_DURATION_MINUTES } from '../schedule'
 import type { ScheduleItem } from '../types'
+import { calendarDate } from '@/lib/local-day'
 
 describe('mergeScheduleItems', () => {
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
@@ -541,7 +542,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_return_expense_items_only_when_only_expenses_exist_in_range', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -551,7 +552,7 @@ describe('getScheduleForRange', () => {
 
   it('should_return_merged_lesson_and_expense_items_for_a_mixed_range', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -621,7 +622,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_include_expense_horse_ids_resolved_from_the_junction_table', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [{ appointment_id: 'expense-1', horse_id: 'horse-1' }] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -632,7 +633,7 @@ describe('getScheduleForRange', () => {
   // #1147: create_expense_with_horses skips the junction insert for a barn-wide expense, so
   // the flag is the only signal that it applies to every horse.
   it('should_carry_applies_to_all_horses_onto_an_expense_item_with_no_junction_rows', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00', applies_to_all_horses: true })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00', applies_to_all_horses: true })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -641,7 +642,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_exclude_an_expense_dated_before_the_window', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-06-20', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-06-20'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -669,7 +670,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_throw_when_the_expense_horse_junction_query_rejects', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: null, expenseHorsesError: new Error('junction error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('junction error')
@@ -692,7 +693,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_treat_null_expense_horse_junction_data_as_empty', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: null }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -722,7 +723,7 @@ describe('getScheduleForRange', () => {
 
   it('should_return_merged_lesson_expense_and_event_items_for_a_mixed_range', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     const event = { id: 'event-1', event_at: '2026-07-04T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense], events: [event] }) as any)
 
@@ -761,7 +762,7 @@ describe('getScheduleForRange', () => {
     // A naive comparison of the lesson's raw UTC string against the expense's un-zoned wall-clock
     // string would sort '2026-07-03...' (expense) before '2026-07-04...' (lesson) — wrong order.
     const lesson = createMockLesson({ id: 'lesson-1', lesson_at: '2026-07-04T02:00:00.000Z' })
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '23:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '23:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -878,7 +879,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_set_an_empty_exertion_map_on_an_expense_item', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -898,7 +899,7 @@ describe('getScheduleForRange', () => {
   it('should_label_an_expense_item_with_its_type_and_recipient', async () => {
     const expense = createMockHorseExpense({
       id: 'expense-1',
-      expense_date: '2026-07-03',
+      expense_date: calendarDate('2026-07-03'),
       expense_time: '10:00:00',
       expense_type: 'Veterinary',
       recipient: 'Dr. Smith',

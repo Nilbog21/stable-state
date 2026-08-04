@@ -76,7 +76,7 @@ describe('DateHourPicker', () => {
   it('should_account_for_standard_time_offset_distinct_from_daylight_saving_offset', () => {
     // Jan 15 is EST (UTC-5, standard time) in America/New_York, unlike the DST
     // (UTC-4) dates used elsewhere in this file — catches a hardcoded offset.
-    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate="2026-01-15" initialHour={16} />)
+    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate={'2026-01-15'} initialHour={16} />)
     const hidden = container.querySelector('input[name="lesson_at"]') as HTMLInputElement
     expect(hidden.value).toBe('2026-01-15T21:00:00.000Z')
   })
@@ -89,7 +89,7 @@ describe('DateHourPicker', () => {
   })
 
   it('should_use_initialDate_prop_when_provided', () => {
-    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate="2026-03-15" />)
+    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate={'2026-03-15'} />)
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     expect(dateInput.value).toBe('2026-03-15')
   })
@@ -164,7 +164,7 @@ describe('DateHourPicker', () => {
   })
 
   it('should_hand_the_current_date_to_renderDate', () => {
-    render(<DateHourPicker timezone={'America/New_York'} initialDate="2026-06-15" renderDate={(value) => <div>{value}</div>} />)
+    render(<DateHourPicker timezone={'America/New_York'} initialDate={'2026-06-15'} renderDate={(value) => <div>{value}</div>} />)
     expect(screen.getByText('2026-06-15')).toBeDefined()
   })
 
@@ -183,7 +183,7 @@ describe('DateHourPicker', () => {
   })
 
   it('should_still_submit_lesson_at_when_a_custom_date_control_is_used', () => {
-    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate="2026-06-15" renderDate={() => <div>custom</div>} />)
+    const { container } = render(<DateHourPicker timezone={'America/New_York'} initialDate={'2026-06-15'} renderDate={() => <div>custom</div>} />)
     expect((container.querySelector('input[name="lesson_at"]') as HTMLInputElement).value).toBe('2026-06-15T18:00:00.000Z')
   })
 })
