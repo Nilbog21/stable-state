@@ -538,10 +538,6 @@ export async function cancelLessonRider(
       .single(),
     'cancel rider participation'
   )
-  if (!isLate) {
-    mustSucceed(await supabase.from('lessons').update({ fee: 0 }).eq('id', opts.lessonId), 'zero cancelled lesson fee')
-  }
-
   const remaining = mustSucceed<{ id: string }[]>(
     await supabase
       .from('lesson_riders')
@@ -559,7 +555,16 @@ export async function cancelLessonRider(
     )
   }
 
-  await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
+  // Fee handling is whole-lesson-scoped, so it only fires when this cancellation ends the
+  // lesson: a normal lesson always has exactly one rider, and a group lesson qualifies only
+  // once the last active one is gone (#1278 — before it, both writes fired for any rider of
+  // any lesson type, wiping the fee of a group lesson the remaining riders still rode).
+  if (lesson.lesson_type === 'normal' || cascaded) {
+    if (!isLate) {
+      mustSucceed(await supabase.from('lessons').update({ fee: 0 }).eq('id', opts.lessonId), 'zero cancelled lesson fee')
+    }
+    await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
+  }
   return { cascaded }
 }
 
