@@ -762,33 +762,33 @@ Manage Barn (`/barn/dev-barn/settings`):
 
 Notifications and profile:
 
-- [ ] (e2e-candidate) Notification bell shows an unread-count badge
-- [ ] (e2e-candidate) Opening the bell lists the notifications
-- [ ] (e2e-candidate) Each listed notification shows its title
-- [ ] (e2e-candidate) Each shows its body
-- [ ] (e2e-candidate) Each shows its timestamp
-- [ ] (e2e-candidate) **Mark all read** clears the badge
-- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
-- [ ] (e2e-candidate) That nav bar carries the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages
-- [ ] (e2e-candidate) Edit phone on `/profile` → Save → you're redirected back to the barn
-- [ ] (e2e-candidate) Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
-- [ ] (e2e-candidate) Avatar menu → **About** (`/about`) renders the app overview
-- [ ] (e2e-candidate) The **Changelog** link on `/about` includes the current version
-- [ ] (e2e-candidate) That **Changelog** link opens `/changelog`
-- [ ] (e2e-candidate) The **Terms of Service** link on `/about` opens `/terms`
-- [ ] (e2e-candidate) The **Privacy Policy** link on `/about` opens `/privacy`
-- [ ] (e2e-candidate) The **← Back** link on `/about` returns to `/barns`
-- [ ] (e2e-candidate) The **← Back** link on `/changelog` returns to `/barns`
-- [ ] (e2e-candidate) The **← Back** link on `/terms` returns to `/barns`
-- [ ] (e2e-candidate) The **← Back** link on `/privacy` returns to `/barns`
+- [ ] (e2e: notification_bell_shows_an_unread_count_badge) Notification bell shows an unread-count badge
+- [ ] (e2e: opening_the_bell_lists_the_notifications) Opening the bell lists the notifications
+- [ ] (e2e: each_listed_notification_shows_its_title) Each listed notification shows its title
+- [ ] (e2e: each_listed_notification_shows_its_body) Each shows its body
+- [ ] (e2e: each_listed_notification_shows_its_timestamp) Each shows its timestamp
+- [ ] (e2e: mark_all_read_clears_the_unread_badge) **Mark all read** clears the badge
+- [ ] (e2e: avatar_menu_profile_opens_the_profile_page_with_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e: the_profile_nav_bar_carries_the_full_nine_link_manager_nav) That nav bar carries the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages
+- [ ] (e2e: saving_an_edited_phone_redirects_back_to_the_barn) Edit phone on `/profile` → Save → you're redirected back to the barn
+- [ ] (e2e: avatar_menu_user_guide_opens_the_manager_guide) Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
+- [ ] (e2e: avatar_menu_about_opens_the_app_overview) Avatar menu → **About** (`/about`) renders the app overview
+- [ ] (e2e: the_changelog_link_on_about_includes_the_current_version) The **Changelog** link on `/about` includes the current version
+- [ ] (e2e: the_changelog_link_on_about_opens_the_changelog_page) That **Changelog** link opens `/changelog`
+- [ ] (e2e: the_terms_of_service_link_on_about_opens_the_terms_page) The **Terms of Service** link on `/about` opens `/terms`
+- [ ] (e2e: the_privacy_policy_link_on_about_opens_the_privacy_page) The **Privacy Policy** link on `/about` opens `/privacy`
+- [ ] (e2e: the_back_link_on_about_returns_to_the_barn_list) The **← Back** link on `/about` returns to `/barns`
+- [ ] (e2e: the_back_link_on_changelog_returns_to_the_barn_list) The **← Back** link on `/changelog` returns to `/barns`
+- [ ] (e2e: the_back_link_on_terms_returns_to_the_barn_list) The **← Back** link on `/terms` returns to `/barns`
+- [ ] (e2e: the_back_link_on_privacy_returns_to_the_barn_list) The **← Back** link on `/privacy` returns to `/barns`
 
 Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
 
-- [ ] (e2e-candidate) At this width the avatar menu opens and dismisses by tap
-- [ ] (e2e-candidate) At this width the notification bell dropdown opens and dismisses by tap
+- [ ] (e2e: at_mobile_width_the_avatar_menu_opens_and_dismisses_by_tap) At this width the avatar menu opens and dismisses by tap
+- [ ] (e2e: at_mobile_width_the_notification_bell_dropdown_opens_and_dismisses_by_tap) At this width the notification bell dropdown opens and dismisses by tap
 - [ ] (manual) Nothing in the nav bar or its dropdowns relies on hover to be reachable or dismissible
-- [ ] (e2e-candidate) The Lessons list stays readable without horizontal scrolling
-- [ ] (e2e-candidate) The Horses list stays readable without horizontal scrolling
+- [ ] (e2e: the_lessons_list_has_no_horizontal_overflow_at_mobile_width) The Lessons list stays readable without horizontal scrolling
+- [ ] (e2e: the_horses_list_has_no_horizontal_overflow_at_mobile_width) The Horses list stays readable without horizontal scrolling
 
 Calendar feed (#1018):
 
