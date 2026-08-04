@@ -53,6 +53,14 @@ const SEEDED_TIER_CUT = 12
 const PRICE_WARNING = 'Changing the price will not affect past lessons'
 const INSTRUCTOR_CUT_WARNING = 'Changing the instructor cut will not affect past lessons'
 
+/**
+ * Line 676 claims an *amber* warning and line 678 claims "the same style amber warning", so
+ * the colour is part of both claims and text equality alone leaves it unasserted. TierForm
+ * gives both warnings this identical class string — asserting the same literal in both tests
+ * is what makes "same style" a checked claim rather than a described one.
+ */
+const AMBER_WARNING_CLASS = 'mt-1 text-xs text-amber-600 dark:text-amber-400'
+
 // How LessonForm renders each option: `{name} - ${price}`.
 const ARENA_OPTION = 'Arena Basics - $40'
 const GROUP_OPTION = 'Group Special - $55'
@@ -115,10 +123,11 @@ const barn = withBarn('settings-tiers-events', async ({ supabase, barn: seededBa
 
 /**
  * The field's own wrapper `<div>` — label, input, and the amber warning when it is showing.
- * Asserting the wrapper's full text rather than the warning's presence is what makes the
- * "warning disappears" half non-vacuous: a wrapper that failed to render fails the
- * assertion instead of satisfying it, and the identical locator is read in the paired
- * "warning appears" test, so its ability to resolve is observed rather than assumed.
+ *
+ * The two "warning disappears" items assert this wrapper's *full* text rather than the
+ * warning's absence, which is what keeps them non-vacuous: a wrapper that failed to render
+ * fails the assertion instead of satisfying it. The two "warning appears" items scope a
+ * text lookup to the same wrapper, so the locator is exercised in both directions.
  */
 function fieldBlock(page: Page, inputId: string) {
   return page.locator(`div:has(> #${inputId})`)
@@ -173,6 +182,20 @@ function eventRows(section: Locator) {
 }
 
 /**
+ * The one event row whose Title cell is exactly `title`.
+ *
+ * `filter({ has: cell })` rather than `filter({ hasText })`: `hasText` is a case-insensitive
+ * *substring* over the whole row, so a future event whose title merely contained this one
+ * would match a second row — and because the reads below use `nth()`, which selects rather
+ * than throwing, that would silently return the wrong row's cells instead of raising a
+ * strict-mode error. Matching the cell exactly removes the hazard rather than relying on the
+ * seeded titles staying non-overlapping.
+ */
+function eventRow(page: Page, section: Locator, title: string) {
+  return eventRows(section).filter({ has: page.getByRole('cell', { name: title, exact: true }) })
+}
+
+/**
  * Each event row's Title cell. `td:first-child`, not `.locator('td').first()` — the latter
  * flattens every row's cells into one list and takes the single first cell of the whole
  * table, which reads one title however many rows there are.
@@ -185,7 +208,7 @@ async function eventTitles(page: Page): Promise<string[]> {
 /** Walks Manage Barn → Barn Events → that row's Edit, the way the checklist item does. */
 async function openEventEdit(page: Page, title: string) {
   const section = await openSection(page, 'Barn Events')
-  await eventRows(section).filter({ hasText: title }).getByRole('link', { name: 'Edit', exact: true }).click()
+  await eventRow(page, section, title).getByRole('link', { name: 'Edit', exact: true }).click()
   await page.waitForURL(/\/settings\/events\/[0-9a-f-]{36}$/, { waitUntil: 'commit' })
 }
 
@@ -209,7 +232,12 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.goto(tierEditUrl(arena.id))
     await page.locator('#tier-price').fill('99')
 
-    await expect(fieldBlock(page, 'tier-price')).toHaveText(`Price${PRICE_WARNING}`)
+    // One assertion, both halves of the line: the locator resolves only if exactly one node
+    // in the Price block carries exactly that text (strict mode), and toHaveClass pins the
+    // amber styling the line names.
+    await expect(
+      fieldBlock(page, 'tier-price').getByText(PRICE_WARNING, { exact: true })
+    ).toHaveClass(AMBER_WARNING_CLASS)
   })
 
   test('reverting_a_tier_price_removes_the_warning @manager', async ({ page }) => {
@@ -229,9 +257,11 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.goto(tierEditUrl(arena.id))
     await page.locator('#tier-instructor-cut').fill('99')
 
-    await expect(fieldBlock(page, 'tier-instructor-cut')).toHaveText(
-      `Instructor Cut${INSTRUCTOR_CUT_WARNING}`
-    )
+    // Same shape and the same expected class as the price warning above — which is exactly
+    // what line 678's "the same style amber warning" claims.
+    await expect(
+      fieldBlock(page, 'tier-instructor-cut').getByText(INSTRUCTOR_CUT_WARNING, { exact: true })
+    ).toHaveClass(AMBER_WARNING_CLASS)
   })
 
   test('reverting_a_tier_instructor_cut_removes_the_warning @manager', async ({ page }) => {
@@ -317,16 +347,21 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     const boxes = page.locator('input[name="visible_to_roles"]')
     await boxes.first().waitFor()
 
-    // Value and checked state together, as an exact array: a section that failed to render
+    // Label, submitted value and checked state together, as an exact array. The line names
+    // the three checkboxes by their *labels*, so reading only `value` would pass on a form
+    // whose labels had been swapped against their values. A fieldset that failed to render
     // reads `[]` and fails, rather than passing on nothing.
     expect(
       await boxes.evaluateAll((els) =>
-        els.map((el) => [(el as HTMLInputElement).value, (el as HTMLInputElement).checked])
+        els.map((el) => {
+          const input = el as HTMLInputElement
+          return [input.closest('label')?.textContent, input.value, input.checked]
+        })
       )
     ).toEqual([
-      ['manager', true],
-      ['trainer', true],
-      ['rider', true],
+      ['Manager', 'manager', true],
+      ['Trainer', 'trainer', true],
+      ['Rider', 'rider', true],
     ])
   })
 
@@ -343,15 +378,18 @@ test.describe.serial('Manage Barn — Barn Events', () => {
 
   test('barn_event_list_entry_shows_the_events_date_and_time @manager', async ({ page }) => {
     const section = await openSection(page, 'Barn Events')
-    const row = eventRows(section).filter({ hasText: NEW_EVENT.title })
+    const row = eventRow(page, section, NEW_EVENT.title)
 
     await expect(row.locator('td').nth(1)).toHaveText(NEW_EVENT_DISPLAY_DATE)
   })
 
   test('barn_event_list_entry_shows_its_visible_to_roles @manager', async ({ page }) => {
     const section = await openSection(page, 'Barn Events')
-    const row = eventRows(section).filter({ hasText: NEW_EVENT.title })
+    const row = eventRow(page, section, NEW_EVENT.title)
 
+    // textContent, which is lowercase — the cell is `<Td className="capitalize">`, so the
+    // screen reads "Manager, Trainer, Rider" while the node text is what line 716 quotes.
+    // Asserted as the line writes it; the CSS transform is noted, not encoded.
     await expect(row.locator('td').nth(2)).toHaveText(NEW_EVENT_VISIBLE_TO)
   })
 
@@ -361,8 +399,17 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     await save(page)
 
     await openEventEdit(page, NEW_EVENT.title)
-    // The positive form, not `.not.toBeChecked()`: this one requires the element to exist.
-    await expect(roleCheckbox(page, 'rider')).toBeChecked({ checked: false })
+    const rider = roleCheckbox(page, 'rider')
+    await rider.waitFor()
+
+    // The title is read alongside the checkbox rather than asserted separately, and that
+    // pairing is the point: the *other* seeded event is `visibleToRoles: ['manager']`, so it
+    // also has Rider unchecked. "Rider is unchecked" alone would therefore be satisfied by
+    // landing on the wrong event's form. One assertion, both claims.
+    expect({
+      title: await page.locator('#event-title').inputValue(),
+      riderChecked: await rider.isChecked(),
+    }).toEqual({ title: NEW_EVENT.title, riderChecked: false })
   })
 
   test('manager_and_trainer_stay_checked_after_unchecking_rider @manager', async ({ page }) => {
@@ -370,14 +417,27 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     const boxes = page.locator('input[name="visible_to_roles"]:not([value="rider"])')
     await boxes.first().waitFor()
 
-    expect(
-      await boxes.evaluateAll((els) =>
-        els.map((el) => [(el as HTMLInputElement).value, (el as HTMLInputElement).checked])
-      )
-    ).toEqual([
-      ['manager', true],
-      ['trainer', true],
-    ])
+    // This is a companion control to the test above, not an independent observation: line 718
+    // is a "still checked" claim, so its expected state is also its pre-state and no amount of
+    // structuring makes it falsifiable by a dropped write — the test above is what catches
+    // that. What it does independently discriminate is *which* event's form was loaded, since
+    // the other seeded event is `visibleToRoles: ['manager']` and so has Trainer unchecked.
+    // The title is folded in to make that the assertion's job rather than a happy accident.
+    expect({
+      title: await page.locator('#event-title').inputValue(),
+      boxes: await boxes.evaluateAll((els) =>
+        els.map((el) => {
+          const input = el as HTMLInputElement
+          return [input.closest('label')?.textContent, input.value, input.checked]
+        })
+      ),
+    }).toEqual({
+      title: NEW_EVENT.title,
+      boxes: [
+        ['Manager', 'manager', true],
+        ['Trainer', 'trainer', true],
+      ],
+    })
   })
 
   test('event_delete_confirm_page_names_the_event @manager', async ({ page }) => {
