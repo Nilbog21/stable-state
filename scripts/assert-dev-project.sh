@@ -7,6 +7,11 @@
 # different means: the CLI writes to whatever `supabase/.temp/project-ref` names (set by
 # `npx supabase link`), while every seed/teardown script resolves its project from
 # `.env.local`. Verifying only the latter leaves a re-link free to push schema anywhere.
+#
+# The linked-ref half is the same check `replace-all-migrations.sh` has carried since #684 —
+# same parse, same ref extraction. Not extracted into a shared file: two call sites of a
+# four-line grep/sed is cheaper to read twice than to indirect through a library, and that
+# script aborts on its own terms (a whole-history replace, not a push).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -60,9 +65,14 @@ if [ -z "$LINKED_REF" ]; then
   exit 1
 fi
 
-# https://{ref}.supabase.co -> {ref}
-DEV_REF="${DEV_SUPABASE_URL#https://}"
-DEV_REF="${DEV_REF%%.*}"
+# https://{ref}.supabase.co -> {ref}. Validated rather than a prefix strip: an unparseable
+# DEV_SUPABASE_URL must say so, not silently become a garbage ref that fails the comparison
+# below for the wrong reason.
+DEV_REF="$(echo "$DEV_SUPABASE_URL" | sed -E 's#^https?://([^.]+)\.supabase\.co/?$#\1#')"
+if [ -z "$DEV_REF" ] || [ "$DEV_REF" = "$DEV_SUPABASE_URL" ]; then
+  echo "ABORT: could not extract a project ref from DEV_SUPABASE_URL ($DEV_SUPABASE_URL)." >&2
+  exit 1
+fi
 
 if [ "$LINKED_REF" != "$DEV_REF" ]; then
   echo "ABORT: the linked project is not the dev project — 'db push' would write its schema." >&2

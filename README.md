@@ -111,7 +111,13 @@ One consequence worth knowing: every worktree then points at the **same** dev Su
 
 ### Apply migrations
 
-Run all migration files in `supabase/migrations/` against your Supabase project in order — either via the SQL editor in the Supabase dashboard or with `npx supabase db push`.
+Run all migration files in `supabase/migrations/` against your Supabase project in order — either via the SQL editor in the Supabase dashboard or with:
+
+```bash
+bash scripts/assert-dev-project.sh && npx supabase db push
+```
+
+`assert-dev-project.sh` (#1291) fail-closes unless `.env.local` points at `DEV_SUPABASE_URL` *and* the project the CLI is linked to is that same project — `db push` targets the linked project, not `.env.local`, so a stale `npx supabase link` is what it's there to catch. Pass `--allow-prod` for a deliberate production push (below).
 
 ### Seed a manager account
 
@@ -143,8 +149,10 @@ Link the Supabase CLI to the production project, then push all migrations:
 
 ```bash
 npx supabase link --project-ref <project-ref>
-npx supabase db push
+bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push
 ```
+
+`--allow-prod` is required here — without it the guard aborts, since the CLI is now linked to production. It still prints the linked ref, so you can confirm the `link` above took the project you meant.
 
 The `<project-ref>` is the string in the Supabase dashboard URL: `https://supabase.com/dashboard/project/<project-ref>`.
 

@@ -77,7 +77,7 @@ Check Supabase migration status, rename pending migrations to the current timest
    bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push
    ```
 
-   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the eight seed/teardown scripts and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`CLAUDE.md`'s Schema/RLS/RPC verification section); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
+   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the seven seed/teardown call sites and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`CLAUDE.md`'s Schema/RLS/RPC verification section); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
 
    The guard checks two separate things because `db push` selects its target differently from everything else in this repo: the CLI writes to whatever project `npx supabase link` recorded in `supabase/.temp/project-ref`, while the seed/teardown scripts read `.env.local`. Checking only `NEXT_PUBLIC_SUPABASE_URL` against `DEV_SUPABASE_URL` would leave a re-link free to push schema to another project with a dev-pointed `.env.local` sitting right there.
 

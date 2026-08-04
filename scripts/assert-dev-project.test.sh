@@ -99,7 +99,17 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 7: --allow-prod opts out of every check above — the deliberate production push
+# Test 7: DEV_SUPABASE_URL is not a Supabase project URL — say so rather than compare a garbage ref
+REPO="$(make_repo "not-a-url" "not-a-url" "$DEV_REF")"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "could not extract a project ref"; then
+  assert_pass "unparseable DEV_SUPABASE_URL: exits non-zero, names the extraction failure"
+else
+  assert_fail "unparseable DEV_SUPABASE_URL: exits non-zero, names the extraction failure" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 8: --allow-prod opts out of every check above — the deliberate production push
 REPO="$(make_repo "$OTHER_URL" "$DEV_URL" "$OTHER_REF")"
 if (cd "$REPO" && bash "$SCRIPT" --allow-prod >/dev/null 2>&1); then
   assert_pass "--allow-prod on a non-dev project: exits 0"
@@ -108,7 +118,7 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 8: --allow-prod still reports the project it is about to write, rather than passing silently
+# Test 9: --allow-prod still reports the project it is about to write, rather than passing silently
 REPO="$(make_repo "$OTHER_URL" "$DEV_URL" "$OTHER_REF")"
 out="$(cd "$REPO" && bash "$SCRIPT" --allow-prod 2>&1)"
 if echo "$out" | grep -q "$OTHER_REF"; then
