@@ -438,20 +438,20 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: feed_notes_persist_on_reload) Fill in **Feed Notes** → Save → it persists on reload
 - [ ] (e2e: medication_notes_persist_on_reload) Fill in **Medication Notes** → Save → it persists on reload
 - [ ] (e2e: clearing_feed_notes_leaves_the_field_empty_on_reload) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] (e2e-candidate) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
-- [ ] (e2e-candidate) That document is listed in the horse's Documents section
-- [ ] (e2e-candidate) Open the document via its link (signed URL)
-- [ ] (e2e-candidate) The PDF renders in the browser's viewer, with no "failed to load" error
-- [ ] (e2e-candidate) Delete it → row disappears
-- [ ] (e2e-candidate) On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
-- [ ] (e2e-candidate) On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables while the upload is pending
-- [ ] (e2e-candidate) An indeterminate progress bar shows while that upload is pending
-- [ ] (e2e-candidate) Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column
-- [ ] (e2e-candidate) Edit that date inline (tap the field, change the date, tap away) → the new date saves
-- [ ] (e2e-candidate) That inline edit saves without a page reload
-- [ ] (e2e-candidate) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
-- [ ] (e2e-candidate) A card for it shows up under the Dashboard's Reminders section
-- [ ] (e2e-candidate) That card links back to this horse
+- [ ] (e2e: uploading_a_horse_document_redirects_back_to_the_horse_page) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
+- [ ] (e2e: the_uploaded_horse_document_is_listed_in_the_documents_section) That document is listed in the horse's Documents section
+- [ ] (e2e: the_horse_document_link_is_a_signed_url_for_its_stored_object) The document's link is a signed URL over that document's own stored object
+- [ ] (e2e: the_horse_document_signed_url_serves_the_stored_pdf) That signed URL returns 200 with `application/pdf` and the uploaded file's bytes
+- [ ] (e2e: deleting_a_horse_document_removes_its_row) Delete it → row disappears
+- [ ] (e2e: an_over_limit_horse_document_is_rejected_inline) On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
+- [ ] (e2e: the_upload_button_disables_while_a_horse_document_uploads) On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables while the upload is pending
+- [ ] (e2e: an_indeterminate_progress_bar_shows_while_a_horse_document_uploads) An indeterminate progress bar shows while that upload is pending
+- [ ] (e2e: an_uploaded_reminder_date_persists_in_the_reminder_date_column) Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column
+- [ ] (e2e: editing_the_reminder_date_inline_saves_the_new_date) Edit that date inline (tap the field, change the date, tap away) → the new date saves
+- [ ] (e2e: the_inline_reminder_date_edit_saves_without_a_page_reload) That inline edit saves without a page reload
+- [ ] (e2e: a_past_reminder_date_shows_a_reminder_due_badge) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
+- [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for it shows up under the Dashboard's Reminders section
+- [ ] (e2e: the_dashboard_reminder_card_links_back_to_the_horse) That card links back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
