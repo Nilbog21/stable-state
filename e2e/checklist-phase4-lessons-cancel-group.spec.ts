@@ -64,6 +64,7 @@ const FEES = {
   listBadge: 312,
   detailBadge: 313,
   cancelledSibling: 314,
+  wholePending: 315,
 } as const
 
 type LessonKey = keyof typeof FEES
@@ -152,7 +153,13 @@ const FAR = () => hoursFromNow(72) // outside it
  *   interaction read as covered.
  */
 const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, members }) => {
-  const tier = await addTier(supabase, barn.id, { name: STANDARD_TIER, price: TIER_PRICE, isDefault: true })
+  // `instructorCut: 0` overrides `addTier`'s default of 25, and only the Pending income check
+  // below cares: that figure is *net* of the per-lesson instructor cut
+  // (`splitNetFee`, `lesson-finances.ts`), so a non-zero cut would make the drop it asserts
+  // `fee - cut` — a number derived from a fixture default rather than from anything this file
+  // states. At zero the drop is the seeded fee itself, which is the distinct three-digit value
+  // FEES already guarantees. No other assertion here reads a payout.
+  const tier = await addTier(supabase, barn.id, { name: STANDARD_TIER, price: TIER_PRICE, isDefault: true, instructorCut: 0 })
   const apple = await addHorse(supabase, barn.id, APPLE)
 
   const riderIds: string[] = []
@@ -190,11 +197,18 @@ const barn = withBarn('phase4-lessons-cancel-group', async ({ supabase, barn, me
   await seed('wholeCancel', NEAR(), manager)
   await seed('wholeFee', NEAR(), manager)
 
-  // Per-rider cancellation. `restUnaffected` and `riderBadge` are deliberately <24h out:
-  // cancel_rider_participation zeroes the *whole lesson's* fee when the cancellation is not
-  // late, so on a >24h lesson "the rest of the lesson is unaffected" would be false of the fee.
+  // Its own lesson because cancelling is one-way, and NEAR rather than FAR because Pending
+  // income is a *this-month* figure (`isCurrentMonth`, finances/page.tsx) counting uncollected
+  // transactions whose occurred_at is still ahead of now — +3h satisfies both.
+  await seed('wholePending', NEAR(), manager)
+
+  // Per-rider cancellation. `restUnaffected` is >24h out **on purpose**, and that is the side
+  // of the boundary #1278 broke: cancel_rider_participation used to zero the *whole lesson's*
+  // fee on any non-late cancellation, group or not, so "the rest of the lesson is unaffected"
+  // was false of the fee on exactly this lesson. It was seeded NEAR to dodge that; putting it
+  // back on the far side is what makes the check guard the fix rather than route around it.
   await seed('riderBadge', NEAR(), trainer)
-  await seed('restUnaffected', NEAR(), trainer)
+  await seed('restUnaffected', FAR(), trainer)
   await seed('feePolicyFar', FAR(), trainer)
   await seed('feePolicyNear', NEAR(), trainer)
 
@@ -329,6 +343,20 @@ function listCard(page: Page, key: LessonKey): Locator {
 /** The detail page's rendered Fee, e.g. `$306`. */
 async function feeOnDetailPage(page: Page): Promise<string> {
   return (await settledTextContents(detailField(page, 'Fee')))[0].trim()
+}
+
+/**
+ * The Finances page's Pending income figure, as a number.
+ *
+ * The block is addressed by its label and then by position within itself — the same
+ * "label `<p>` above a big-figure `<p>`" structure `checklist-phase4-finances-page-chrome`
+ * reads, whose own checkboxes own the claim that the label and the layout are right. The
+ * `^` anchor keeps `hasText` from matching an ancestor that merely contains the phrase.
+ */
+async function pendingIncome(page: Page): Promise<number> {
+  const block = page.locator('main > div').filter({ hasText: /^Pending income/ })
+  const text = (await settledTextContents(block.locator('p').nth(1)))[0].trim()
+  return Number(text.replace(/[$,]/g, ''))
 }
 
 /**
@@ -508,6 +536,30 @@ test('whole_lesson_cancellation_of_a_group_lesson_waives_the_fee @manager', asyn
   expect(await feeOnDetailPage(page)).toEqual('$0')
 })
 
+// The other half of that waiver, and the half #1278 was actually about. `lessons.fee` and the
+// lesson's single `lesson_fee` transaction are separate rows; zeroing the column while leaving
+// the transaction alone makes the lesson read `$0` while the barn is still owed the money.
+//
+// Pending income is the only surface that shows it: `getOutstandingLessonRows` filters
+// `fee !== 0`, so the Outstanding table drops the row the moment the column is zeroed, whereas
+// `getFinancialSummary` sums uncollected future transactions and goes on counting it.
+//
+// A **delta** rather than an absolute, because the figure also carries the thirteen other
+// lessons this barn seeds and whatever earlier tests in this file have already cancelled. The
+// two reads bracket one cancellation and nothing else — `playwright.config.ts` sets
+// `fullyParallel: false`, so a file's tests are serial within one worker. That the drop equals
+// this lesson's own distinct three-digit fee is what says the right row cleared: a drop of any
+// other size, or of zero, fails.
+test('cancelling_a_whole_group_lesson_clears_its_fee_from_pending_income @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/finances`)
+  const before = await pendingIncome(page)
+
+  await cancelWholeLesson(page, 'wholePending')
+
+  await page.goto(`/barn/${barn.slug}/finances`)
+  expect(before - (await pendingIncome(page))).toEqual(FEES.wholePending)
+})
+
 // ---------------------------------------------------------------------------
 // The rider picker and per-rider cancellation
 // ---------------------------------------------------------------------------
@@ -590,29 +642,33 @@ test('the_rest_of_a_group_lesson_is_unaffected_when_one_of_its_riders_cancels @m
   })
 })
 
-// Both sides of the boundary in one assertion, because a *policy* claim is not testable from one
-// side: a system that always zeroed the fee, and one that never did, each satisfy half of it.
-// The two lessons carry different seeded fees, so the retained value also proves which lesson
-// was read.
+// Both sides of the boundary in one assertion, because the claim is that the boundary does not
+// matter here — and "nothing happens on either side" is not testable from one side, where a
+// system that never zeroed the fee and one that zeroed it only on the *other* side agree.
+// #1278 was exactly the second of those: the far half read `$0` before the fix.
 //
-// The within-24h half needs one extra reading that the >24h half does not, and the asymmetry is
-// the #1202 ceiling rather than belt-and-braces. `$0` against a lesson seeded `$307` can only
-// have come from this code path. But `$308` **is** the seeded value, and every early bail in
-// `cancelRiderParticipationAction` redirects to exactly the URL the success path redirects to —
-// so a regression that refused to cancel inside the window would leave `$308` on a real,
-// rendering detail page and satisfy a bare fee check. The rider's Cancelled badge is what
-// distinguishes "the fee was left alone" from "nothing happened"; it is readable here precisely
-// because one of three riders cancelling does not cascade the lesson.
-test('the_24_hour_fee_policy_applies_to_a_group_rider_who_cancels @manager', async ({ page }) => {
+// The two lessons carry different seeded fees, so each retained value also proves which lesson
+// was read. But a retained fee **is** the seeded value, and every early bail in
+// `cancelRiderParticipationAction` redirects to the same URL the success path does — so a
+// regression that refused to cancel at all would leave the seeded fee on a real, rendering
+// detail page and satisfy a bare fee check. Since the fix, that hazard is symmetric, so both
+// halves read the rider's Cancelled badge; it is what distinguishes "the fee was left alone"
+// from "nothing happened", and it is readable precisely because one of three riders cancelling
+// does not cascade the lesson.
+test('a_group_riders_cancellation_leaves_the_lesson_fee_alone_on_both_sides_of_24h @manager', async ({ page }) => {
   await cancelOneRider(page, 'feePolicyFar', RIDERS[0])
   const moreThan24hOut = await feeOnDetailPage(page)
+  const moreThan24hRiderCancelled = await riderRow(page, RIDERS[0])
+    .getByText(CANCELLED_BADGE, { exact: true })
+    .count()
   await cancelOneRider(page, 'feePolicyNear', RIDERS[0])
   const within24h = await feeOnDetailPage(page)
   const within24hRiderCancelled = await riderRow(page, RIDERS[0])
     .getByText(CANCELLED_BADGE, { exact: true })
     .count()
-  expect({ moreThan24hOut, within24h, within24hRiderCancelled }).toEqual({
-    moreThan24hOut: '$0',
+  expect({ moreThan24hOut, moreThan24hRiderCancelled, within24h, within24hRiderCancelled }).toEqual({
+    moreThan24hOut: `$${FEES.feePolicyFar}`,
+    moreThan24hRiderCancelled: 1,
     within24h: `$${FEES.feePolicyNear}`,
     within24hRiderCancelled: 1,
   })
