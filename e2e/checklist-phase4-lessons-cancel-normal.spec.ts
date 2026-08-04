@@ -317,12 +317,36 @@ test('selecting_cancelled_by_rider_more_than_24h_out_shows_no_late_fee_warning @
 })
 
 // ---------------------------------------------------------------------------
-// Confirming a cancellation — Cancelled by Instructor
+// Confirming a cancellation — the four fee outcomes across the 24-hour boundary
 //
-// Checklist lines 294 and 295 (the two Cancelled-by-Rider fee outcomes) are held pending a user
-// ruling: as written they state the inverse of what the app does, and tagging them as written
-// would claim automated coverage of the opposite claim. They stay `(e2e-candidate)` in this PR.
+// The rule, and it is the opposite of what checklist lines 294/295 said before this PR: a rider
+// who cancels *inside* the 24-hour window still owes the fee, and one who cancels earlier has it
+// waived. `cancel_lesson_with_transactions` is `fee = CASE WHEN p_is_late THEN fee ELSE 0 END`,
+// and `isLateCancellation` returns true for rider + <24h — so "late" means "the fee stands".
+// An instructor cancellation waives it either side of the boundary, because `isLateCancellation`
+// short-circuits on that branch before it ever consults the window.
+//
+// The two lines were swapped in place under the user's ruling; see the PR body for the four
+// sources, the sharpest of which is line 300 four lines below — the amber "the rider will be due
+// a late cancellation fee" warning, which fires on exactly the rider + <24h case that line 295
+// used to claim zeroed the fee.
 // ---------------------------------------------------------------------------
+
+// `$0` against a lesson seeded at $141. The zero is the *waiver*: this rider cancelled with more
+// than 24 hours' notice, so no fee is owed.
+test('confirming_cancelled_by_rider_more_than_24h_out_zeroes_the_fee @manager', async ({ page }) => {
+  await cancelFromDetail(page, 'riderFar', 'rider')
+  expect(await feeOnDetailPage(page)).toEqual('$0')
+})
+
+// The strongest assertion in the file, and deliberately so: `$152` is the only expected value
+// here that is neither zero, nor the tier default, nor any other lesson's fee — so it cannot be
+// produced by a cancellation that no-opped, by a read of the wrong lesson, or by any fallback
+// the system has. A late rider cancellation is the one case where the fee survives.
+test('confirming_cancelled_by_rider_within_24h_leaves_the_fee_unaffected @manager', async ({ page }) => {
+  await cancelFromDetail(page, 'riderNear', 'rider')
+  expect(await feeOnDetailPage(page)).toEqual('$152')
+})
 
 // `$0` against a lesson seeded at $163 — the zero can only have come from this cancellation,
 // because no other seeded fee in the barn is zero and none of them is $163 either.

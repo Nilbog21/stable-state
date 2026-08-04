@@ -291,8 +291,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: clicking_cancel_on_a_normal_lesson_opens_the_cancel_type_confirmation_page) Clicking **Cancel** on a **normal** lesson opens a confirmation page with a **Cancelled by Rider** / **Cancelled by Instructor** toggle
 - [ ] (e2e: the_cancel_type_toggle_defaults_to_instructor_on_a_lesson_you_instruct) That toggle defaults to **Cancelled by Instructor** on a lesson you instruct
 - [ ] (e2e: the_cancel_type_toggle_defaults_to_rider_on_a_lesson_you_do_not_instruct) That toggle defaults to **Cancelled by Rider** on a lesson you don't instruct
-- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson >24h out leaves its fee unaffected
-- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson booked <24h away zeroes its fee
+- [ ] (e2e: confirming_cancelled_by_rider_more_than_24h_out_zeroes_the_fee) Confirming **Cancelled by Rider** on a **normal** lesson >24h out zeroes its fee
+- [ ] (e2e: confirming_cancelled_by_rider_within_24h_leaves_the_fee_unaffected) Confirming **Cancelled by Rider** on a **normal** lesson booked <24h away leaves its fee unaffected
 - [ ] (e2e: a_rider_cancellation_shows_the_cancelled_badge_on_the_lesson_detail_page) A lesson cancelled that way shows a **Cancelled** badge
 - [ ] (e2e: cancellation_notes_entered_on_the_confirmation_page_appear_on_the_detail_page) The notes you entered on the confirmation page appear under **Cancellation Notes**
 - [ ] (e2e: confirming_cancelled_by_instructor_more_than_24h_out_zeroes_the_fee) Confirming **Cancelled by Instructor** on a lesson >24h out zeroes its fee
