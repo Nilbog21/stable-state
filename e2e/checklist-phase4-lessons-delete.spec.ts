@@ -287,10 +287,6 @@ function deletePath(key: LessonKey): string {
   return `${detailPath(key)}/delete`
 }
 
-function lessonsPath(): string {
-  return `/barn/${barn.slug}/lessons`
-}
-
 /** A lesson card in one of the Lessons list's `<ul>`s, addressed by the lesson it points at. */
 function listCard(page: Page, key: LessonKey): Locator {
   return page.locator(`main ul a[href$="/lessons/${ids[key]}"]`)
@@ -659,20 +655,30 @@ test('deleting_a_lesson_sends_no_notification_to_its_instructor_or_riders @manag
 // The dialog is *dismissed*, not accepted, so the lesson survives — and `lessonRowsAfter: 1` is
 // what turns that into a claim about the prompt being a real gate rather than decoration.
 //
-// `waitForEvent('dialog')` rather than polling a counter: `actionTimeout` is 0, so the wait is
-// unbounded and bounded only by the test's own budget, whereas `expect.poll` runs on expect's 5s
-// default and would put a hard cap on how long hydration is allowed to take (#1211).
+// **`click()` returning is itself the synchronisation point, and nothing further is needed.** A
+// `window.confirm` blocks the page until it is answered, so the click cannot complete until the
+// handler below has run; `messages` is therefore already populated when the await resolves. Do not
+// "fix" this by adding a poll.
+//
+// The first version of this test used `page.waitForEvent('dialog')` awaited *after* the click, and
+// it **deadlocked** — `waitForEvent` registers a listener, which suppresses Playwright's automatic
+// dismissal, but it does not itself dismiss anything, so the click waited on a dialog that was
+// waiting on the click. An `on('dialog')` handler installed *before* the click is the idiom that
+// works, and it is the one the merged `checklist-phase4-lessons-detail.spec.ts` already uses.
 test('delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson @manager', async ({ page }) => {
+  const messages: string[] = []
+  page.on('dialog', async (dialog) => {
+    messages.push(dialog.message())
+    await dialog.dismiss()
+  })
+
   await page.goto(detailPath('cancelledDeletable'))
-  const dialogRaised = page.waitForEvent('dialog')
   await deleteButton(page).click()
-  const dialog = await dialogRaised
-  await dialog.dismiss()
 
   expect({
-    message: dialog.message(),
+    messages,
     lessonRowsAfter: await lessonRowCount('cancelledDeletable'),
-  }).toEqual({ message: DELETE_CONFIRM, lessonRowsAfter: 1 })
+  }).toEqual({ messages: [DELETE_CONFIRM], lessonRowsAfter: 1 })
 })
 
 // ---------------------------------------------------------------------------
@@ -697,10 +703,11 @@ test('delete_on_a_paid_lesson_opens_the_delete_page_instead_of_a_browser_prompt 
     await dialog.dismiss()
   })
 
+  // No extra wait after the click: a `window.confirm` blocks until answered, so the click cannot
+  // resolve until the handler above has recorded and dismissed it. See the note on the
+  // already-cancelled check for what happens if you reach for `waitForEvent` here instead.
   await page.goto(detailPath('promptControl'))
-  const dialogRaised = page.waitForEvent('dialog')
   await deleteButton(page).click()
-  await dialogRaised
   const afterPromptArm = dialogs.length
 
   await page.goto(detailPath('paidInspect'))
