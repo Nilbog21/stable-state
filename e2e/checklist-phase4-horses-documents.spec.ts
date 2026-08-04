@@ -538,18 +538,39 @@ test.describe.serial('a horse document reminder date', () => {
   // what makes that structural claim rather than a page-wide "a badge exists somewhere", and
   // inputValue() throws rather than returning a falsy default if the cell failed to resolve, so
   // neither half can go vacuous.
+  //
+  // `badgesWhileFuture` is the negative half, and without it this test is vacuous in the way that
+  // no mutation can reach: a ReminderDueBadge that ignored `reminderDate` entirely and always
+  // rendered would satisfy every other assertion here, and nothing else in this file ever asserts
+  // the badge's *absence* — the three tests above it all leave a future date and never look. So
+  // the same locator is read on both sides of the boundary, in the same document: 0 while the
+  // date is still `softSavedReminderDate` (today + 60), 1 once it is `pastReminderDate`. That
+  // also makes it its own positive control (#1191) — an absence proven by a locator that is shown
+  // to find the thing seconds later, rather than one that might simply be broken.
+  //
+  // The date input is waited for before the "before" read, so that read is an absence *in a
+  // rendered cell* rather than the absence of a page that has not painted yet.
+  //
+  // Deliberately today − 3 rather than today exactly. Sitting on the boundary is the only way to
+  // separate `reminderDate > today` from `>=` (and `getDueDocuments`' `lte` from `lt`), but it
+  // reintroduces the midnight-straddle flake the seed comment above avoids, and pinning the clock
+  // is #1252's ratified idiom rather than this slice's to invent (#1187 accepted the same
+  // trade-off). Logged as a follow-up instead.
   test('a_past_reminder_date_shows_a_reminder_due_badge @manager', async ({ page }) => {
     await page.goto(horseUrl(juniperId))
-    await setReminderDate(page, TEST_PDF, juniperId, pastReminderDate)
-
     const cell = reminderDateCell(page, TEST_PDF)
     const badge = cell.getByText('Reminder Due', { exact: true })
+    await cell.locator('input[type="date"]').waitFor()
+    const badgesWhileFuture = await badge.count()
+
+    await setReminderDate(page, TEST_PDF, juniperId, pastReminderDate)
     await badge.waitFor()
 
-    expect({ badges: await badge.count(), dateValue: await cell.locator('input[type="date"]').inputValue() }).toEqual({
-      badges: 1,
-      dateValue: pastReminderDate,
-    })
+    expect({
+      badgesWhileFuture,
+      badges: await badge.count(),
+      dateValue: await cell.locator('input[type="date"]').inputValue(),
+    }).toEqual({ badgesWhileFuture: 0, badges: 1, dateValue: pastReminderDate })
   })
 
   // `count: 1` is a real claim, not a formality: getDueDocuments is barn-wide across horse,
