@@ -24,11 +24,11 @@
 // not by trusting `scripts/select-specs.sh --lint`: that lint catches a *missing* header and a
 // glob matching no path, and cannot catch a glob absent for a module the spec genuinely
 // exercises — the one failure that silently shrinks the blast radius (#1195 shipped exactly
-// that). `src/lib/**`, `src/components/ui/**` and the protected layout are in `ALWAYS_FULL` —
-// verified rather than assumed — so they are deliberately not restated. The REST of
-// `src/components/**` is not in that list, which is why `useOutsideDismiss` is declared
-// explicitly: the open and tap-dismiss state this file asserts on for both dropdowns is that
-// module's own state.
+// that). `src/lib/**`, `src/app/actions/**`, `src/components/**` and the protected layout are in
+// `ALWAYS_FULL` — verified rather than assumed. `useOutsideDismiss` and `src/app/actions/`
+// entries therefore document what this file drives rather than select it, and stay declared for
+// that reason (scripts/CLAUDE.md): before #1281 only `src/components/ui/**` was always-full, and
+// the open and tap-dismiss state this file asserts on for both dropdowns is that module's own.
 //
 // The list is what this spec DRIVES, not what it renders, and the difference is deliberate.
 // `ExhaustionBar`, `EmptyState` and `calendar/CalendarDayView` all render on pages loaded here

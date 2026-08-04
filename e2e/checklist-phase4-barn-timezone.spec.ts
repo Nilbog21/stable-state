@@ -24,9 +24,11 @@
 // spec when the form components themselves change, which is the only case that matters
 // (#1204 measured this on its own file).
 //
-// The two `src/components/` entries are not routes. `ALWAYS_FULL` contains
-// `src/components/ui/**` — NOT `src/components/**` — so every other component a spec drives
-// needs its own glob and `--lint` will never say so. `calendar/**` supplies markup asserted on
+// The two `src/components/` entries are not routes. Since #1281 `ALWAYS_FULL` carries the whole
+// of `src/components/**` and `src/app/actions/**`, so those entries — and the three
+// `src/app/actions/` lines above — now document what this spec drives rather than select it.
+// They stay declared: that membership is not permanent, and the accuracy rule binds either way
+// (scripts/CLAUDE.md). `calendar/**` supplies markup asserted on
 // directly (`CalendarLessonCard`, `CalendarEventCard`, `MonthCalendarPicker`);
 // `useOutsideDismiss.ts` is reached through `MonthCalendarPicker` and owns the open/close state
 // of the day popup that item 709's day selection drives, which is exactly the kind of module

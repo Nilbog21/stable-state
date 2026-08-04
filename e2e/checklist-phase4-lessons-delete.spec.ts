@@ -5,19 +5,22 @@
 //
 // `ExhaustionBar` is declared because `waitForEditFormHydrated` below gates the two edit-and-save
 // tests on `getByRole('button', { name: /^Exhaustion: / })`, and that accessible name is that
-// component's own `aria-label` (`ExhaustionBar.tsx:57`). `src/components/**` is **not** in
-// select-specs.sh's ALWAYS_FULL — only `src/components/ui/**` is — so without this line a PR that
-// reworded that label would not select this spec, and both tests would break with no signal at
-// review time. Exactly the hole `--lint` cannot see: it catches a malformed glob, never a missing
-// one. (`checklist-phase4-lessons-detail.spec.ts` uses the same helper and omits it — that is a gap
-// in the sibling, not a licence.)
+// component's own `aria-label` (`ExhaustionBar.tsx:57`). #1281 put the whole of
+// `src/components/**` into select-specs.sh's ALWAYS_FULL, so this line now documents what the
+// spec drives rather than selecting it — it stays because that membership is not permanent and
+// the accuracy rule binds either way (scripts/CLAUDE.md). Before #1281 only `src/components/ui/**`
+// was always-full, so a PR rewording that label selected nothing and both tests broke with no
+// signal at review time: exactly the hole `--lint` cannot see, since it catches a malformed glob
+// and never a missing one. (`checklist-phase4-lessons-detail.spec.ts` uses the same helper and
+// #1281 added the same declaration there.)
 //
 // `src/app/actions/lesson-cancellation.ts` is deliberately NOT declared. Every cancelled-lesson
 // state in this file is planted by the `cancelLesson` fixture — a service-role table write — and
 // no test here ever clicks a Cancel control or loads `/lessons/[id]/cancel`. Declaring it would be
-// a *false* declaration rather than a merely missing one, which makes the selector run a spec that
-// cannot detect the change. `src/lib/**` and `src/components/ui/**` are in select-specs.sh's
-// ALWAYS_FULL list, so the DAL, `Badge` and `Card` need no declaration of their own.
+// a *false* declaration rather than a merely missing one — an accuracy fault in its own right,
+// even now that `src/app/actions/**` is always-full and the selector would have run this spec
+// regardless. `src/lib/**` and `src/components/**` are in select-specs.sh's ALWAYS_FULL list, so
+// the DAL, `Badge` and `Card` need no declaration of their own.
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import {
