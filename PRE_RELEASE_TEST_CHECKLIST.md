@@ -673,14 +673,14 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Try `0` — allowed
 - [ ] (e2e-candidate) Try blank — rejected
 - [ ] (e2e-candidate) After that rejection the field's stored value is unchanged
-- [ ] (e2e-candidate) Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected
-- [ ] (e2e-candidate) Revert to the original price → that warning disappears
-- [ ] (e2e-candidate) On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons")
-- [ ] (e2e-candidate) Revert the Instructor Cut → that warning disappears
-- [ ] (e2e-candidate) **Add Tier** a new tier — its Instructor Cut field pre-fills from the barn's Default Instructor Cut
-- [ ] (e2e-candidate) Set a different tier as **default** → the new-lesson form pre-selects it
-- [ ] (e2e-candidate) **Deactivate** the Group Special tier → it no longer appears when creating a lesson
-- [ ] (e2e-candidate) **Reactivate** it → it appears again when creating a lesson
+- [ ] (e2e: changing_a_tier_price_warns_that_past_lessons_are_unaffected) Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected
+- [ ] (e2e: reverting_a_tier_price_removes_the_warning) Revert to the original price → that warning disappears
+- [ ] (e2e: changing_a_tier_instructor_cut_warns_that_past_lessons_are_unaffected) On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons")
+- [ ] (e2e: reverting_a_tier_instructor_cut_removes_the_warning) Revert the Instructor Cut → that warning disappears
+- [ ] (e2e: new_tier_form_prefills_instructor_cut_from_the_barn_default) **Add Tier** a new tier — its Instructor Cut field pre-fills from the barn's Default Instructor Cut
+- [ ] (e2e: setting_a_tier_as_default_preselects_it_on_the_new_lesson_form) Set a different tier as **default** → the new-lesson form pre-selects it
+- [ ] (e2e: deactivating_a_tier_removes_it_from_the_new_lesson_form) **Deactivate** the Group Special tier → it no longer appears when creating a lesson
+- [ ] (e2e: reactivating_a_tier_restores_it_to_the_new_lesson_form) **Reactivate** it → it appears again when creating a lesson
 - [ ] (e2e-candidate) The **Default Board Fee** field's non-retroactive helper text is visible
 - [ ] (e2e-candidate) Edit **Default Board Fee** and Save → a pre-existing boarding agreement's fee is unchanged
 - [ ] (e2e-candidate) A newly created boarding agreement pre-fills the new fee
@@ -710,14 +710,14 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
 - [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e-candidate) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
-- [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
-- [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
-- [ ] (e2e-candidate) That list entry shows the correct date
-- [ ] (e2e-candidate) That list entry shows "manager, trainer, rider" visible-to text
-- [ ] (e2e-candidate) **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked
-- [ ] (e2e-candidate) Manager and Trainer are still checked there
-- [ ] (e2e-candidate) From the event's Edit page, tap **Delete** → the confirm page shows the event's title
-- [ ] (e2e-candidate) **Confirm Delete** → the event no longer appears in the Barn Events list
+- [ ] (e2e: add_event_form_checks_all_three_visible_to_roles_by_default) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
+- [ ] (e2e: creating_a_barn_event_lists_it_under_its_title) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
+- [ ] (e2e: barn_event_list_entry_shows_the_events_date_and_time) That list entry shows the correct date
+- [ ] (e2e: barn_event_list_entry_shows_its_visible_to_roles) That list entry shows "manager, trainer, rider" visible-to text
+- [ ] (e2e: unchecking_rider_on_an_event_persists_after_save) **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked
+- [ ] (e2e: manager_and_trainer_stay_checked_after_unchecking_rider) Manager and Trainer are still checked there
+- [ ] (e2e: event_delete_confirm_page_names_the_event) From the event's Edit page, tap **Delete** → the confirm page shows the event's title
+- [ ] (e2e: confirming_delete_removes_the_event_from_the_barn_events_list) **Confirm Delete** → the event no longer appears in the Barn Events list
 - [ ] (e2e: data_backup_section_shows_download_all_documents_button) **Data Backup** section shows a **Download All Documents** button
 - [ ] (e2e: download_all_documents_button_is_enabled_when_the_barn_has_documents) That button is enabled (documents were already uploaded earlier in this phase)
 - [ ] (e2e: download_all_documents_downloads_a_zip_file) Tap **Download All Documents** → a `.zip` downloads
