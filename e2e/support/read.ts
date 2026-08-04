@@ -27,19 +27,42 @@
 //
 // `evaluateAll` carries the identical hazard but keeps its inline `waitFor` — a helper that has
 // to wrap a callback reads worse than the guard it would replace.
+//
+// ## The ceiling: these read only what can become VISIBLE (#1279)
+//
+// `waitFor()` defaults to `state: 'visible'`, so on an element that is in the DOM but can never
+// be visible, the guard cannot succeed — it can only run out the test's budget. The module
+// presenting itself as "the one safe path" is what made that expensive to discover twice: an
+// `<option>` inside a collapsed `<select>` (#1205) and every Manage Barn section, which renders
+// as a closed `<details>` (#1204, its whole spec). Both are *normal* markup, not edge cases.
+//
+// For those, don't reach for a settled read at all. `expect(locator).toHaveText([...])` is the
+// better guard anyway: it auto-retries, reads textContent, and pins the match count as well as
+// each string — so an unrendered container reads zero and fails, which is the property this
+// module exists for. `waitFor({ state: 'attached' })` before a bare `allTextContents` works too,
+// but proves less. See checklist-phase4-settings-tiers-events.spec.ts's `tierOptions`.
 
 import type { Locator } from '@playwright/test'
 
-/** Every match's `innerText`, read only once the first match exists. */
+/**
+ * Every match's `innerText`, read only once the first match is **visible**. Not for anything
+ * that can't be — a collapsed `<select>`'s options, a closed `<details>`' contents — where the
+ * wait can only time out. See the module comment's ceiling section.
+ */
 export async function settledInnerTexts(locator: Locator): Promise<string[]> {
   await locator.first().waitFor()
   return locator.allInnerTexts()
 }
 
 /**
- * Every match's `textContent`, read only once the first match exists. For text whose rendered
- * casing differs from the source — `Th` uppercases its label in CSS, so `innerText` reads the
- * wrong string — and for reads that need the raw node text rather than the laid-out text.
+ * Every match's `textContent`, read only once the first match is **visible**. For text whose
+ * rendered casing differs from the source — `Th` uppercases its label in CSS, so `innerText`
+ * reads the wrong string — and for reads that need the raw node text rather than the laid-out
+ * text.
+ *
+ * Reading textContent does not lift the visibility requirement: the wait is the same one, so
+ * this is no more usable than `settledInnerTexts` on a never-visible element. See the module
+ * comment's ceiling section.
  */
 export async function settledTextContents(locator: Locator): Promise<string[]> {
   await locator.first().waitFor()

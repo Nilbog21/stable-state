@@ -242,8 +242,10 @@ async function uploadDocument(
  *
  * Driven through the ExhaustionBar rather than through the reminder input itself so that the
  * retry writes nothing — a retried blur would issue duplicate saves. Toggled shut again so the
- * page is left as it was found. No explicit timeout: `toPass` and every `waitFor` are already
- * unbounded under `actionTimeout: 0`, so a number could only tighten them (#1211).
+ * page is left as it was found. No explicit timeout: every `waitFor` is unbounded under
+ * `actionTimeout: 0`, and `toPass` is unbounded for its own reason — its `timeout` defaults to 0
+ * and it ignores the configured expect budget — so a number could only tighten them (#1211,
+ * #1279).
  */
 async function waitForHorseDetailHydrated(page: Page): Promise<void> {
   const bar = page.getByRole('button', { name: /^Exhaustion: / })
