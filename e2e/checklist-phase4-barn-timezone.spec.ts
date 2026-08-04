@@ -512,11 +512,31 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     await page.goto(`/barn/${barn.slug}/lessons/new`)
     await page.locator('#dh-hour').waitFor()
 
-    // The exact array, not `toContain`: it kills a grid that pressed nothing (`[]`, which is
-    // what an unrendered calendar produces) and a grid that pressed everything, neither of
-    // which a containment check would notice. With the clock pinned, a control reading the
-    // DEVICE's day answers `[BARN_TODAY - 1]`.
-    expect(await pressedDayLabels(page)).toEqual([BARN_TODAY])
+    // Both the day cell the user sees selected and the date the form will actually submit.
+    //
+    // **The second half is the one that discriminates, and that is a measured finding rather
+    // than a design choice.** `aria-pressed` is an ATTRIBUTE, and React 19 does not reconcile
+    // mismatched attributes during hydration — it keeps the server's. So the selected cell is
+    // whatever the SERVER computed, and a `DateHourPicker` reading the device's day would still
+    // show the barn's day there. Measured directly: with the date default broken to
+    // `toLocaleDateString('en-CA')` and the clock pinned, the cell read `2026-08-04` (server)
+    // while the hidden input read `2026-08-03T05:00:00.000Z` (client), and the cell only caught
+    // up after a month-nav click forced a re-render. A first pass asserting the cell alone
+    // passed that probe — green for the wrong reason, and the pin was doing nothing for it.
+    //
+    // `input[name="lesson_at"]`'s value is a React-controlled PROPERTY, which React does sync,
+    // so it carries the browser's computation — and it is also the value the form submits, so
+    // it is the pre-fill that actually decides anything. Asserted as its barn-local date: with
+    // the clock pinned, a control reading the DEVICE's day yields `BARN_TODAY - 1` here.
+    //
+    // The cell half is kept rather than dropped: line 707 names the visible pre-fill, both
+    // values are genuinely the barn's day in a correct app, and asserting only the hidden input
+    // would stop covering the affordance the line describes.
+    const submitted = await page.locator('input[name="lesson_at"]').inputValue()
+    expect({
+      selectedCell: (await pressedDayLabels(page))[0],
+      submittedDate: barnWallClock(new Date(submitted), EASTERN).slice(0, 10),
+    }).toEqual({ selectedCell: BARN_TODAY, submittedDate: BARN_TODAY })
   })
 
   test('new_lesson_hour_select_opens_on_the_barns_hour_not_the_devices @manager', async ({ page }) => {
