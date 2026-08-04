@@ -5,6 +5,7 @@
 // covers: src/components/documents/**
 // covers: src/components/EmptyState.tsx
 // covers: src/components/ExhaustionBar.tsx
+// covers: src/components/useOutsideDismiss.ts
 //
 // The horse Documents section end to end: upload and redirect, the row appearing, the signed
 // link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
