@@ -662,17 +662,17 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] (e2e-candidate) Sections render as collapsible accordions, all collapsed on page load
-- [ ] (e2e-candidate) Clicking a section's heading opens that section
-- [ ] (e2e-candidate) Clicking it again closes the section
-- [ ] (e2e-candidate) Opening one section leaves the other sections' open/closed state unchanged
-- [ ] (e2e-candidate) There is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
-- [ ] (e2e-candidate) **Default Instructor Cut** field shows the current value (default `25`)
-- [ ] (e2e-candidate) Change it and **Save** → the value persists on reload
-- [ ] (e2e-candidate) Its helper text says the change doesn't affect past lessons, not that it recalculates historical income
-- [ ] (e2e-candidate) Try `0` — allowed
-- [ ] (e2e-candidate) Try blank — rejected
-- [ ] (e2e-candidate) After that rejection the field's stored value is unchanged
+- [ ] (e2e: settings_sections_all_render_collapsed_on_page_load) Sections render as collapsible accordions, all collapsed on page load
+- [ ] (e2e: clicking_a_section_heading_opens_that_section) Clicking a section's heading opens that section
+- [ ] (e2e: clicking_an_open_section_heading_closes_it) Clicking it again closes the section
+- [ ] (e2e: opening_a_second_section_leaves_the_first_open) Opening one section leaves the other sections' open/closed state unchanged
+- [ ] (e2e: settings_page_has_no_active_members_section) There is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
+- [ ] (e2e: instructor_cut_field_shows_the_barns_current_value) **Default Instructor Cut** field shows the current value (default `25`)
+- [ ] (e2e: saving_a_new_instructor_cut_persists_it_across_a_reload) Change it and **Save** → the value persists on reload
+- [ ] (e2e: instructor_cut_helper_text_says_past_lessons_are_unaffected) Its helper text says the change doesn't affect past lessons, not that it recalculates historical income
+- [ ] (e2e: instructor_cut_accepts_zero) Try `0` — allowed
+- [ ] (e2e: blank_instructor_cut_is_rejected_by_the_field) Try blank — rejected
+- [ ] (e2e: a_rejected_blank_instructor_cut_leaves_the_stored_value_unchanged) After that rejection the field's stored value is unchanged
 - [ ] (e2e: changing_a_tier_price_warns_that_past_lessons_are_unaffected) Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected
 - [ ] (e2e: reverting_a_tier_price_removes_the_warning) Revert to the original price → that warning disappears
 - [ ] (e2e: changing_a_tier_instructor_cut_warns_that_past_lessons_are_unaffected) On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons")
@@ -681,24 +681,24 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: setting_a_tier_as_default_preselects_it_on_the_new_lesson_form) Set a different tier as **default** → the new-lesson form pre-selects it
 - [ ] (e2e: deactivating_a_tier_removes_it_from_the_new_lesson_form) **Deactivate** the Group Special tier → it no longer appears when creating a lesson
 - [ ] (e2e: reactivating_a_tier_restores_it_to_the_new_lesson_form) **Reactivate** it → it appears again when creating a lesson
-- [ ] (e2e-candidate) The **Default Board Fee** field's non-retroactive helper text is visible
-- [ ] (e2e-candidate) Edit **Default Board Fee** and Save → a pre-existing boarding agreement's fee is unchanged
-- [ ] (e2e-candidate) A newly created boarding agreement pre-fills the new fee
-- [ ] (e2e-candidate) **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
-- [ ] (e2e-candidate) Change both and **Save** → values persist on reload
-- [ ] (e2e-candidate) Try setting Moderate ≥ High → rejected with a field error
-- [ ] (e2e-candidate) After that rejection the stored threshold values are unchanged
-- [ ] (e2e-candidate) **Schedule Buffer** field shows the current value (default `30`)
-- [ ] (e2e-candidate) Change it and **Save** → value persists on reload
-- [ ] (e2e-candidate) **Barn Timezone** select shows the current value (default Eastern)
-- [ ] (e2e-candidate) Change it and Save → it persists on reload
-- [ ] (e2e-candidate) With the timezone changed above, add a planned expense due a few minutes from now, wait for its due time to pass *in the barn's configured timezone* → it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
-- [ ] (e2e-candidate) #1149 setup — set **Barn Timezone** to Eastern, set your *machine's* timezone to Hawaii, and do the next two checks after 8pm Hawaii time (by then the barn's own date is already tomorrow): the dashboard heading names the barn's date, one day ahead of your device's
-- [ ] (e2e-candidate) Under that setup, **New Lesson**'s month calendar greys out your machine's own current date as past — the cutoff follows the barn's day, which has already moved past it, not your device's
-- [ ] (e2e-candidate) Under that setup, a horse document whose Reminder Date is *tomorrow* by your machine's clock (i.e. the barn's current date) shows the amber **Reminder Due** badge on the horse detail page
-- [ ] (e2e-candidate) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
-- [ ] (e2e-candidate) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
-- [ ] (e2e-candidate) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
+- [ ] (e2e: board_fee_helper_text_says_existing_boarders_are_unchanged) The **Default Board Fee** field's non-retroactive helper text is visible
+- [ ] (e2e: changing_the_default_board_fee_leaves_an_existing_boarding_agreement_unchanged) Edit **Default Board Fee** and Save → a pre-existing boarding agreement's fee is unchanged
+- [ ] (e2e: a_new_boarding_agreement_prefills_the_changed_default_board_fee) A newly created boarding agreement pre-fills the new fee
+- [ ] (e2e: exhaustion_threshold_fields_show_the_barns_current_values) **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
+- [ ] (e2e: saving_new_exhaustion_thresholds_persists_them_across_a_reload) Change both and **Save** → values persist on reload
+- [ ] (e2e: a_moderate_threshold_at_or_above_high_is_rejected_with_a_field_error) Try setting Moderate ≥ High → rejected with a field error
+- [ ] (e2e: a_rejected_threshold_save_leaves_the_stored_values_unchanged) After that rejection the stored threshold values are unchanged
+- [ ] (e2e: schedule_buffer_field_shows_the_barns_current_value) **Schedule Buffer** field shows the current value (default `30`)
+- [ ] (e2e: saving_a_new_schedule_buffer_persists_it_across_a_reload) Change it and **Save** → value persists on reload
+- [ ] (e2e: barn_timezone_select_shows_the_barns_current_zone) **Barn Timezone** select shows the current value (default Eastern)
+- [ ] (e2e: saving_a_new_barn_timezone_persists_it_across_a_reload) Change it and Save → it persists on reload
+- [ ] (e2e: changing_the_barn_timezone_moves_a_newly_past_due_expense_into_outstanding_expenses) With the timezone changed above, add a planned expense due a few minutes from now, wait for its due time to pass *in the barn's configured timezone* → it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] (e2e: dashboard_heading_names_the_barns_day_not_the_devices) #1149 setup — set **Barn Timezone** to Eastern, set your *machine's* timezone to Hawaii, and do the next two checks after 8pm Hawaii time (by then the barn's own date is already tomorrow): the dashboard heading names the barn's date, one day ahead of your device's
+- [ ] (e2e: new_lesson_calendar_greys_out_the_devices_day_as_past) Under that setup, **New Lesson**'s month calendar greys out your machine's own current date as past — the cutoff follows the barn's day, which has already moved past it, not your device's
+- [ ] (e2e: a_document_due_on_the_barns_day_shows_the_reminder_due_badge) Under that setup, a horse document whose Reminder Date is *tomorrow* by your machine's clock (i.e. the barn's current date) shows the amber **Reminder Due** badge on the horse detail page
+- [ ] (e2e: add_expense_hides_the_time_field_for_the_devices_already_past_day) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
+- [ ] (e2e: add_expense_date_prefills_the_barns_day) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
+- [ ] (e2e: add_lease_and_add_boarding_start_dates_prefill_the_barns_day) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
 - [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
 - [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
 - [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
