@@ -433,19 +433,28 @@ test('choosing_cancelled_by_rider_on_a_group_lesson_reveals_a_picker_of_still_ac
   expect([...listed].sort()).toEqual([RIDERS[0], RIDERS[1]].sort())
 })
 
-// The `1` and the two `0`s live in one assertion so the positive control cannot be skipped: a
-// row locator that resolved to nothing would report `0` for all three and fail on the cancelled
-// rider, rather than reading as a clean pass on two zeros. `N±1` is not what is mutated against
-// this shape either — see the PR body's mutation report.
+// Each rider is read as a **pair** — is the row there, and does it carry a badge — rather than
+// as a bare badge count, and the difference is the whole vacuity guard. A bare
+// `{ Ivy: 1, Juno: 0, Kai: 0 }` has a real positive control for the locator (Ivy's `1` proves
+// rows render and the badge matcher works), but it still reads `0` for a rider whose row is
+// **absent entirely**, which is a different bug reported as a pass. Pinning `row: 1` on all
+// three says the zeros are about the badge and not about the row.
 test('cancelling_one_group_rider_shows_a_cancelled_badge_on_only_that_riders_row @manager', async ({ page }) => {
   await cancelOneRider(page, 'riderBadge', RIDERS[0])
   await riderRows(page).first().waitFor()
-  const badgesFor = (name: string) => riderRow(page, name).getByText(CANCELLED_BADGE, { exact: true })
+  const reading = async (name: string) => ({
+    row: await riderRow(page, name).count(),
+    cancelledBadge: await riderRow(page, name).getByText(CANCELLED_BADGE, { exact: true }).count(),
+  })
   expect({
-    [RIDERS[0]]: await badgesFor(RIDERS[0]).count(),
-    [RIDERS[1]]: await badgesFor(RIDERS[1]).count(),
-    [RIDERS[2]]: await badgesFor(RIDERS[2]).count(),
-  }).toEqual({ [RIDERS[0]]: 1, [RIDERS[1]]: 0, [RIDERS[2]]: 0 })
+    [RIDERS[0]]: await reading(RIDERS[0]),
+    [RIDERS[1]]: await reading(RIDERS[1]),
+    [RIDERS[2]]: await reading(RIDERS[2]),
+  }).toEqual({
+    [RIDERS[0]]: { row: 1, cancelledBadge: 1 },
+    [RIDERS[1]]: { row: 1, cancelledBadge: 0 },
+    [RIDERS[2]]: { row: 1, cancelledBadge: 0 },
+  })
 })
 
 // "The rest of the lesson" and "its other riders" are two subjects, so both are read here; the
@@ -462,8 +471,9 @@ test('the_rest_of_a_group_lesson_is_unaffected_when_one_of_its_riders_cancels @m
   expect({
     lessonCancelledBadges: await headerCancelledBadge(page).count(),
     fee: await feeOnDetailPage(page),
+    riderRows: await rows.count(),
     ridersWithoutACancelledBadge: await rows.filter({ hasNotText: CANCELLED_BADGE }).count(),
-  }).toEqual({ lessonCancelledBadges: 0, fee: '$306', ridersWithoutACancelledBadge: 2 })
+  }).toEqual({ lessonCancelledBadges: 0, fee: '$306', riderRows: 3, ridersWithoutACancelledBadge: 2 })
 })
 
 // Both sides of the boundary in one assertion, because a *policy* claim is not testable from one
@@ -547,7 +557,9 @@ test('selecting_cancelled_by_rider_on_a_group_lesson_more_than_24h_out_shows_no_
 // Two of three riders cancelled, one still active. The positive control is a *different card in
 // the same document* — a lesson cancelled in the seed and touched by nothing — which is what a
 // positive control on another page could not be (#1191): it proves this render produced badges
-// at all, so the zero is about this lesson rather than about the list failing to draw.
+// at all, so the zero is about this lesson rather than about the list failing to draw. The
+// card's own count is pinned alongside it for the remaining gap the sibling cannot close — a
+// list that drew badges fine but simply had no card for *this* lesson would also report zero.
 test('a_group_lesson_shows_no_cancelled_badge_while_any_rider_is_still_active @manager', async ({ page }) => {
   await cancelOneRider(page, 'listNoBadge', RIDERS[0])
   await cancelOneRider(page, 'listNoBadge', RIDERS[1])
@@ -555,9 +567,10 @@ test('a_group_lesson_shows_no_cancelled_badge_while_any_rider_is_still_active @m
   await page.goto(`/barn/${barn.slug}/lessons`)
   await listCard(page, 'cancelledSibling').waitFor()
   expect({
+    cardsForThisLesson: await listCard(page, 'listNoBadge').count(),
     stillHasAnActiveRider: await listCard(page, 'listNoBadge').getByText(CANCELLED_BADGE, { exact: true }).count(),
     cancelledInTheSeed: await listCard(page, 'cancelledSibling').getByText(CANCELLED_BADGE, { exact: true }).count(),
-  }).toEqual({ stillHasAnActiveRider: 0, cancelledInTheSeed: 1 })
+  }).toEqual({ cardsForThisLesson: 1, stillHasAnActiveRider: 0, cancelledInTheSeed: 1 })
 })
 
 // Its own lesson, cancelled rider by rider the way the line describes, rather than a reading of
