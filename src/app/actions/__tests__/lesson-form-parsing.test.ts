@@ -109,6 +109,27 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({ error: 'horse not found in this barn' })
   })
 
+  // The three-argument call above is the create path, and its rejection is what keeps #1276's
+  // widening scoped to editing: only a caller that supplies the lesson's already-attached ids
+  // gets them accepted.
+  it('should_accept_a_horse_that_is_attached_to_the_lesson_but_no_longer_active', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'active-horse', name: 'Apple', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+    ])
+    const fd = makeFormData({ fee: '50', horse_id: 'inactive-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership, ['inactive-horse'])
+    expect('data' in result && result.data.horseIds).toEqual(['inactive-horse'])
+  })
+
+  it('should_return_error_when_horse_is_neither_active_nor_attached_to_the_lesson', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'active-horse', name: 'Apple', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+    ])
+    const fd = makeFormData({ fee: '50', horse_id: 'stranger-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership, ['inactive-horse'])
+    expect(result).toEqual({ error: 'horse not found in this barn' })
+  })
+
   it('should_return_error_when_rider_does_not_belong_to_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
       { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
