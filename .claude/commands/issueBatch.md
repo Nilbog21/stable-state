@@ -43,12 +43,12 @@ _last full refresh: {timestamp} (issueBatch create)_
   deps: #M, #P
 
 ## In Progress
-- #N — Title [labels] (assignee: {login})
+- #N — Title [labels] (assignee: {login}) (in progress: branch {branch-name})
 ```
 
 `note:` lines and the `## Insights` section are where this file's real value accumulates. `unblocks:` counts a dependency graph; the prose records everything a graph can't hold — that landing #1218 before #1206 saves rewriting brand-new specs, that two issues collide on different hunks of the same file, that a slice was excluded from a fleet batch on purpose. That knowledge is expensive to rediscover and exists nowhere else: not in the issue bodies, not in git history.
 
-So: **an entry may carry any number of `note:` lines, and every skill that writes this file carries them forward verbatim** — this command's four subcommands, and equally `/beginIssue` and `/finishIssue` when they move an entry between sections. Same for `## Insights`. `create` rebuilds scores and sections from scratch and still preserves both. A skill that rewrites this file and drops the prose has destroyed the thing the file is for. (This is not hypothetical — `create` did exactly that until #1231, which is why the notes in it are worth reading before you trust the numbers.)
+So: **an entry may carry any number of `note:` lines, and every skill that writes this file carries them forward verbatim** — this command's four subcommands, equally `/beginIssue` and `/finishIssue` when they move an entry between sections, and equally `/fableFleet`'s orchestrator, which does that moving itself for fleet work (its workers' own writes no-op, so nothing else would). Same for `## Insights`. `create` rebuilds scores and sections from scratch and still preserves both. A skill that rewrites this file and drops the prose has destroyed the thing the file is for. (This is not hypothetical — `create` did exactly that until #1231, which is why the notes in it are worth reading before you trust the numbers.)
 
 ---
 
