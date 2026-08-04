@@ -162,7 +162,7 @@ async function eventTitles(page: Page): Promise<string[]> {
 /** Walks Manage Barn → Barn Events → that row's Edit, the way the checklist item does. */
 async function openEventEdit(page: Page, title: string) {
   const section = await openSection(page, 'Barn Events')
-  await eventRows(section).filter({ hasText: title }).getByRole('link', { name: 'Edit' }).click()
+  await eventRows(section).filter({ hasText: title }).getByRole('link', { name: 'Edit', exact: true }).click()
   await page.waitForURL(/\/settings\/events\/[0-9a-f-]{36}$/, { waitUntil: 'commit' })
 }
 
@@ -172,7 +172,7 @@ function roleCheckbox(page: Page, role: string) {
 
 /** Submits a form by its Save button. focus()+Enter, per #501/`04c64505`. */
 async function save(page: Page) {
-  await page.getByRole('button', { name: 'Save' }).focus()
+  await page.getByRole('button', { name: 'Save', exact: true }).focus()
   await page.keyboard.press('Enter')
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings$`), { waitUntil: 'commit' })
 }
@@ -220,7 +220,7 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
 
   test('new_tier_form_prefills_instructor_cut_from_the_barn_default @manager', async ({ page }) => {
     const section = await openSection(page, 'Lesson Tiers')
-    await section.getByRole('link', { name: 'Add Tier' }).click()
+    await section.getByRole('link', { name: 'Add Tier', exact: true }).click()
     await page.waitForURL(/\/settings\/tiers\/new$/, { waitUntil: 'commit' })
 
     // Destination-only content, not a URL read: 37 is a value no tier edit page can show
@@ -244,10 +244,18 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
   test('deactivating_a_tier_removes_it_from_the_new_lesson_form @manager', async ({ page }) => {
     await page.goto(tierEditUrl(group.id))
     page.once('dialog', (dialog) => dialog.accept())
-    await page.getByRole('button', { name: 'Deactivate' }).click()
+    await page.getByRole('button', { name: 'Deactivate', exact: true }).click()
     // The action revalidates in place rather than redirecting; Activate replacing Deactivate
     // is the rendered proof it landed.
-    await expect(page.getByRole('button', { name: 'Activate' })).toBeVisible()
+    //
+    // `exact: true` is load-bearing here, not tidiness. getByRole's accessible-name match is a
+    // case-insensitive *substring* by default, so `name: 'Activate'` also matches the
+    // **De**activate button this test has just clicked — the wait then resolved against the
+    // pre-click state and the /lessons/new read raced the server action. Measured, not
+    // reasoned: on an active tier's edit page the loose locator counts 1 and the exact one
+    // counts 0. It is why a mutation asserting Group Special was *still* offered after
+    // deactivation passed. Every getByRole in this file is exact for the same reason.
+    await expect(page.getByRole('button', { name: 'Activate', exact: true })).toBeVisible()
 
     // Exact equality, so the claim is "gone, and the others are still there" — a positive
     // containment set would be satisfied by a select rendering nothing.
@@ -257,9 +265,9 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
 
   test('reactivating_a_tier_restores_it_to_the_new_lesson_form @manager', async ({ page }) => {
     await page.goto(tierEditUrl(group.id))
-    await page.getByRole('button', { name: 'Activate' }).focus()
+    await page.getByRole('button', { name: 'Activate', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('button', { name: 'Deactivate' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Deactivate', exact: true })).toBeVisible()
 
     await page.goto(`/barn/${barn.slug}/lessons/new`)
     await expect(tierOptions(page)).toHaveText([
@@ -346,7 +354,7 @@ test.describe.serial('Manage Barn — Barn Events', () => {
 
   test('event_delete_confirm_page_names_the_event @manager', async ({ page }) => {
     await openEventEdit(page, NEW_EVENT.title)
-    await page.getByRole('link', { name: 'Delete' }).click()
+    await page.getByRole('link', { name: 'Delete', exact: true }).click()
     await page.waitForURL(/\/settings\/events\/[0-9a-f-]{36}\/delete$/, { waitUntil: 'commit' })
 
     // Rendered content that exists only on the destination — the edit form has no prose
@@ -361,9 +369,9 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     page,
   }) => {
     await openEventEdit(page, NEW_EVENT.title)
-    await page.getByRole('link', { name: 'Delete' }).click()
+    await page.getByRole('link', { name: 'Delete', exact: true }).click()
     await page.waitForURL(/\/settings\/events\/[0-9a-f-]{36}\/delete$/, { waitUntil: 'commit' })
-    await page.getByRole('button', { name: 'Confirm Delete' }).focus()
+    await page.getByRole('button', { name: 'Confirm Delete', exact: true }).focus()
     await page.keyboard.press('Enter')
     await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings$`), { waitUntil: 'commit' })
 
