@@ -10,24 +10,24 @@ cd "$(git rev-parse --show-toplevel)"
 #
 # A line carrying `# pipefail-safe: <reason>` is exempt — that is where the polarity argument goes.
 #
-# The verdict walks grep's own flag grammar word by word rather than pattern-matching the line,
-# because the thing that decides it is whether a `-q`-looking token is a *flag* or an *argument*.
-# A flag taking a space-separated value swallows the next word, which cuts both ways and wrongly
-# in both directions under a regex: `grep -e needle -q` is a real race whose `-q` sits past the
-# value, and `grep -e -q` is safe because its `-q` *is* the value. `--` ends the flag region for
-# the same reason. Within a cluster the q/m is a prefix, not the whole of it, so `grep -qi`/`-qE`
-# and the no-space `-m1` are caught; an attached value (`-A2`) consumes nothing further.
-#
-# The ceiling is that the flag region ends at the first word not starting with `-`, so a flag
-# placed *after* the pattern (`grep needle -q`) is a miss. Scanning past it would run through a
-# `&&`/`;` into an unrelated command's `-q`, and a false positive here hard-fails CI on safe code
-# — worse than the miss, on a gate whose own value is that it isn't noise.
+# The test is deliberately coarse — a segment whose command is `head`, or one whose command is
+# `grep` and whose text contains an early-exit flag anywhere. It does **not** parse grep's flag
+# grammar. An earlier cut did, and telling a flag from an argument means tokenizing, which is
+# wrong wherever a quoted value holds a space: `grep -e "foo bar" -q` read as safe, a real race
+# missed in the fail-open direction. Not tokenizing costs the mirror cases instead — `grep -- -q`
+# and `grep -e -q`, where the `-q` *is* the pattern, now flag — and `# pipefail-safe:` is the
+# one-line answer for those. Over-flagging is affordable; missing a race is what this gate exists
+# to prevent. Measured before choosing: on this repo the coarse rule finds exactly what the
+# grammar walk found, which is nothing.
 #
 # Pipes are found by splitting the line on `|` after masking `||`, so `cmd || grep -q x` doesn't
 # register — a `||` fallback has no producer to take SIGPIPE. Only segments after the first are
-# tested, which is what lets a pipe opening a continuation line match. That also makes a
-# line-leading `|` inside a quoted multi-line string matchable (workflow-ci-wait.sh's jq filter
-# has several); `# pipefail-safe:` is the answer if one ever collides with grep/head.
+# tested, which is what lets a pipe opening a continuation line match. The split isn't quote-aware:
+# harmless in the common shape (`grep -qE "fix|feat"` still flags, the `-q` riding in the same
+# segment as the `grep`), and a miss in the rare inverse `grep -e "a|b" -q` — which joins the older
+# ceiling, a flag placed after the pattern (`grep needle -q`). It also makes a line-leading `|`
+# inside a quoted multi-line string matchable (workflow-ci-wait.sh's jq filter has several);
+# `# pipefail-safe:` is the answer if one ever collides with grep/head.
 
 # Does this pipe segment's command stop reading before its input is drained?
 early_exit_consumer() {
@@ -35,39 +35,9 @@ early_exit_consumer() {
   read -ra words <<<"$1"
   case "${words[0]:-}" in
     head) return 0 ;;
-    grep) ;;
-    *) return 1 ;;
+    # `--quiet` and `--max-count` need no alternative of their own — they contain `-q` and `-m`.
+    grep) case "$1" in *-q* | *-m* | *--silent*) return 0 ;; esac ;;
   esac
-
-  local i=1 word rest char
-  while [ "$i" -lt "${#words[@]}" ]; do
-    word="${words[i]}"
-    i=$((i + 1))
-    case "$word" in
-      --) return 1 ;;                                    # everything after it is an operand
-      --quiet | --silent | --max-count | --max-count=*) return 0 ;;
-      --regexp | --file | --after-context | --before-context | --context | --label | \
-        --binary-files | --devices | --directories)
-        i=$((i + 1)) ;;                                  # takes the next word as its value
-      --*) ;;                                            # self-contained, incl. --name=value
-      -?*)
-        rest="${word#-}"
-        while [ -n "$rest" ]; do
-          char="${rest:0:1}"
-          rest="${rest:1}"
-          case "$char" in
-            q | m) return 0 ;;
-            e | f | A | B | C | d | D)
-              # Last in the cluster means the value is the next word; attached means it's `$rest`.
-              [ -n "$rest" ] || i=$((i + 1))
-              break
-              ;;
-          esac
-        done
-        ;;
-      *) return 1 ;;                                     # the pattern — the flag region ends here
-    esac
-  done
   return 1
 }
 
@@ -90,7 +60,9 @@ for f in scripts/*.sh; do
   grep -q 'pipefail' "$f" || continue
 
   n=0
-  while IFS= read -r line; do
+  # `|| [ -n "$line" ]` catches a final line with no trailing newline — `read` fills `$line` but
+  # returns non-zero, so testing its status alone silently drops that line.
+  while IFS= read -r line || [ -n "$line" ]; do
     n=$((n + 1))
     case "$line" in *'pipefail-safe:'*) continue ;; esac
     if [[ "$line" =~ ^[[:space:]]*# ]]; then continue; fi

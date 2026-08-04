@@ -178,20 +178,65 @@ git log | $variant")"
   rm -rf "$REPO"
 done
 
-# Tests 25-28: the mirror image of 21-24 — the argument *is* the `-q`-looking token, so it's the
-# search pattern, not a flag, and none of these early-exits. A false positive hard-fails CI on
-# safe code, which is the direction this gate can least afford.
+# Tests 25-28: the same tokens read the other way — here the `-q` *is* the search pattern, so the
+# line is genuinely safe, and the gate flags it anyway. That's deliberate: it tests for the flag as
+# a substring rather than parsing grep's grammar, which is what makes it immune to quoting (tests
+# 29-30). Over-flagging is the affordable direction — `# pipefail-safe:` is the one-line answer,
+# and it's exactly where the polarity argument belongs. Nobody writes these lines; the parser that
+# read them correctly cost two fail-open bugs to carry.
 for variant in 'grep -- -q' 'grep -e -q' 'grep -f -q' 'grep --regexp -q'; do
   REPO="$(make_repo victim.sh "#!/usr/bin/env bash
 set -euo pipefail
 git log | $variant")"
   if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
-    assert_pass "pipefail + $variant: exits 0"
+    assert_fail "pipefail + $variant: exits non-zero" "script exited 0 (expected non-zero)"
   else
-    assert_fail "pipefail + $variant: exits 0" "script exited non-zero"
+    assert_pass "pipefail + $variant: exits non-zero"
   fi
   rm -rf "$REPO"
 done
+
+# Test 29: a quoted, space-containing flag value. This is a real race, and the reason the gate
+# doesn't tokenize: any word-splitting scan desynchronizes here — the value splits in two, the
+# leftover reads as the pattern, and the `-q` past it is never reached.
+REPO="$(make_repo victim.sh '#!/usr/bin/env bash
+set -euo pipefail
+git log | grep -e "foo bar" -q')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_fail "pipefail + grep -e \"foo bar\" -q: exits non-zero" "script exited 0 (expected non-zero)"
+else
+  assert_pass "pipefail + grep -e \"foo bar\" -q: exits non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 30: an alternation in the pattern puts a literal `|` inside quotes, which the line split
+# treats as a pipe. It still flags, because the `-q` sits in the same segment as the `grep`. This
+# is the common shape; the ceiling is the rare inverse, `grep -e "a|b" -q` (see the script header).
+REPO="$(make_repo victim.sh '#!/usr/bin/env bash
+set -euo pipefail
+git log | grep -qE "fix|feat"')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_fail "pipefail + grep -qE with an alternation: exits non-zero" "script exited 0 (expected non-zero)"
+else
+  assert_pass "pipefail + grep -qE with an alternation: exits non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 31: a file whose final line carries no trailing newline. `read` returns non-zero on that
+# last unterminated read, so a loop testing only its status drops the line — fail-open. Every other
+# fixture goes through make_repo, whose `printf '%s\n'` always terminates, which is why none catch it.
+REPO="$(mktemp -d)"
+git -C "$REPO" init -q
+mkdir -p "$REPO/scripts"
+printf '%s' '#!/usr/bin/env bash
+set -euo pipefail
+git log | grep -q needle' > "$REPO/scripts/victim.sh"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_fail "unterminated final line + grep -q: exits non-zero" "script exited 0 (expected non-zero)"
+else
+  assert_pass "unterminated final line + grep -q: exits non-zero"
+fi
+rm -rf "$REPO"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
