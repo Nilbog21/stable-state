@@ -193,12 +193,23 @@ function dayViewCard(page: Page, key: keyof typeof FEES): Locator {
 /**
  * Drive one whole cancellation from the detail page, and land back on it.
  *
- * The wait after Confirm is deliberately *not* `toHaveURL` and not `waitForURL` either: the
- * detail page's `<dl>` is the only thing here that proves the destination actually rendered.
- * `/cancel` renders no `<dl>` at all, so a submit that failed and re-rendered the confirmation
- * page — or one that redirected to a 404 — resolves this locator to nothing and fails, where a
- * URL assertion would have passed on both. The `<dl>` is also what every caller reads next, so
- * the proof and the read are the same auto-waiting locator rather than two hopeful steps.
+ * Both halves of the landing check are needed and neither replaces the other, which is the
+ * pairing `checklist-phase4-lessons-detail.spec.ts` already uses and `e2e/support/test.ts`'s
+ * convention block mandates after a click. `waitForURL` pins **which** lesson the server
+ * redirected to — a redirect wired to the wrong id lands on a real, rendering detail page and
+ * would satisfy any content check. `'commit'` resolves before that document renders, though, so
+ * a 404 or a 500 at the right URL satisfies the URL half equally; the `<dl>` is the render
+ * proof, and `/cancel` has none, so a submit that failed and re-rendered the confirmation page
+ * fails here rather than sailing through. It is also what every caller reads next, so the proof
+ * and the read are the same auto-waiting locator.
+ *
+ * `test.slow()` lives in the helper rather than on individual tests: whichever test happens to
+ * compile `/lessons/[id]/cancel` cold gets the raised budget, including under a standalone
+ * `--grep` of any single one of the nine callers. That is #1206's fix (`a97bd435`) for exactly
+ * this shape — a budget attached to some call sites of a shared helper rather than to the helper
+ * — and putting it back on the tests reintroduces a failure that shows up only under `--grep`.
+ * No explicit timeout anywhere: `actionTimeout` is 0, so every `waitFor*` here is already
+ * unbounded and a number could only tighten it (#1211).
  */
 async function cancelFromDetail(
   page: Page,
@@ -206,11 +217,13 @@ async function cancelFromDetail(
   cancelType: 'instructor' | 'rider',
   notes?: string
 ) {
+  test.slow()
   await page.goto(detailPath(key))
   await page.locator('main').getByRole('link', { name: 'Cancel', exact: true }).click()
   await cancelTypeRadio(page, cancelType).check()
   if (notes !== undefined) await page.getByLabel('Cancellation notes (optional)').fill(notes)
   await page.getByRole('button', { name: 'Confirm Cancellation' }).click()
+  await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}$`), { waitUntil: 'commit' })
   await page.locator('main dl').waitFor()
 }
 
@@ -300,16 +313,33 @@ test('switching_to_cancelled_by_instructor_hides_the_late_fee_warning @manager',
   })
 })
 
-// The same locator is pointed first at a lesson where the label genuinely renders and only then
-// at the one where it must not — the structural defence against a vacuous absence check, since a
-// locator that matched nothing anywhere would report 0 on both pages and fail the first half.
+// Two defences, because the near-lesson half only covers one of the two ways an absence check
+// can be true for the wrong reason.
+//
+// Against a *broken locator*: the same locator is pointed first at a lesson where the label
+// genuinely renders, so one that matched nothing anywhere reports 0 on both pages and fails the
+// first half rather than reading as a clean pass.
+//
+// Against an *unhydrated page*, which the near-lesson half does not cover at all — it is a
+// different document, and proving that one hydrated says nothing about this one. The far lesson
+// is the trainer-instructed one **specifically so its toggle already defaults to Rider**
+// (`isInstructorOfLesson` is false for the manager viewing it), which makes the absence a
+// property of the server-rendered markup: `CancelLessonFields` evaluates
+// `isWithinLateCancellationWindow` during render on the server as well as the client. The
+// `.check()` below is therefore a no-op confirming a state that is already selected — the
+// checklist line's "select Cancelled by Rider" is honoured, but the reading no longer depends on
+// React having hydrated in time to process the click. Pointing this half at a manager-instructed
+// lesson (default Instructor) would make an unhydrated click produce `0` for a reason that has
+// nothing to do with the 24-hour window — the same value a correct pass produces.
 test('selecting_cancelled_by_rider_more_than_24h_out_shows_no_late_fee_warning @manager', async ({ page }) => {
   await page.goto(cancelPath('nearLabel'))
   await cancelTypeRadio(page, 'rider').check()
   await lateFeeWarning(page).waitFor()
   const onNearLesson = await lateFeeWarning(page).count()
 
-  await page.goto(cancelPath('header'))
+  // `.check()` is itself the render proof for this page: it auto-waits and throws if the radio
+  // never appears, so a 404 or an unrendered route fails here rather than reaching the count.
+  await page.goto(cancelPath('trainer'))
   await cancelTypeRadio(page, 'rider').check()
   const onFarLesson = await lateFeeWarning(page).count()
 
@@ -397,7 +427,6 @@ test('cancellation_notes_entered_on_the_confirmation_page_appear_on_the_detail_p
 // ---------------------------------------------------------------------------
 
 test('cancelling_a_normal_lesson_shows_a_cancelled_badge_on_the_lessons_list @manager', async ({ page }) => {
-  test.slow()
   await cancelFromDetail(page, 'listBadge', 'instructor')
   await page.goto(`/barn/${barn.slug}/lessons`)
   await expect(listCard(page, 'listBadge').getByText(CANCELLED_BADGE, { exact: true })).toBeVisible()
@@ -407,7 +436,6 @@ test('cancelling_a_normal_lesson_shows_a_cancelled_badge_on_the_lessons_list @ma
 // test: "that same lesson" is honoured as the same kind of lesson cancelled the same way, which
 // keeps this check independent of whether the list check above it ran, passed, or re-seeded.
 test('a_cancelled_normal_lesson_shows_the_cancelled_badge_on_its_detail_page @manager', async ({ page }) => {
-  test.slow()
   await cancelFromDetail(page, 'detailBadge', 'instructor')
   await expect(headerCancelledBadge(page)).toBeVisible()
 })
@@ -421,7 +449,6 @@ test('a_cancelled_normal_lesson_shows_the_cancelled_badge_on_its_detail_page @ma
 // together: a day view that failed to render, or a `?date=` that landed on the wrong day, would
 // report `cancelled: 0` as readily as a correct one, and only the sibling half catches it.
 test('a_cancelled_lesson_is_absent_from_the_dashboard_day_view_for_its_date @manager', async ({ page }) => {
-  test.slow()
   await cancelFromDetail(page, 'dashCancel', 'instructor')
 
   await page.goto(`/barn/${barn.slug}?date=${dashDay}`)
