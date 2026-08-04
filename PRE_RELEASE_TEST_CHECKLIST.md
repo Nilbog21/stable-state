@@ -300,24 +300,24 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: selecting_cancelled_by_rider_within_24h_shows_the_late_fee_warning) On a **normal** lesson booked <24h away, select **Cancelled by Rider** → an amber "The rider will be due a late cancellation fee." label appears
 - [ ] (e2e: switching_to_cancelled_by_instructor_hides_the_late_fee_warning) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
 - [ ] (e2e: selecting_cancelled_by_rider_more_than_24h_out_shows_no_late_fee_warning) On a **normal** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] (e2e-candidate) Clicking **Cancel** on a **group** lesson shows the same **Cancelled by Rider** / **Cancelled by Instructor** toggle
-- [ ] (e2e-candidate) Choosing **Cancelled by Instructor** there shows the count of enrolled riders who'll be affected
-- [ ] (e2e-candidate) It also lists those riders by name
-- [ ] (e2e-candidate) Confirming cancels the whole lesson, every enrolled rider included
-- [ ] (e2e-candidate) That whole-lesson cancellation waives the fee
-- [ ] (e2e-candidate) On that same group lesson's Cancel page, choosing **Cancelled by Rider** reveals a rider picker listing the still-active enrolled riders
-- [ ] (e2e-candidate) Select one and confirm → only that rider's row shows a **Cancelled** badge
-- [ ] (e2e-candidate) The rest of the lesson and its other riders are unaffected
-- [ ] (e2e-candidate) The standard 24-hour fee policy applies to that rider
-- [ ] (e2e-candidate) On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
-- [ ] (e2e-candidate) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
-- [ ] (e2e-candidate) On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
+- [ ] (e2e: clicking_cancel_on_a_group_lesson_opens_the_same_cancel_type_toggle) Clicking **Cancel** on a **group** lesson shows the same **Cancelled by Rider** / **Cancelled by Instructor** toggle
+- [ ] (e2e: choosing_cancelled_by_instructor_on_a_group_lesson_shows_the_affected_rider_count) Choosing **Cancelled by Instructor** there shows the count of enrolled riders who'll be affected
+- [ ] (e2e: the_cancelled_by_instructor_description_lists_the_affected_riders_by_name) It also lists those riders by name
+- [ ] (e2e: confirming_cancelled_by_instructor_on_a_group_lesson_cancels_every_enrolled_rider) Confirming cancels the whole lesson, every enrolled rider included
+- [ ] (e2e: whole_lesson_cancellation_of_a_group_lesson_waives_the_fee) That whole-lesson cancellation waives the fee
+- [ ] (e2e: choosing_cancelled_by_rider_on_a_group_lesson_reveals_a_picker_of_still_active_riders) On that same group lesson's Cancel page, choosing **Cancelled by Rider** reveals a rider picker listing the still-active enrolled riders
+- [ ] (e2e: cancelling_one_group_rider_shows_a_cancelled_badge_on_only_that_riders_row) Select one and confirm → only that rider's row shows a **Cancelled** badge
+- [ ] (e2e: the_rest_of_a_group_lesson_is_unaffected_when_one_of_its_riders_cancels) The rest of the lesson and its other riders are unaffected (on a lesson booked <24h away — a rider cancelling >24h out zeroes the whole lesson's fee)
+- [ ] (e2e: the_24_hour_fee_policy_applies_to_a_group_rider_who_cancels) The standard 24-hour fee policy applies to that rider
+- [ ] (e2e: selecting_cancelled_by_rider_on_a_group_lesson_within_24h_shows_the_group_fee_warning) On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
+- [ ] (e2e: switching_a_group_lesson_to_cancelled_by_instructor_hides_the_group_fee_warning) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
+- [ ] (e2e: selecting_cancelled_by_rider_on_a_group_lesson_more_than_24h_out_shows_no_group_fee_warning) On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
 - [ ] (e2e: cancelling_a_normal_lesson_shows_a_cancelled_badge_on_the_lessons_list) Cancel a **normal** lesson (there's only one rider) → the lesson shows a **Cancelled** badge on the Lessons list
 - [ ] (e2e: a_cancelled_normal_lesson_shows_the_cancelled_badge_on_its_detail_page) That same lesson shows the **Cancelled** badge on its detail page
 - [ ] (e2e: a_cancelled_lesson_is_absent_from_the_dashboard_day_view_for_its_date) (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
-- [ ] (e2e-candidate) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
-- [ ] (e2e-candidate) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
-- [ ] (e2e-candidate) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
+- [ ] (e2e: a_group_lesson_shows_no_cancelled_badge_while_any_rider_is_still_active) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
+- [ ] (e2e: a_group_lesson_shows_a_cancelled_badge_on_the_lessons_list_once_its_final_rider_is_cancelled) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
+- [ ] (e2e: a_fully_cancelled_group_lesson_shows_the_cancelled_badge_on_its_detail_page) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
 - [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
 - [ ] (e2e-candidate) That textarea does *not* appear when editing a non-cancelled lesson
 - [ ] (e2e-candidate) Edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
