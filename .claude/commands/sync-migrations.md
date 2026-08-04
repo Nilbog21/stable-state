@@ -68,5 +68,17 @@ Check Supabase migration status, rename pending migrations to the current timest
 
 7. Ask: **"Type 'sync' to push these migrations to remote, or anything else to abort:"**
 
-8. If the user types `sync`, run `npx supabase db push`.
-   Otherwise abort — do not undo the renames; leave them in the working tree for the developer running this skill to commit or revert by hand.
+8. If the user types `sync`, assert the push target is the dev project and push in one command, so the push cannot run on its own:
+   ```
+   bash scripts/assert-dev-project.sh && npx supabase db push
+   ```
+   If the guard aborts, **stop and report what it printed** — do not retry with `--allow-prod` to get past it. That flag exists for the deliberate production push (the same opt-in `seed-account`, `seed-test-barn`, `teardown-test-barn`, and `change-user` already take), and only the developer can say this is one:
+   ```
+   bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push
+   ```
+
+   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the eight seed/teardown scripts and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`CLAUDE.md`'s Schema/RLS/RPC verification section); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
+
+   The guard checks two separate things because `db push` selects its target differently from everything else in this repo: the CLI writes to whatever project `npx supabase link` recorded in `supabase/.temp/project-ref`, while the seed/teardown scripts read `.env.local`. Checking only `NEXT_PUBLIC_SUPABASE_URL` against `DEV_SUPABASE_URL` would leave a re-link free to push schema to another project with a dev-pointed `.env.local` sitting right there.
+
+   Otherwise (the user typed anything but `sync`) abort — do not undo the renames; leave them in the working tree for the developer running this skill to commit or revert by hand.
