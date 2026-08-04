@@ -30,8 +30,13 @@ cd "$root" || exit 1
 # The whole of src/lib/** is here rather than enumerated per spec — that layer is data
 # access and shared formatting, both of which cut across every route. Enumerating it would
 # put a near-identical eight-line DAL block on each of the six finances specs and still
-# leave a silent hole the moment a covered page started importing a new module. With it
-# here, every per-spec `covers:` declaration is a pure src/app/ route glob.
+# leave a silent hole the moment a covered page started importing a new module.
+#
+# src/components/** and src/app/actions/** are here for the same reason and were learned the
+# hard way (#1281): the list carried only src/components/ui/**, and three slices in two days
+# lost coverage through the gap — calendar/**, documents/**, ExhaustionBar.tsx,
+# useOutsideDismiss.ts. A module reached through a *shared helper* is exactly the one an
+# author forgets their spec drives, so it can't be left to per-spec declaration.
 ALWAYS_FULL=(
   'e2e/support/**'
   'e2e/global-setup.ts'
@@ -39,7 +44,8 @@ ALWAYS_FULL=(
   'src/proxy.ts'
   'src/app/layout.tsx'
   'src/app/barn/[slug]/(protected)/layout.tsx'
-  'src/components/ui/**'
+  'src/app/actions/**'
+  'src/components/**'
   'src/lib/**'
 )
 
@@ -67,6 +73,10 @@ specs() {
   ls e2e/*.spec.ts 2>/dev/null
 }
 
+# Read once and share: --lint was re-running it per glob, and the stdin path below needs
+# the same list to tell "nothing declares this" from "this doesn't exist".
+tracked_paths=$(git ls-files)
+
 if [[ ${1:-} == --lint ]]; then
   status=0
   while IFS= read -r spec; do
@@ -83,7 +93,7 @@ if [[ ${1:-} == --lint ]]; then
           matched=true
           break
         fi
-      done < <(git ls-files)
+      done <<< "$tracked_paths"
       if [[ $matched == false ]]; then
         echo "Error: $spec declares '// covers: $glob', which matches no tracked path — a rename left it pointing at nothing." >&2
         status=1
@@ -103,6 +113,15 @@ changed=()
 # non-zero on it, and losing it loses it toward mode=none.
 while IFS= read -r line || [[ -n $line ]]; do
   [[ -n $line ]] && changed+=("$line")
+done
+
+# Ahead of any mode decision, so it lands on mode=full and mode=scoped runs too. mode=none
+# is the ambiguous one — it reads identically for "no spec declares this module" and "this
+# path does not exist", and #1281 shipped a coverage claim built on the second read.
+for path in "${changed[@]+"${changed[@]}"}"; do
+  if ! grep -qxF -- "$path" <<< "$tracked_paths"; then
+    echo "select-specs.sh: warning: '$path' matches no tracked path — deleted in this diff, or a typo. mode=none means 'no spec declares it', not 'it does not exist'." >&2
+  fi
 done
 
 for path in "${changed[@]+"${changed[@]}"}"; do
