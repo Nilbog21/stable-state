@@ -23,7 +23,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > Sections with no tags on their checkboxes have not been audited yet.
 >
-> **A line a PR adds is born automated or justified-manual** — `(e2e: <test name>)` with the covering spec written in that same PR, or `(manual)` with the reason stated on the line. `(e2e-candidate)` is barred for *added* lines only; it stays correct for the pre-existing untagged lines an audit is converting, and the stated-reason requirement likewise binds added lines, not the older `(manual)` ones. A **human judgment call** — does this flow read well, cross-device look-and-feel, any visual check — is legitimate `(manual)` grounds; "would take a while to automate" is not.
+> **A line a PR adds is born automated or justified-manual** — `(e2e: <test name>)` with the covering spec written in that same PR, or `(manual)` with the reason stated on the line. Leaving an added line untagged is the same violation as tagging it `(e2e-candidate)`; both are barred for *added* lines only, and both stay correct for the pre-existing untagged lines an audit is converting — the "not audited yet" note above is about those, not licence to add more. The stated-reason requirement likewise binds added lines, not the older `(manual)` ones. Legitimate `(manual)` grounds, in full: a **human judgment call** — does this flow read well, cross-device look-and-feel, any visual check — or an external dependency a spec cannot drive. "Would take a while to automate" is not one; neither is needing a separate real person or prod configuration, which belongs in `POST_RELEASE_TEST_CHECKLIST.md` rather than tagged `(manual)` here.
 
 ## Prerequisites
 
