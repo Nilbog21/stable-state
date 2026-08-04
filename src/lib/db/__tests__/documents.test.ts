@@ -348,7 +348,7 @@ describe.each(CASES)('deleteDocument($entity)', ({ entity, entityId, mockDoc }) 
 })
 
 describe('getDueDocuments', () => {
-  const today = '2026-07-07'
+  const today = calendarDate('2026-07-07')
 
   const horseDoc = {
     id: 'doc-h1',

@@ -34,7 +34,11 @@ export type Instant = { at: string; tz: string }
  *
  * Three mints, and only three — `local-day.ts`'s `calendarDate` (unchecked, for a value the
  * DB already types as `DATE`) and `isValidDateString` (validating, for user input), plus
- * `barn-timezone.ts`'s `barnDay`/`barnToday`. Grep those to enumerate every producer.
+ * `barn-timezone.ts`'s `barnDay`/`barnToday`. Those are every *conversion* into this frame,
+ * which is not the same as every producer: a DAL reader asserting a whole PostgREST row
+ * (`data as Agreement`) mints whatever branded fields that row declares, exactly as it
+ * already does for `Instant`. Grep the mints to find where an unbranded value earns the
+ * brand; the row casts are where the DB's own `DATE` typing is taken at its word.
  */
 export type CalendarDate = string & { __brand: 'CalendarDate' }
 

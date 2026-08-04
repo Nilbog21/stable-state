@@ -10,6 +10,7 @@ import { resolveHorseNames } from './horses'
 import { resolveMemberNames } from './member-names'
 import { calendarDate } from '../local-day'
 import type {
+  CalendarDate,
   DueDocument,
   HorseDocument,
   HorseDocumentType,
@@ -163,7 +164,7 @@ export async function updateDocumentReminderDate(
   if (error) throw error
 }
 
-export async function getDueDocuments(barnId: string, today: string): Promise<DueDocument[]> {
+export async function getDueDocuments(barnId: string, today: CalendarDate): Promise<DueDocument[]> {
   const supabase = await createClient()
 
   const { data: horseDocs, error: horseError } = await supabase

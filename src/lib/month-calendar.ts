@@ -113,7 +113,7 @@ function worstBand(
 }
 
 export function computeDayDecorations(
-  dates: string[],
+  dates: CalendarDate[],
   items: ScheduleItem[],
   opts: DayDecorationOptions
 ): Record<string, DayDecoration> {

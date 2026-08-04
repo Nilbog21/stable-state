@@ -50,7 +50,11 @@ describe('the CalendarDate brand', () => {
 
   it('should_reject_an_instant_where_a_calendar_date_is_required', () => {
     // @ts-expect-error — the two frames are not interchangeable in either direction: a real
-    // instant rendered UTC-forced is #923.
+    // instant rendered UTC-forced is #923. Unlike its sibling above, this one rejects on
+    // shape — an `Instant` is an object, so it would fail against a plain `string` param too,
+    // and it stays an error if the brand is removed. That is the strongest form available:
+    // the only way to hand a formatter an instant's *string* is `.at`, which is a bare string
+    // and is exactly what the sibling already forbids.
     expect(() => formatShortDateOnly(NY_AFTERNOON)).toThrow()
   })
 

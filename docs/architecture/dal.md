@@ -28,7 +28,7 @@ Audit columns nothing displays stay plain strings — see `types.ts`'s `Instant`
 | `expense-finances.ts` | `HorseExpenseDetailRow.expenseDate`, `RecipientExpenseDetailRow.expenseDate` |
 | `outstanding.ts` | `OutstandingItem`'s `lease`/`board` `date` (its `lesson`/`cancellation_fee` arms stay `Instant` — that union is where the two frames meet) |
 
-Unlike `Instant`, which is structurally constructed, a branded string needs an explicit mint. There are three and no more, so `grep` answers "who produces one?": `local-day.ts`'s `calendarDate` (unchecked, for a value PostgREST hands back as `string` that the DB already types `DATE`) and `isValidDateString` (a type predicate — the validating mint for a `?date=` search param), plus `barn-timezone.ts`'s `barnDay`/`barnToday`, the crossing from the instant frame into this one.
+Unlike `Instant`, which is structurally constructed, a branded string needs an explicit mint wherever an unbranded value crosses into the frame. There are three and no more: `local-day.ts`'s `calendarDate` (unchecked, for a value PostgREST hands back as `string` that the DB already types `DATE`) and `isValidDateString` (a type predicate — the validating mint for a `?date=` search param), plus `barn-timezone.ts`'s `barnDay`/`barnToday`, the crossing from the instant frame into this one. A whole-row cast (`data as Agreement`) is not one of them and `grep` won't show it: it takes the DB's typing at its word for every field of the row at once, which is how `Instant` fields arrive too.
 
 Write inputs stay bare `string` — `ExpenseInput.expenseDate` and the agreement/document date parameters take unvalidated form text, and branding there would only move the lie earlier.
 
