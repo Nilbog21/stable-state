@@ -56,6 +56,8 @@ Type 'synced' when `/sync-migrations` has completed:
 
 Wait for the user to type `synced`.
 
+**Under `/fableFleet` you are not the one who runs it:** end your turn requesting a sync slot from the orchestrator, which holds that lock fleet-wide and runs `/sync-migrations` itself. Resume on its `synced`. The commit-and-push below is still yours.
+
 Then commit the renamed migration files:
 ```
 git -C {worktree-path} status --porcelain supabase/migrations/
