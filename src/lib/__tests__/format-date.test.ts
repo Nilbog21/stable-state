@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { formatBarnDateTime, formatBarnDate, formatBarnTime } from '../format-date'
+import { formatBarnDateTime, formatBarnDate, formatBarnTime, formatShortDateOnly } from '../format-date'
+import { calendarDate } from '../local-day'
 import type { Instant } from '../db/types'
 
 // The suite runs under TZ=Asia/Kolkata (vitest.config.mts), so a New York barn's instant
@@ -32,5 +33,27 @@ describe('the Instant brand', () => {
     const rejected: Instant = '2026-07-15T20:00:00Z'
 
     expect(rejected).toBe('2026-07-15T20:00:00Z')
+  })
+})
+
+// These two assert at compile time, not at run time: esbuild strips the directives, so
+// `npx tsc --noEmit` (scripts/ci.sh) is what enforces them. An `@ts-expect-error` that stops
+// being an error fails the build just as loudly as one that starts being one, which is what
+// makes each of these a real assertion rather than a comment.
+describe('the CalendarDate brand', () => {
+  it('should_reject_a_bare_string_where_a_calendar_date_is_required', () => {
+    // @ts-expect-error — a bare string could equally be an instant or a wall clock; only a
+    // value minted as a calendar day may reach a UTC-forced formatter.
+    expect(formatShortDateOnly('2026-07-15')).toBe('Jul 15, 2026')
+  })
+
+  it('should_reject_an_instant_where_a_calendar_date_is_required', () => {
+    // @ts-expect-error — the two frames are not interchangeable in either direction: a real
+    // instant rendered UTC-forced is #923.
+    expect(() => formatShortDateOnly(NY_AFTERNOON)).toThrow()
+  })
+
+  it('should_accept_a_minted_calendar_date', () => {
+    expect(formatShortDateOnly(calendarDate('2026-07-15'))).toBe('Jul 15, 2026')
   })
 })
