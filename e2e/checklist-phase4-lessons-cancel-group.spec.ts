@@ -34,8 +34,9 @@ const TIER_PRICE = 80
  * containment hazard living in the fixture rather than in an assertion. These three names are
  * mutually non-substring and share no prefix with 'Test Manager'/'Test Trainer'.
  *
- * `addManagedMember` writes `is_managed = true`, which is what keeps `teardownBarn`'s profile
- * sweep able to see them — the leak class the batch has now hit three times.
+ * `addManagedMember` leaves `user_id` null, which is what keeps `teardownBarn`'s profile sweep
+ * able to see them (#1282 moved that filter off `is_managed`, which any caller can flip, onto
+ * `user_id IS NULL`, which none can) — the leak class the batch has now hit three times.
  */
 const RIDERS = ['Ivy Bramble', 'Juno Clover', 'Kai Thistle'] as const
 

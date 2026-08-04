@@ -192,9 +192,11 @@ test.describe('a claimed trainer', () => {
  * is captured before anything is touched and restored unconditionally, and the object this
  * block uploads is deleted rather than left dangling.
  *
- * Deleting matters on its own. teardownBarnData only sweeps photo storage for `is_managed =
- * true` profiles, so an object uploaded against a claimed login is invisible to teardown and
- * would accumulate silently, one per run, forever.
+ * Deleting matters on its own. teardownBarnData sweeps photo storage only for profiles with
+ * `user_id IS NULL` (#1282), and a claimed login's user_id is by definition not null — so an
+ * object uploaded against one is invisible to teardown and would accumulate silently, one per
+ * run, forever. The shared login's row is also global to the project, so no barn's teardown
+ * reaches it by any path.
  */
 test.describe.serial('your own member photo', () => {
   let service: SupabaseClient | null = null
