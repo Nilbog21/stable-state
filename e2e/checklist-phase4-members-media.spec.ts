@@ -23,14 +23,9 @@ const extensionOf = (assetName: string) => assetName.slice(assetName.lastIndexOf
 
 let managedRiderId: string
 let claimedTrainerId: string
-let claimedTrainerProfileId: string
 let secondRiderId: string
-/** Captured in the seed so the claimed-trainer cleanup below can't depend on `barn.data`. */
-let seedClient: SupabaseClient | null = null
 
 const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
-  seedClient = supabase
-
   // The unclaimed rider whose photo is set, replaced and removed through the UI, and who then
   // carries the document upload/list/open/delete chain. addManagedMember leaves user_id null
   // and is_managed true, which is exactly the manager-editable state those flows need.
@@ -56,7 +51,6 @@ const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
   // 480 names that file explicitly.
   const claimedTrainer = await addManagedMember(supabase, barn.id, { ...CLAIMED_TRAINER, role: 'trainer' })
   claimedTrainerId = claimedTrainer.membershipId
-  claimedTrainerProfileId = claimedTrainer.profileId
   await setMemberPhoto(supabase, barn, claimedTrainer.profileId, EMERY_PHOTO)
   mustSucceed(
     await supabase.from('profiles').update({ is_managed: false }).eq('id', claimedTrainer.profileId).select('id').single(),
@@ -152,30 +146,11 @@ test.describe.serial('a managed rider photo', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('a claimed trainer', () => {
-  // The seed demotes this stub to `is_managed = false`, which is exactly what teardown can't
-  // see: teardownBarnData sweeps profile photo storage and deletes stub rows for
-  // `is_managed = true` only, so both this profile's row and its photo object would survive
-  // every run — one more of each, accumulating silently, which is precisely the residue the
-  // own-photo block below goes to such lengths to avoid creating.
-  //
-  // Handed back to teardown rather than swept here: flipping is_managed true again once the
-  // claimed-state assertions are done lets teardownBarnData collect it by its own existing
-  // rule, instead of this spec reimplementing that sweep and drifting from it.
-  //
-  // A describe-scoped afterAll is what makes the ordering safe — Playwright completes an inner
-  // suite's hooks before the file-scoped afterAll that withBarn registers for teardown.
-  test.afterAll(async () => {
-    if (!seedClient || !claimedTrainerProfileId) return
-    mustSucceed(
-      await seedClient
-        .from('profiles')
-        .update({ is_managed: true })
-        .eq('id', claimedTrainerProfileId)
-        .select('id')
-        .single(),
-      'restore trainer stub to managed so teardown sweeps it'
-    )
-  })
+  // No cleanup hook here, deliberately. This block used to flip the seed's demoted stub back to
+  // `is_managed = true` in a describe-scoped afterAll, because teardownBarnData swept stub rows
+  // and their photo objects by that flag and so couldn't see a demoted one. Since #1282 it
+  // sweeps by `user_id IS NULL`, which a demotion can't change — the restore became a no-op
+  // dressed as a safeguard, and a comment asserting the old rule as current.
 
   // Counted rather than asserted absent. A bare toHaveCount(0) over the controls would pass
   // vacuously if the Photo section itself failed to resolve — the failure mode this batch's
@@ -217,9 +192,11 @@ test.describe('a claimed trainer', () => {
  * is captured before anything is touched and restored unconditionally, and the object this
  * block uploads is deleted rather than left dangling.
  *
- * Deleting matters on its own. teardownBarnData only sweeps photo storage for `is_managed =
- * true` profiles, so an object uploaded against a claimed login is invisible to teardown and
- * would accumulate silently, one per run, forever.
+ * Deleting matters on its own. teardownBarnData sweeps photo storage only for profiles with
+ * `user_id IS NULL` (#1282), and a claimed login's user_id is by definition not null — so an
+ * object uploaded against one is invisible to teardown and would accumulate silently, one per
+ * run, forever. The shared login's row is also global to the project, so no barn's teardown
+ * reaches it by any path.
  */
 test.describe.serial('your own member photo', () => {
   let service: SupabaseClient | null = null

@@ -59,6 +59,23 @@ export async function createE2eAuthUsers(supabase: SupabaseClient): Promise<void
     }
 
     await upsertProfile(userId, user.email, user.firstName, user.lastName, supabase)
+
+    // These three profile rows are per project and outlive every barn, so teardownBarnData can
+    // never reach them — anything a spec writes here persists until something puts it back
+    // (#1282: trainer@e2e.test was found holding a photo_path into a barn deleted a week
+    // earlier, with the storage object orphaned behind it). This is the one place that resets
+    // them to a known state, so the reset covers the photo too, object first: nulling the column
+    // alone is what strands the object.
+    const current = mustSucceed<{ photo_path: string | null }[]>(
+      await supabase.from('profiles').select('photo_path').eq('user_id', userId),
+      `read ${user.email} photo path`
+    )
+    const stalePhotos = current.map((p) => p.photo_path).filter((p): p is string => !!p)
+    if (stalePhotos.length > 0) {
+      const { error } = await supabase.storage.from('documents').remove(stalePhotos)
+      if (error) throw new Error(`remove ${user.email} photo object: ${(error as { message?: string }).message}`)
+    }
+
     // Contact fields filled in so the profile is complete — an incomplete profile redirects
     // to /profile/complete, which would derail every spec on its first navigation.
     mustSucceed(
@@ -68,6 +85,7 @@ export async function createE2eAuthUsers(supabase: SupabaseClient): Promise<void
           phone: '555-0100',
           emergency_contact_name: `${user.firstName} Emergency`,
           emergency_contact_phone: '555-0199',
+          photo_path: null,
         })
         .eq('user_id', userId),
       `update ${user.email} contact fields`

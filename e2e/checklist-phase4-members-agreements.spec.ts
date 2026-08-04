@@ -67,9 +67,10 @@ const barn = withBarn('phase4-members-agreements', async ({ supabase, barn, memb
   })
 
   // The unclaimed rider. addManagedMember never writes user_id, so this membership is unclaimed
-  // by construction — and its profile stays is_managed = true, which is what keeps it inside
-  // teardownBarnData's sweep (that sweep skips is_managed = false rows, so a stub demoted to
-  // reach a claimed state would survive teardown; this spec needs no such demotion).
+  // by construction — and that null user_id is exactly what keeps its profile inside
+  // teardownBarnData's sweep, which filters on `user_id IS NULL` (#1282). A demotion to
+  // is_managed = false wouldn't take the row out of that sweep's reach either, but this spec
+  // needs no such demotion regardless.
   const managedRider = await addManagedMember(supabase, barn.id, { ...MANAGED_RIDER, role: 'rider' })
   managedRiderId = managedRider.membershipId
   const managedHorse = await addHorse(supabase, barn.id, MANAGED_HORSE)

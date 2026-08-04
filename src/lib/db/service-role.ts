@@ -98,13 +98,18 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
 
   if (membershipProfileIds.length > 0) {
+    // `user_id IS NULL`, not `is_managed = true` (#1282). Stubs are inserted with a null user_id
+    // and `claim_managed_member` sets user_id and clears is_managed in the same UPDATE, so this
+    // filter is strictly stronger: it still can never delete a claimed login, and unlike the flag
+    // it survives a spec demoting a stub to reach the claimed-member state and not restoring it.
+    // 43 rows had leaked that way by the time this was found.
     await removePhotoPathStorage(
       'profiles',
-      await supabase.from('profiles').select('photo_path').eq('is_managed', true).in('id', membershipProfileIds),
+      await supabase.from('profiles').select('photo_path').is('user_id', null).in('id', membershipProfileIds),
       supabase
     )
     mustSucceed(
-      await supabase.from('profiles').delete().eq('is_managed', true).in('id', membershipProfileIds),
+      await supabase.from('profiles').delete().is('user_id', null).in('id', membershipProfileIds),
       'delete stale managed-stub profiles'
     )
   }
