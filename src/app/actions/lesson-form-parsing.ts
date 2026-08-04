@@ -4,7 +4,12 @@
  * cross-field rules, instructor resolution (a non-manager caller is pinned to their own
  * membership; a manager-supplied instructor id is validated against
  * `getInstructorsByBarn`), and DB-backed existence checks that every submitted
- * horse/rider id belongs to the barn. Deliberately has no `'use server'` directive —
+ * horse/rider id belongs to the barn. The horse check accepts the barn's *active* horses plus
+ * whatever `attachedHorseIds` the caller supplies — the edit page re-offers a lesson's
+ * deactivated horses as checked, enabled options (so that editing an unrelated field can't
+ * silently detach one), and the parser has to accept back what that form handed out (#1276).
+ * `submitLesson` passes none, which is what keeps a *new* lesson to active horses only.
+ * Deliberately has no `'use server'` directive —
  * `parseLessonFormData` must never be independently reachable as a Server Action, or it
  * would skip the `requireMembership` check its callers perform.
  */
@@ -36,7 +41,8 @@ export type ParsedLessonFormData = {
 export async function parseLessonFormData(
   formData: FormData,
   barnId: string,
-  membership: { id: string; role: string }
+  membership: { id: string; role: string },
+  attachedHorseIds: string[] = []
 ): Promise<{ error: string } | { data: ParsedLessonFormData }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
@@ -79,7 +85,7 @@ export async function parseLessonFormData(
   ])
 
   if (horseIds.length > 0) {
-    const validHorseIds = new Set(barnHorses.map((h) => h.id))
+    const validHorseIds = new Set([...barnHorses.map((h) => h.id), ...attachedHorseIds])
     if (horseIds.some((id) => !validHorseIds.has(id))) {
       return { error: 'horse not found in this barn' }
     }

@@ -132,7 +132,13 @@ export async function updateLessonAction(
 ): Promise<{ error: string | null }> {
   const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const parsed = await parseLessonFormData(formData, barnId, membership)
+  // Fetched up front rather than only for the cancellation check below, because the parser needs
+  // the lesson's current horses too: the edit page re-offers deactivated ones as checked, enabled
+  // options, so they arrive back in the form data and would otherwise be rejected (#1276).
+  const currentLesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
+  const attachedHorseIds = currentLesson?.lesson_horses.flatMap((lh) => lh.horses ? [lh.horses.id] : []) ?? []
+
+  const parsed = await parseLessonFormData(formData, barnId, membership, attachedHorseIds)
   if ('error' in parsed) return parsed
 
   let { horseIds } = parsed.data
@@ -144,11 +150,8 @@ export async function updateLessonAction(
     // Checked before the write, not after: update_lesson_with_participants never touches
     // cancelled_at, so hoisting is behaviour-preserving and stops a rejected save from
     // having already committed participant edits.
-    if (cancellationNotesRaw !== null) {
-      const currentLesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
-      if (!currentLesson || currentLesson.cancelled_at === null) {
-        return { error: 'lesson is not cancelled' }
-      }
+    if (cancellationNotesRaw !== null && (!currentLesson || currentLesson.cancelled_at === null)) {
+      return { error: 'lesson is not cancelled' }
     }
 
     if (newHorseName) {
