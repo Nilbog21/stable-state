@@ -497,24 +497,24 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e: a_rider_with_no_active_agreements_shows_the_empty_state) A rider with no active agreements shows **No active agreements** instead
 - [ ] (e2e: the_empty_active_agreements_state_carries_no_add_boarding_link) That empty state carries no add-boarding link
 - [ ] (e2e: a_managed_riders_detail_page_shows_the_active_agreements_section) A managed (unclaimed) rider's detail page shows the same **Active Agreements** section
-- [ ] (e2e-candidate) A trainer's member detail page shows an **Instructor Access** section reading **Revoke Instructor Access** (trainers default to `can_instruct=true`)
-- [ ] (e2e-candidate) Tapping it raises a browser confirm prompt naming the trainer
-- [ ] (e2e-candidate) That prompt warns they'll no longer be assignable to future lessons
-- [ ] (e2e-candidate) **Cancel** it → access is unchanged
-- [ ] (e2e-candidate) Tap **Revoke Instructor Access** again and confirm → the button now reads **Grant Instructor Access**
-- [ ] (e2e-candidate) That trainer no longer appears in the instructor select on the new-lesson form
-- [ ] (e2e-candidate) Tapping **Grant Instructor Access** raises no confirm prompt
-- [ ] (e2e-candidate) The trainer reappears in the instructor select afterwards
-- [ ] (e2e-candidate) Your own manager member detail page shows an **Instructor Access** section reading **Grant Instructor Access**
-- [ ] (e2e-candidate) Tapping it raises no confirm prompt
-- [ ] (e2e-candidate) You then appear in the instructor select on the new-lesson form
-- [ ] (e2e-candidate) Tapping **Revoke Instructor Access** to undo does raise a confirm prompt
-- [ ] (e2e-candidate) Rider Gale Test's member detail page shows no **Instructor Access** section
-- [ ] (e2e-candidate) Indigo Test's member detail page shows a **Remove** button top-right of the header, next to the member's name
-- [ ] (e2e-candidate) Tap it and confirm the browser prompt → you're redirected to the Members list
-- [ ] (e2e-candidate) Indigo Test no longer appears on that list
-- [ ] (e2e-candidate) Your own manager member detail page shows no **Remove** button
-- [ ] (e2e-candidate) Second manager Morgan Manager's member detail page shows no **Remove** button either (managers can't remove other managers)
+- [ ] (e2e: trainer_detail_instructor_access_button_reads_revoke) A trainer's member detail page shows an **Instructor Access** section reading **Revoke Instructor Access** (trainers default to `can_instruct=true`)
+- [ ] (e2e: revoking_instructor_access_prompts_with_the_trainers_name) Tapping it raises a browser confirm prompt naming the trainer
+- [ ] (e2e: the_revoke_prompt_warns_the_trainer_becomes_unassignable_to_future_lessons) That prompt warns they'll no longer be assignable to future lessons
+- [ ] (e2e: cancelling_the_revoke_prompt_leaves_instructor_access_unchanged) **Cancel** it → access is unchanged
+- [ ] (e2e: confirming_the_revoke_prompt_flips_the_button_to_grant) Tap **Revoke Instructor Access** again and confirm → the button now reads **Grant Instructor Access**
+- [ ] (e2e: a_revoked_trainer_is_absent_from_the_new_lesson_instructor_select) That trainer no longer appears in the instructor select on the new-lesson form
+- [ ] (e2e: granting_instructor_access_raises_no_confirm_prompt) Tapping **Grant Instructor Access** raises no confirm prompt
+- [ ] (e2e: a_regranted_trainer_returns_to_the_new_lesson_instructor_select) The trainer reappears in the instructor select afterwards
+- [ ] (e2e: your_own_instructor_access_button_reads_grant) Your own manager member detail page shows an **Instructor Access** section reading **Grant Instructor Access**
+- [ ] (e2e: granting_your_own_instructor_access_raises_no_confirm_prompt) Tapping it raises no confirm prompt
+- [ ] (e2e: you_appear_in_the_new_lesson_instructor_select_after_granting) You then appear in the instructor select on the new-lesson form
+- [ ] (e2e: revoking_your_own_instructor_access_raises_a_confirm_prompt) Tapping **Revoke Instructor Access** to undo does raise a confirm prompt
+- [ ] (e2e: a_riders_detail_page_has_no_instructor_access_section) Rider Gale Test's member detail page shows no **Instructor Access** section
+- [ ] (e2e: a_removable_members_header_carries_a_remove_button_beside_their_name) Indigo Test's member detail page shows a **Remove** button top-right of the header, next to the member's name
+- [ ] (e2e: confirming_the_remove_prompt_redirects_to_the_members_list) Tap it and confirm the browser prompt → you're redirected to the Members list
+- [ ] (e2e: a_removed_member_no_longer_appears_on_the_members_list) Indigo Test no longer appears on that list
+- [ ] (e2e: your_own_member_detail_header_carries_no_remove_button) Your own manager member detail page shows no **Remove** button
+- [ ] (e2e: a_second_managers_header_carries_no_remove_button) Second manager Morgan Manager's member detail page shows no **Remove** button either (managers can't remove other managers)
 
 Finances (`/barn/dev-barn/finances`):
 
