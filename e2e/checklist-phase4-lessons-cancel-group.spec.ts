@@ -374,10 +374,12 @@ async function pendingIncome(page: Page): Promise<number> {
  *
  * No explicit timeout anywhere in this file. For every `waitFor*` that is because
  * `actionTimeout` is 0, so the wait is already unbounded and a number could only tighten it
- * (#1211). The two `expect.poll`s are the exception worth naming: `expect.poll` is bounded by
+ * (#1211). The one `expect.poll` is the exception worth naming: `expect.poll` is bounded by
  * **expect's** own budget, not by `actionTimeout`, and `playwright.config.ts` sets no
- * `expect.timeout` -- so they run on Playwright's 5s default. Still no number here: writing one
- * is what #1211 forbids. Raise `test.slow()` if either ever needs longer.
+ * `expect.timeout` -- so it runs on Playwright's 5s default. Still no number here, because it
+ * has not needed one; if it ever does, a named `{ timeout }` on that call is the right lever
+ * and the one #1211 does not forbid, since on this tier a number *loosens*. What will not
+ * work is `test.slow()`: it triples the test timeout and leaves expect's budget alone (#1279).
  */
 async function gotoCancelPage(page: Page, key: LessonKey) {
   test.slow()

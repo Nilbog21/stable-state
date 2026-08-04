@@ -16,16 +16,49 @@
 // playwright.config.ts), so a mutating spec can neither race nor pollute a reading spec.
 // Seeding is the reset; there is no undo path to maintain.
 //
-// Asserting on the URL, suite-wide (#1009, #1140, #1152). After a *click*, use
-// page.waitForURL(pattern, { waitUntil: 'commit' }) — expect(page).toHaveURL carries expect's
-// 5s default, which the dev server can exceed cold-compiling the target route under full-suite
-// load, and 'commit' is enough because the claim is that the URL changed, not that the new
-// document finished loading. waitForURL still fails the test outright if the URL never lands,
-// so the claim survives the swap. Pass no explicit `timeout`: navigationTimeout defaults to 0
-// (no timeout), so the wait is bounded by the test's own 30s budget, and any number written
-// here could only *tighten* that — the opposite of the point. After a page.goto, plain
-// toHaveURL is correct and stays: goto already resolves after redirects, so there is nothing
-// left to wait for (see auth.spec.ts and behaviors.spec.ts's rider-redirect test).
+// ## Timeouts, suite-wide (#1211, generalised by #1279)
+//
+// Three tiers, and they do not behave alike. Which tier a call belongs to decides whether
+// writing a number helps or hurts, so the rule below is stated per tier rather than per API —
+// #1211 wrote it around waitForURL alone and the next four authors had to rediscover that it
+// generalises:
+//
+//   - EVERY `waitFor*` IS UNBOUNDED. locator.waitFor, page.waitForURL / waitForEvent /
+//     waitForSelector / waitForFunction / waitForLoadState / waitForResponse alike:
+//     @playwright/test defaults actionTimeout and navigationTimeout to 0 and playwright.config.ts
+//     overrides neither, so each is bounded only by the test's own 30s budget. Any number
+//     written on one could only *tighten* that — the opposite of the point. Pass none. When a
+//     wait genuinely needs longer, `test.slow()` is the lever (see
+//     checklist-phase4-members-access.spec.ts's gotoNewLessonForm).
+//
+//   - `expect(…).toPass()` IS UNBOUNDED TOO, for its own reason rather than that one: its
+//     `timeout` option defaults to 0 and it deliberately ignores the configured expect timeout.
+//     Same rule — pass no number.
+//
+//   - `expect.poll` AND EVERY WEB-FIRST `expect` MATCHER ARE THE OPPOSITE CASE. They run on
+//     expect's own 5s default (playwright.config.ts sets no `expect.timeout`), which
+//     `test.slow()` does NOT raise — that triples the *test* timeout and touches nothing else.
+//     A number on one of these therefore *loosens*, which makes it the one sanctioned place to
+//     write one: per call site, named, with the reason on it (see
+//     checklist-phase4-finances-outstanding.spec.ts's SETTLE_AFTER_WRITE).
+//
+// ## Asserting on the URL, suite-wide (#1009, #1140, #1152)
+//
+// After a *click*, use page.waitForURL(pattern, { waitUntil: 'commit' }) — expect(page).toHaveURL
+// carries the 5s expect budget above, which the dev server can exceed cold-compiling the target
+// route under full-suite load, and 'commit' is enough because the claim is that the URL changed,
+// not that the new document finished loading. waitForURL still fails the test outright if the URL
+// never lands, so the claim survives the swap. After a page.goto, plain toHaveURL is correct and
+// stays: goto already resolves after redirects, so there is nothing left to wait for (see
+// auth.spec.ts and behaviors.spec.ts's rider-redirect test).
+//
+// BUT waitForURL IS A NO-OP WHEN THE PATTERN ALREADY MATCHES (#1204). It resolves against the
+// current URL before it waits, so a submit that redirects to the page it was already on returns
+// immediately and whatever follows races the redirect — a sync point that looks present and
+// isn't. checklist-phase4-settings-tiers-events.spec.ts's `save()` is safe only because it is
+// called from /settings/tiers/<id> and waits for /settings; copy it onto a form already sitting
+// on its own destination URL and the sync point silently disappears. Synchronise on something
+// the response *changes* instead — see e2e/CLAUDE.md's fact 8.
 //
 // withBarn is a plain registration helper rather than a Playwright fixture because Playwright
 // has no file scope — only test and worker — and a worker-scoped fixture would leak one barn
