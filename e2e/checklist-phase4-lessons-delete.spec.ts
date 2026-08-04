@@ -33,6 +33,7 @@ import {
   daysFromNow,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { waitForHydrated } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -446,9 +447,11 @@ async function notificationFingerprints(): Promise<string[]> {
  * The two tests that only *read* the edit form (321, 322) deliberately skip this: their claims are
  * about server-rendered markup, and waiting for hydration to assert a server-rendered absence would
  * be the SSR-default confusion running the other way.
+ *
+ * The barrier itself lives in `support/hydration.ts` (#1280); this is only the choice of signal.
  */
 async function waitForEditFormHydrated(page: Page) {
-  await page.getByRole('button', { name: /^Exhaustion: / }).first().waitFor()
+  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
 }
 
 /**

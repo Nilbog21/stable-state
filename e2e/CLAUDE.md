@@ -70,15 +70,15 @@ typed date in React state and shows it whether or not the save ever landed. *(#1
 **9. Filling a React-controlled input immediately after `page.goto` can lose the fill to
 hydration.** On a page that hasn't hydrated, `fill()` moves the DOM value and nothing else — no
 `onChange` fires, no state updates, and a subsequent assertion about a state-derived warning
-passes or fails for reasons unrelated to what it claims. Suite-wide risk; drive a control and
-wait for a client-only consequence before the fill matters. *(#1205)*
+passes or fails for reasons unrelated to what it claims. Suite-wide risk; put a barrier from
+`support/hydration.ts` in front of the fill. *(#1205)*
 
 **10. A click dispatched before React is listening is simply lost, and nothing replays it.**
-This is why a hydration barrier on an interaction-only page has to *retry* rather than wait
-once — see `checklist-phase4-horses-documents.spec.ts`'s `waitForHorseDetailHydrated`, whose
-`toPass` loop re-clicks until the `useState`-gated popover opens. Three specs hand-roll a
-barrier three different ways today; #1280 extracts the shared one, covering both this case
-and the page that has a zero-interaction signal. *(#1199)*
+This is why a hydration barrier on an interaction-only page has to *retry* rather than drive once
+and wait — a single drive that lands early can only run out the budget. Both shapes now live in
+`support/hydration.ts` (#1280): `waitForHydrated` for a page with markup that cannot exist before
+hydration, `hydrateByDriving` for a page that renders identically until it is driven. Full
+statement, including what makes a signal trustworthy, is that module's comment. *(#1199)*
 
 **11. Switching a tab or filter is a click on its `Pill`, not a re-`goto` with a different
 query param.** The app's switchers are `<Pill href>` → a Next `Link`, so the user's tab change

@@ -67,7 +67,10 @@ export async function waitForHydrated(signal: Locator): Promise<void> {
  * before the retry loop can bury it: both are one line at the call site.
  */
 export async function hydrateByDriving(
-  drive: () => Promise<void>,
+  // `Promise<unknown>` rather than `Promise<void>`: whatever the drive resolves to is discarded,
+  // and requiring void would force an async wrapper around every action that returns something —
+  // `selectOption` resolves to the selected values, `click` to nothing.
+  drive: () => Promise<unknown>,
   isLive: () => Promise<boolean>
 ): Promise<void> {
   await expect(async () => {

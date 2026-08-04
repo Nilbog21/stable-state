@@ -12,6 +12,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
 import { settledInnerTexts, settledTextContents } from './support/read'
+import { waitForHydrated } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs the assertions read back by name. Horse names are inputs to addHorse rather than
@@ -245,11 +246,11 @@ function lessonCards(page: Page): Locator {
  * correlating with it. That ordering is the whole point of the wait — read as a bare "wait for
  * the page to settle" it looks like superstition and invites deletion.
  *
- * No explicit timeout: @playwright/test sets actionTimeout to 0, so waitFor is already unbounded
- * and any number written here could only tighten it (#1211).
+ * The barrier itself, and why no timeout is written here, live in `support/hydration.ts` (#1280).
+ * This function is only the choice of signal.
  */
 async function waitForEditFormHydrated(page: Page) {
-  await page.getByRole('button', { name: /^Exhaustion: / }).first().waitFor()
+  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
 }
 
 /**

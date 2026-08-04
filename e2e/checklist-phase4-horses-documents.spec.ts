@@ -28,6 +28,7 @@ import { readFileSync } from 'fs'
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, assetPath } from './support/fixtures'
+import { hydrateByDriving } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
 import { barnToday } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
@@ -237,16 +238,13 @@ async function uploadDocument(
  * *cannot* be open before hydration — an open popover strictly post-dates hydration rather than
  * merely correlating with it (#1190's rationale for the same problem one page over). Nothing on
  * this page renders differently on hydration unless it is driven, so an interaction-based signal
- * is the only kind available here, and it has to be *retried*: a click dispatched before React is
- * listening is simply lost, and nothing replays it — e2e/CLAUDE.md's fact 10, stated there too,
- * so a correction made here goes there as well (#1279).
+ * is the only kind available here, and it has to be *retried*. That retry, the re-read that keeps
+ * a toggle from oscillating, and why no timeout is written anywhere are all `hydrateByDriving`'s,
+ * in `support/hydration.ts` — this file's version was the one it was extracted from (#1280).
  *
  * Driven through the ExhaustionBar rather than through the reminder input itself so that the
  * retry writes nothing — a retried blur would issue duplicate saves. Toggled shut again so the
- * page is left as it was found. No explicit timeout: every `waitFor` is unbounded under
- * `actionTimeout: 0`, and `toPass` is unbounded for its own reason — its `timeout` defaults to 0
- * and it ignores the configured expect budget — so a number could only tighten them (#1211,
- * #1279).
+ * page is left as it was found.
  */
 async function waitForHorseDetailHydrated(page: Page): Promise<void> {
   const bar = page.getByRole('button', { name: /^Exhaustion: / })
@@ -258,14 +256,10 @@ async function waitForHorseDetailHydrated(page: Page): Promise<void> {
   // unbounded, so it tightens nothing.
   await bar.waitFor()
 
-  await expect(async () => {
-    // Re-read before clicking, so an attempt whose re-render merely lagged the read is not
-    // undone by the next one — without this the toggle can oscillate instead of converging.
-    if ((await openPopover.count()) === 0) await bar.click()
-    // Non-retrying on purpose: `toPass` owns the pacing, and a web-first matcher here would
-    // spend the whole expect budget on every attempt that lands before hydration.
-    expect(await openPopover.count()).toBe(1)
-  }).toPass()
+  await hydrateByDriving(
+    () => bar.click(),
+    async () => (await openPopover.count()) === 1
+  )
 
   await bar.click()
   await openPopover.waitFor({ state: 'detached' })
