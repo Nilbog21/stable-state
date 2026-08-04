@@ -225,7 +225,7 @@ A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md
    - New or changed architectural patterns, abstractions, or dependencies
    - Removed or deprecated features
 
-   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. Stage and commit whatever you changed:
+   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `PRE_RELEASE_TEST_CHECKLIST.md` line, that section's born-automated-or-justified-manual rule applies here and now: write the covering spec in this same PR and tag the line `(e2e: <test name>)`, or tag it `(manual)` with the reason stated on the line. `(e2e-candidate)` is not an option for a line you are adding. Stage and commit whatever you changed:
    ```
    cd /absolute/path/to/worktree && git add {changed-doc-files} && git commit --amend --no-edit
    ```
