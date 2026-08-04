@@ -47,6 +47,7 @@ import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { hydrateByDriving } from './support/hydration'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import type { Lesson } from '@/lib/db/types'
 
@@ -477,12 +478,16 @@ const HYDRATION_BARRIER_DAY =
     : shiftDay(BARN_TODAY, -1)
 
 /**
- * Waits until the hidden `lesson_at` input reports the given barn-local field, which only
+ * Whether the hidden `lesson_at` input already reports the given barn-local field, which only
  * client-side React can write. `slice` picks the field: `[0, 10]` for the date, `[11, 13]` for
  * the hour.
+ *
+ * A one-shot predicate rather than a `waitForFunction`, because `hydrateByDriving` owns the
+ * pacing — a retrying read inside its loop would spend the whole budget on the first attempt
+ * that lands before hydration (#1280).
  */
-async function waitForPickerField(page: Page, from: number, to: number, expected: string): Promise<void> {
-  await page.waitForFunction(
+async function pickerFieldIs(page: Page, from: number, to: number, expected: string): Promise<boolean> {
+  return page.evaluate(
     ([zone, want, start, end]) => {
       const el = document.querySelector('input[name="lesson_at"]') as HTMLInputElement | null
       if (!el?.value) return false
@@ -520,18 +525,34 @@ async function waitForPickerField(page: Page, from: number, to: number, expected
  * it. So the barrier makes the hidden input trustworthy and leaves the day cell exactly as
  * stale as it was.
  *
- * No explicit timeout (#1211): bounded by the test's own budget.
+ * Both go through `hydrateByDriving` (`support/hydration.ts`, #1280) rather than driving once and
+ * waiting: a control driven before React is listening receives nothing and nothing replays it, so
+ * a single drive can only run out the budget. Re-selecting the same hour is idempotent, which is
+ * what makes the hour axis safe to retry.
  */
 async function hydrateByChangingHour(page: Page): Promise<void> {
-  await page.locator('#dh-hour').selectOption(String(HYDRATION_BARRIER_HOUR))
-  await waitForPickerField(page, 11, 13, String(HYDRATION_BARRIER_HOUR).padStart(2, '0'))
+  await hydrateByDriving(
+    () => page.locator('#dh-hour').selectOption(String(HYDRATION_BARRIER_HOUR)),
+    () => pickerFieldIs(page, 11, 13, String(HYDRATION_BARRIER_HOUR).padStart(2, '0'))
+  )
 }
 
-/** The date-axis barrier, for the test that asserts the HOUR and so must not perturb it. */
+/**
+ * The date-axis barrier, for the test that asserts the HOUR and so must not perturb it.
+ *
+ * Only the day click is retried; the popup it opens is dismissed *after* the loop converges. That
+ * ordering is load-bearing rather than cosmetic: `Close` is rendered inside MonthCalendarPicker's
+ * `useState`-gated popup, so on the pre-hydration attempt this barrier exists to survive there is
+ * no Close button to click, and a dismiss inside the drive would wait for one forever under
+ * `actionTimeout: 0`. Once `lesson_at` carries the day, React is provably live and the popup is
+ * provably open, which is exactly when Close is reachable (#1280).
+ */
 async function hydrateByChangingDay(page: Page): Promise<void> {
-  await page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click()
+  await hydrateByDriving(
+    () => page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click(),
+    () => pickerFieldIs(page, 0, 10, HYDRATION_BARRIER_DAY)
+  )
   await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await waitForPickerField(page, 0, 10, HYDRATION_BARRIER_DAY)
 }
 
 /**
