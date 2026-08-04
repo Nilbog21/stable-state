@@ -792,15 +792,15 @@ Mobile spot-check (resize the browser to ~390px wide, or use your browser's devi
 
 Calendar feed (#1018):
 
-- [ ] (e2e-candidate) On `/profile?barn=dev-barn`, a **Calendar Feed** section appears
-- [ ] (e2e-candidate) Tap **Get my calendar link** → a **Copy Link** button appears
-- [ ] (e2e-candidate) A **Regenerate** button appears alongside it
-- [ ] (e2e-candidate) Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
-- [ ] (e2e-candidate) Open that URL directly (or `curl` it) — it returns `Content-Type: text/calendar`
-- [ ] (e2e-candidate) Its body includes VEVENT entries for the barn's lessons
-- [ ] (e2e-candidate) Those entries cover lessons across the whole barn (manager sees everything), not just your own
-- [ ] (e2e-candidate) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
-- [ ] (e2e-candidate) Open the pre-regenerate URL — it now 404s
+- [ ] (e2e: the_barn_scoped_profile_page_shows_a_calendar_feed_section) On `/profile?barn=dev-barn`, a **Calendar Feed** section appears
+- [ ] (e2e: getting_the_calendar_link_reveals_a_copy_link_button) Tap **Get my calendar link** → a **Copy Link** button appears
+- [ ] (e2e: a_regenerate_button_sits_alongside_copy_link) A **Regenerate** button appears alongside it
+- [ ] (e2e: copying_the_calendar_link_yields_a_calendar_ics_token_url) Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
+- [ ] (e2e: the_calendar_feed_url_serves_a_text_calendar_response) Open that URL directly (or `curl` it) — it returns `Content-Type: text/calendar`
+- [ ] (e2e: the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson) Its body includes VEVENT entries for the barn's lessons
+- [ ] (e2e: the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn) Those entries cover lessons across the whole barn (manager sees everything), not just your own
+- [ ] (e2e: regenerating_the_calendar_link_issues_a_different_token) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
+- [ ] (e2e: the_pre_regenerate_calendar_url_stops_working) Open the pre-regenerate URL — it now 404s
 
 ## Phase 5 — Trainer
 
