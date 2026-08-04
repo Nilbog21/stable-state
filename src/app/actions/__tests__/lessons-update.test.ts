@@ -76,6 +76,15 @@ const mockLesson = createMockLesson({ fee: 100, lesson_at: '2026-05-17T10:00', s
 const mockTrainerMembership = createMockMembership({ role: 'trainer', created_at: '2026-01-01T00:00:00Z' })
 const mockManagerMembership = createMockMembership({ role: 'manager', created_at: '2026-01-01T00:00:00Z' })
 
+// makeLessonDetail always returns an empty lesson_horses, so the attached-horse cases graft the
+// junction row on. Cancelled, matching the beforeEach default, so these stay about horses only.
+function lessonWithAttachedHorse(horseId: string) {
+  return {
+    ...makeLessonDetail({ cancelled_at: '2026-05-01T00:00:00Z' }),
+    lesson_horses: [{ horse_notes: null, horses: { id: horseId, name: 'Willow' } }],
+  }
+}
+
 describe('updateLessonAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
@@ -114,6 +123,42 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ fee: '50', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  // #1276: the edit page re-injects the lesson's deactivated horses into the form as checked,
+  // enabled options, so the parser has to accept back what the form handed out. Only the ids
+  // this lesson already carries are widened — a deactivated horse it never had is still rejected.
+  it('should_save_a_lesson_whose_attached_horse_is_no_longer_active', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(lessonWithAttachedHorse('inactive-horse'))
+    const fd = makeFormData({ fee: '50', horse_id: 'inactive-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(vi.mocked(updateLessonWithParticipants).mock.calls[0][0].horseIds).toEqual(['inactive-horse'])
+  })
+
+  it('should_return_error_when_an_inactive_horse_is_not_attached_to_the_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(lessonWithAttachedHorse('inactive-horse'))
+    const fd = makeFormData({ fee: '50', horse_id: 'stranger-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'horse not found in this barn' })
+  })
+
+  // A junction row whose horse the caller can't read comes back with `horses: null`; the widened
+  // id set has to skip it rather than push an undefined into itself.
+  it('should_return_error_when_the_lessons_only_junction_row_has_no_readable_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...makeLessonDetail({ cancelled_at: '2026-05-01T00:00:00Z' }),
+      lesson_horses: [{ horse_notes: null, horses: null }],
+    })
+    const fd = makeFormData({ fee: '50', horse_id: 'inactive-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'horse not found in this barn' })
+  })
+
+  it('should_return_error_when_the_lesson_being_edited_no_longer_exists', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    const fd = makeFormData({ fee: '50', horse_id: 'inactive-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'horse not found in this barn' })
   })
 
   it('should_return_error_when_rider_id_is_missing_for_normal_lesson', async () => {

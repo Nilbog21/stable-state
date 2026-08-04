@@ -2,10 +2,16 @@
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 // covers: src/components/ExhaustionBar.tsx
+// covers: src/app/actions/lessons.ts
+// covers: src/app/actions/lesson-form-parsing.ts
+//
+// The two `src/app/actions/` files are the server actions behind the edit form this spec saves
+// through — reached by import rather than by path, so no route glob above covers them. The
+// save-with-an-inactive-horse check fails outright if either changes wrongly (#1276).
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
-import { settledTextContents } from './support/read'
+import { settledInnerTexts, settledTextContents } from './support/read'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs the assertions read back by name. Horse names are inputs to addHorse rather than
@@ -29,6 +35,12 @@ const ROUND_TRIP_FEE = 95
 const ROUND_TRIP_FEE_DISPLAY = '$95'
 const ROUND_TRIP_HORSE_NOTE = 'Round-trip horse note.'
 const ROUND_TRIP_RIDER_NOTE = 'Round-trip rider note.'
+
+// The one field the flagged lesson's save-with-an-inactive-horse check edits. Distinct from
+// SEEDED_FEE so a save that silently did nothing can't pass, and distinct from ROUND_TRIP_FEE
+// so neither check can read back the other's write.
+const FLAGGED_SAVED_FEE = 110
+const FLAGGED_SAVED_FEE_DISPLAY = '$110'
 
 // The three message strings the app puts in front of the user, quoted rather than imported for
 // the same reason the fee displays are.
@@ -275,15 +287,33 @@ test('willows_flagged_lesson_edit_page_shows_the_same_attention_banner @manager'
   await expect(firstBlockInMain(page)).toHaveText(new RegExp(`^Needs Attention\\s*${WILLOW} is inactive$`))
 })
 
-// No test for "The banner does not block editing or saving that lesson" — that line is
-// `(manual)`, because the app currently contradicts it. Saving this lesson with Willow still
-// assigned renders `horse not found in this barn` and never redirects:
-// `lessons/[id]/edit/page.tsx` re-injects the lesson's inactive horses into the form as checked,
-// enabled options, while `parseLessonFormData` validates every submitted `horse_id` against
-// `getHorsesByBarn`, which filters `is_active = true`. Tagging it `(e2e: …)` would claim
-// automated coverage of behaviour that does not exist; see the PR body and the filed follow-up.
-// The save path itself is healthy — the swap check below performs the same Save successfully
-// once the inactive horse is removed.
+// The banner-does-not-block-saving line, tagged as of #1276 — before that fix the parser
+// rejected the very horse the edit page had just handed the form, so this Save returned
+// `horse not found in this barn` and never redirected. Both halves in one toEqual because
+// neither means much alone: the new fee proves the save landed, and the banner still reading
+// "Willow is inactive" proves the save did not quietly detach Willow to get there. Deliberately
+// *not* the swap check below — that one resolves the horse issue, which is the state this line
+// is about.
+test('saving_the_flagged_lesson_with_its_inactive_horse_still_attached_succeeds @manager', async ({ page }) => {
+  await page.goto(editPath(flaggedId))
+  await waitForEditFormHydrated(page)
+  await page.getByLabel('Fee', { exact: true }).fill(String(FLAGGED_SAVED_FEE))
+  await saveLessonForm(page)
+  await page.waitForURL(new RegExp(`/lessons/${flaggedId}$`), { waitUntil: 'commit' })
+  // 'commit' resolves before the new document renders, so the heading is the render proof —
+  // same guard, and the same reason, as the swap check below.
+  await page.getByRole('heading', { name: 'Lesson Detail' }).waitFor()
+
+  expect({
+    fee: (await settledTextContents(detailField(page, 'Fee')))[0].trim(),
+    // Whitespace-collapsed rather than matched raw: the banner is a <p> above a <ul>, and the
+    // two neighbouring banner checks above read it through toHaveText, which normalises for them.
+    banner: (await settledInnerTexts(firstBlockInMain(page)))[0].replace(/\s+/g, ' '),
+  }).toEqual({
+    fee: FLAGGED_SAVED_FEE_DISPLAY,
+    banner: `Needs Attention ${WILLOW} is inactive`,
+  })
+})
 
 // Not page.on('dialog'): this confirm is the app's own NavigationConfirmDialog — a React
 // `role="dialog"` with explicit Stay/Leave buttons — not window.confirm, so no browser dialog

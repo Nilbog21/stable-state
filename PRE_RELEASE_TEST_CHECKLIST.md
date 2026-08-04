@@ -274,7 +274,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: needs_attention_badge_does_not_appear_on_a_cancelled_lesson) The badge does not appear on a cancelled lesson
 - [ ] (e2e: willows_flagged_lesson_detail_page_shows_the_inactive_horse_attention_banner) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
 - [ ] (e2e: willows_flagged_lesson_edit_page_shows_the_same_attention_banner) The same banner appears on that lesson's edit page
-- [ ] (manual) The banner does not block editing or saving that lesson
+- [ ] (e2e: saving_the_flagged_lesson_with_its_inactive_horse_still_attached_succeeds) The banner does not block editing or saving that lesson
 - [ ] (e2e: clicking_a_nav_link_on_the_flagged_edit_page_raises_the_unresolved_horse_dialog) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
 - [ ] (e2e: choosing_stay_dismisses_the_dialog_and_keeps_you_on_the_edit_page) Choosing **Stay** in that dialog dismisses it without navigating away
 - [ ] (e2e: swapping_the_inactive_horse_for_an_active_one_stops_the_navigation_prompt) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
