@@ -231,20 +231,20 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
 - [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
-- [ ] (e2e-candidate) (#1016) A "Day"/"Week" pill switcher appears above the calendar
-- [ ] (e2e-candidate) (#1016) The Day view is active by default
-- [ ] (e2e-candidate) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
-- [ ] (e2e-candidate) (#1016) In Week view, each of the 7 days shows its own date heading
-- [ ] (e2e-candidate) (#1016) In Week view, each day section lists that day's own lessons/expenses/events
-- [ ] (e2e-candidate) (#1016) In Week view, a day with nothing scheduled shows "Nothing scheduled for this day."
-- [ ] (e2e-candidate) (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
-- [ ] (e2e-candidate) (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
-- [ ] (e2e-candidate) (#1016) In Week view, a "Today" link appears when today's date isn't inside the visible week
-- [ ] (e2e-candidate) (#1016) In Week view, no "Today" link appears when today's date is already inside the visible week
-- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
-- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
-- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
-- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
+- [ ] (e2e: dashboard_day_and_week_pill_switcher_appears_above_the_calendar) (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (e2e: dashboard_day_pill_is_the_active_view_on_load) (#1016) The Day view is active by default
+- [ ] (e2e: dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_the_viewed_date) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
+- [ ] (e2e: dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days) (#1016) In Week view, each of the 7 days shows its own date heading
+- [ ] (e2e: dashboard_week_view_lists_each_days_own_items_under_that_day) (#1016) In Week view, each day section lists that day's own lessons/expenses/events
+- [ ] (e2e: dashboard_week_view_shows_nothing_scheduled_on_a_day_with_no_items) (#1016) In Week view, a day with nothing scheduled shows "Nothing scheduled for this day."
+- [ ] (e2e: dashboard_week_view_shows_one_all_clear_empty_state_for_a_week_with_nothing_on_it) (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
+- [ ] (e2e: dashboard_week_view_prev_and_next_move_the_visible_range_by_seven_days) (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
+- [ ] (e2e: dashboard_week_view_shows_the_this_week_link_when_today_is_outside_the_visible_week) (#1016) In Week view, a "This Week" link appears when today's date isn't inside the visible week
+- [ ] (e2e: dashboard_week_view_hides_the_this_week_link_when_today_is_inside_the_visible_week) (#1016) In Week view, no "This Week" link appears when today's date is already inside the visible week
+- [ ] (e2e: dashboard_week_view_tints_todays_day_section_in_light_mode) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
+- [ ] (e2e: dashboard_week_view_tints_todays_day_section_in_dark_mode) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
+- [ ] (e2e: dashboard_week_to_day_view_lands_on_today_when_today_is_inside_the_week) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
+- [ ] (e2e: dashboard_week_to_day_view_lands_on_the_weeks_sunday_when_today_is_outside_the_week) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
 
 Lessons (`/barn/dev-barn/lessons`):
 
