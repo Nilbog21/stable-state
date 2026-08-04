@@ -163,6 +163,36 @@ else
 fi
 rm -rf "$REPO"
 
+# Tests 21-24: a flag taking a *space-separated* argument must swallow that argument, so the
+# early-exit flag on the far side of it is still reached. Each of these is a real race, and the
+# first is the sharp one — `-q` sits before the pattern, where flags are supposed to be caught.
+for variant in 'grep -A 2 -q needle' 'grep -e needle -q' 'grep -f pats.txt -q' 'grep --regexp needle -q'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+git log | $variant")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_fail "pipefail + $variant: exits non-zero" "script exited 0 (expected non-zero)"
+  else
+    assert_pass "pipefail + $variant: exits non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Tests 25-28: the mirror image of 21-24 — the argument *is* the `-q`-looking token, so it's the
+# search pattern, not a flag, and none of these early-exits. A false positive hard-fails CI on
+# safe code, which is the direction this gate can least afford.
+for variant in 'grep -- -q' 'grep -e -q' 'grep -f -q' 'grep --regexp -q'; do
+  REPO="$(make_repo victim.sh "#!/usr/bin/env bash
+set -euo pipefail
+git log | $variant")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_pass "pipefail + $variant: exits 0"
+  else
+    assert_fail "pipefail + $variant: exits 0" "script exited non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
