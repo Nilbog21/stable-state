@@ -82,7 +82,7 @@ let barnwide: SeededAppointment
 let planned: SeededAppointment
 let older: SeededAppointment
 
-// Insertion order is deliberately primary -> barnwide -> planned -> older; see RECENT_HREFS below.
+// Insertion order is deliberately primary -> barnwide -> planned -> older; see recentHrefs below.
 const barn = withBarn('phase4-expenses-list', async ({ supabase, barn }) => {
   const apple = await addHorse(supabase, barn.id, APPLE)
   const butter = await addHorse(supabase, barn.id, BUTTER)
@@ -162,16 +162,40 @@ function recentHrefs(): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * The desktop nav's own link container, picked out of <nav>'s direct children by the Lessons link
+ * The desktop nav's own link container, picked out of <nav>'s direct children by the Finances link
  * it holds. Addressed this way rather than by class because <nav> also holds BarnSwitcher's
- * barn-name link, which would otherwise land in the label list; NavDrawer renders its copies of
- * these links only while the drawer is open, and the drawer is closed here.
+ * barn-name link, which would otherwise land in the label list; NavDrawer and UserMenu render
+ * their own links only while open, and both are closed here.
+ *
+ * Finances rather than Lessons deliberately: filtering on one of the three labels the test then
+ * asserts would make that label true by construction, leaving only two of the three doing work.
+ * Finances appears in no other nav component, so it disambiguates the container without
+ * overlapping the claim.
  */
 function desktopNavLinks(page: Page) {
   return page
     .locator('nav > div')
-    .filter({ has: page.getByRole('link', { name: NAV_LESSONS, exact: true }) })
+    .filter({ has: page.getByRole('link', { name: 'Finances', exact: true }) })
     .getByRole('link')
+}
+
+/** The control that reveals the older group. Absent entirely when there is no older group. */
+function olderToggle(page: Page) {
+  return page.getByRole('button', { name: 'Show older expenses', exact: true })
+}
+
+/**
+ * Keyboard activation rather than a pointer .click(), matching the sibling treatment of the
+ * identical "Show older lessons" control (`checklist-phase4-lessons-list.spec.ts`, which cites
+ * 04c64505 / #501): the toggle sits at the bottom of a scrollable list, where Chromium's
+ * scroll-into-view animation races Playwright's actionability check and a card can intercept the
+ * click mid-scroll. Unlike the tap-target test below, nothing here is a claim *about* pointer
+ * behaviour, so there is no reason to take that risk.
+ */
+async function revealOlderExpenses(page: Page) {
+  const toggle = olderToggle(page)
+  await toggle.focus()
+  await toggle.press('Enter')
 }
 
 /**
@@ -181,11 +205,17 @@ function desktopNavLinks(page: Page) {
  * are the date/time, recipient-and-type, horses and amount lines in that order.
  *
  * expenseHref is deliberately shared with the tests that assert something *present* — the rendered
- * href list (both split tests) and the tap-through, which clicks this anchor and navigates. A
- * locator that silently resolved to nothing would make the five card-field assertions vacuous
- * rather than failing; it makes those three fail outright, so they are this locator's positive
- * control. A plain mutation cannot tell those two cases apart, which is why the control is
- * structural.
+ * href list (both split tests) and the tap-through, which clicks this anchor and navigates. Those
+ * three read real DOM hrefs through `cardLinks`, a selector built from the barn slug rather than
+ * from expenseHref, so a wrong expenseHref mismatches and fails there. That is this locator's
+ * positive control.
+ *
+ * To be precise about what the control is *for*, since an earlier version of this comment
+ * overclaimed: the card-field assertions below are not themselves at risk of passing vacuously —
+ * toHaveText polls and fails on an empty match. The vacuity-prone shapes in this file are the
+ * one-shot reads (evaluateAll -> [], count() -> 0), and each of those pairs its zero with a
+ * non-zero in the same comparison. What the control buys is confidence that the shared *value* is
+ * right, which no amount of mutating an expectation can establish.
  */
 function card(page: Page, expense: SeededAppointment) {
   return page.locator(`a[href="${expenseHref(expense)}"]`)
@@ -239,15 +269,27 @@ test('nav_shows_expenses_between_lessons_and_horses @manager', async ({ page }) 
 // The card's five fields
 // ---------------------------------------------------------------------------
 
-// The locator is the card anchor itself, which is the "full-card link" half of the claim; its first
-// line is the date/time half. toHaveText with a string is full-string equality, so a card rendering
-// the date without the time, or with a different time, fails rather than matching a prefix.
+// Both halves of the claim, in one array assertion over the anchor's *direct* <p> children.
+//
+// The count is the "full-card link" half, and it is the half that needs saying: matching an anchor
+// by href proves nothing about what that anchor contains, so asserting only the date line would be
+// satisfied by markup in which the link wraps the date and the other three lines sit outside it —
+// exactly the regression this checkbox exists to forbid. Requiring all four of the card's lines to
+// be inside the anchor is that regression's DOM-level negation.
+//
+// The first element is the date/time half, pinned exactly (toHaveText with a string is full-string
+// equality, so a card rendering the date without the time fails rather than matching a prefix).
+// The other three are /./ — non-empty, nothing more — because their *values* belong to the three
+// checkboxes below and coupling them here would make an unrelated change fail this line instead.
 test('an_expense_card_is_a_full_card_link_showing_its_date_and_time @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/expenses`)
 
-  await expect(page.locator(cardLine(primary, DATE_LINE))).toHaveText(
-    `${mediumDate(primary.expense_date)} · ${PRIMARY_TIME_RENDERED}`
-  )
+  await expect(card(page, primary).locator('> p')).toHaveText([
+    `${mediumDate(primary.expense_date)} · ${PRIMARY_TIME_RENDERED}`,
+    /./,
+    /./,
+    /./,
+  ])
 })
 
 // Anchored at the start of the line, so this asserts the recipient is what the line *leads* with
@@ -296,34 +338,51 @@ test('an_expense_card_shows_its_amount @manager', async ({ page }) => {
 // The recent / older split
 // ---------------------------------------------------------------------------
 
-// The split is asserted as the exact set of cards the page renders unprompted: the three recent
-// ones and not the -20-day one. Membership is the claim; the order is the DAL's and is pinned only
-// because leaving it unpinned would mean sorting both sides, which hides exactly the kind of
-// mis-grouping this checkbox is about.
+// A *split* is two groups, so both halves are asserted together: the recent group is exactly these
+// three cards, and an older group exists.
+//
+// The second half is not decoration. The href list alone — three recent, no older — is satisfied
+// identically by a page that *discarded* expenses older than the cutoff rather than grouping them,
+// since OlderExpensesToggle returns null on an empty list and nothing else marks a boundary. That
+// is the cheapest way to break this checkbox, and the toggle's presence is what rules it out.
 test('the_list_splits_recent_expenses_from_older_ones @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/expenses`)
 
-  expect(await renderedHrefs(page)).toEqual(recentHrefs())
+  await expect
+    .poll(async () => ({ rendered: await renderedHrefs(page), olderGroups: await olderToggle(page).count() }))
+    .toEqual({ rendered: recentHrefs(), olderGroups: 1 })
 })
 
 // The pre-click state cannot satisfy this — the older card is absent until the toggle runs — so
 // there is no version of the page that passes without the reveal actually happening. Asserting the
 // recent three as well pins that revealing the older group doesn't replace the list.
+//
+// expect.poll rather than a bare read: renderedHrefs' own waitFor is satisfied by the first
+// *recent* card, which is server-rendered and already present before the click, so it does not wait
+// for the client re-render that mounts the older one. A one-shot read there would race React and
+// flake. Same treatment, same reason, as the sibling lessons list's ten polled reads.
 test('show_older_expenses_toggle_reveals_the_older_group @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/expenses`)
-  await page.getByRole('button', { name: 'Show older expenses' }).click()
+  await revealOlderExpenses(page)
 
-  expect(await renderedHrefs(page)).toEqual([...recentHrefs(), expenseHref(older)])
+  await expect.poll(() => renderedHrefs(page)).toEqual([...recentHrefs(), expenseHref(older)])
 })
 
 // ---------------------------------------------------------------------------
 // The planned expense
 // ---------------------------------------------------------------------------
 
-// Two lines of the one card in a single array assertion: its date (the day seeded five days out) and
-// its amount line reading the no-amount branch. Together those are the checkbox's three claims —
-// it is in the list, it is future-dated, and it has no amount — and neither line alone carries all
-// three. The array form pins the count, so a card that rendered only one of the two fails.
+// Two lines of the one card in a single array assertion: its date line and its amount line reading
+// the no-amount branch. The array form pins the count, so a card that rendered only one of the two
+// fails.
+//
+// What this does and does not pin, stated precisely. "Appears in the list" and "no amount" are
+// asserted directly. "Future-dated" is *not*: the expected date is read back off the seeded row, so
+// it moves with the actual and would agree with a fixture that placed the expense in the past. What
+// the second element does pin is the observable consequence of being future-dated — full-string
+// equality on the amount <p> also rejects the `Past Due` badge, which ExpenseCard renders into that
+// same <p> for any unamounted expense whose due instant has passed. That is a proxy, not the claim,
+// and the claim's remaining half is a property of the seed rather than of the app.
 test('a_future_dated_planned_expense_with_no_amount_appears_in_the_list @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/expenses`)
 
@@ -343,15 +402,27 @@ test('a_future_dated_planned_expense_with_no_amount_appears_in_the_list @manager
 // the pointer interaction *is* the subject of the test, so activating by keyboard would assert
 // something else entirely.
 //
-// waitForURL pins *which* expense's page this landed on; the heading is the proof it rendered.
-// A URL read alone can't do that job — expect(page).toHaveURL passes on its first poll, and
-// 'commit' resolves before the document renders, so a notFound() or a 500 at that URL would
-// satisfy the wait identically (#1202). 'Edit Expense' appears on the destination and nowhere on
-// the list page, whose own h1 is 'Expenses'; exact:true because getByRole's name match is
-// substring-based.
+// waitForURL pins *which* expense's page this landed on; the heading is the proof it rendered, and
+// carries the whole weight of the test — clicking an anchor and then observing that the URL became
+// that anchor's own href is browser behaviour, not app behaviour. A URL read alone can't do the
+// job: expect(page).toHaveURL passes on its first poll, and 'commit' resolves before the document
+// renders, so a notFound() or a 500 at that URL would satisfy the wait identically (#1202).
+// 'Edit Expense' appears on the destination and nowhere on the list page, whose own h1 is
+// 'Expenses' — verified by running this assertion against the list page, where it finds nothing.
+// exact:true because getByRole's name match is substring-based.
+//
+// Stated limit: the click position is relative to the *anchor's* box, so this proves the tap works
+// away from the text but cannot observe the anchor being smaller than the card's visual box. That
+// geometry judgment is what @visual is deferred for everywhere in this batch, and a boundingBox
+// comparison would buy it at the cost of a one-shot layout read that resolves from parents even
+// when the target is absent. The DOM-level half of the claim — the card's whole content sitting
+// inside the anchor — is pinned by the four-line count in the date/time test above.
 test('tapping_an_expense_card_away_from_its_text_opens_its_edit_page @manager', async ({ page }) => {
-  // The edit route compiles on demand under a shared dev server. test.slow() raises the budget
-  // rather than an explicit timeout on the wait, which would only tighten it (#1211).
+  // Raises the budget bounding waitForURL, which is where the edit route's on-demand compile is
+  // actually paid: an App Router <Link> commits its pushState only once the RSC payload lands, so
+  // the compile finishes inside that unbounded wait rather than inside the heading assertion's
+  // expect window. test.slow() rather than an explicit timeout on the wait, which would only
+  // tighten it (#1211).
   test.slow()
   await page.goto(`/barn/${barn.slug}/expenses`)
   await card(page, primary).click({ position: { x: 8, y: 8 } })
