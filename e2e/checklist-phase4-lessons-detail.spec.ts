@@ -2,6 +2,12 @@
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 // covers: src/components/ExhaustionBar.tsx
+// covers: src/app/actions/lessons.ts
+// covers: src/app/actions/lesson-form-parsing.ts
+//
+// The two `src/app/actions/` files are the server actions behind the edit form this spec saves
+// through — reached by import rather than by path, so no route glob above covers them. The
+// save-with-an-inactive-horse check fails outright if either changes wrongly (#1276).
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
