@@ -24,7 +24,7 @@
 // scopes to. A second horse called Clover would make that assertion unfalsifiable.
 //
 // The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's
-// horse, planted by the Setup line above them (line 937), which this slice must not touch.
+// horse, planted by the Setup line above them (line 935), which this slice must not touch.
 // Rewording 939-941 alone would contradict it. The claim each test makes is the line's claim;
 // only the fixture's name differs, which is how the whole #1187-#1208 batch worked.
 //
