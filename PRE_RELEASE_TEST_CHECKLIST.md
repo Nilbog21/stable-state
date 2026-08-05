@@ -884,13 +884,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
 - [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to the trainer) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
-- [ ] (e2e-candidate) Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view
-- [ ] (e2e-candidate) That page shows no **Add Trainer**/**Add Rider** forms
-- [ ] (e2e-candidate) Uploading `scripts/data/test_1_kb.pdf` on your own member detail page works, optionally with a Reminder Date set
-- [ ] (e2e-candidate) The Reminder Date column on your own documents is **read-only** — only a manager can edit it
-- [ ] (e2e-candidate) In the Riders section, a managed/unclaimed row (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) renders as a normal card link showing the name only
-- [ ] (e2e-candidate) No **Unlinked** badge appears on that row
-- [ ] (e2e-candidate) No Copy Invite/Revoke controls appear on that row for any role — those live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either
+- [ ] (e2e: members_page_lists_all_four_roster_sections) Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view
+- [ ] (e2e: members_page_shows_no_add_member_forms_to_a_non_manager) That page shows no **Add Trainer**/**Add Rider** forms
+- [ ] (e2e: trainer_can_upload_a_document_with_a_reminder_date_on_their_own_member_page) Uploading `scripts/data/test_1_kb.pdf` on your own member detail page works, optionally with a Reminder Date set
+- [ ] (e2e: own_document_reminder_date_renders_as_read_only_text_to_a_trainer) The Reminder Date column on your own documents is **read-only** — only a manager can edit it
+- [ ] (e2e: managed_rider_row_renders_as_a_card_link_to_their_member_page) In the Riders section, a managed/unclaimed row (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) renders as a normal card link showing the name only
+- [ ] (e2e: managed_rider_row_shows_no_unlinked_badge) No **Unlinked** badge appears on that row
+- [ ] (e2e: managed_member_page_shows_no_manage_member_controls_to_a_trainer) No Copy Invite/Revoke controls appear on that row for any role — those live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either
 - [ ] (e2e-candidate) Harper Test's member detail page shows Contact Info as read-only, with blank fields rendering "—"
 - [ ] (e2e-candidate) That page shows no Save button for Contact Info
 - [ ] (e2e-candidate) Another trainer's or a manager's member detail page, opened from the roster, loads (no 404) and shows their name
@@ -989,11 +989,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Each of those cards links to `/barn/dev-barn/finances/outstanding` — Dana's only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e-candidate) (#938) With an outstanding late-cancellation fee but zero unpaid lesson fees, the Dashboard's "N unpaid lessons" card still appears (its count includes the cancellation fee) instead of being hidden
 - [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) For a rider with nothing outstanding of their own, the Dashboard shows no **Reminders** header at all — even while the barn holds unpaid items belonging to *another* rider, which proves the reminders query is rider-scoped rather than merely empty (Dana has her own unpaid items by this point, so verify as a rider who does not — the e2e run seeds exactly that pair)
-- [ ] (e2e-candidate) `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders)
-- [ ] (e2e-candidate) That page shows no **Add Trainer**/**Add Rider** forms
-- [ ] (e2e-candidate) No **Unlinked** badge appears on any managed/unclaimed row (a rider never sees it, unlike a manager)
-- [ ] (e2e-candidate) Your own member detail page's Documents section shows the empty state ("No documents yet")
-- [ ] (e2e-candidate) (#864) That section shows **no Add Document button** — rider self-service is read-only
+- [ ] (e2e: members_page_lists_all_four_roster_sections) `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders)
+- [ ] (e2e: members_page_shows_no_add_member_forms_to_a_non_manager) That page shows no **Add Trainer**/**Add Rider** forms
+- [ ] (e2e: managed_rider_row_shows_no_unlinked_badge) No **Unlinked** badge appears on any managed/unclaimed row (a rider never sees it, unlike a manager)
+- [ ] (e2e: rider_own_documents_section_shows_the_empty_state) Your own member detail page's Documents section shows the empty state ("No documents yet")
+- [ ] (e2e: rider_own_documents_section_has_no_add_document_button) (#864) That section shows **no Add Document button** — rider self-service is read-only
 - [ ] (e2e-candidate) Another member's detail page (a trainer, a manager), opened from the roster, loads (no 404) and shows their name
 - [ ] (e2e-candidate) (#863) That page shows their **Contact Info** section
 - [ ] (e2e-candidate) That page shows no Documents section
@@ -1002,9 +1002,9 @@ bash scripts/change-user.sh dev-barn
 
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. Phase 2-4's own-photo check exercises this code path for real on **your own** profile (no impersonation) — the only locally-linked one, and there's no role branch in the path. The version where the self-writer is *someone other than you* needs a real second account and is verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — don't re-add a self-photo check to an impersonated phase.
 
-- [ ] (e2e-candidate) Setup — switch to Emery (`change-user.sh dev-barn` → Emery), who holds the Active Agreements from Phase 4, and switch back to Dana once the next three lines are done. An e2e run seeds those agreements on the rider persona's own membership instead, so no switch is needed
-- [ ] (e2e-candidate) Her own member detail page renders the same Active Agreements cards from Phase 4
-- [ ] (e2e-candidate) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
+- [ ] (e2e: rider_own_member_page_renders_their_active_agreement_cards) Setup — switch to Emery (`change-user.sh dev-barn` → Emery), who holds the Active Agreements from Phase 4, and switch back to Dana once the next three lines are done. An e2e run seeds those agreements on the rider persona's own membership instead, so no switch is needed
+- [ ] (e2e: rider_own_member_page_renders_their_active_agreement_cards) Her own member detail page renders the same Active Agreements cards from Phase 4
+- [ ] (e2e: rider_active_agreement_cards_are_not_links) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
 - [ ] (manual) Those cards carry no hover state — a visual affordance judgement, not a behavior a click path can assert
 - [ ] (e2e: rider_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
