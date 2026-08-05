@@ -13,6 +13,10 @@ vi.mock('@/lib/db/documents', () => ({
   createDocument: vi.fn(),
 }))
 
+vi.mock('@/lib/db/member-horse-privileges', () => ({
+  getMyHorseDocumentPrivilege: vi.fn(),
+}))
+
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/document-storage')>()
   return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
@@ -26,12 +30,14 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { createDocument } from '@/lib/db/documents'
+import { getMyHorseDocumentPrivilege } from '@/lib/db/member-horse-privileges'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { uploadDocumentAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
 const trainerMembership = createMockMembership({ id: 'mem-trn', role: 'trainer' })
+const riderCallerMembership = createMockMembership({ id: 'mem-rdr-caller', role: 'rider' })
 
 function makePdfFile(sizeBytes = 1024, name = 'coggins.pdf'): File {
   return new File([new Uint8Array(sizeBytes)], name, { type: 'application/pdf' })
@@ -51,11 +57,13 @@ describe('uploadDocumentAction — horse entity', () => {
     vi.mocked(uploadFile).mockReset()
     vi.mocked(removeFile).mockReset()
     vi.mocked(createDocument).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockReset()
     mockRedirect.mockClear()
 
     vi.mocked(uploadFile).mockResolvedValue(undefined)
     vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(createDocument).mockResolvedValue({} as any)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('none')
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
@@ -63,10 +71,52 @@ describe('uploadDocumentAction — horse entity', () => {
     })
   })
 
-  it('should_call_requireMembership_with_manager_and_trainer_roles', async () => {
+  it('should_call_requireMembership_with_all_three_roles_for_horse_entity', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await uploadDocumentAction('green-acres', 'horse', 'horse-1', { error: null }, fd).catch(() => {})
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_upload_horse_document_as_rider_with_write_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr-caller' } as any,
+      barn: mockBarn,
+      membership: riderCallerMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await uploadDocumentAction('green-acres', 'horse', 'horse-1', { error: null }, fd).catch(() => {})
+    expect(getMyHorseDocumentPrivilege).toHaveBeenCalledWith('horse-1', mockBarn.id)
+    expect(createDocument).toHaveBeenCalled()
+  })
+
+  it('should_reject_horse_upload_when_rider_privilege_is_read', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr-caller' } as any,
+      barn: mockBarn,
+      membership: riderCallerMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('read')
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await expect(uploadDocumentAction('green-acres', 'horse', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: 'Not authorized' })
+    expect(uploadFile).not.toHaveBeenCalled()
+  })
+
+  it('should_reject_horse_upload_when_rider_privilege_is_none', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr-caller' } as any,
+      barn: mockBarn,
+      membership: riderCallerMembership,
+    })
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await expect(uploadDocumentAction('green-acres', 'horse', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: 'Not authorized' })
+    expect(uploadFile).not.toHaveBeenCalled()
+  })
+
+  it('should_not_check_privilege_for_manager_upload', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await uploadDocumentAction('green-acres', 'horse', 'horse-1', { error: null }, fd).catch(() => {})
+    expect(getMyHorseDocumentPrivilege).not.toHaveBeenCalled()
   })
 
   it('should_call_uploadFile_when_manager_uploads', async () => {

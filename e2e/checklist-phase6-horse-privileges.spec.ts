@@ -1,10 +1,11 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/lessons/[id]/**
+// covers: src/app/barn/[slug]/(protected)/documents/new/**
 // covers: src/components/ExhaustionBar.tsx
 //
 // #999's `member_horse_privileges` through a rider's eye, end to end — the only automated coverage
-// that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md` lines 36-48
-// and 59-61 (sixteen checkboxes).
+// that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md` lines 36-50
+// and 61-63 (eighteen checkboxes).
 //
 // `document_privileges` in three states and `lesson_read_privileges` in two, and every *absent*
 // state needs a horse of its own, because a horse cannot simultaneously hold a grant and not hold
@@ -14,7 +15,7 @@
 //           two future lessons, neither of which the rider login is enrolled in
 //   Butter  document_privileges = 'read', raised to 'write' mid-file; lesson_read_privileges left
 //           at its false default
-//           one future lesson, likewise unenrolled
+//           one future lesson, likewise unenrolled; one seeded document (#1359)
 //   Pepper  no privileges row at all
 //
 // The rider login is enrolled in **nothing** in this barn. That is the whole point: every lesson
@@ -30,31 +31,26 @@
 // also carries a real upcoming lesson, so the rows the bar would summarise genuinely exist and are
 // being withheld, rather than being absent for want of data.
 //
-// ## Why no horse documents are seeded
+// ## Butter's seeded document (#1359)
 //
-// Because a document on a read-privileged horse takes that horse's page down for the rider it was
-// granted to. Measured, not inferred — a throwaway probe on this exact fixture returned **HTTP 500**
-// and the generic "Something went wrong" page; with zero document rows the same grant renders the
-// Documents section at 200, which is what every test below runs against.
-//
-// #999's document-read grant is a policy on the `horse_documents` *table*
-// (`horse_documents_select_privilege`, 20260722222911). The `documents` storage bucket's SELECT
-// policies for the `horses/` prefix are `trainer_horse_documents_select` and the manager-wide
-// `manager_documents_all`, neither of which admits a rider — and the horse detail page signs a URL
-// for every document row it renders, through a `getSignedUrl` that throws rather than degrades.
-//
-// None of the four document checkboxes here claims anything about document *rows* — they claim the
-// section appears, and that the Add Document button does or doesn't. An empty Documents section
-// (its `EmptyState`) carries all four exactly, so this file seeds none. The gap itself is left for
-// an issue of its own rather than worked around here: closing it needs a `storage.objects` policy,
-// i.e. a migration, which a spec-only slice cannot carry.
+// This file originally seeded no documents, because a document on a read-privileged horse took
+// that horse's page down for the rider it was granted to. Measured, not inferred — a throwaway
+// probe on this exact fixture returned **HTTP 500**: #999's grant was a policy on the
+// `horse_documents` *table* only (`horse_documents_select_privilege`, 20260722222911), no
+// `documents`-bucket storage policy admitted a rider on the `horses/` prefix, and the horse
+// detail page signs a URL for every row it renders through a `getSignedUrl` that throws rather
+// than degrades. #1359 closed that gap (`rider_horse_documents_select`/`_insert` storage
+// policies, plus admitting a 'write'-privileged rider to the documents/new page and action the
+// Add Document button already pointed at), so Butter now carries one seeded document and the
+// serial block below asserts the whole surface: the row renders, its signed link serves the
+// stored bytes, and — once the grant is raised — the upload path works end to end.
 //
 // ## Ordering
 //
 // One `test.describe.serial` block, holding the read → write transition on Butter's grant and
 // nothing else. Every other test is an independent read of a barn this file owns outright.
 import { test, expect, withBarn, type Page } from './support/test'
-import { addHorse, addUnpaidLesson, daysFromNow, E2E_STUB_RIDER } from './support/fixtures'
+import { addHorse, addHorseDocument, addUnpaidLesson, assetPath, daysFromNow, E2E_STUB_RIDER } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
 
@@ -71,6 +67,15 @@ const APPLE_EXERTION_TOTAL = APPLE_EXERTIONS[0] + APPLE_EXERTIONS[1]
 
 // Butter's lesson exists only so lines 956-957 assert a withholding rather than an absence.
 const BUTTER_EXERTION = 3
+
+// Butter's seeded document (#1359) and the exact bytes addHorseDocument stores for it — the
+// signed-link assertion reads the response body against this, which is the full-strength form
+// of "the link opens": matching these bytes excludes every other object.
+const BUTTER_DOC = 'butter-coggins.pdf'
+const BUTTER_DOC_CONTENT = 'test document'
+
+// The committed asset the write-privileged upload test submits through the real form.
+const UPLOAD_PDF = 'test_1_kb.pdf'
 
 // Planted on Apple's first lesson. The horse notes are line 969's claim; the two rider-note fields
 // are line 970's, and belong to the *stub* rider — the rider login is not on this lesson at all,
@@ -190,6 +195,14 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
     'grant the rider document-read on Butter'
   )
   // Pepper deliberately gets no row.
+
+  // Butter's document (#1359) — a real storage object, not just a row, because the page signs a
+  // URL for every row it renders and the signed-link test reads the served bytes.
+  await addHorseDocument(supabase, barn, butterId, {
+    fileName: BUTTER_DOC,
+    recordType: 'coggins',
+    content: Buffer.from(BUTTER_DOC_CONTENT),
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -211,6 +224,28 @@ function documentsHeading(page: Page) {
 /** `<Button href>` renders a Link, so the Add Document control is an anchor, not a button. */
 function addDocumentLink(page: Page) {
   return page.getByRole('link', { name: 'Add Document', exact: true })
+}
+
+/** A document's file-name link, the signed-URL anchor the open test reads its href off. */
+function documentLink(page: Page, fileName: string) {
+  return page.getByRole('link', { name: fileName, exact: true })
+}
+
+/**
+ * The upload destinations, as RegExp rather than Playwright's URL glob — `?` is a wildcard there
+ * rather than the query separator the upload URL needs it to be (checklist-phase4-horses-documents
+ * .spec.ts's reasoning, #1197/#1201). Anchored, so the `&type=photo` variant cannot match.
+ */
+const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entity=horse&id=${horseId}$`)
+const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
+
+/**
+ * The upload form's submit button, located structurally: its label is
+ * `{pending ? 'Uploading…' : 'Upload'}`, so a name locator stops matching mid-flight (the
+ * containment hazard #1202 found, live in this form).
+ */
+function uploadSubmitButton(page: Page) {
+  return page.locator('main form').locator('button[type="submit"]')
 }
 
 /** Any exhaustion bar, for the absence assertions — its label carries live figures. */
@@ -324,6 +359,25 @@ test.describe.serial('document privileges on Butter', () => {
     await expect(addDocumentLink(page)).toHaveCount(0)
   })
 
+  // #1359's read half at full strength: the row renders (the pre-fix page 500'd here — the
+  // storage SELECT denial made getSignedUrl throw inside the Server Component) and the signed
+  // link serves the stored bytes, asserted against the seeded content rather than "non-zero
+  // bytes", which carries its own negative half.
+  test('rider_read_document_privilege_opens_a_seeded_document @rider', async ({ page }) => {
+    await page.goto(horseHref(butterId))
+
+    const link = documentLink(page, BUTTER_DOC)
+    await link.waitFor()
+    const href = await link.getAttribute('href')
+    if (!href) throw new Error(`no href on the ${BUTTER_DOC} document link`)
+
+    const response = await page.request.get(href)
+    expect({ status: response.status(), body: (await response.body()).toString() }).toEqual({
+      status: 200,
+      body: BUTTER_DOC_CONTENT,
+    })
+  })
+
   // Line 948's Setup step, performed where the manual walkthrough performs it — between the read
   // assertions above and the write assertion below. A service-role write, not a read: the
   // "preconditions only" rule governs what a spec may *believe* from a direct query, and this
@@ -344,6 +398,27 @@ test.describe.serial('document privileges on Butter', () => {
 
     await page.goto(horseHref(butterId))
     await expect(addDocumentLink(page)).toBeVisible()
+  })
+
+  // #1359's write half, through the real form: the button's destination renders for a
+  // 'write'-privileged rider (the pre-fix documents/new page 404'd riders outright, before the
+  // storage INSERT policy could even be consulted) and the upload lands — redirect back to the
+  // horse page, new row visible. test.slow() because an upload pays for a real storage
+  // round-trip (checklist-phase4-horses-documents.spec.ts's chooseFileAndSubmit rationale).
+  test('rider_write_document_privilege_upload_succeeds @rider', async ({ page }) => {
+    test.slow()
+    await page.goto(horseHref(butterId))
+    await addDocumentLink(page).click()
+    await page.waitForURL(atDocumentUpload(butterId), { waitUntil: 'commit' })
+
+    const submit = uploadSubmitButton(page)
+    await submit.waitFor()
+    await page.locator('main form select').selectOption('coggins')
+    await page.setInputFiles('input[type="file"]', assetPath(UPLOAD_PDF))
+    await submit.click()
+
+    await page.waitForURL(atHorseDetail(butterId), { waitUntil: 'commit' })
+    await expect(documentLink(page, UPLOAD_PDF)).toBeVisible()
   })
 })
 
