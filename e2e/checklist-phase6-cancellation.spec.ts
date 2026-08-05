@@ -11,8 +11,8 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // A rider cancelling her own spot, and the read-only Cancellation Notes row she gets on a lesson
-// the manager cancelled (PRE_RELEASE_TEST_CHECKLIST.md Phase 6, lines 973-974 and 977-983 — nine
-// checkboxes across two hunks, because slice 14's already-tagged 975/976 sit between them).
+// the manager cancelled (checklists/pre-release/phase-6-rider.md, lines 62-63 and 66-72 — nine
+// checkboxes across two hunks, because slice 14's already-tagged 64/65 sit between them).
 //
 // ## Three lessons, one page state each, and no ordering between them
 //

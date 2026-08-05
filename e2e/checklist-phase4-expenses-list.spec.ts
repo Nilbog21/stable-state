@@ -5,7 +5,7 @@
 // The manager's Expenses list: the nav slot it occupies, the five fields an expense card renders,
 // the recent/older split and its toggle, a future-dated planned expense with no amount, the
 // whole-card tap target, and the absence of a row-level Delete link
-// (PRE_RELEASE_TEST_CHECKLIST.md 339-349).
+// (checklists/pre-release/phase-4-manager-verification.md 149-159).
 //
 // Every test does its own goto and mutates nothing the next one reads — the one click that changes
 // state (the older-expenses toggle) is component state, discarded by the next navigation. So this

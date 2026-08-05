@@ -3,7 +3,7 @@
 // What a **non-manager** sees on somebody else's member detail page. #863 broadened Contact Info
 // to any active barn member and #779 narrowed rider documents to manager-and-self, and neither
 // broadening had e2e coverage anywhere in this suite until now (#1251 filed exactly that gap).
-// PRE_RELEASE_TEST_CHECKLIST.md lines 896-902 (Phase 5) and 999-1003 (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 88-94, and phase-6-rider.md lines 88-92.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts).

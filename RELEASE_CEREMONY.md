@@ -21,7 +21,7 @@ On `release/release-N`. Nothing here touches `main` or prod.
 
 The checklist is only as good as its last update, and a release's worth of PRs is exactly when it drifts. Audit first, run second — otherwise you run a stale checklist and find out afterwards.
 
-**This is a whole issue, not a checkbox.** Cross-checking a few hundred closed issues against a checklist is hours of mechanical reading, which is the wrong shape for a human ticking through a runbook and the right shape for the normal `/beginIssue` pipeline. File it and work it like any other release issue — the audit's product is a PR against `PRE_RELEASE_TEST_CHECKLIST.md`, so it wants review and a merge anyway.
+**This is a whole issue, not a checkbox.** Cross-checking a few hundred closed issues against a checklist is hours of mechanical reading, which is the wrong shape for a human ticking through a runbook and the right shape for the normal `/beginIssue` pipeline. File it and work it like any other release issue — the audit's product is a PR against `checklists/pre-release/`, so it wants review and a merge anyway.
 
 - [ ] An issue is filed on the release, labeled `release-N`, titled something like "Audit `PRE_RELEASE_TEST_CHECKLIST.md` for release N", with the four bullets below as its acceptance criteria
 - [ ] It is worked through the normal pipeline and its PR is merged into `release/release-N`
@@ -29,8 +29,8 @@ The checklist is only as good as its last update, and a release's worth of PRs i
 Acceptance criteria to paste into that issue:
 
 - [ ] Every issue closed on this release is enumerated: `gh issue list --label release-N --state closed --limit 300 --json number,title`
-- [ ] Each closed issue that added or changed a UI route, workflow, or user-facing feature has a corresponding step in `PRE_RELEASE_TEST_CHECKLIST.md` (or in `POST_RELEASE_TEST_CHECKLIST.md`, if it clears one of that file's bars)
-- [ ] Both checklists are grepped for each closed issue number and every remaining **hedge** is removed — a note asserting a capability doesn't exist yet ("until #N lands", "#N-blocked", "not yet assignable via UI") — replaced with the check it was standing in for. See `CLAUDE.md`'s Pre-Release Checklist section; citations of closed issues as *history* ("since #864") are not hedges and stay
+- [ ] Each closed issue that added or changed a UI route, workflow, or user-facing feature has a corresponding step in the relevant `checklists/pre-release/phase-*.md` (or in `POST_RELEASE_TEST_CHECKLIST.md`, if it clears one of that file's bars)
+- [ ] `checklists/pre-release/` and `POST_RELEASE_TEST_CHECKLIST.md` are grepped for each closed issue number and every remaining **hedge** is removed — a note asserting a capability doesn't exist yet ("until #N lands", "#N-blocked", "not yet assignable via UI") — replaced with the check it was standing in for. See `CLAUDE.md`'s Pre-Release Checklist section; citations of closed issues as *history* ("since #864") are not hedges and stay
 - [ ] Route coverage at the bottom of `PRE_RELEASE_TEST_CHECKLIST.md` lists every route in `ARCHITECTURE.md`
 
 ### 2. Line up the second real person for Closeout
@@ -92,7 +92,7 @@ Acceptance criteria to paste into that issue:
 - [ ] `README.md` cross-checked the same way
 - [ ] `USER_GUIDE_MANAGER.md`, `USER_GUIDE_TRAINER.md`, `USER_GUIDE_RIDER.md` cross-checked the same way
 - [ ] `PRIVACY_POLICY.md` reviewed if the release added personal/financial columns, a third party, or an export flow
-- [ ] The follow-on `PRE_RELEASE_TEST_CHECKLIST.md` edits noted while running it in step 3 are applied
+- [ ] The follow-on `checklists/pre-release/` edits noted while running it in step 3 are applied
 - [ ] Any `POST_RELEASE_TEST_CHECKLIST.md` additions identified during the release — a feature that clears one of that file's bars but never got a POST step at the time — are applied. Closeout runs POST as-is; this is the last chance to add to it
 
 ### 7. Assert no migration files landed after the squash

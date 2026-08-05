@@ -6,7 +6,7 @@
 // photo-locked upload screen and its three absent fields, upload-on-choose, aspect-ratio-preserving
 // display, replace with a different file *and* format, the post-reload check that the old photo is
 // gone, remove restoring the placeholder, a non-image rejection, and #1003's owner lock
-// (PRE_RELEASE_TEST_CHECKLIST.md 401-418).
+// (checklists/pre-release/phase-4-manager-verification.md 211-228).
 //
 // Four horses, because each flow needs a different starting state and two of them must *stay* in
 // theirs: Clover with no photo (the set/replace/remove chain), Apple owned by a rider but with no

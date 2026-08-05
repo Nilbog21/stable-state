@@ -6,9 +6,9 @@
 // as a plain name-only card link with no Unlinked badge and no Manage Member controls, a trainer's
 // own document upload and the read-only Reminder Date column that follows it, #864's read-only
 // rider self-service, and the Active Agreements cards a rider sees on their own page.
-// PRE_RELEASE_TEST_CHECKLIST.md lines 887-893 (Phase 5) and 992-996 + 1005-1007 (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 81-87, and phase-6-rider.md lines 83-87 + 96-98.
 //
-// Line 1005 is a `Setup —` line rather than an assertion: the manual walkthrough switches persona
+// Phase-6 line 96 is a `Setup —` line rather than an assertion: the manual walkthrough switches persona
 // to reach a rider holding agreements, and an e2e run seeds them on the rider persona's own
 // membership instead. It is tagged with the name of the test its seeding serves, the precedent
 // checklist-phase56-horses-notes.spec.ts set for its own three Setup lines — which records a #1251

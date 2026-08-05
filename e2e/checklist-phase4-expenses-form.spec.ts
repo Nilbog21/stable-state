@@ -7,8 +7,8 @@
 // checkbox disabling the horse checkboxes, the Time field hiding for a past date, the edit
 // form's pre-filled values and checkbox state, recipient/amount/payment-type round-trips, and
 // the two delete confirmation pages with and without the collected-record checkbox
-// (PRE_RELEASE_TEST_CHECKLIST.md 350-358 and 377-390 — the 16 (#1020) manual lines at 361-376
-// sit between those halves and belong to no slice in this batch).
+// (checklists/pre-release/phase-4-manager-verification.md 160-167 and 187-200 — the 16 (#1020)
+// manual lines at 171-186 sit between those halves and belong to no slice in this batch).
 //
 // Only the last five tests are a chain. Everything else does its own goto and either reads a
 // fixture nobody mutates or creates/edits a row of its own, so no test can be running against

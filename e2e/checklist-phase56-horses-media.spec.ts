@@ -7,7 +7,7 @@
 // **Registered Name** row, which the page renders for a non-manager only when the column is set.
 // Plus #1003's first non-manager file upload in this suite: a rider replacing the photo on the
 // horse they own, driven through the real file input.
-// PRE_RELEASE_TEST_CHECKLIST.md lines 880-886 (Phase 5) and 929-934, 942-944 (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 74-80, and phase-6-rider.md lines 20-25, 33-35.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the

@@ -11,7 +11,7 @@
 // link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
 // affordances, and then the expiration reminder lifecycle — set on upload, edited inline,
 // edited without a reload, driven past due, and surfacing as a Dashboard Reminders card that
-// links back to the horse (PRE_RELEASE_TEST_CHECKLIST.md 441-454).
+// links back to the horse (checklists/pre-release/phase-4-manager-verification.md 252-265).
 //
 // Four horses, because each block needs a starting state the others would destroy. Willow
 // carries the upload → list → open → delete chain and must end empty. Rowan takes the two

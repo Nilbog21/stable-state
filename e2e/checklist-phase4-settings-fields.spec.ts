@@ -27,7 +27,7 @@
 // select this spec when the form components themselves change, which is the case that matters.
 //
 // Manage Barn's accordion shell and the settings fields themselves
-// (PRE_RELEASE_TEST_CHECKLIST.md lines 665-675, 684-695 and 696-701): the eight collapsible
+// (checklists/pre-release/phase-4-manager-verification.md lines 476-486, 495-506 and 507-512): the eight collapsible
 // sections; Default Instructor Cut; Default Board Fee and its non-retroactive promise;
 // Horse Exhaustion Thresholds; Schedule Buffer; Barn Timezone — including the proof that the
 // stored zone actually drives the past-due check rather than only the display — and the six

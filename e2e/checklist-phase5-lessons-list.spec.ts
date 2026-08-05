@@ -7,7 +7,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // The trainer's Lessons list, and the four permission claims reachable from it
-// (PRE_RELEASE_TEST_CHECKLIST.md Phase 5, lines 826-828 and 851-854).
+// (checklists/pre-release/phase-5-trainer.md, lines 20-22 and 45-48).
 //
 // Four of the seven lines are only meaningful against *another instructor's* lesson. That
 // instructor is `members.manager`: addMemberships already gives it `can_instruct: true`, so a
