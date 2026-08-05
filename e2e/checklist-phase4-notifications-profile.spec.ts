@@ -369,6 +369,22 @@ test.describe('editing your own profile', () => {
   // being vacuous — a fill lost to hydration would restore `555-0100` and fail it, whereas a
   // fixture that happened to equal the stored value would pass whether the fill landed or not.
   const PHONE = '(555) 010-1207'
+  /**
+   * A *third* value, distinct from both the seeded `555-0100` and `PHONE` above, and that
+   * distinctness is the whole of what makes the read-back in `..._persists_it_across_a_reload`
+   * falsifiable.
+   *
+   * Reuse `PHONE` here and the reload assertion would be satisfied by whichever of the two tests
+   * ran first — an `updateProfileAction` that silently dropped `phone` while returning
+   * `{ error: null }`, which is the exact bug #1289 exists to catch, would still pass. Reuse the
+   * seeded `555-0100` and it passes against a save that never happened at all. Only a value no
+   * other writer produces can be in the database *because this test's own save put it there*.
+   *
+   * Being a third value also makes the check order-independent, which is worth more than relying
+   * on `fullyParallel: false`: whether this test runs before or after the redirect test, the
+   * pre-state it overwrites (`555-0100` or `PHONE`) differs from what it asserts.
+   */
+  const RELOADED_PHONE = '(555) 010-1289'
   let priorPhone: string | null | undefined
 
   test.beforeAll(async () => {
@@ -413,6 +429,62 @@ test.describe('editing your own profile', () => {
     // Render proof for the destination, which a URL read cannot supply: the dashboard's day
     // heading exists on the barn page and nowhere on /profile.
     await expect(page.getByRole('heading', { name: /Today$/ })).toBeVisible()
+  })
+
+  /**
+   * The redirect test above asserts only that Save navigates. That leaves the save itself
+   * unasserted: an `updateProfileAction` that dropped `phone` and returned `{ error: null }`
+   * redirects identically, and no checklist line could see it (#1289).
+   *
+   * Shares this block's capture/restore hooks deliberately. It writes the same `profiles.phone`
+   * column on the same shared `manager@e2e.test` row, and that row is per Supabase *project* —
+   * `teardownBarnData` can never reach it. One `beforeAll` capture and one unconditional
+   * `afterAll` restore covering both writers is the shape root `CLAUDE.md` asks for; a second
+   * separately-hooked writer of a shared row is the hazard, not the fix.
+   */
+  test('saving_an_edited_phone_persists_it_across_a_reload @manager', async ({ page }) => {
+    await page.goto(`/profile?barn=${barn.slug}`)
+    const phoneInput = page.getByLabel('Phone', { exact: true })
+    await phoneInput.fill(RELOADED_PHONE)
+    // NOT a hydration guard, despite the redirect test above describing its identical line as
+    // one. `fill()` moves the DOM value whether or not React is listening, and this reads that
+    // same DOM property straight back, so it passes in both worlds and can prove nothing about
+    // hydration — `support/hydration.ts`'s module comment is explicit that a signal has to be
+    // something that cannot exist before hydration, and a value this test just wrote itself is
+    // weaker than "merely present".
+    //
+    // What it does prove is worth one line: the field about to be submitted is the one this test
+    // located, and it holds exactly what was typed. A wrong locator, or an input that reformats
+    // its value, fails here rather than four lines later wearing the costume of a persistence
+    // bug.
+    //
+    // A fill lost to hydration is caught by the read-back at the end of this test instead — the
+    // stale value is what reaches the database, and the final assertion fails on it. That makes
+    // the failure loud rather than silent, which is the property that actually matters here,
+    // because fact 9's prescribed remedy has nothing on this page to bind to: `ProfileForm` and
+    // `CalendarFeedSection` seed every piece of state from a server prop, so there is no markup
+    // that cannot exist before hydration for `waitForHydrated`, and no control whose repeat is
+    // harmless for `hydrateByDriving`.
+    await expect(phoneInput).toHaveValue(RELOADED_PHONE)
+
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    // A sync point, not a second claim — the redirect *is* the test above's claim, and this one
+    // borrows it only as a signal. `ProfileForm.handleSubmit` calls `router.push` in the
+    // continuation *after* `updateProfileAction` resolves, so the URL flipping is what proves
+    // the write reached the database rather than merely that a form was submitted. It also
+    // catches a click lost to hydration loudly rather than silently: `handleSubmit` would never
+    // run, so `e.preventDefault()` would never fire, the form would submit natively back to
+    // `/profile`, and this would time out instead of the assertion below passing vacuously.
+    await page.waitForURL((url) => url.pathname === `/barn/${barn.slug}`, { waitUntil: 'commit' })
+
+    // A fresh document load rather than a read of the form the save left mounted, which is the
+    // entire point of the check. `/profile` is dynamic — it reads cookies through the auth
+    // client, so nothing serves it from a cache — meaning this re-runs `ProfilePage` →
+    // `getProfileByUserId` and re-renders the input from the row on disk. Reading the mounted
+    // form instead would only ever prove React kept its own state, which it does whether or not
+    // the save landed. A `reload()` is not available: Save navigates away from `/profile`.
+    await page.goto(`/profile?barn=${barn.slug}`)
+    await expect(page.getByLabel('Phone', { exact: true })).toHaveValue(RELOADED_PHONE)
   })
 })
 

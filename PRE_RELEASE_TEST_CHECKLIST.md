@@ -779,6 +779,7 @@ Notifications and profile:
 - [ ] (e2e: avatar_menu_profile_opens_the_profile_page_with_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: the_profile_nav_bar_carries_the_full_nine_link_manager_nav) That nav bar carries the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages
 - [ ] (e2e: saving_an_edited_phone_redirects_back_to_the_barn) Edit phone on `/profile` → Save → you're redirected back to the barn
+- [ ] (e2e: saving_an_edited_phone_persists_it_across_a_reload) Go back to `/profile` → the edited phone is still there
 - [ ] (e2e: avatar_menu_user_guide_opens_the_manager_guide) Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
 - [ ] (e2e: avatar_menu_about_opens_the_app_overview) Avatar menu → **About** (`/about`) renders the app overview
 - [ ] (e2e: the_changelog_link_on_about_includes_the_current_version) The **Changelog** link on `/about` includes the current version
