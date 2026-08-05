@@ -46,7 +46,7 @@ const MARIGOLD = 'Marigold'
 
 // Every asset the checklist lines name, verbatim. The two large ones exist for exactly this
 // slice: 4,600,000 bytes is over DocumentUploadForm's 4,500,000 limit and 4,400,000 is the
-// largest accepted size (scripts/CLAUDE.md's asset table).
+// largest accepted size (docs/scripts.md's asset table).
 const TEST_PDF = 'test_1_kb.pdf'
 const LARGEST_ACCEPTED_PDF = 'test_4_4_mb.pdf'
 const OVER_LIMIT_PDF = 'test_4_6_mb.pdf'
@@ -806,7 +806,7 @@ test.describe.serial('a horse document reminder date', () => {
   //
   // evaluateAll is one-shot, so the wait ahead of it is what stops it sampling an unpainted
   // section and reading `[]` — an empty array would otherwise satisfy nothing and pass nothing
-  // (root CLAUDE.md's rule; here the following toEqual would fail on it, but the wait is what
+  // (e2e/CLAUDE.md's rule; here the following toEqual would fail on it, but the wait is what
   // makes that a real read rather than a lucky one).
   test('the_dashboard_reminder_card_links_back_to_the_horse @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}`)

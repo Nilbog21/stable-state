@@ -45,7 +45,7 @@ const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
   // controls (Replace Photo, Remove); with none it renders one (Set Photo). Starting from a
   // photo therefore gives the absence assertion below something to be absent against.
   //
-  // emery-photo.jpg rather than clover-photo.png: scripts/CLAUDE.md's asset table assigns
+  // emery-photo.jpg rather than clover-photo.png: docs/scripts.md's asset table assigns
   // emery-photo.jpg to a profile and clover-photo.png to the horse Clover's upload flow. The one
   // place this spec does use clover-photo.png is the manager's own upload, where checklist line
   // 480 names that file explicitly.

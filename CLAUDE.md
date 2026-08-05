@@ -1,6 +1,8 @@
 @ARCHITECTURE.md
 @AGENTS.md
 
+> This file and `ARCHITECTURE.md` are auto-loaded into every session — never `Read` either explicitly; you already have them.
+
 ## Testing Conventions
 
 ### TDD Workflow
@@ -20,12 +22,8 @@
 - Don't install Docker locally or push to `stable-state-dev` just to check a migration applies cleanly (syntax, ordering, FK/RLS/RPC errors) — let the CI gate catch that. It replays from a clean instance, so it can't catch drift between a migration's assumptions and `stable-state-dev`/prod's actual accumulated schema state (e.g. a renamed constraint) — that class of bug still needs manual dev-DB verification or a repair script (see `scripts/repair-migration-history.sh`)
 
 ### E2E spec maintenance
-- Before writing or debugging a spec, read `e2e/CLAUDE.md` — eleven measured `@playwright/test`/Chromium/React 19 facts (timeout tiers, silent-auth request contexts, hydration races, viewport pins) that each cost the #1187–#1252 batch at least one round, several of them twice
-- A PR that changes UI (removes/renames/restructures a page, component, or user-facing flow) must update any `e2e/` spec covering that UI in the same PR — not as a follow-up
-- If unsure whether a spec covers the changed UI, grep `e2e/` for the route/selector/text being touched before merging
-- **Never blind-write the three shared logins** (`manager@`/`trainer@`/`rider@e2e.test`). Their `profiles` rows are per Supabase *project*, not per barn, so `teardownBarnData` can never reach them and whatever a spec leaves there is inherited by every later slice and every later run — #1282 found `trainer@e2e.test` still pointing at a photo in a barn deleted a week earlier. Capture the old value, write, and restore it in an **unconditional** `afterAll` (no pass/fail gate, no early return except "the capture never happened"), then read the row back and throw on a mismatch — an unverified restore is one that can stop working silently. Restore the row *before* deleting any storage object: an un-restored row is a shared-state failure every later slice inherits, an orphaned object is only a leak, and deleting first converts the cheap failure into the expensive one. Reference implementation: `checklist-phase4-members-media.spec.ts`'s own-photo block. Nulling a field instead of restoring it is the same violation
-- **A spec that deletes a membership orphans that profile.** `teardownBarnData` reaches profile rows *through* the barn's memberships, so severing the edge leaves the row behind permanently — one per run per Playwright project, even though the row is a perfectly ordinary stub. Hand it back with a `describe`-scoped `afterAll` (Playwright completes an inner suite's hooks before the file-scoped one `withBarn` registers) that deletes the profile **only if no membership still references it**, so a chain that failed before the removal leaves the row for `teardownBarnData` rather than tripping the FK. Reference implementation: `checklist-phase4-members-access.spec.ts`. Demoting a stub to `is_managed = false` needs no such hook — the sweep filters on `user_id IS NULL` (#1282), which a demotion can't change
-- Never call `allInnerTexts()`/`allTextContents()` on a bare locator — they don't auto-retry, so a not-yet-rendered table yields `[]`, and an assertion that accepts an empty array then *passes on nothing* (#1243 found four such checks reading as covered while asserting nothing). Read through `settledInnerTexts`/`settledTextContents` in `e2e/support/read.ts`, whose wait doubles as the non-empty assertion. `evaluateAll` has the same hazard but keeps an inline `await locator.first().waitFor()` — wrapping a callback reads worse than the guard it replaces
+- Before writing or debugging a spec, read `e2e/CLAUDE.md` — the measured framework facts (timeout tiers, silent-auth request contexts, hydration races) and the spec-maintenance rules (shared-login restore protocol, membership-orphan teardown, settled reads), each of which cost the #1187–#1252 batch at least one round
+- A PR that changes UI (removes/renames/restructures a page, component, or user-facing flow) must update any `e2e/` spec covering that UI in the same PR — not as a follow-up. If unsure whether a spec covers the changed UI, grep `e2e/` for the route/selector/text being touched before merging
 
 ## Architecture Docs
 
@@ -34,7 +32,7 @@ Update the architecture docs whenever a migration or role change is committed:
 - RPC change (new/changed function, grants, `SECURITY DEFINER`/`INVOKER`) → the function's domain file in `docs/architecture/rpc/`, plus its index entry in `docs/architecture/rpc.md` and in `ARCHITECTURE.md`'s Supabase RPC section if a function was added/removed
 - Route change (new/changed page, role gating) → the route's group file in `docs/architecture/routes/`, plus its index entry in `docs/architecture/routes.md` and in `ARCHITECTURE.md`'s Routes section if a route was added/removed
 - DAL change (new/changed function in `src/lib/db/`) → the module's file in `docs/architecture/dal/`, plus its index entry in `docs/architecture/dal.md` and in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
-- Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
+- Role change (new role, permissions matrix) → `ARCHITECTURE.md`'s Role system section; a new/changed RLS helper's rationale → `docs/architecture/rls.md`, plus its one-line index entry in `ARCHITECTURE.md`'s RLS conventions section
 
 ## Barn Data Backup
 
@@ -53,27 +51,11 @@ When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE
 
 ## Pre-Release Checklist
 
-When a PR adds or modifies a UI route, workflow, or user-facing feature, add or adjust a step in the relevant phase file under `checklists/pre-release/` — `phase-1-setup.md`, `phase-2-manager-seeding.md`/`phase-3-manager-lesson-entry.md`/`phase-4-manager-verification.md` (Manager), `phase-5-trainer.md`, `phase-6-rider.md`, or `phase-7-multi-barn.md`. `PRE_RELEASE_TEST_CHECKLIST.md` at the repo root is the index: it holds the conventions, the prerequisites, the per-phase role notes, and the route-coverage table, and no checks of its own beyond the prerequisites (#1358 split the phases out of it — it was 141KB in one file).
-
-Pick the phase by **the role doing the asserting, not the role the data is about** — a manager reading a page about riders is Phase 4; a rider reading their own page is Phase 6. A precondition may be planted by any role. Getting this wrong makes the line permanently untaggable, since one e2e test binds one role. Full statement in the index's phase-partitioning Convention blockquote, whose one-line role note per phase is repeated at the top of each phase file.
-
-**A line a PR adds is born automated or justified-manual.** Tag it either `(e2e: <test name>)`, with the covering spec written in that same PR, or `(manual)` with the reason stated on the line itself. Leaving an added line untagged is the same violation as tagging it `(e2e-candidate)`, and neither is available for a line a PR *adds* — both defer automation indefinitely, which is how the manual pass grows monotonically with every feature. `(e2e-candidate)` remains correct for the *pre-existing* untagged lines an audit is converting (#1251 owns Phases 5–6): those verdicts are the case this rule preserves, not violations of it. The index's "sections with no tags on their checkboxes have not been audited yet" describes the same pre-existing lines — it is not licence to add more, in an audited phase or a brand-new one. The stated-reason requirement binds added lines the same way — the older `(manual)` lines carrying no reason are grandfathered.
-
-Legitimate `(manual)` grounds, and the whole list: a **human judgment call** — does this flow read well, cross-device look-and-feel, any visual or aesthetic check — or an external dependency a spec cannot drive. "Would take a while to automate" is not one. Neither is needing a genuinely separate real person or prod configuration: that isn't a justified `(manual)` line here, it's a check that clears a `POST_RELEASE_TEST_CHECKLIST.md` bar and belongs in that file instead.
-
-A checklist note that asserts a capability *doesn't exist yet* — "until #N lands", "#N-blocked", "not yet assignable via UI" — is a hedge, and it goes stale the moment #N merges, silently suppressing coverage of a feature that now works. **The PR closing #N removes every hedge on #N from `checklists/pre-release/` and `POST_RELEASE_TEST_CHECKLIST.md` in that same PR**, and replaces each one with the check the hedge was standing in for. Grep that directory and that file for the issue number before opening the PR. This is a convention, not a CI check — both checklists legitimately cite closed issues as history ("since #864", "#969 — a manager can no longer…"), and no grep separates those from a hedge reliably.
+When a PR adds or modifies a UI route, workflow, or user-facing feature, add or adjust a step in the relevant phase file under `checklists/pre-release/` (#1358 split the phases out of `PRE_RELEASE_TEST_CHECKLIST.md`, which remains the index holding the conventions). The binding conventions live in the index's header blockquotes: **phases are partitioned by the role doing the asserting** (not the role the data is about), **a line a PR adds is born automated or justified-manual** — `(e2e: <test name>)` with the covering spec written in that same PR, or `(manual)` with the reason stated on the line — and **the PR closing #N removes every hedge on #N** from `checklists/pre-release/` and `POST_RELEASE_TEST_CHECKLIST.md`, replacing each with the check it stood in for.
 
 ## Post-Release Checklist
 
-`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod — run once the release merge has deployed and before the `vN.0.0` tag is cut (see [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)). It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:
-
-- **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a claimed member who isn't you (`change-user.sh` never links `profiles.user_id`, so locally your own account is the only self-write you can test). A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
-- **Auth/session behavior** only prod's real OAuth configuration exercises
-- **Payment or money-moving RPCs**
-- **Demo, cron, or prod-config behavior**
-- **A class of prior production incident** worth re-checking every release
-
-When a PR adds or modifies a feature clearing one of those bars, update the relevant section of `POST_RELEASE_TEST_CHECKLIST.md` in the same PR. The first bar is served by that file's "Cross-identity checks" section; the remaining four are served by its smoke-test section, landing in #1080.
+`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod (invocation timing: [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)). It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of the five bars listed in that file's header (cross-identity, prod-only auth/OAuth, money-moving RPCs, demo/cron/prod-config, prior-incident class). A PR adding or modifying a feature that clears one of those bars updates the relevant POST section in the same PR.
 
 ## Working Directory
 
@@ -81,29 +63,10 @@ When a PR adds or modifies a feature clearing one of those bars, update the rele
 
 ## UI Conventions
 
-### Mobile-first
-Mobile is the primary platform. All interactions must work on touch and small screens. Hover-only patterns are not acceptable — native `title` tooltips, CSS `:hover`-only reveals, and similar desktop-only affordances must not be used.
-
-### View switchers
-Use pill-style segmented controls (tab pills) for switching between data views. This is the standard SaaS pattern (Stripe, Linear, GitHub). Do not use tabs, dropdowns, or radio buttons for view-switching.
-
-### Time display
-Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never display 24-hour/military time in the UI. Internal storage and form values remain in 24-hour format.
-
-### Shared UI components
-New UI must use the primitives in `src/components/ui/` — do not hand-roll raw Tailwind for cards, buttons, or table cells.
-
-- `<Card href? className?>` (`Card.tsx`) — browseable item collections (horses, upcoming lessons, members). With `href` it renders as a full-card link with `bg-white`/hover states baked in; without `href` it renders a plain bordered `div` with no background or padding of its own — pass `className` for either variant's padding/spacing needs.
-- `<Button variant? size? loading? href?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions, `warning` for amber attention-badge links (e.g. dashboard Reminders cards, including `DocumentRemindersSection`'s single-line `name — record type — date` entries). `size`: `md` (default) for standalone form/page actions, `sm` for compact table/row actions (Approve/Reject/Remove/Delete/Activate/Deactivate). `loading` disables the button and shows a spinner. With `href` it renders as a styled `Link` instead of a `<button>`. Joined-corner segmented toggles and icon-only/bare-text controls are poor structural fits — leave those as raw Tailwind with a comment explaining why (see `LessonForm.tsx`'s Normal/Group switch or `NotificationBell.tsx`).
-  - `ghost`'s subtle border reads as non-interactive when it's the only button in view (e.g. a lone "Today"/"Back" action with nothing else nearby for contrast) — this has come up as a review finding more than once. Use `ghost` only when it sits next to a `primary` action it should visually defer to; a standalone action gets `primary` even if it's logically secondary.
-- When matching an existing icon-only/bare-text raw-Tailwind control to a sibling one elsewhere in the app (e.g. date/month Prev-Next pagers), reuse that control's exact classes **and its exact glyph** rather than inventing new ones — divergent one-off styling for the same interaction pattern is a recurring review finding. The glyph is not cosmetic: `‹`/`›` render visibly smaller than `&lt;`/`&gt;` at the same font size, so copying the classes alone still produces a mismatched control. The canonical month pager is the one in `finances/page.tsx` — `&lt;`/`&gt;` in a `min-h-[44px] min-w-[44px]` circle.
-- `<Th>` / `<Td tone?>` / `<TableActions>` (`Table.tsx`) — all data tables. Use `tone="secondary"` on `<Td>` for secondary text cells. `<TableActions>` is a right-aligned `<Td>` for row action buttons.
-- `<Pill href active>` (`Pill.tsx`) — tab-pill view switchers (see "View switchers" above). Always renders as a `Link`; `active` selects the filled vs. outlined style.
-- `<Badge tone>` (`Badge.tsx`) — all status badges. Tones: `amber` (attention/unpaid/inactive), `red` (cancelled), `green`, `gray` (neutral metadata: Recurring/Jumping/Group), `solid`. Never hand-roll a `rounded-full px-2 py-0.5` span — declaring badge colours per call site is what let a 2.15:1 `bg-amber-500`/`text-white` pair exist at seven sites (#1219). `Badge` takes no `className`: a per-call-site styling escape hatch reopens exactly that. Wrap it (`<div className="mt-1">`) for spacing instead. Every tone is asserted at ≥4.5:1 in both schemes by `Badge.test.tsx`, which reads Tailwind's real palette — a new tone below the floor fails that test.
-
-Placement rules:
-- "Add" / "Create" buttons go top-right of the section header, next to the section title — never at the bottom of a section.
-- Row actions always go in the rightmost table column (use `<TableActions>`), never in the first column or mixed with data columns.
+- **Mobile-first.** Mobile is the primary platform; every interaction must work on touch and small screens. Hover-only patterns — native `title` tooltips, CSS `:hover`-only reveals — are not acceptable.
+- **View switchers** are pill-style segmented controls (`<Pill>`), the standard SaaS pattern — never tabs, dropdowns, or radio buttons.
+- **Time display** is always 12-hour AM/PM in the UI (e.g. "12:00 AM", "1:00 PM"); internal storage and form values stay 24-hour.
+- **Shared components:** new UI must use the primitives in `src/components/ui/` — do not hand-roll raw Tailwind for cards, buttons, badges, or table cells. The component catalog, per-variant rules, and placement conventions ("Add"/"Create" buttons top-right of the section header; row actions in the rightmost column via `<TableActions>`) are in `src/components/ui/CLAUDE.md`.
 
 ## Release Workflow
 

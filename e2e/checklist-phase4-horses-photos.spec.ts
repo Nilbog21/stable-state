@@ -32,7 +32,7 @@ const APPLE = 'Apple'
 const BUTTER = 'Butter'
 const DAISY = 'Daisy'
 
-// Every asset the checklist lines name, verbatim. scripts/CLAUDE.md's asset table assigns
+// Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
 // harper-photo.png and emery-photo.jpg to *member* photo flows, but lines 416/417 name both files
 // explicitly for Apple the horse; the line text wins, on the precedent #1201 set when its line 480
 // named clover-photo.png for a member. These files are read-only sources — reuse across entities

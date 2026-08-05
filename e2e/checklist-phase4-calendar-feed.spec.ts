@@ -369,7 +369,7 @@ test.describe.serial('the calendar feed link', () => {
     // Asserting the order is safe here and only here — these two are fixed JSX siblings, not
     // rows out of a query.
     //
-    // `toHaveText` on the array, never a bare `allInnerTexts()` (CLAUDE.md, #1243): the one-shot
+    // `toHaveText` on the array, never a bare `allInnerTexts()` (e2e/CLAUDE.md, #1243): the one-shot
     // read does not retry, so an unrendered section yields `[]` and an assertion that accepts it
     // passes on nothing. This matcher auto-retries, so it is its own settle guard as well as the
     // assertion — which is why there is no separate `toBeVisible()` above it.
