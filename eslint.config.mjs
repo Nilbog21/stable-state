@@ -44,7 +44,6 @@ const eslintConfig = defineConfig([
       "src/lib/format-expense.ts",
       "src/lib/local-day.ts",
       "src/lib/barn-timezone.ts",
-      "src/lib/finances-month.ts",
       // Formats numbers, not dates — the AC calls this out explicitly.
       "src/lib/format-currency.ts",
     ],

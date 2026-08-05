@@ -10,6 +10,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { barnDay } from '@/lib/barn-timezone'
 import { firstOfMonth } from '@/lib/local-day'
 import { getTransactionRows } from './transactions'
+import { firstOfMonth } from '../local-day'
+import { barnToday } from '../barn-timezone'
 import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, PaymentType } from './types'
 import { CHARGE_TRANSACTION_KINDS } from './agreement-finances'
 
@@ -227,10 +229,15 @@ export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseCl
 // #831: agreement_charges.payment_type is gone — this reads transactions directly
 // instead (no relay RPC needed, unlike agreement-finances.ts:getOutstandingCharges,
 // since this caller is already manager-only and passes transactions' own RLS).
-export async function getUnpaidAgreementIds(barnId: string, client?: SupabaseClient): Promise<Set<string>> {
+export async function getUnpaidAgreementIds(barnId: string, timezone: string, client?: SupabaseClient): Promise<Set<string>> {
   const supabase = client ?? await createClient()
-  const now = new Date()
-  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  // #1360: the barn's own month, not the server host's — the same fix #1309 made to
+  // getFinancialSummary/getOutstandingCharges. Every BARN_TIMEZONES zone is behind UTC, so
+  // the host's month rolled over 4-10 hours early and briefly badged the still-current
+  // month's charge as unpaid. A charge transaction's `occurred_at` is the `period` DATE cast
+  // to timestamptz (UTC midnight on the 1st — see agreement-finances.ts:getChargesForSummary),
+  // so the barn-local boundary encodes back to a plain UTC midnight for the `.lt` comparison.
+  const firstOfCurrentMonth = new Date(`${firstOfMonth(barnToday(timezone))}T00:00:00Z`)
 
   const rows = await getTransactionRows(
     barnId, CHARGE_TRANSACTION_KINDS, { endDate: firstOfCurrentMonth, collected: false }, supabase

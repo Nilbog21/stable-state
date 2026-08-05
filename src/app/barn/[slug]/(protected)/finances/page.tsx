@@ -36,7 +36,7 @@ export default async function FinancesPage({
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
 
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
-    resolveFinancesMonth(monthQueryParam, barn.created_at, new Date())
+    resolveFinancesMonth(monthQueryParam, barn.created_at, barn.timezone)
 
   const [{ pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate, barn.timezone),
