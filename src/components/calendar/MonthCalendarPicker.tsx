@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
@@ -38,6 +38,8 @@ export function MonthCalendarPicker({
   items,
   describeItem,
   label,
+  dayPanel,
+  dayPanelAlwaysOpen = false,
 }: {
   /** Currently selected day, "YYYY-MM-DD". */
   value: string
@@ -49,12 +51,21 @@ export function MonthCalendarPicker({
   items: ScheduleItem[]
   describeItem: (item: ScheduleItem) => string
   label: string
+  /** Extra content for the day panel, below that day's schedule — #1021's lesson start-time
+   *  field. Omitted by ExpenseForm, which wants the schedule alone. */
+  dayPanel?: ReactNode
+  /** Makes the day panel a permanent part of the form rather than a transient popup: open on
+   *  `value` from first render, and no Close button (#1021). The lesson form needs this because
+   *  the panel hosts a required field — behind a tap, a lesson's own start time would be
+   *  invisible on the edit form until its day was tapped. Off for ExpenseForm. */
+  dayPanelAlwaysOpen?: boolean
 }) {
   const { open, setOpen, ref } = useOutsideDismiss()
-  const [popupDate, setPopupDate] = useState(calendarDate(''))
+  const [popupDate, setPopupDate] = useState(calendarDate(dayPanelAlwaysOpen ? value : ''))
 
   const days = getMonthGrid(month)
   const popupItems = items.filter((item) => item.start.slice(0, 10) === popupDate)
+  const panelOpen = dayPanelAlwaysOpen || open
 
   function handleDayTap(date: CalendarDate) {
     onChange(date)
@@ -129,16 +140,20 @@ export function MonthCalendarPicker({
         {/* In normal flow below the grid, not an overlay: anchored at a fixed `top` it covered
             the first two rows, so tapping a day near the start of the month hid the very day
             just tapped. Pushing the rest of the form down is the better trade on mobile. */}
-        {open && popupDate && (
+        {panelOpen && popupDate && (
           <div className="mt-2 rounded-md border border-zinc-200 bg-white p-3 text-sm shadow-md dark:border-zinc-700 dark:bg-zinc-900">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatCalendarDate(popupDate)}</span>
               {/* `primary`, not `ghost`, even though Close is logically the secondary action here:
                   CLAUDE.md's rule is that ghost's subtle border reads as non-interactive when it is
-                  the only button in view, and this popup has no other control to defer to. */}
-              <Button onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
-                ×
-              </Button>
+                  the only button in view, and this popup has no other control to defer to.
+                  Absent entirely in always-open mode — a form field you can dismiss but not
+                  restore is worse than one that simply stays put. */}
+              {!dayPanelAlwaysOpen && (
+                <Button onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
+                  ×
+                </Button>
+              )}
             </div>
             {popupItems.length === 0 ? (
               <p className="text-zinc-500 dark:text-zinc-400">Nothing scheduled for this day.</p>
@@ -152,6 +167,7 @@ export function MonthCalendarPicker({
                 ))}
               </ul>
             )}
+            {dayPanel}
           </div>
         )}
       </div>

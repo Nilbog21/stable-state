@@ -294,12 +294,12 @@ function cancellationNotesField(page: Page): Locator {
  * `checklist-phase4-lessons-detail.spec.ts` — duplicated rather than extracted, per this batch's
  * convention. The signal: an ExhaustionBar cannot exist before `LessonForm`'s effects have run,
  * because it renders only once `exhaustionData` has arrived, and that state is set by an effect
- * whose input is itself produced by `DateHourPicker`'s mount effect via a server-action round
+ * whose input is itself produced by `LessonStartTime`'s mount effect via a server-action round
  * trip. A visible bar therefore strictly post-dates hydration rather than merely correlating
  * with it.
  *
  * Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
- * `DateHourPicker`'s mount effect, so a submit dispatched before hydration posts no date at all.
+ * `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
  *
  * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
  * (858, 862, 863) — waiting for hydration to assert one of those would be the SSR-default

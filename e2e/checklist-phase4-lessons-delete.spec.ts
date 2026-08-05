@@ -441,7 +441,7 @@ async function notificationFingerprints(): Promise<string[]> {
  * `checklist-phase4-lessons-detail.spec.ts`, whose docstring works out why this particular signal
  * is the right one: an ExhaustionBar cannot exist before LessonForm's effects have run, because it
  * is rendered only once `exhaustionData` has arrived, and that state is set by an effect whose
- * input is itself produced by DateHourPicker's mount effect via a server-action round trip. So a
+ * input is itself produced by LessonStartTime's mount effect via a server-action round trip. So a
  * visible bar strictly post-dates hydration rather than merely correlating with it.
  *
  * The two tests that only *read* the edit form (321, 322) deliberately skip this: their claims are

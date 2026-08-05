@@ -241,7 +241,7 @@ function lessonCards(page: Page): Locator {
  *
  * An ExhaustionBar is the signal because it cannot exist before that effect has run: it is
  * rendered only once `exhaustionData` has arrived, and that state is set by a *second* effect
- * whose input (`lessonAt`) is itself only produced by DateHourPicker's mount effect, via a
+ * whose input (`lessonAt`) is itself only produced by LessonStartTime's mount effect, via a
  * server-action round trip. So a visible bar strictly post-dates hydration rather than merely
  * correlating with it. That ordering is the whole point of the wait — read as a bare "wait for
  * the page to settle" it looks like superstition and invites deletion.
