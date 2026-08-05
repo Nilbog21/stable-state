@@ -27,8 +27,8 @@
 // The two `src/components/` entries are not routes. Since #1281 `ALWAYS_FULL` carries the whole
 // of `src/components/**` and `src/app/actions/**`, so those entries — and the three
 // `src/app/actions/` lines above — now document what this spec drives rather than select it.
-// They stay declared: that membership is not permanent, and the accuracy rule binds either way
-// (scripts/CLAUDE.md). `calendar/**` supplies markup asserted on
+// They stay declared because the accuracy rule binds regardless (scripts/CLAUDE.md) — not because
+// that membership is provisional, which #1357 measured and it is not. `calendar/**` supplies markup asserted on
 // directly (`CalendarLessonCard`, `CalendarEventCard`, `MonthCalendarPicker`);
 // `useOutsideDismiss.ts` is reached through `MonthCalendarPicker` and owns the open/close state
 // of the day popup that item 709's day selection drives, which is exactly the kind of module
