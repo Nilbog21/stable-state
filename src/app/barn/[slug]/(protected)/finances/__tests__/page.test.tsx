@@ -309,8 +309,14 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.timezone
     )
+  })
+
+  it('should_call_getOutstandingCharges_with_the_barns_timezone', async () => {
+    await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getOutstandingCharges)).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone)
   })
 
   it('should_display_empty_state_with_current_month_and_year', async () => {
@@ -454,7 +460,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-04-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.timezone
     )
   })
 
@@ -468,7 +475,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.timezone
     )
   })
 
@@ -483,7 +491,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       'barn-1',
       new Date('2026-03-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.timezone
     )
   })
 
@@ -497,7 +506,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.timezone
     )
   })
 
@@ -563,7 +573,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-07-01T00:00:00.000Z')
+      new Date('2026-07-01T00:00:00.000Z'),
+      mockBarn.timezone
     )
   })
 
@@ -577,7 +588,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-06-01T00:00:00.000Z')
+      new Date('2026-06-01T00:00:00.000Z'),
+      mockBarn.timezone
     )
   })
 
