@@ -8,7 +8,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // The rider's Lessons list and the detail page of a lesson she is enrolled in
-// (PRE_RELEASE_TEST_CHECKLIST.md Phase 6, lines 962-967, 973 and 974 — eight checkboxes).
+// (PRE_RELEASE_TEST_CHECKLIST.md Phase 6, lines 964-969, 975 and 976 — eight checkboxes).
 //
 // Three lessons, and each of the three exists for a claim the other two cannot make:
 //
