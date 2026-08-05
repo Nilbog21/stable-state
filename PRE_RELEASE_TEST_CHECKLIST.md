@@ -822,9 +822,9 @@ bash scripts/change-user.sh dev-barn
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
-- [ ] (e2e-candidate) Nav shows the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) alongside the barn name
-- [ ] (e2e-candidate) That nav shows **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
-- [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
+- [ ] (e2e: trainer_nav_shows_the_four_link_nav_beside_the_barn_name) Nav shows the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) alongside the barn name
+- [ ] (e2e: trainer_nav_hides_finances_manage_barn_leases_boarding_and_expenses) That nav shows **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
+- [ ] (e2e: trainer_expenses_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] (e2e: trainer_lessons_list_defaults_to_my_lessons) Lessons list defaults to **My Lessons**, showing only the lessons you instruct (Alex's, now reassigned to you)
 - [ ] (e2e: trainer_all_filter_shows_every_barn_lesson_including_another_instructors) Switching to **All** shows every barn lesson, including another instructor's (Blake's)
 - [ ] (e2e: trainer_filter_pills_show_the_same_six_filters_as_the_manager_view) The filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
@@ -854,28 +854,28 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_sees_no_edit_link_on_another_instructors_lesson) Blake's lesson, opened from the Lessons list, shows no **Edit** link
 - [ ] (e2e: trainer_cannot_save_changes_via_another_instructors_edit_url) Navigating directly to that lesson's `/edit` URL returns **404** — the edit form never renders, so there is no save to reach
 - [ ] (e2e: trainer_sees_no_delete_button_on_any_lesson) No **Delete** button is shown on any lesson, your own included
-- [ ] (e2e-candidate) A lesson you instruct shows a **Cancel** button in its detail-page header
-- [ ] (e2e-candidate) Cancelling a rider's spot (or the whole lesson) from there works the same as the manager flow
-- [ ] (e2e-candidate) Blake's lesson shows no header **Cancel** button
-- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
-- [ ] (e2e-candidate) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
-- [ ] (e2e-candidate) The recurring lesson created in Phase 3, now reassigned to you, still shows its **Recurring** badge on its Lessons list row
-- [ ] (e2e-candidate) That same lesson shows its **Recurring** badge on its detail page
-- [ ] (e2e-candidate) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
-- [ ] (e2e-candidate) That page shows a **Stop Recurring Lessons** button in the same place
-- [ ] (e2e-candidate) Stopping the series from there works the same as the manager flow
+- [ ] (e2e: trainer_sees_a_cancel_button_in_the_header_of_a_lesson_they_instruct) A lesson you instruct shows a **Cancel** button in its detail-page header
+- [ ] (e2e: trainer_cancelling_one_group_riders_spot_cancels_only_that_rider) Cancelling a rider's spot (or the whole lesson) from there works the same as the manager flow
+- [ ] (e2e: trainer_sees_no_cancel_button_on_another_instructors_lesson) Blake's lesson shows no header **Cancel** button
+- [ ] (e2e: trainer_edit_page_of_a_cancelled_lesson_shows_the_cancellation_notes_textarea) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
+- [ ] (e2e: cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
+- [ ] (e2e: trainer_lessons_list_row_shows_the_recurring_badge) The recurring lesson created in Phase 3, now reassigned to you, still shows its **Recurring** badge on its Lessons list row
+- [ ] (e2e: trainer_lesson_detail_page_shows_the_recurring_badge) That same lesson shows its **Recurring** badge on its detail page
+- [ ] (e2e: trainer_edit_page_shows_the_recurring_series_indicator) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
+- [ ] (e2e: trainer_edit_page_shows_the_stop_recurring_lessons_button) That page shows a **Stop Recurring Lessons** button in the same place
+- [ ] (e2e: trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page) Stopping the series from there works the same as the manager flow
 - [ ] (e2e-candidate) Horse detail page lists documents with working links
 - [ ] (e2e-candidate) Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date
 - [ ] (e2e-candidate) That documents table has **no Actions column at all** — not merely a hidden delete button
 - [ ] (e2e-candidate) The horse detail page shows **no Exhaustion Thresholds section**
 - [ ] (e2e-candidate) The Reminder Date column there is **read-only**
-- [ ] (e2e-candidate) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
-- [ ] (e2e-candidate) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
-- [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
-- [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
-- [ ] (e2e-candidate) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
+- [ ] (e2e: trainer_unowned_horse_notes_render_as_read_only_text) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
+- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
+- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
+- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
+- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: trainer_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
+- [ ] (e2e: trainer_owned_horse_note_edits_persist_across_a_reload) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
 - [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
@@ -900,16 +900,16 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) That page shows **no Documents section**
 - [ ] (e2e-candidate) Blake's (a rider's) detail page likewise shows their **Contact Info** section
 - [ ] (e2e-candidate) (#779) Blake's detail page shows no Documents section — #779 narrowed rider-document access to manager/self only
-- [ ] (e2e-candidate) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
+- [ ] (e2e: trainer_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 - [ ] (e2e-candidate) That page also lists any uncollected cancellation fees for lessons you instruct
 - [ ] (e2e-candidate) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] (e2e-candidate) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
 - [ ] (e2e-candidate) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
 - [ ] (e2e-candidate) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
-- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
-- [ ] (e2e-candidate) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
-- [ ] (e2e-candidate) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
+- [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
 
 ## Phase 6 — Rider
 
@@ -921,9 +921,9 @@ Switch role (pick **Dana** from the same member list as Phase 5):
 bash scripts/change-user.sh dev-barn
 ```
 
-- [ ] (e2e-candidate) Nav shows the **full 4-link rider nav** (Lessons, Horses, Members, Guide) alongside the barn name
-- [ ] (e2e-candidate) That nav shows **no Leases, no Boarding, no Expenses**
-- [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
+- [ ] (e2e: rider_nav_shows_the_four_link_nav_beside_the_barn_name) Nav shows the **full 4-link rider nav** (Lessons, Horses, Members, Guide) alongside the barn name
+- [ ] (e2e: rider_nav_hides_leases_boarding_and_expenses) That nav shows **no Leases, no Boarding, no Expenses**
+- [ ] (e2e: rider_expenses_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] (e2e: rider_available_and_unavailable_cards_carry_only_name_and_reason) Horses page shows Available/Unavailable cards carrying the name (and unavailability reason) only
 - [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards
 - [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
@@ -934,10 +934,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
 - [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
-- [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
-- [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
-- [ ] (e2e-candidate) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
+- [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
@@ -981,7 +981,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) That row shows the same **Cancelled** badge on the lesson detail page
 - [ ] (e2e-candidate) The rest of the lesson — other riders in a group lesson included — is unaffected by that cancellation
 - [ ] (e2e-candidate) The instructor receives a "Lesson participation cancelled" notification (verify the `notifications` row directly, as in Phase 5 — the recipient is a different persona; an e2e run reads the row with its own service client)
-- [ ] (e2e-candidate) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
+- [ ] (e2e: rider_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
 - [ ] (e2e-candidate) That page also shows her own outstanding lease/boarding charges, if any are past due
 - [ ] (e2e-candidate) That page also shows her own uncollected late-cancellation fees
@@ -1008,9 +1008,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Her own member detail page renders the same Active Agreements cards from Phase 4
 - [ ] (e2e-candidate) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
 - [ ] (manual) Those cards carry no hover state — a visual affordance judgement, not a behavior a click path can assert
-- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
-- [ ] (e2e-candidate) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
-- [ ] (e2e-candidate) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
+- [ ] (e2e: rider_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e: rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (e2e: rider_calendar_feed_carries_only_lessons_they_are_enrolled_in) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
 
 ## Phase 7 — Multi-barn
 
