@@ -865,11 +865,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_edit_page_shows_the_recurring_series_indicator) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
 - [ ] (e2e: trainer_edit_page_shows_the_stop_recurring_lessons_button) That page shows a **Stop Recurring Lessons** button in the same place
 - [ ] (e2e: trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page) Stopping the series from there works the same as the manager flow
-- [ ] (e2e-candidate) Horse detail page lists documents with working links
-- [ ] (e2e-candidate) Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date
-- [ ] (e2e-candidate) That documents table has **no Actions column at all** — not merely a hidden delete button
-- [ ] (e2e-candidate) The horse detail page shows **no Exhaustion Thresholds section**
-- [ ] (e2e-candidate) The Reminder Date column there is **read-only**
+- [ ] (e2e: trainer_horse_document_link_serves_the_stored_pdf) Horse detail page lists documents with working links
+- [ ] (e2e: trainer_uploading_a_horse_document_with_a_reminder_date_lists_it) Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date
+- [ ] (e2e: trainer_documents_table_has_no_actions_column_header) That documents table has **no Actions column at all** — not merely a hidden delete button
+- [ ] (e2e: trainer_horse_detail_page_shows_no_exhaustion_thresholds_section) The horse detail page shows **no Exhaustion Thresholds section**
+- [ ] (e2e: trainer_reminder_date_column_is_read_only_text) The Reminder Date column there is **read-only**
 - [ ] (e2e: trainer_unowned_horse_notes_render_as_read_only_text) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
 - [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
 - [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
