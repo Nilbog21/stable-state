@@ -17,13 +17,18 @@ LOG_PATH="$PWD/checklist-suite.log"
 echo "=== run-checklist-suite.sh — barn prefix $RUN_PREFIX — started $(date) ===" > "$LOG_PATH"
 # Pre-scanned rather than read off the arg loop below, because that loop runs after the
 # redirect this decides. `--interactive` implies it: a headed run is a human watching.
+# Looped per argument rather than matched against `" $* "`, which joins argv into one string
+# and so can't tell a `--verbose` flag from a flag *value* containing that substring.
 VERBOSE=false
-case " $* " in *" --verbose "*|*" --interactive "*) VERBOSE=true ;; esac
+for arg in "$@"; do
+  case "$arg" in --verbose|--interactive) VERBOSE=true ;; esac
+done
 
 # Send this script's stdout and stderr — and that of everything it runs — through `tee`, so
 # the log gets the whole run, including the early bails that kill it under `set -e` before
-# Playwright writes a line. Costs the `list` reporter its live in-place progress (stdout is
-# no longer a TTY); one static line per test is the better trade for a file read afterwards.
+# Playwright writes a line. Either branch costs the `list` reporter its live in-place progress
+# (stdout is no longer a TTY); the log keeps one static line per test, which is the better
+# trade for a file read afterwards. What reaches *stdout* differs — see the branches.
 if [ "$VERBOSE" = true ]; then
   exec > >(tee -a "$LOG_PATH") 2>&1
 else
