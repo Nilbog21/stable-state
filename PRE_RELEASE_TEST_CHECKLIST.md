@@ -867,13 +867,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) That documents table has **no Actions column at all** — not merely a hidden delete button
 - [ ] (e2e-candidate) The horse detail page shows **no Exhaustion Thresholds section**
 - [ ] (e2e-candidate) The Reminder Date column there is **read-only**
-- [ ] (e2e-candidate) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
-- [ ] (e2e-candidate) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
-- [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
-- [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
-- [ ] (e2e-candidate) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
+- [ ] (e2e: trainer_unowned_horse_notes_render_as_read_only_text) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
+- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
+- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
+- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
+- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: trainer_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
+- [ ] (e2e: trainer_owned_horse_note_edits_persist_across_a_reload) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
 - [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
@@ -932,10 +932,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
 - [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
-- [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
-- [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
-- [ ] (e2e-candidate) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
+- [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
