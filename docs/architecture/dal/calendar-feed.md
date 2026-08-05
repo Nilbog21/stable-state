@@ -1,0 +1,6 @@
+# `calendar-feed.ts`
+
+#1018: per-membership `.ics` calendar feed token + role-filtered feed data, the DAL layer behind the token-authenticated `src/app/calendar.ics/route.ts` Route Handler (no session, so `requireMembership`/RLS don't apply there — see `get_calendar_feed` in [`rpc/calendar.md`](../rpc/calendar.md)).
+`getOrCreateCalendarFeedToken(membershipId, barnId, client?)` — returns the existing `calendar_feed_token` if the row already has one, else delegates to `regenerateCalendarFeedToken`; `regenerateCalendarFeedToken(membershipId, barnId, client?)` — `crypto.randomUUID()` + `.update(...).select().single()`, exact mirror of `member-invites.ts`'s `revokeInviteToken` (old token is simply overwritten, no separate revoke step).
+`getCalendarFeedData(token, client?)` — calls the `get_calendar_feed` RPC and maps its `snake_case` row to `CalendarFeedData { valid, barnName, items: CalendarFeedItem[] }` (`types.ts`); `valid: false` means an unknown/inactive token, distinct from a valid token with an empty `items` array.
+The actual `.ics` text templating (VEVENT construction, RFC 5545 escaping/line-folding) is a separate pure-function module, `src/lib/ics.ts` (`buildIcsFeed`) — outside `src/lib/db/` since it has no Supabase dependency.

@@ -897,7 +897,7 @@ export async function addBarnEvent(
  * upsertNotification always writes read_at: null, so there is no already-read variant here.
  * It is the service-role write path — the create_or_update_notification RPC checks
  * auth.uid(), which a service-role client doesn't have (see its entry in
- * docs/architecture/rpc.md).
+ * docs/architecture/rpc/notifications.md).
  */
 export async function addNotification(
   supabase: SupabaseClient,
