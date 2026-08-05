@@ -970,17 +970,17 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_privileged_horse_shows_an_exertion_rating_on_the_lesson_detail_page) (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse does show an exertion rating
 - [ ] (e2e: rider_privileged_horse_shows_its_horse_notes_on_the_lesson_detail_page) (#999) That same horse shows its horse notes (if any) on that page
 - [ ] (e2e: rider_other_riders_notes_stay_hidden_on_the_privileged_lesson_detail_page) (#999) On that page, other riders' rider and private notes stay hidden from Dana
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead
-- [ ] (e2e-candidate) That lesson's detail page renders the same read-only **Cancellation Notes** row the manager gets
+- [ ] (e2e: rider_manager_cancelled_lesson_shows_read_only_cancellation_notes) Setup (as manager, then switch back to Dana) — cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead
+- [ ] (e2e: rider_manager_cancelled_lesson_shows_read_only_cancellation_notes) That lesson's detail page renders the same read-only **Cancellation Notes** row the manager gets
 - [ ] (e2e: rider_group_lesson_shows_every_co_riders_real_name) An enrolled **group** lesson's detail page shows every co-rider's real name, not a blank or raw ID
 - [ ] (e2e: rider_unenrolled_unprivileged_lesson_404s) Visiting `/barn/dev-barn/lessons/[id]` directly for a lesson Dana is **not** enrolled in, with no horse she holds lesson-read privileges on, shows **404** rather than the lesson details
-- [ ] (e2e-candidate) An enrolled lesson's detail-page header carries a **Cancel** button
-- [ ] (e2e-candidate) No Cancel button appears on the Lessons list or the Dashboard
-- [ ] (e2e-candidate) Cancelling your own spot from that header marks your row **Cancelled** on the Lessons list
-- [ ] (e2e-candidate) That row shows the same **Cancelled** badge on the Dashboard
-- [ ] (e2e-candidate) That row shows the same **Cancelled** badge on the lesson detail page
-- [ ] (e2e-candidate) The rest of the lesson — other riders in a group lesson included — is unaffected by that cancellation
-- [ ] (e2e-candidate) The instructor receives a "Lesson participation cancelled" notification (verify the `notifications` row directly, as in Phase 5 — the recipient is a different persona; an e2e run reads the row with its own service client)
+- [ ] (e2e: rider_enrolled_lesson_header_carries_a_cancel_button) An enrolled lesson's detail-page header carries a **Cancel** button
+- [ ] (e2e: rider_sees_no_cancel_button_on_the_lessons_list_or_the_dashboard) No Cancel button appears on the Lessons list or the Dashboard
+- [ ] (e2e: rider_cancelling_own_spot_marks_the_row_cancelled_on_the_lessons_list) Cancelling your own spot from that header marks your row **Cancelled** on the Lessons list
+- [ ] (e2e: rider_cancelled_spot_shows_the_cancelled_badge_on_the_dashboard) That row shows the same **Cancelled** badge on the Dashboard
+- [ ] (e2e: rider_cancelled_spot_shows_the_cancelled_badge_on_the_lesson_detail_page) That row shows the same **Cancelled** badge on the lesson detail page
+- [ ] (e2e: rider_cancelling_own_spot_leaves_the_co_riders_and_the_lesson_unaffected) The rest of the lesson — other riders in a group lesson included — is unaffected by that cancellation
+- [ ] (e2e: rider_cancelling_own_spot_notifies_the_instructor) The instructor receives a "Lesson participation cancelled" notification (verify the `notifications` row directly, as in Phase 5 — the recipient is a different persona; an e2e run reads the row with its own service client)
 - [ ] (e2e: rider_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e: rider_outstanding_lists_only_their_own_lessons) `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
 - [ ] (e2e: rider_outstanding_lists_their_own_past_due_lease_and_boarding_charges) That page also shows her own outstanding lease/boarding charges, if any are past due
