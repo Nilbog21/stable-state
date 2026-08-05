@@ -71,9 +71,13 @@ export type E2eRole = keyof typeof E2E_USERS
  *   coincidence rather than by derivation, which is an assertion that is true, falsifiable,
  *   mutation-proof, and pointed at the wrong fixture.
  *
- * Both halves bind any name added here or passed to `addManagedMember`.
+ * Both halves bind any name added here or passed to `addManagedMember`. `Sutton` rather than the
+ * `Rider2` this was until #1284 — a surname echoing the fixture key reads well and failed *both*
+ * halves against the `rider` login at once. Don't name it after the key again; `S` in particular
+ * is load-bearing only in that it keeps `Test Rider` < `Test Sutton` < `Test Trainer`, the name
+ * ordering checklist-phase4-finances-by-rider.spec.ts's three-way sort table is written against.
  */
-export const E2E_STUB_RIDER = { firstName: 'Test', lastName: 'Rider2' } as const
+export const E2E_STUB_RIDER = { firstName: 'Test', lastName: 'Sutton' } as const
 
 export type SeededBarn = { id: string; slug: string; name: string; timezone: string }
 export type SeededMember = { membershipId: string; userId: string | null; profileId: string }

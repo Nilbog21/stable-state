@@ -24,10 +24,9 @@ const TRAINER_LESSON_FEE = 100
 const PREVIOUS_MONTH_LESSON_FEE = 75
 
 // Display names of the three seeded members addMemberships creates, as the By Rider tab
-// renders them. "Test Rider" is a substring of "Test Rider2", so every locator that picks a
-// single rider out of the table matches on the exact name.
+// renders them.
 const RIDER_NAME = 'Test Rider'
-const RIDER2_NAME = 'Test Rider2'
+const RIDER2_NAME = 'Test Sutton'
 const TRAINER_NAME = 'Test Trainer'
 
 const SEEDED_RIDER_COUNT = 3
@@ -39,10 +38,10 @@ const SEEDED_RIDER_COUNT = 3
 // The trainer login rides as the third — a trainer taking lessons is ordinary, and it costs
 // neither a fourth auth account nor a stub member the shared fixtures don't build.
 //
-//   this month's Gross          Test Rider 200, Test Rider2 300, Test Trainer 100
-//   name ascending              Test Rider,  Test Rider2,  Test Trainer
-//   Gross ascending             Test Trainer, Test Rider,  Test Rider2
-//   server order (Gross desc)   Test Rider2, Test Rider,   Test Trainer
+//   this month's Gross          Test Rider 200, Test Sutton 300, Test Trainer 100
+//   name ascending              Test Rider,   Test Sutton, Test Trainer
+//   Gross ascending             Test Trainer, Test Rider,  Test Sutton
+//   server order (Gross desc)   Test Sutton,  Test Rider,  Test Trainer
 //
 // All three orderings differ, so no sort assertion below can pass by accident.
 //
