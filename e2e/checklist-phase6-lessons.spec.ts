@@ -22,8 +22,9 @@ import type { Lesson } from '@/lib/db/types'
 // ## Why this barn holds no member_horse_privileges rows at all
 //
 // #1331's slice-13 barn gave every lesson a horse its rider held a privilege on, which is
-// precisely the fixture that would make `others` load rather than 404
-// (`auth_lesson_has_privileged_horse` → the isPrivilegedViewer branch in [id]/page.tsx). Holding
+// precisely the fixture that would make `others` load rather than 404: `lessons_select_horse
+// _privilege` (backed by `auth_lesson_has_privileged_horse`) is additive to the enrolled-rider
+// policy, so one privileges row on that lesson's horse hands the row back through RLS. Holding
 // none makes 974's "with no horse she holds lesson-read privileges on" true by construction, and
 // makes 967's parenthetical ("still true for a horse Dana holds no lesson-read privilege on") true
 // of Comet for the same reason.
@@ -220,10 +221,14 @@ test('rider_filter_pills_omit_my_lessons_and_by_rider @rider', async ({ page }) 
 // about, and a page-wide absence check would be asserting against those too.
 //
 // The instructor flag in the same map is the positive control, and it is why this cannot pass
-// vacuously: it proves a person's name does render on these cards, so the `self: false` beside it
-// is LessonListItem withholding the rider names from a rider (they render only under
-// isManager || isTrainer) rather than a card that renders no names to anyone. The array's length
-// pins the card count, so an empty or half-rendered list fails rather than satisfying it.
+// vacuously: it proves a person's name does render on both of these cards, so the `self: false`
+// beside it is a name being withheld rather than a card that renders no names to anyone. The
+// array's length pins the card count, so an empty or half-rendered list fails rather than
+// satisfying it.
+//
+// The two cards withhold it by different routes, and the line covers both: the normal card has a
+// rider-names row gated on `isManager || isTrainer`, while the group card renders
+// `{rider_count} riders, {horse_count} horses` and names no rider to any role (LessonListItem).
 test('rider_own_name_absent_from_own_lesson_cards @rider', async ({ page }) => {
   await page.goto(lessonsPath())
   const cards = await settledInnerTexts(lessonCards(page))
@@ -253,12 +258,15 @@ test('rider_own_rider_notes_render_read_only_on_the_lesson_detail_page @rider', 
   await expect(page.locator('main').getByRole('textbox')).toHaveCount(0)
 })
 
-// Her own rider notes are the precondition, not a second claim: they are rendered by the same
-// block (OwnRiderNotesBlock) that would render private notes, so their presence proves the block
-// is on screen and the private text is being withheld rather than the whole section missing.
+// Her own rider notes are the precondition, not a second claim: they prove the Rider(s) section
+// and her own row within it are on screen, so the missing private text is being withheld rather
+// than a section that never rendered.
 //
-// get_lesson_rider_notes returns private_notes as NULL for any caller that is not a
-// manager/trainer, so this is a DB-layer withholding the page never gets the chance to leak.
+// Withheld twice over, and neither layer is OwnRiderNotesBlock — that block reads only
+// `rider_notes` and has no private-notes branch at all. The page's own gate is RiderNotesBlock,
+// which renders `private_notes` under `canSeeNotes` (manager/trainer) and so renders nothing here;
+// behind it, get_lesson_rider_notes returns `private_notes` as NULL to any caller that is not
+// manager/trainer, so the value never reaches the page to be leaked.
 test('rider_private_notes_stay_hidden_on_the_lesson_detail_page @rider', async ({ page }) => {
   await page.goto(lessonPath(mine))
   await expect(page.getByText(MY_RIDER_NOTES, { exact: true })).toBeVisible()
@@ -295,9 +303,10 @@ test('rider_sees_no_exertion_rating_on_an_unprivileged_horse @rider', async ({ p
 // because the line claims which names appear and not their order.
 //
 // The <li> text is the name alone: RiderNotesBlock renders nothing for a rider (canSeeNotes is
-// false and no cancellation notes exist), the cancelled badge is manager-only, and
-// OwnRiderNotesBlock sits outside the <ul> — which is why this lesson is the one carrying no
-// planted notes.
+// false and no cancellation notes exist), the per-row cancelled badge renders only for a viewer
+// who can manage the lesson (canManageLesson — a manager or the instructing trainer, never a
+// rider), and OwnRiderNotesBlock sits outside the <ul> — which is why this lesson is the one
+// carrying no planted notes.
 test('rider_group_lesson_shows_every_co_riders_real_name @rider', async ({ page }) => {
   await page.goto(lessonPath(group))
   const names = await settledInnerTexts(ridersSection(page).locator('ul > li'))
@@ -311,9 +320,15 @@ test('rider_group_lesson_shows_every_co_riders_real_name @rider', async ({ page 
 
 // Both halves of the line in one assertion: "shows 404" and "rather than the lesson details" are
 // separately satisfiable — a 200 rendering nothing would pass the second alone, and a 404 status
-// served alongside a rendered detail page would pass the first. `others` has a rider she is not,
-// and a horse she holds no privileges row for, so both branches of [id]/page.tsx's rider gate
-// (myRiderEntry === null && !isPrivilegedViewer) close.
+// served alongside a rendered detail page would pass the first.
+//
+// The 404 is RLS, not the page's own enrolment gate. `others` has a rider she is not and a horse
+// she holds no privileges row for, so neither rider-facing SELECT policy on `lessons` admits it
+// (`lessons_select_rider` → auth_is_enrolled_rider; `lessons_select_horse_privilege` →
+// auth_lesson_has_privileged_horse), getLessonById's maybeSingle comes back empty, and
+// [id]/page.tsx's `if (!lesson) notFound()` fires. Its later
+// `myRiderEntry === null && !isPrivilegedViewer` gate is unreachable with this fixture — that one
+// exists for a viewer who can *see* the row, which is a shape only a privileges grant produces.
 //
 // page.goto already resolves after redirects, so no waitForURL — on this path it would be the
 // no-op sync point e2e/CLAUDE.md's fact 3 warns about.
