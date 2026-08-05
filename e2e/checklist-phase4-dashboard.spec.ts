@@ -5,7 +5,8 @@
 // covers: src/components/calendar/**
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
-import { wallClockToInstant } from '@/lib/barn-timezone'
+import { BARN_TIMEZONES, barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { addDays } from '@/lib/local-day'
 import {
   addBarnEvent,
   addExpense,
@@ -16,9 +17,112 @@ import {
   addTier,
   addUnpaidLesson,
   daysFromNow,
+  updateBarnSettings,
 } from './support/fixtures'
 
+// ---------------------------------------------------------------------------
+// The barn-zone pin (#1283)
+// ---------------------------------------------------------------------------
+
+/**
+ * The barn's own timezone, pinned to whichever `BARN_TIMEZONES` member currently sits furthest
+ * from its *own* midnight.
+ *
+ * **Why the barn's zone and not `page.clock`.** #1252's idiom pins the browser's clock, which
+ * reaches only values the browser computes (e2e/CLAUDE.md fact 7). Nothing this file depends on
+ * is one: `page.tsx` resolves `todayStr = barnToday(barn.timezone)` on the **server**, and every
+ * Prev/Next-day href is server-rendered from it. A browser pin here would be inert — green while
+ * doing nothing, which is the #1204 failure mode the idiom exists to prevent. The barn's
+ * `timezone` column is the one lever that reaches the server's answer, and this spec owns its barn.
+ *
+ * **What the pin buys.** Every fixture below is placed by `daysFromNow(n, barn.timezone)` at seed
+ * time, and the tests reach those days by loading the dashboard — which recomputes the barn's
+ * today per request — and clicking "Next day" n times. The two agree unless the run straddles
+ * barn-local midnight between `beforeAll` and the test, at which point every day-0 assertion and
+ * every `goToDaysAhead` destination is off by one. #1187 accepted that window rather than fork
+ * the clock-pinning decision; this closes it, by choosing the zone furthest from its own midnight
+ * and stating the resulting margin in minutes rather than in a comment.
+ */
+const PIN_NOW = new Date()
+
+/** Minutes between `at` and the nearest midnight in `zone`, so 12:00 local reads 720 and 00:00 reads 0. */
+function minutesFromBarnMidnight(zone: string, at: Date): number {
+  const wall = instantToLocalWallClock(at, zone)
+  const sinceMidnight = Number(wall.slice(11, 13)) * 60 + Number(wall.slice(14, 16))
+  return Math.min(sinceMidnight, 24 * 60 - sinceMidnight)
+}
+
+const PINNED_ZONE = BARN_TIMEZONES.reduce<string>(
+  (best, candidate) =>
+    minutesFromBarnMidnight(candidate.value, PIN_NOW) > minutesFromBarnMidnight(best, PIN_NOW)
+      ? candidate.value
+      : best,
+  BARN_TIMEZONES[0].value
+)
+
+/**
+ * The floor the pin has to clear.
+ *
+ * `BARN_TIMEZONES` spans UTC−4 (EDT) to UTC−10, so at any instant the seven zones offer six
+ * distinct local hours, and the worst UTC hour to be standing at is 07:xx — Eastern reads 03:xx
+ * and Honolulu 21:xx, leaving a best available distance of about three hours. Two is under that
+ * worst case by a full hour and so cannot fire spuriously today, while an edit that narrowed the
+ * zone list far enough to matter fails at collection instead of flaking one run in a hundred.
+ */
+const MIN_MIDNIGHT_MARGIN_MINUTES = 120
+
+/**
+ * Every day offset this file seeds a fixture at, which is also every offset `goToDaysAhead` and
+ * the day-0 tests navigate to. Listed rather than inferred so the guard below has something to
+ * check the seed against.
+ */
+const SEEDED_DAY_OFFSETS = [-3, -1, 0, 2, 3, 4] as const
+
+/**
+ * The pin's arithmetic, executable rather than written in a comment (#1252's `assertPinArithmetic`
+ * shape, adopted here by #1283 — the throwing guard is the load-bearing half of that idiom, not
+ * the pin: #1204's pin sat one axis away from the regression it existed to catch, and only review
+ * noticed).
+ *
+ * The second check is the one that states what these tests actually discriminate. `daysFromNow`
+ * frames its result as barn-local noon on today + n, and the dashboard reaches the same day by
+ * `addDays` on its own server-side `barnToday` — two different code paths onto one calendar day.
+ * Asserting that they agree at every offset the file seeds is the executable form of "the seed
+ * and the pager are in the same frame", and it fails at collection rather than as an
+ * unreproducible off-by-one card count if they ever stop being.
+ */
+function assertZonePinArithmetic(): void {
+  const problems: string[] = []
+  const margin = minutesFromBarnMidnight(PINNED_ZONE, PIN_NOW)
+  if (margin < MIN_MIDNIGHT_MARGIN_MINUTES) {
+    problems.push(
+      `barn-local now in ${PINNED_ZONE} is ${margin} minutes from its own midnight, under the ` +
+        `${MIN_MIDNIGHT_MARGIN_MINUTES}-minute floor — no BARN_TIMEZONES member is far enough from midnight.`
+    )
+  }
+  const today = barnToday(PINNED_ZONE, PIN_NOW)
+  for (const offset of SEEDED_DAY_OFFSETS) {
+    const seeded = instantToLocalWallClock(daysFromNow(offset, PINNED_ZONE, PIN_NOW), PINNED_ZONE).slice(0, 10)
+    const navigated = addDays(today, offset)
+    if (seeded !== navigated) {
+      problems.push(
+        `day ${offset} seeds onto ${seeded} but the dashboard's pager reaches ${navigated} from ${today}`
+      )
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`the barn-zone pin ${PINNED_ZONE} is misaimed:\n  ${problems.join('\n  ')}`)
+  }
+}
+assertZonePinArithmetic()
+
 const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) => {
+  // Before anything is seeded, so every fixture below — and every day the *pages* compute — is in
+  // the pinned zone rather than the barn's default. `barn` is the object every builder reads its
+  // timezone from, so the local copy is moved with the row (#1283).
+  await updateBarnSettings(supabase, barn.id, { timezone: PINNED_ZONE })
+  barn.timezone = PINNED_ZONE
+
   const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
   const apollo = await addHorse(supabase, barn.id, 'Apollo')
   const bella = await addHorse(supabase, barn.id, 'Bella')
