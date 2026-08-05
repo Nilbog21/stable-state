@@ -828,11 +828,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_lessons_list_defaults_to_my_lessons) Lessons list defaults to **My Lessons**, showing only the lessons you instruct (Alex's, now reassigned to you)
 - [ ] (e2e: trainer_all_filter_shows_every_barn_lesson_including_another_instructors) Switching to **All** shows every barn lesson, including another instructor's (Blake's)
 - [ ] (e2e: trainer_filter_pills_show_the_same_six_filters_as_the_manager_view) The filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
-- [ ] (e2e-candidate) Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
-- [ ] (e2e-candidate) With a date picked on that form, exhaustion bars render below each horse, same as the manager view
-- [ ] (e2e-candidate) (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
-- [ ] (e2e-candidate) (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
-- [ ] (e2e-candidate) (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 3) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
+- [ ] (e2e: trainer_creating_two_lessons_files_both_under_the_trainer_as_instructor) Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
+- [ ] (e2e: trainer_picking_a_date_renders_an_exhaustion_bar_below_every_horse) With a date picked on that form, exhaustion bars render below each horse, same as the manager view
+- [ ] (e2e: trainer_new_lesson_form_renders_the_month_calendar_as_its_date_field) (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
+- [ ] (e2e: trainer_exertion_shading_counts_another_instructors_lesson_for_the_selected_horse) (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
+- [ ] (e2e: trainer_conflict_dot_fires_on_the_selected_horses_appointment_day) (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 3) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
 - [ ] (e2e: trainer_dashboard_calendar_shows_the_appointment_alongside_their_own_lessons) (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
 - [ ] (e2e: trainer_dashboard_appointment_card_is_a_link_to_its_detail_page) (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
 - [ ] (e2e: trainer_can_open_the_appointment_detail_page) (#1148) Opening it reaches a page headed **Appointment**
@@ -844,12 +844,12 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_appointment_page_shows_no_delete_button) (#1148) That page shows no **Delete** button
 - [ ] (e2e: trainer_dashboard_day_view_empty_state_names_appointments_not_expenses) (#1148) The Dashboard's empty-state subtext on a day with nothing on it reads "No lessons, appointments, or events scheduled for this day." — "appointments", not "expenses"
 - [ ] (e2e: trainer_dashboard_week_view_empty_state_names_appointments_not_expenses) (#1148) The **Week** view's empty-state subtext likewise says "appointments", not "expenses"
-- [ ] (e2e-candidate) Creating one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) succeeds with no error
+- [ ] (e2e: trainer_can_create_a_lesson_within_the_buffer_of_another_instructors_lesson) Creating one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) succeeds with no error
 
 > This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query). The live bell UI these rows feed is exercised on a genuinely different account, in both directions, in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — that supplements these row checks rather than replacing them.
 
-- [ ] (e2e-candidate) A `notifications` row exists for Blake's `user_id` with `type = 'instructor_lesson_nearby'` and `link = '/barn/dev-barn/lessons'` (an e2e run reads the row with its own service client — the constraint above is `change-user.sh`'s, not the suite's)
-- [ ] (e2e-candidate) That row's `title` reads **"1 new lesson scheduled nearby"** (or an incremented count, e.g. "2 new lessons scheduled nearby", if a prior nearby lesson already landed this same row this pass)
+- [ ] (e2e: nearby_lesson_writes_a_notification_row_for_the_other_instructor) A `notifications` row exists for Blake's `user_id` with `type = 'instructor_lesson_nearby'` and `link = '/barn/dev-barn/lessons'` (an e2e run reads the row with its own service client — the constraint above is `change-user.sh`'s, not the suite's)
+- [ ] (e2e: that_nearby_notification_titles_a_single_new_lesson) That row's `title` reads **"1 new lesson scheduled nearby"** (or an incremented count, e.g. "2 new lessons scheduled nearby", if a prior nearby lesson already landed this same row this pass)
 - [ ] (e2e: trainer_edit_form_hides_the_instructor_field_on_their_own_lesson) Editing one of your own lessons shows the instructor field **hidden entirely** — no label, no read-only text, just locked server-side
 - [ ] (e2e: trainer_sees_no_edit_link_on_another_instructors_lesson) Blake's lesson, opened from the Lessons list, shows no **Edit** link
 - [ ] (e2e: trainer_cannot_save_changes_via_another_instructors_edit_url) Navigating directly to that lesson's `/edit` URL returns **404** — the edit form never renders, so there is no save to reach
