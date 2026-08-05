@@ -106,9 +106,15 @@ const horseUrl = (horseId: string) => `/barn/${barn.slug}/horses/${horseId}`
 const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entity=horse&id=${horseId}$`)
 
-/** The <section> owning a given h2 — the horse detail page is h2-partitioned. */
+/**
+ * The <section> owning a given h2 — the horse detail page is h2-partitioned.
+ *
+ * Scoped to <main> rather than the whole page: an unscoped `page.locator('section')` is not
+ * exploitable on this page today, but #1324 (PR #1345) ruled the same unscoped shape needless
+ * latent fragility one slice over and narrowed it there.
+ */
 function section(page: Page, heading: string) {
-  return page.locator('section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
+  return page.locator('main section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
 }
 
 const documentsSection = (page: Page) => section(page, 'Documents')
@@ -119,7 +125,10 @@ const uploadForm = (page: Page) => page.locator('main form')
 /**
  * The submit button, located structurally rather than by its accessible name: the label is
  * `{pending ? 'Uploading…' : 'Upload'}`, and a non-exact name match would treat "Upload" as a
- * prefix of "Uploading…" — the containment hazard #1202 found, live in this form.
+ * prefix of "Uploading…" — the same substring-containment trap #1202 recorded for fee text, in a
+ * second place. (#1202 is the agreements slice; #1323 corrected this same miscitation once
+ * already, in a comment copied from checklist-phase4-horses-documents.spec.ts, which is also
+ * where this locator's shape comes from — deliberately copied rather than reinvented.)
  */
 const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
 
@@ -160,6 +169,17 @@ async function reminderDateCell(page: Page, fileName: string): Promise<Locator> 
  * Waits on the submit button rather than the Choose File one: `input[type="file"]` also carries
  * the button role and resolves to "Choose File" by accessible name, so that locator is a
  * strict-mode violation rather than a guard (#1197, measured).
+ *
+ * That the submit button can serve as the barrier at all is a fact about *this* origin page, not
+ * a general one. `waitUntil: 'commit'` resolves on the URL flip while the page being left is
+ * still mounted, so a `main form button[type="submit"]` barrier is vacuous wherever the origin
+ * also renders a form — the soft-nav vacuity #1319 found and #1323 fixed on the member detail
+ * page, whose delete-document button is a submit inside a <form>. The horse detail page renders
+ * that same delete form, and HorseManagerForm, and HorseAccessSection — but every one of them is
+ * gated on `role === 'manager'`, and the photo-remove and notes forms on `isOwner`. A trainer
+ * viewing a horse it does not own therefore sees *no* form here, which is what makes this
+ * barrier destination-only. A future test in this file that seeds trainer ownership would break
+ * that, and would need the field-based barrier #1323 switched to.
  */
 async function openAddDocument(page: Page, horseId: string): Promise<void> {
   await page.goto(horseUrl(horseId))
