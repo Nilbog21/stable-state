@@ -35,10 +35,11 @@
 // the rider to have unpaid lesson fees, 990 needs them to have none while still holding a
 // cancellation fee — and a spec file gets exactly one barn per project. So 990 arranges its own
 // state: it collects the rider's only unpaid lesson fee before asserting. It is declared last,
-// but nothing here depends on that: both tests are standalone-safe under a bare --grep. 987
-// never mutates, and 990 performs its own arrange regardless of what ran before it, so neither
-// is the failing-when-run-alone control #1320's ledger documents. Declaration order is
-// belt-and-braces, not load-bearing.
+// but nothing here depends on that, and that is the property worth checking rather than the
+// ordering: both tests are standalone-safe under a bare --grep. 987 never mutates, and 990
+// performs its own arrange regardless of what ran before it — each Playwright job re-seeds its
+// own barn in beforeAll whichever tests the grep selected — so neither can pass only by virtue
+// of running in file order. Declaration order is belt-and-braces, not load-bearing.
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addHorse,
@@ -209,8 +210,10 @@ async function outstandingRows(page: Page): Promise<OutstandingRow[]> {
 
 /**
  * The links of the rows of one Type, sorted. Sorted rather than in DOM order because the claim
- * is membership: the page sorts by date and #1286 is still moving ORDER BY around underneath
- * these readers, so a set comparison is correct either side of it.
+ * is membership, not order: `mergeOutstandingItems` interleaves three readers by date, so the
+ * position of any one row is a function of the other two kinds' fixtures rather than of anything
+ * these lines assert. #1286 has landed on this base, so the readers under this page are ordered
+ * — a set comparison is right regardless, and stays right if that ordering changes again.
  */
 function linksOfType(rows: OutstandingRow[], type: string): string[] {
   return rows.filter((row) => row.type === type).map((row) => row.link ?? '').sort()
