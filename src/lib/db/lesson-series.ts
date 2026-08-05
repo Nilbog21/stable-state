@@ -26,7 +26,7 @@ export async function createLessonSeries(params: {
   const supabase = client ?? await createClient()
   // p_instructor_cut is deliberately unpassed (#1154): the RPC ignores it and re-derives the
   // cut server-side (#776), and its DEFAULT 0 lets us stop sending it without a signature
-  // change. Why the signature itself stays: docs/architecture/rpc.md.
+  // change. Why the signature itself stays: docs/architecture/rpc/lessons.md.
   const { data, error } = await supabase.rpc('create_lesson_series_with_participants', {
     p_barn_id: params.barnId,
     p_instructor_id: params.instructorId,

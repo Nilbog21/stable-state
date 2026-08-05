@@ -24,7 +24,7 @@ Check Supabase migration status, rename pending migrations to the current timest
 
    - **If every remote-only version is present there:** say so, then ask: **"Type 'merge' to merge `origin/{base}` into this branch, or anything else to abort:"**. On anything other than `merge`, stop. On `merge`:
      1. `git merge origin/{base}` (a merge, not a rebase, so no force-push is needed).
-     2. Resolve conflicts. Expect them wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions.
+     2. Resolve conflicts. Expect them wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/**/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions.
      3. Commit the merge (`git commit --no-edit`, or `git commit` with the resolved conflicts staged). Don't gate the commit on local `npx vitest run` / `bash scripts/check-coverage.sh` / `npm run lint` runs — CI runs all three on the next push, and for a conflict resolution that wait is cheaper than re-running the suite locally.
      4. Re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
    - **If any remote-only version is absent from the base branch:** **stop immediately** and report the two sets separately, so the user can see how much of it a merge would have handled:
@@ -46,7 +46,7 @@ Check Supabase migration status, rename pending migrations to the current timest
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second
    - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S` — this is GNU date; the BSD/macOS equivalent is `date -u -r {epoch} +%Y%m%d%H%M%S`
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
-   - After **all** renames are done, sweep the repo for references to each old filename and rewrite it to the new one. A pending migration's header comment often cites a sibling that was renamed in the same batch, and `docs/architecture/*.md` cite migration filenames too, so this is repo-wide rather than confined to `supabase/migrations/`:
+   - After **all** renames are done, sweep the repo for references to each old filename and rewrite it to the new one. A pending migration's header comment often cites a sibling that was renamed in the same batch, and `docs/architecture/**/*.md` cite migration filenames too, so this is repo-wide rather than confined to `supabase/migrations/`:
      ```
      git grep -lz --untracked --fixed-strings '{old}' | xargs -0 -r sed -i 's/{old}/{new}/g'
      ```
@@ -61,7 +61,7 @@ Check Supabase migration status, rename pending migrations to the current timest
      20260623004100_add_index.sql    → 20260625002302_add_index.sql
 
    Updated references:
-     docs/architecture/rpc.md
+     docs/architecture/rpc/lessons.md
      supabase/migrations/20260625002302_add_index.sql
    ```
    Omit the `Updated references:` block entirely when the sweep rewrote nothing.

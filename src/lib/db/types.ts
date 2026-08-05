@@ -300,7 +300,7 @@ export interface ScheduleItem {
   id: string
   itemType: ScheduleItemType
   /** Barn-local wall clock "YYYY-MM-DDTHH:mm:ss" — NOT a UTC instant. Do not pass
-   *  through new Date()/a barn formatter for display; see dal.md's schedule.ts entry. */
+   *  through new Date()/a barn formatter for display; see docs/architecture/dal/schedule.md. */
   start: string
   durationMinutes: number
   instructorId: string | null
