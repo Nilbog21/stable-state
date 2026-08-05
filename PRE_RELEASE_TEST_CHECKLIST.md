@@ -901,12 +901,12 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_sees_contact_info_on_a_riders_detail_page) Blake's (a rider's) detail page likewise shows their **Contact Info** section
 - [ ] (e2e: trainer_sees_no_documents_section_on_a_riders_detail_page) (#779) Blake's detail page shows no Documents section — #779 narrowed rider-document access to manager/self only
 - [ ] (e2e: trainer_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
-- [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
-- [ ] (e2e-candidate) That page also lists any uncollected cancellation fees for lessons you instruct
+- [ ] (e2e: trainer_outstanding_lists_only_the_lessons_they_instruct) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] (e2e: trainer_outstanding_lists_uncollected_cancellation_fees_for_lessons_they_instruct) That page also lists any uncollected cancellation fees for lessons you instruct
 - [ ] (e2e: trainer_dashboard_day_view_shows_only_lessons_they_instruct) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] (e2e: trainer_dashboard_week_view_shows_only_lessons_they_instruct_across_the_week) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
-- [ ] (e2e-candidate) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
-- [ ] (e2e-candidate) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
+- [ ] (e2e: trainer_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
+- [ ] (e2e: trainer_unpaid_lessons_card_navigates_to_the_outstanding_page) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
@@ -982,14 +982,14 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) The rest of the lesson — other riders in a group lesson included — is unaffected by that cancellation
 - [ ] (e2e-candidate) The instructor receives a "Lesson participation cancelled" notification (verify the `notifications` row directly, as in Phase 5 — the recipient is a different persona; an e2e run reads the row with its own service client)
 - [ ] (e2e: rider_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
-- [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
-- [ ] (e2e-candidate) That page also shows her own outstanding lease/boarding charges, if any are past due
-- [ ] (e2e-candidate) That page also shows her own uncollected late-cancellation fees
-- [ ] (e2e-candidate) That page has a Type column, with no entries for other riders' agreements
-- [ ] (e2e-candidate) With unpaid lessons, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
-- [ ] (e2e-candidate) With unpaid leases/boarding, that section also carries an "N unpaid leases/boarding" card
-- [ ] (e2e-candidate) Each of those cards links to `/barn/dev-barn/finances/outstanding` — Dana's only nav path to that page, since the nav carries no Finances link
-- [ ] (e2e-candidate) (#938) With an outstanding late-cancellation fee but zero unpaid lesson fees, the Dashboard's "N unpaid lessons" card still appears (its count includes the cancellation fee) instead of being hidden
+- [ ] (e2e: rider_outstanding_lists_only_their_own_lessons) `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
+- [ ] (e2e: rider_outstanding_lists_their_own_past_due_lease_and_boarding_charges) That page also shows her own outstanding lease/boarding charges, if any are past due
+- [ ] (e2e: rider_outstanding_lists_their_own_uncollected_late_cancellation_fee) That page also shows her own uncollected late-cancellation fees
+- [ ] (e2e: rider_outstanding_type_column_carries_no_other_riders_agreements) That page has a Type column, with no entries for other riders' agreements
+- [ ] (e2e: rider_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
+- [ ] (e2e: rider_dashboard_reminders_carries_an_unpaid_leases_boarding_card) With unpaid leases/boarding, that section also carries an "N unpaid leases/boarding" card
+- [ ] (e2e: rider_reminder_cards_link_to_the_outstanding_page) Each of those cards links to `/barn/dev-barn/finances/outstanding` — Dana's only nav path to that page, since the nav carries no Finances link
+- [ ] (e2e: rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outstanding) (#938) With an outstanding late-cancellation fee but zero unpaid lesson fees, the Dashboard's "N unpaid lessons" card still appears (its count includes the cancellation fee) instead of being hidden
 - [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) For a rider with nothing outstanding of their own, the Dashboard shows no **Reminders** header at all — even while the barn holds unpaid items belonging to *another* rider, which proves the reminders query is rider-scoped rather than merely empty (Dana has her own unpaid items by this point, so verify as a rider who does not — the e2e run seeds exactly that pair)
 - [ ] (e2e: members_page_lists_all_four_roster_sections) `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders)
 - [ ] (e2e: members_page_shows_no_add_member_forms_to_a_non_manager) That page shows no **Add Trainer**/**Add Rider** forms
