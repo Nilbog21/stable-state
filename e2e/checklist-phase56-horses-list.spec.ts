@@ -256,6 +256,14 @@ test('rider_owned_horse_card_carries_a_status_badge @rider', async ({ page }) =>
 })
 
 // The rider's half of the same scoped-absence claim — see the trainer's comment above.
+//
+// Read the expected set carefully before concluding this test contradicts its checklist line.
+// Line 941 says "Clover no longer appears under Available/Unavailable" and CLOVER is in the
+// expected-*present* set here — but those are two different horses. The line's Clover is the
+// one the rider owns in the manual dev-barn walkthrough; this file's CLOVER is the *trainer's*
+// subject, which the rider does not own and therefore should see, exactly like any other barn
+// horse. The horse this line is about is WILLOW, and its absence is what the comparison
+// asserts. See the header's "Why the rider's subject horse is not called Clover".
 test('rider_owned_horse_is_absent_from_available_and_unavailable @rider', async ({ page }) => {
   await page.goto(horsesPath())
   expect(await availableAndUnavailableHrefs(page)).toEqual(
