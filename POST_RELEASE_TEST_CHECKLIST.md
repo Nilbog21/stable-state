@@ -7,7 +7,15 @@ Manual verification of the checks that **cannot** be run before release. Run aga
 - **Release:** once the release merge has deployed and **before** the `vN.0.0` tag is cut. This is the release's production smoke test, and the tag waits on it.
 - **Patch:** **after** the `vN.0.x` tag, since a patch auto-tags on merge and so has no pre-tag window.
 
-Everything else lives in [`PRE_RELEASE_TEST_CHECKLIST.md`](PRE_RELEASE_TEST_CHECKLIST.md). A check belongs here only if no local or Vercel-preview setup can produce it — Vercel preview auth-gates non-team viewers, localhost isn't reachable off-machine, and a second personal Google account isn't a genuinely different user. A check that only needs a *fresh or unauthenticated* session is **not** one of these: incognito covers that, and those stay in PRE.
+Everything else lives in [`PRE_RELEASE_TEST_CHECKLIST.md`](PRE_RELEASE_TEST_CHECKLIST.md). A check belongs here only if no local or Vercel-preview setup can produce it — Vercel preview auth-gates non-team viewers, localhost isn't reachable off-machine, and a second personal Google account isn't a genuinely different user. Concretely, it must clear one of these bars:
+
+- **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a claimed member who isn't you (`change-user.sh` never links `profiles.user_id`, so locally your own account is the only self-write you can test). A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
+- **Auth/session behavior** only prod's real OAuth configuration exercises
+- **Payment or money-moving RPCs**
+- **Demo, cron, or prod-config behavior**
+- **A class of prior production incident** worth re-checking every release
+
+When a PR adds or modifies a feature clearing one of those bars, it updates the relevant section of this file in the same PR — the first bar is served by the "Cross-identity checks" section, the remaining four by the smoke-test section, landing in #1080.
 
 Paths below are relative — prepend the prod origin.
 
