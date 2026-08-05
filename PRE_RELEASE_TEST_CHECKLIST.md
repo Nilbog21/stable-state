@@ -874,9 +874,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e-candidate) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
-- [ ] (e2e-candidate) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
-- [ ] (e2e-candidate) (#1000) Clover's card in that section carries a status badge
-- [ ] (e2e-candidate) (#1000) Clover no longer appears under Available/Unavailable
+- [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
+- [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
+- [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
 - [ ] (e2e-candidate) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo
 - [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
 - [ ] (e2e-candidate) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a non-manager
@@ -922,10 +922,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Nav shows the **full 4-link rider nav** (Lessons, Horses, Members, Guide) alongside the barn name
 - [ ] (e2e-candidate) That nav shows **no Leases, no Boarding, no Expenses**
 - [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
-- [ ] (e2e-candidate) Horses page shows Available/Unavailable cards carrying the name (and unavailability reason) only
-- [ ] (e2e-candidate) No exhaustion bar appears on those cards
-- [ ] (e2e-candidate) No Inactive section appears on that page
-- [ ] (e2e-candidate) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
+- [ ] (e2e: rider_available_and_unavailable_cards_carry_only_name_and_reason) Horses page shows Available/Unavailable cards carrying the name (and unavailability reason) only
+- [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards
+- [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
+- [ ] (e2e: rider_tapping_an_available_card_opens_the_horse_detail_page) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
 - [ ] (e2e-candidate) Butter's detail page (Dana does **not** own her) displays her seeded photo
 - [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
 - [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead
@@ -936,9 +936,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e-candidate) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e-candidate) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
-- [ ] (e2e-candidate) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
-- [ ] (e2e-candidate) (#1000) Clover's card in that section carries a status badge
-- [ ] (e2e-candidate) (#1000) Clover no longer appears under Available/Unavailable
+- [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
+- [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
+- [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
 - [ ] (e2e-candidate) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
 - [ ] (e2e-candidate) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
 - [ ] (e2e-candidate) (#1003) That photo then displays on Clover's detail page
