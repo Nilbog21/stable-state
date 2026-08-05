@@ -76,7 +76,7 @@ export default async function BarnDashboardPage({
         membership.role === 'manager' ? getDueDocuments(barn.id, todayStr) : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),
-        getOutstandingCharges(barn.id, user.id, membership.role),
+        getOutstandingCharges(barn.id, barn.timezone, user.id, membership.role),
       ])
 
       const scopedItems = scopeScheduleItemsForRole(scheduleItems, membership.role, membership.id)

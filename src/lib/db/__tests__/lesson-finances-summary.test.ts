@@ -37,11 +37,14 @@ describe('getFinancialSummary', () => {
 
   const startDate = new Date('2026-05-01T00:00:00Z')
   const endDate = new Date('2026-06-01T00:00:00Z')
+  // Every zone the barn picker offers is behind UTC; New York is the shallowest at 4-5h,
+  // so a boundary this zone gets right is one every other BARN_TIMEZONES entry gets right too.
+  const TZ = 'America/New_York'
 
   it('should_return_zero_collected_income_when_no_lessons', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.collectedIncome).toBe(0)
   })
@@ -49,7 +52,7 @@ describe('getFinancialSummary', () => {
   it('should_return_empty_breakdown_when_no_lessons', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown).toEqual([])
   })
@@ -60,7 +63,7 @@ describe('getFinancialSummary', () => {
       { lessonId: 'lesson-2', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-19T10:00:00Z', tierName: 'Custom' },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.collectedIncome).toBe(150)
   })
@@ -75,7 +78,7 @@ describe('getFinancialSummary', () => {
       { name: 'Basic', price: 50 },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown.map((b) => b.tierName)).toEqual(['Basic', 'Standard'])
   })
@@ -86,7 +89,7 @@ describe('getFinancialSummary', () => {
       { lessonId: 'lesson-3', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-19T10:00:00Z', tierName: 'Custom' },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.collectedIncome).toBe(150)
   })
@@ -94,7 +97,7 @@ describe('getFinancialSummary', () => {
   it('should_call_getLessonFeeRows_with_barn_and_date_range', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
 
-    await getFinancialSummary('barn-1', startDate, endDate)
+    await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(getLessonFeeRows).toHaveBeenCalledWith('barn-1', startDate, endDate, expect.anything())
   })
@@ -110,7 +113,7 @@ describe('getFinancialSummary', () => {
       { name: 'Premium', price: 100 },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown).toEqual([
       { tierName: 'Basic', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 0 },
@@ -125,7 +128,7 @@ describe('getFinancialSummary', () => {
     ])
     vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown).toHaveLength(1)
   })
@@ -135,7 +138,7 @@ describe('getFinancialSummary', () => {
       { lessonId: 'lesson-1', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown[0].price).toBeNull()
   })
@@ -145,7 +148,7 @@ describe('getFinancialSummary', () => {
       { lessonId: 'lesson-1', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' },
     ])
 
-    await getFinancialSummary('barn-1', startDate, endDate)
+    await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(getTierPricesByNames).not.toHaveBeenCalled()
   })
@@ -156,7 +159,7 @@ describe('getFinancialSummary', () => {
     ])
     vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Premium', price: 100 }])
 
-    await getFinancialSummary('barn-1', startDate, endDate)
+    await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(getTierPricesByNames).toHaveBeenCalledWith('barn-1', ['Premium'], expect.anything())
   })
@@ -167,7 +170,7 @@ describe('getFinancialSummary', () => {
     ])
     vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Premium', price: 100 }])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown[0].price).toBe(100)
   })
@@ -178,7 +181,7 @@ describe('getFinancialSummary', () => {
     ])
     vi.mocked(getTierPricesByNames).mockResolvedValue([])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown[0].price).toBeNull()
   })
@@ -186,7 +189,7 @@ describe('getFinancialSummary', () => {
   it('should_throw_when_lessons_query_fails', async () => {
     vi.mocked(getLessonFeeRows).mockRejectedValue(new Error('db error'))
 
-    await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('db error')
+    await expect(getFinancialSummary('barn-1', startDate, endDate, TZ)).rejects.toThrow('db error')
   })
 
   it('should_default_to_custom_tier_when_tier_name_is_falsy', async () => {
@@ -194,7 +197,7 @@ describe('getFinancialSummary', () => {
       { lessonId: 'lesson-1', fee: 80, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-10T10:00:00Z', tierName: '' },
     ])
 
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
+    const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
     expect(result.breakdown[0].tierName).toBe('Custom')
   })
@@ -205,7 +208,7 @@ describe('getFinancialSummary', () => {
     ])
     vi.mocked(getTierPricesByNames).mockRejectedValue(new Error('tiers error'))
 
-    await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('tiers error')
+    await expect(getFinancialSummary('barn-1', startDate, endDate, TZ)).rejects.toThrow('tiers error')
   })
 
   describe('collected and pending income classification', () => {
@@ -216,7 +219,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-06-10T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(75)
     })
@@ -228,7 +231,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 75, instructorCut: 0, collected: true, instructorId: 'mem-1', occurredAt: '2026-06-10T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(0)
     })
@@ -240,7 +243,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 60, instructorCut: 0, collected: false, instructorId: 'mem-1', occurredAt: '2026-06-20T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(60)
     })
@@ -252,7 +255,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 60, instructorCut: 0, collected: false, instructorId: 'mem-1', occurredAt: '2026-06-10T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(0)
     })
@@ -267,7 +270,7 @@ describe('getFinancialSummary', () => {
     it('should_call_getChargesForSummary_with_barn_and_date_range', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
 
-      await getFinancialSummary('barn-1', startDate, endDate)
+      await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(getChargesForSummary).toHaveBeenCalledWith('barn-1', startDate, endDate, expect.anything())
     })
@@ -279,7 +282,7 @@ describe('getFinancialSummary', () => {
         { period: calendarDate('2026-05-01'), fee: 200, payment_type: 'cash' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(500)
     })
@@ -288,7 +291,7 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 150, payment_type: null }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(150)
     })
@@ -298,16 +301,51 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 150, payment_type: null }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(0)
+    })
+
+    it('should_still_count_july_charges_as_pending_on_the_last_evening_of_july_in_new_york', async () => {
+      // 23:00 UTC on Jul 31 is 19:00 on Jul 31 in New York — the barn is still in July,
+      // so a July charge is current-month pending income, not a past-due one.
+      vi.setSystemTime(new Date('2026-07-31T23:00:00Z'))
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-07-01'), fee: 150, payment_type: null }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
+
+      expect(result.pendingIncome).toBe(150)
+    })
+
+    it('should_drop_july_charges_from_pending_income_once_the_barns_own_month_has_turned', async () => {
+      // 05:00 UTC on Aug 1 is 01:00 on Aug 1 in New York — the barn is in August now.
+      vi.setSystemTime(new Date('2026-08-01T05:00:00Z'))
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-07-01'), fee: 150, payment_type: null }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
+
+      expect(result.pendingIncome).toBe(0)
+    })
+
+    it('should_use_the_barns_own_zone_rather_than_the_server_host_utc_month', async () => {
+      // Same instant as the New York case above, ten hours further west: Honolulu is
+      // still on Jul 31 at 13:00, so July must still be its current month.
+      vi.setSystemTime(new Date('2026-07-31T23:00:00Z'))
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-07-01'), fee: 150, payment_type: null }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 'Pacific/Honolulu')
+
+      expect(result.pendingIncome).toBe(150)
     })
 
     it('should_append_non_lesson_income_row_when_charges_are_collected', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 300, payment_type: 'venmo' }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown).toContainEqual({
         tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0,
@@ -320,7 +358,7 @@ describe('getFinancialSummary', () => {
       ])
       vi.mocked(getChargesForSummary).mockResolvedValue([])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown.some((b) => b.tierName === NON_LESSON_INCOME_LABEL)).toBe(false)
     })
@@ -332,7 +370,7 @@ describe('getFinancialSummary', () => {
         { period: calendarDate('2026-05-01'), fee: 150, payment_type: null },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown).toContainEqual({
         tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0,
@@ -343,7 +381,7 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockRejectedValue(new Error('charges error'))
 
-      await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
+      await expect(getFinancialSummary('barn-1', startDate, endDate, TZ)).rejects.toThrow('charges error')
     })
   })
 
@@ -353,7 +391,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 75, instructorCut: 25, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-19T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(50)
     })
@@ -365,7 +403,7 @@ describe('getFinancialSummary', () => {
       ])
       vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown[0].subtotal).toBe(100)
     })
@@ -377,7 +415,7 @@ describe('getFinancialSummary', () => {
       ])
       vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown[0].instructorCut).toBe(50)
     })
@@ -389,7 +427,7 @@ describe('getFinancialSummary', () => {
       ])
       vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown[0].instructorCut).toBe(35)
     })
@@ -398,7 +436,7 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 300, payment_type: 'venmo' }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown.find((b) => b.tierName === NON_LESSON_INCOME_LABEL)?.instructorCut).toBe(0)
     })
@@ -407,7 +445,7 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 300, payment_type: 'venmo' }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(300)
     })
@@ -419,7 +457,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 60, instructorCut: 25, collected: false, instructorId: 'mem-1', occurredAt: '2026-06-20T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.pendingIncome).toBe(35)
     })
@@ -429,7 +467,7 @@ describe('getFinancialSummary', () => {
         { lessonId: 'lesson-1', fee: 0, instructorCut: 25, collected: true, instructorId: 'mem-1', occurredAt: '2026-05-19T10:00:00Z', tierName: 'Custom' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(-25)
     })
@@ -441,7 +479,7 @@ describe('getFinancialSummary', () => {
       ])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: calendarDate('2026-05-01'), fee: 300, payment_type: 'venmo' }])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       const breakdownTotal = result.breakdown.reduce((sum, b) => sum + b.subtotal, 0)
       expect(breakdownTotal).toBe(result.collectedIncome)
@@ -455,7 +493,7 @@ describe('getFinancialSummary', () => {
         { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown).toContainEqual({ tierName: 'Premium', price: 100, lessonCount: 0, subtotal: 0, instructorCut: 0 })
     })
@@ -469,7 +507,7 @@ describe('getFinancialSummary', () => {
         { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown.filter((b) => b.tierName === 'Premium')).toHaveLength(1)
     })
@@ -483,7 +521,7 @@ describe('getFinancialSummary', () => {
         { id: 'tier-1', barn_id: 'barn-1', name: 'Alpha', price: 40, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown.map((b) => b.tierName)).toEqual(['Alpha', 'Zeta'])
     })
@@ -495,7 +533,7 @@ describe('getFinancialSummary', () => {
         { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.breakdown[result.breakdown.length - 1].tierName).toBe(NON_LESSON_INCOME_LABEL)
     })
@@ -508,7 +546,7 @@ describe('getFinancialSummary', () => {
         { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
       ])
 
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
+      const result = await getFinancialSummary('barn-1', startDate, endDate, TZ)
 
       expect(result.collectedIncome).toBe(75)
     })
@@ -517,7 +555,7 @@ describe('getFinancialSummary', () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getTiersByBarn).mockRejectedValue(new Error('tiers error'))
 
-      await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('tiers error')
+      await expect(getFinancialSummary('barn-1', startDate, endDate, TZ)).rejects.toThrow('tiers error')
     })
   })
 })
