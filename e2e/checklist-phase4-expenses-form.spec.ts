@@ -383,10 +383,10 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn }) => {
   })
 
   // monthsAgo: 0 rather than a day offset, matching the idiom every month-scoped Finances spec
-  // already uses: it is UTC-framed, which is the frame resolveFinancesMonth buckets in, and it
-  // is the only reachable month here — resolveFinancesMonth clamps the requested month up to
-  // the barn's own created_at month, and withBarn does not backdate that, so a monthsAgo: 1
-  // fixture could never be navigated to.
+  // already uses: it is barn-framed (#1360), which is the frame resolveFinancesMonth buckets
+  // in, and it is the only reachable month here — resolveFinancesMonth clamps the requested
+  // month up to the barn's own created_at month, and withBarn does not backdate that, so a
+  // monthsAgo: 1 fixture could never be navigated to.
   //
   // The explicit time is what pins the day: with expense_time null the RPC derives occurred_at
   // as midnight UTC of expense_date, which decodes to the *previous* day in a barn west of UTC
@@ -429,7 +429,7 @@ function newExpensePath(): string {
 
 /** The By Horse breakdown for the month the delete chain's fixtures sit in. */
 function financesByHorsePath(): string {
-  return `/barn/${barn.slug}/finances?month=${formatMonthParam(monthAnchor(0))}&tab=horse`
+  return `/barn/${barn.slug}/finances?month=${formatMonthParam(monthAnchor(0, barn.data.barn.timezone))}&tab=horse`
 }
 
 /** Nth line of a card, 1-based, matching ExpenseCard's four <p> children. */

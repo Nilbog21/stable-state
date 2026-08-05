@@ -59,7 +59,7 @@ const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, membe
   // creates this barn *now* — without backdating, the previous month the month-param check
   // navigates to isn't reachable at all.
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -80,7 +80,7 @@ const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, membe
   // teeth — that page concatenates its lesson rows *before* its charge rows and sorts after,
   // so an unsorted table would come out 15th, 1st, 1st. Nothing here is filtered on `< now`,
   // so a day-15 anchor still in the future is fine.
-  const thisMonth = { at: monthAnchor(0) }
+  const thisMonth = { at: monthAnchor(0, barn.timezone) }
 
   await addPaidLesson(supabase, barn, {
     ...lessonDefaults,
@@ -144,16 +144,17 @@ const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, membe
 /**
  * Both month params are derived from the same monthAnchor the fixtures are placed by, rather
  * than from `new Date()` — a param computed from the raw clock can disagree with the month a
- * fixture actually landed in if a UTC month rolls over between the two calls. (Both sides are
- * UTC-framed since #1151, so that rollover race is all that's left; it used to be a window
- * |UTC offset| hours wide.)
+ * fixture actually landed in if a month rolls over between the two calls. (Both sides resolve
+ * through `barnToday` since #1360, so that rollover race is all that's left; a host-UTC param
+ * would instead disagree for the whole 4-5 hours each month between UTC's rollover and the
+ * barn's.)
  */
 function currentMonth(): string {
-  return formatMonthParam(monthAnchor(0))
+  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
 }
 
 function previousMonth(): string {
-  return formatMonthParam(monthAnchor(1))
+  return formatMonthParam(monthAnchor(1, barn.data.barn.timezone))
 }
 
 /** finances/page.tsx resolves its default month from the server clock, so never rely on it. */

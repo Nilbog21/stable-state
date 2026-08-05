@@ -88,7 +88,7 @@ const barn = withBarn('phase4-finances-outstanding', async ({ supabase, barn, me
   // own creation month, and withBarn creates this barn *now* — so without backdating,
   // Finances has no reachable previous month and the `←` control never renders at all.
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -208,14 +208,18 @@ const barn = withBarn('phase4-finances-outstanding', async ({ supabase, barn, me
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+/**
+ * Both derived from the same barn-framed anchor the fixtures are placed by, never from the
+ * raw clock: finances/page.tsx resolves its default month through `barnToday` (#1360), so a
+ * param computed in the host's UTC names next month — and gets clamped back down to the
+ * barn's — for the hours each month after UTC rolls over and the barn hasn't.
+ */
 function currentMonth(): string {
-  return formatMonthParam(new Date())
+  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
 }
 
 function previousMonth(): string {
-  const now = new Date()
-  return formatMonthParam(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)))
+  return formatMonthParam(monthAnchor(1, barn.data.barn.timezone))
 }
 
 function financesUrl(month = currentMonth()): string {

@@ -69,7 +69,7 @@ const barn = withBarn('phase4-finances-by-paid-to', async ({ supabase, barn }) =
   // Day 15 rather than pastInstantInMonth(0): a mid-month anchor cannot drift into an
   // adjacent month when the suite runs near a boundary, and nothing on this tab is filtered
   // on `< now`, so an anchor still a few days in the future is fine.
-  const thisMonth = { at: monthAnchor(0) }
+  const thisMonth = { at: monthAnchor(0, barn.timezone) }
   const forApollo = { horseIds: [horse.id] }
 
   await addExpense(supabase, barn, { ...thisMonth, ...forApollo, recipient: ACE, expenseType: 'Feed', amount: ACE_EXPENSE })
@@ -111,11 +111,12 @@ const barn = withBarn('phase4-finances-by-paid-to', async ({ supabase, barn }) =
 /**
  * Derived from the same monthAnchor the fixtures are placed by, not from the raw clock — a
  * param computed independently can disagree with the month a fixture actually landed in if a
- * UTC month rolls over between the two calls. (Both sides are UTC-framed since #1151, so that
- * rollover race is all that's left; it used to be a window |UTC offset| hours wide.)
+ * month rolls over between the two calls. (Both sides resolve through `barnToday` since
+ * #1360, so that rollover race is all that's left; a host-UTC param would instead disagree
+ * for the whole 4-5 hours each month between UTC's rollover and the barn's.)
  */
 function currentMonth(): string {
-  return formatMonthParam(monthAnchor(0))
+  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
 }
 
 /** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
@@ -342,7 +343,7 @@ test('by_paid_to_total_combines_a_second_expense_for_the_same_recipient @manager
   const before = await expensesCell(page, BRIGHT)
 
   const added = await addExpense(barn.data.supabase, barn.data.barn, {
-    at: monthAnchor(0),
+    at: monthAnchor(0, barn.data.barn.timezone),
     recipient: BRIGHT,
     expenseType: 'Feed',
     amount: BRIGHT_SECOND_EXPENSE,

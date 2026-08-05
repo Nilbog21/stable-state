@@ -182,8 +182,8 @@ const barn = withBarn('phase56-dashboard', async ({ supabase, barn, members }) =
   // The rider's `visible_to_roles` pair. The all-roles event is the control: without it, "the
   // staff event is absent" would pass just as happily against a calendar rendering no events
   // at all, or against a locator pointing nowhere.
-  await addBarnEvent(supabase, barn.id, { at: barnNoon(BUSY_DAY), title: OPEN_EVENT_TITLE })
-  await addBarnEvent(supabase, barn.id, {
+  await addBarnEvent(supabase, barn, { at: barnNoon(BUSY_DAY), title: OPEN_EVENT_TITLE })
+  await addBarnEvent(supabase, barn, {
     at: barnNoon(BUSY_DAY),
     title: STAFF_EVENT_TITLE,
     visibleToRoles: ['manager', 'trainer'],

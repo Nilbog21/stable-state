@@ -35,19 +35,26 @@ const APOLLO_EXPENSE = 40
 const ORPHAN_EXPENSE = 35
 
 /**
- * The month this file works in, and the `?month=` param naming it — both derived from one
- * Date on purpose. Deriving them independently from `new Date()` would let them name
- * *different* months if a month rolled over between the two calls: the seed would land in one
- * month while every navigation asked for another, and each tab would render its EmptyState
- * instead of a table. `monthAnchor` and `formatMonthParam` are both UTC-framed (#1151), so
- * the param can be read straight off the anchor.
+ * The month this file works in, and the `?month=` param naming it — both read off one anchor
+ * on purpose. Deriving them independently from `new Date()` would let them name *different*
+ * months if a month rolled over between the two calls: the seed would land in one month while
+ * every navigation asked for another, and each tab would render its EmptyState instead of a
+ * table. Since #1360 the anchor is barn-framed, which is also the frame resolveFinancesMonth
+ * resolves "now" in, so the param can be read straight off it.
+ *
+ * Functions rather than module constants: `barn.data` throws on a module-scope read (see
+ * support/test.ts), so anything derived from the barn is evaluated at test time.
  *
  * A past month rather than the current one, per the same anchor's doc: day 15 of a finished
- * month is unambiguously inside it however the barn's timezone decodes the instant, whereas
- * `monthsAgo: 0` is placed relative to "now" and can decode to the previous calendar day.
+ * month is unambiguously inside it however the barn's timezone decodes the instant.
  */
-const WORKING_MONTH_ANCHOR = monthAnchor(1)
-const WORKING_MONTH = formatMonthParam(WORKING_MONTH_ANCHOR)
+function workingMonthAnchor(timezone: string): Date {
+  return monthAnchor(1, timezone)
+}
+
+function workingMonth(): string {
+  return formatMonthParam(workingMonthAnchor(barn.data.barn.timezone))
+}
 
 // Footer cells sit to the right of the label cell, which spans one column (labelColSpan={1}).
 const GROSS_COL = 1
@@ -70,7 +77,7 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   // explicit ?month= included, and withBarn creates this barn now — without backdating, every
   // previous-month navigation below would silently resolve to this month instead.
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -84,7 +91,7 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   const apollo = await addHorse(supabase, barn.id, 'Apollo')
   const bella = await addHorse(supabase, barn.id, 'Bella')
 
-  const lastMonth = WORKING_MONTH_ANCHOR
+  const lastMonth = workingMonthAnchor(barn.timezone)
   const lessonDefaults = { at: lastMonth, instructorId: members.trainer.membershipId, tierName: tier.name }
 
   // Paid, not merely booked: every income breakdown counts collected rows only. Seeding
@@ -213,7 +220,7 @@ async function requireLedgerRow(state: 'attached' | 'orphaned'): Promise<void> {
 
 /** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
 function financesUrl(tab: Tab): string {
-  return `/barn/${barn.slug}/finances?month=${WORKING_MONTH}&tab=${tab}`
+  return `/barn/${barn.slug}/finances?month=${workingMonth()}&tab=${tab}`
 }
 
 /**

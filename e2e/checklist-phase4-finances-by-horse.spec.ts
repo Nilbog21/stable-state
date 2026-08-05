@@ -50,7 +50,7 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
   // backdating, the previous-month check below would silently resolve to this month and
   // pass against the wrong table.
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -67,10 +67,11 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
   const willow = await addHorse(supabase, barn.id, 'Willow')
   const dancer = await addHorse(supabase, barn.id, 'Dancer')
 
-  // monthAnchor(0) — day 15 — rather than `monthsAgo: 0`, whose "an hour ago" instant can
-  // decode to the previous calendar day in the barn's timezone when the suite runs in the
-  // first hours of a month, putting an expense in a month this file never looks at.
-  const thisMonth = monthAnchor(0)
+  // monthAnchor(0) — day 15 — rather than `monthsAgo: 0`: both are barn-framed since #1360,
+  // but only day 15 is far enough from either boundary that a fixture's own decoding (an
+  // expense reads as a barn-local calendar day, a lesson as an instant) can't shift which
+  // day it lands on at all.
+  const thisMonth = monthAnchor(0, barn.timezone)
   const lessonDefaults = {
     at: thisMonth,
     instructorId: members.trainer.membershipId,
@@ -87,7 +88,7 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
   // its absence from this month's — is entirely this lesson's doing.
   await addPaidLesson(supabase, barn, {
     ...lessonDefaults,
-    at: monthAnchor(1),
+    at: monthAnchor(1, barn.timezone),
     horseIds: [dancer.id],
     fee: DANCER_FEE,
   })
@@ -138,14 +139,18 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+/**
+ * Both derived from the same barn-framed anchor the fixtures are placed by, never from the
+ * raw clock: finances/page.tsx resolves its default month through `barnToday` (#1360), so a
+ * param computed in the host's UTC names next month — and gets clamped back down to the
+ * barn's — for the hours each month after UTC rolls over and the barn hasn't.
+ */
 function currentMonth(): string {
-  return formatMonthParam(new Date())
+  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
 }
 
 function previousMonth(): string {
-  const now = new Date()
-  return formatMonthParam(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)))
+  return formatMonthParam(monthAnchor(1, barn.data.barn.timezone))
 }
 
 function financesUrl(month = currentMonth()): string {
@@ -273,7 +278,7 @@ test.describe.serial('adding an expense for a horse that already has a lesson', 
     baselineNet = parseMoney(await cellText(horseRow(page, seeded.apollo), NET_COL))
 
     addedExpense = await addExpense(barn.data.supabase, barn.data.barn, {
-      at: monthAnchor(0),
+      at: monthAnchor(0, barn.data.barn.timezone),
       recipient: 'Creek Vet',
       expenseType: 'Vet',
       amount: 45,
