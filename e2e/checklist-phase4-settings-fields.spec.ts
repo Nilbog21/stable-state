@@ -840,15 +840,18 @@ test.describe('Manage Barn — barn day versus device day', () => {
   // `playwright.config.ts` edit.
   test.use({ timezoneId: HAWAII })
 
-  // WHAT THESE SIX DO AND DO NOT COVER ON THE THIRD AXIS, measured rather than assumed. There
-  // are three zones in play, not two: the barn's, the device's, and the *host the Next server
-  // runs on*. The pin below separates the barn from the device, which is the axis these
-  // checklist lines are about. The third zone is **UTC**, not the developer machine's Eastern:
-  // `package.json`'s dev script is `TZ=UTC next dev` (#1221, `98aa03b5`), so only the shell is
-  // ever on `America/New_York` — the server process is not. #1252 measured that directly, a
-  // Server Component with the barn's zone dropped rendering `8:00 PM` for a 4:00 PM Eastern
-  // lesson (`checklist-phase4-barn-timezone.spec.ts`'s BARN_HOUR_DISPLAY note), and line 155
-  // above already names the host frame as UTC for the same reason.
+  // WHAT THESE SIX DO AND DO NOT COVER ON THE THIRD AXIS. There are three zones in play, not
+  // two: the barn's, the device's, and the *host the Next server runs on*. The pin below
+  // separates the barn from the device, which is the axis these checklist lines are about. The
+  // third zone is **UTC**, not the developer machine's Eastern — `package.json`'s dev script is
+  // `TZ=UTC next dev` (#1221, `98aa03b5`), so only the shell is ever on `America/New_York`, and
+  // the server process never inherits it. #1252 established that by observation and not by
+  // reading the script: a Server Component with the barn's zone dropped rendered `8:00 PM` for
+  // a 4:00 PM Eastern lesson. `8:00 PM` is the value UTC predicts and no other frame in play
+  // does, which `checklist-phase4-barn-timezone.spec.ts`'s BARN_HOUR_DISPLAY note derives —
+  // that note is the arithmetic, not a record of the probe, and the distinction is the whole
+  // reason this paragraph had to be rewritten. `DEVICE_INSTANT`'s own note above already names
+  // the host frame as UTC for the same reason.
   //
   // So the barn's day and the host's day are NOT equal by construction, and a regression that
   // read the host's clock instead of `barns.timezone` — precisely the one #1224 shipped once,
