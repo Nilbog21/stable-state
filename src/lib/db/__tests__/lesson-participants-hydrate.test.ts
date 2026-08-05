@@ -112,6 +112,96 @@ describe('hydrateParticipants', () => {
     expect(result.horse_ids).toEqual(['horse-1'])
   })
 
+  // #1286: horse_names/rider_names are rendered as a sequence by LessonListItem and
+  // CalendarLessonCard, and the junction queries that feed them carry only ids — the names
+  // arrive from resolveHorseNames/resolveMemberNames afterwards, so the sort happens on the
+  // resolved participants. Sorting the participant objects (not the name arrays) is what
+  // keeps horse_ids/rider_ids/rider_cancelled_ats positionally aligned with them.
+  it('should_order_horse_names_alphabetically', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-z', 'Zephyr'], ['horse-a', 'Apollo']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [
+        { lesson_id: lesson.id, horse_id: 'horse-z' },
+        { lesson_id: lesson.id, horse_id: 'horse-a' },
+      ],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.horse_names).toEqual(['Apollo', 'Zephyr'])
+  })
+
+  it('should_order_rider_names_alphabetically', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'Zoe Rider'], ['mem-a', 'Ada Rider']]))
+    const supabase = makeSupabase(
+      [],
+      [
+        { lesson_id: lesson.id, rider_id: 'mem-z', cancelled_at: null },
+        { lesson_id: lesson.id, rider_id: 'mem-a', cancelled_at: null },
+      ]
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.rider_names).toEqual(['Ada Rider', 'Zoe Rider'])
+  })
+
+  it('should_keep_rider_cancelled_ats_aligned_with_alphabetically_ordered_riders', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'Zoe Rider'], ['mem-a', 'Ada Rider']]))
+    const supabase = makeSupabase(
+      [],
+      [
+        { lesson_id: lesson.id, rider_id: 'mem-z', cancelled_at: '2026-03-05T00:00:00Z' },
+        { lesson_id: lesson.id, rider_id: 'mem-a', cancelled_at: null },
+      ]
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.rider_cancelled_ats).toEqual([null, '2026-03-05T00:00:00Z'])
+  })
+
+  it('should_break_a_horse_name_tie_on_horse_id', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-z', 'Duke'], ['horse-a', 'Duke']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [
+        { lesson_id: lesson.id, horse_id: 'horse-z' },
+        { lesson_id: lesson.id, horse_id: 'horse-a' },
+      ],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.horse_ids).toEqual(['horse-a', 'horse-z'])
+  })
+
+  it('should_break_a_rider_name_tie_on_membership_id', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'John Smith'], ['mem-a', 'John Smith']]))
+    const supabase = makeSupabase(
+      [],
+      [
+        { lesson_id: lesson.id, rider_id: 'mem-z', cancelled_at: null },
+        { lesson_id: lesson.id, rider_id: 'mem-a', cancelled_at: null },
+      ]
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.rider_ids).toEqual(['mem-a', 'mem-z'])
+  })
+
   it('should_filter_out_a_horse_when_the_name_map_has_no_entry_for_it', async () => {
     const lesson = createMockLesson({ instructor_id: null })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())

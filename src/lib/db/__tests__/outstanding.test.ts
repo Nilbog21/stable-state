@@ -88,6 +88,22 @@ describe('getOutstandingLessons', () => {
     expect(result[0].rider_names).toEqual(['Alice Rider'])
   })
 
+  // #1286: getLessonJunctionRows returns rider_id only, so the ordering can't come from
+  // that query — names are resolved here, and OutstandingTable renders them as a sequence.
+  it('should_order_rider_names_alphabetically', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
+    vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
+      { lesson_id: 'lesson-1', rider_id: 'mem-z' },
+      { lesson_id: 'lesson-1', rider_id: 'mem-a' },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'Zoe Rider'], ['mem-a', 'Ada Rider']]))
+
+    const result = await getOutstandingLessons('barn-1')
+
+    expect(result[0].rider_names).toEqual(['Ada Rider', 'Zoe Rider'])
+  })
+
   it('should_omit_rider_name_when_not_found_in_membership_map', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])

@@ -25,13 +25,17 @@ export type BarnDocuments = {
 export async function getAllBarnDocuments(barnId: string, client?: SupabaseClient): Promise<BarnDocuments> {
   const supabase = client ?? (await createClient())
 
-  const { data: horse, error: horseError } = await supabase.from('horse_documents').select('*').eq('barn_id', barnId)
+  // #1286: ordered because `buildBackupZipEntries` assigns its `-1`/`-2` collision suffixes
+  // in input order — two documents colliding on the same archive filename would otherwise
+  // swap suffixes between runs. `created_at` is also what the Documents backup sheet sorts
+  // on, so the zip and the spreadsheet agree.
+  const { data: horse, error: horseError } = await supabase.from('horse_documents').select('*').eq('barn_id', barnId).order('created_at')
   if (horseError) throw horseError
 
-  const { data: trainer, error: trainerError } = await supabase.from('staff_documents').select('*').eq('barn_id', barnId)
+  const { data: trainer, error: trainerError } = await supabase.from('staff_documents').select('*').eq('barn_id', barnId).order('created_at')
   if (trainerError) throw trainerError
 
-  const { data: rider, error: riderError } = await supabase.from('rider_documents').select('*').eq('barn_id', barnId)
+  const { data: rider, error: riderError } = await supabase.from('rider_documents').select('*').eq('barn_id', barnId).order('created_at')
   if (riderError) throw riderError
 
   return { horse: horse ?? [], trainer: trainer ?? [], rider: rider ?? [] }

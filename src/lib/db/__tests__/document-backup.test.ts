@@ -162,9 +162,10 @@ describe('buildBackupZipEntries', () => {
 
 describe('getAllBarnDocuments', () => {
   function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockEq = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect }
+    return { select: mockSelect, mockOrder }
   }
 
   function setupFrom({
@@ -178,13 +179,18 @@ describe('getAllBarnDocuments', () => {
     riderDocs?: unknown[] | null
     errors?: Partial<Record<'horse_documents' | 'staff_documents' | 'rider_documents', Error>>
   }) {
+    const chains = {
+      horse_documents: makeChain(horseDocs, errors.horse_documents ?? null),
+      staff_documents: makeChain(trainerDocs, errors.staff_documents ?? null),
+      rider_documents: makeChain(riderDocs, errors.rider_documents ?? null),
+    }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_documents') return makeChain(horseDocs, errors.horse_documents ?? null)
-      if (table === 'staff_documents') return makeChain(trainerDocs, errors.staff_documents ?? null)
-      if (table === 'rider_documents') return makeChain(riderDocs, errors.rider_documents ?? null)
-      throw new Error(`unexpected table ${table}`)
+      const chain = chains[table as keyof typeof chains]
+      if (!chain) throw new Error(`unexpected table ${table}`)
+      return chain
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    return chains
   }
 
   beforeEach(() => {
@@ -208,6 +214,33 @@ describe('getAllBarnDocuments', () => {
     const result = await getAllBarnDocuments('barn-1')
 
     expect(result).toEqual({ horse: [horseDoc], trainer: [trainerDoc], rider: [riderDoc] })
+  })
+
+  // #1286: buildBackupZipEntries assigns its -1/-2 collision suffixes in input order, so
+  // two same-named documents in one folder would otherwise swap suffixes between runs.
+  // created_at is the ordering the Documents backup sheet already reads as newest-first.
+  it('should_order_horse_documents_by_created_at', async () => {
+    const chains = setupFrom({})
+
+    await getAllBarnDocuments('barn-1')
+
+    expect(chains.horse_documents.mockOrder).toHaveBeenCalledWith('created_at')
+  })
+
+  it('should_order_staff_documents_by_created_at', async () => {
+    const chains = setupFrom({})
+
+    await getAllBarnDocuments('barn-1')
+
+    expect(chains.staff_documents.mockOrder).toHaveBeenCalledWith('created_at')
+  })
+
+  it('should_order_rider_documents_by_created_at', async () => {
+    const chains = setupFrom({})
+
+    await getAllBarnDocuments('barn-1')
+
+    expect(chains.rider_documents.mockOrder).toHaveBeenCalledWith('created_at')
   })
 
   it('should_throw_on_horse_documents_query_error', async () => {
@@ -248,7 +281,8 @@ describe('getAllBarnDocuments', () => {
 
 describe('buildDocumentsBackupZip', () => {
   function makeDocsChain(data: unknown[] | null, error: Error | null = null) {
-    const mockEq = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }

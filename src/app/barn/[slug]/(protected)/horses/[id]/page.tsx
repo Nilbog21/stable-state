@@ -78,13 +78,18 @@ export default async function HorseDetailPage({
   const privilegeNames = privileges.length > 0
     ? await resolveMemberNames(privileges.map((p) => p.member_id), barn.id)
     : new Map<string, string>()
-  const grants = privileges.map((p) => ({
-    id: p.id,
-    memberId: p.member_id,
-    name: privilegeNames.get(p.member_id) ?? p.member_id,
-    documentPrivileges: p.document_privileges,
-    lessonReadPrivileges: p.lesson_read_privileges,
-  }))
+  // #1286: the Access table renders one row per grant, and `getHorsePrivileges` can't order
+  // them — `member_horse_privileges` carries only `member_id`, with the names resolved just
+  // above. Alphabetical, matching `getHorsesByBarn`'s `ORDER BY h.name`.
+  const grants = privileges
+    .map((p) => ({
+      id: p.id,
+      memberId: p.member_id,
+      name: privilegeNames.get(p.member_id) ?? p.member_id,
+      documentPrivileges: p.document_privileges,
+      lessonReadPrivileges: p.lesson_read_privileges,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   const grantedMemberIds = new Set(privileges.map((p) => p.member_id))
   const availableMembers = allMembers.filter((m) => !grantedMemberIds.has(m.membershipId))
 

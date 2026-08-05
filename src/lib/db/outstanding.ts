@@ -75,9 +75,13 @@ export async function getOutstandingLessons(
 
   return outstandingRaw.map((lesson) => {
     const riderJunctionRows = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
+    // #1286: OutstandingTable renders these as a list, and getLessonJunctionRows returns
+    // `rider_id` only — the names are resolved here, so the sort is here too. Alphabetical,
+    // matching `getHorsesByBarn`'s `ORDER BY h.name`.
     const rider_names = riderJunctionRows
       .map((lr) => membershipNameMap.get(lr.rider_id))
       .filter((name): name is string => Boolean(name))
+      .sort((a, b) => a.localeCompare(b))
     return {
       id: lesson.id,
       barn_id: lesson.barn_id,
