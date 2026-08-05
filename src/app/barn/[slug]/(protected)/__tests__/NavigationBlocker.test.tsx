@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react'
 import { BlockingLink, NavigationBlockerProvider, NavigationConfirmDialog, useNavigationBlocker } from '../NavigationBlocker'
 
 const mockPush = vi.fn()
@@ -82,6 +82,21 @@ function SetOnLeaveButton({ onLeaveFn }: { onLeaveFn: () => void }) {
       register
     </button>
   )
+}
+
+/**
+ * Opens the dialog and returns a queries object scoped to it, so the button reads below see the
+ * dialog's own footer in DOM order rather than the harness button that opened it.
+ */
+function openDialog() {
+  render(
+    <NavigationBlockerProvider>
+      <SetPendingNavButton href="/other" />
+      <NavigationConfirmDialog />
+    </NavigationBlockerProvider>
+  )
+  fireEvent.click(screen.getByTestId('set-pending'))
+  return within(screen.getByRole('dialog'))
 }
 
 describe('BlockingLink', () => {
@@ -242,5 +257,43 @@ describe('NavigationConfirmDialog', () => {
     fireEvent.click(screen.getByTestId('set-back'))
     fireEvent.click(screen.getByRole('button', { name: /leave/i }))
     expect(mockBack).toHaveBeenCalled()
+  })
+
+  it('should_render_stay_after_leave_in_the_dialog', () => {
+    const dialog = openDialog()
+    expect(dialog.getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave', 'Stay'])
+  })
+
+  it('should_render_stay_with_primary_variant', () => {
+    const dialog = openDialog()
+    expect(dialog.getByRole('button', { name: /stay/i }).className).toContain('bg-zinc-900')
+  })
+
+  it('should_render_leave_with_ghost_variant', () => {
+    const dialog = openDialog()
+    expect(dialog.getByRole('button', { name: /leave/i }).className).toContain('border-zinc-300')
+  })
+
+  it('should_focus_stay_button_when_dialog_opens', () => {
+    const dialog = openDialog()
+    expect(document.activeElement).toBe(dialog.getByRole('button', { name: /stay/i }))
+  })
+
+  it('should_close_dialog_when_escape_pressed', () => {
+    openDialog()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('should_not_navigate_when_escape_pressed', () => {
+    openDialog()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should_keep_dialog_open_when_a_non_escape_key_is_pressed', () => {
+    openDialog()
+    fireEvent.keyDown(document, { key: 'a' })
+    expect(screen.queryByRole('dialog')).not.toBeNull()
   })
 })
