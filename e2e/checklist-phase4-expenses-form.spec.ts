@@ -52,7 +52,7 @@ const HISTORY_ALPHA_LAST_TYPE = 'Zinc Poultice'
 
 // Recipients are all mutually non-substring, deliberately: Playwright's text matching is
 // substring-based, so a card filtered by one recipient must not be able to match another's
-// (#1202, and the members.rider/rider2 fixture hazard one level down).
+// (#1202).
 const PLANNED_FILLABLE_RECIPIENT = 'Larkspur Hay Co'
 const PLANNED_DELETE_READ_RECIPIENT = 'Quillon Bedding Supply'
 const PLANNED_DELETE_CONFIRM_RECIPIENT = 'Wexford Stall Mats'

@@ -101,6 +101,11 @@ These live elsewhere and are not repeated here:
   E2E spec maintenance section, and `support/read.ts`.
 - **Every spec declares `// covers:` globs** — `scripts/CLAUDE.md`. `scripts/ci.sh` fails
   without them, and `scripts/select-specs.sh` is what turns them into a run scope.
+- **No two fixture person names may collide, in either of two ways** — `support/fixtures.ts`'s
+  `E2E_STUB_RIDER`. Neither containing the other (every Playwright text matcher is substring-based)
+  *and* neither sharing a first-initial-derived form (`get_calendar_feed` truncates the surname,
+  and no boundary-safe locator defends against that one). Binds any name added there or passed to
+  `addManagedMember`; the four `addMemberships` seeds are asserted in `support/fixtures.test.ts`.
 - **Sorting and ordering helpers** — `support/sort.ts`'s module comment.
 - **Barn seeding, isolation, and why `fullyParallel` and `retries` stay where they are** —
   `support/test.ts` and `playwright.config.ts`.

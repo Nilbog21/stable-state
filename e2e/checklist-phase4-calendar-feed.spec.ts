@@ -87,12 +87,6 @@ let managerLesson: Lesson
  * nor one of its riders, so `get_calendar_feed`'s `r.role = 'manager'` branch is the ONLY term
  * that admits it — which is what makes line 801's "not just your own" a real claim rather than
  * a restatement of line 800.
- *
- * Its rider is the same `rider` login as the manager's lesson, deliberately. The obvious
- * alternative — the managed `rider2` stub — produces the *identical* initials (`Test Rider2`
- * → `Test R.`), so an expectation built from `E2E_USERS.rider` would have matched it by
- * coincidence rather than by derivation. That is the seed-equals-default trap one level out:
- * the assertion would have been true while pointing at the wrong fixture.
  */
 let trainerLesson: Lesson
 
