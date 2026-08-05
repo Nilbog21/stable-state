@@ -328,17 +328,45 @@ test('clicking_a_nav_link_on_the_flagged_edit_page_raises_the_unresolved_horse_d
   await expect(page.getByRole('dialog').locator('p').first()).toHaveText(HORSE_ISSUE_PROMPT)
 })
 
-// Narrowed from "That dialog defaults to Stay": the dialog implements no focus or keyboard
-// default at all — no autofocus, no Escape handler, no Enter handler — so the line as written
-// names a behaviour that does not exist. What survives is the invariant the line was standing
-// in for: Stay is the non-destructive choice, and taking it leaves you exactly where you were.
-// Both halves in one toEqual, so a dialog that closed by navigating away can't pass on the
-// count alone.
+// The pointer path to Stay. #1190 narrowed this line from "That dialog defaults to Stay" because
+// the dialog then implemented no focus or keyboard default at all; #1287 implemented that default
+// and it is covered by the two checks below rather than by re-broadening this one. What this check
+// asserts is the invariant all three share: Stay is the non-destructive choice, and taking it
+// leaves you exactly where you were. Both halves in one toEqual, so a dialog that closed by
+// navigating away can't pass on the count alone.
 test('choosing_stay_dismisses_the_dialog_and_keeps_you_on_the_edit_page @manager', async ({ page }) => {
   await page.goto(editPath(flaggedId))
   await waitForEditFormHydrated(page)
   await horsesNavLink(page).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Stay', exact: true }).click()
+  await expect
+    .poll(async () => ({
+      dialogs: await page.getByRole('dialog').count(),
+      path: new URL(page.url()).pathname,
+    }))
+    .toEqual({ dialogs: 0, path: editPath(flaggedId) })
+})
+
+// The keyboard default (#1287), asserted on the focus itself rather than on what Enter happens to
+// do: Enter activating the focused button is the browser's behaviour, not the app's, so pressing
+// it here would test Chromium. Focus landing on Stay is the part the app implements, and it is
+// what makes Enter safe.
+test('the_nav_guard_dialog_opens_with_stay_focused @manager', async ({ page }) => {
+  await page.goto(editPath(flaggedId))
+  await waitForEditFormHydrated(page)
+  await horsesNavLink(page).click()
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Stay', exact: true })).toBeFocused()
+})
+
+// Escape resolving *as Stay* is two claims, not one — the dialog closes, and it closes without
+// navigating — so both go in one toEqual for the same reason the pointer check above does: a
+// dialog that vanished because the page navigated away would otherwise pass on the count alone.
+test('pressing_escape_dismisses_the_nav_guard_dialog_as_stay @manager', async ({ page }) => {
+  await page.goto(editPath(flaggedId))
+  await waitForEditFormHydrated(page)
+  await horsesNavLink(page).click()
+  await page.getByRole('dialog').waitFor()
+  await page.keyboard.press('Escape')
   await expect
     .poll(async () => ({
       dialogs: await page.getByRole('dialog').count(),
