@@ -1,11 +1,18 @@
 /**
- * Lesson income reporting, net of each lesson's own snapshotted instructor cut (#776):
- * pure fold helpers (`splitNetFee`, `computeGroupedIncome`, `computeHorseNetIncome`),
- * the barn-wide `getFinancialSummary`, and per-entity income summaries/details
- * dispatched through `getEntityIncome` over the horse/rider/trainer
+ * Lesson income reporting: pure fold helpers (`splitNetFee`, `computeGroupedIncome`,
+ * `computeHorseNetIncome`), the barn-wide `getFinancialSummary`, and per-entity income
+ * summaries/details dispatched through `getEntityIncome` over the horse/rider/trainer
  * `EntityIncomeDescriptor`s. Lesson-derived rows come from
- * `lesson-finance-queries.ts:getLessonFeeRows` (the `transactions` ledger, #827);
- * Outstanding lives in `outstanding.ts`, which never applies the cut.
+ * `lesson-finance-queries.ts:getLessonFeeRows` (the `transactions` ledger, #827).
+ *
+ * Whether the instructor cut is netted off is per-view, not module-wide. Each lesson's
+ * own snapshotted cut (#776) is subtracted for the tier breakdown and the whole trainer
+ * view, where that cut is the subject. The horse and rider views report the gross
+ * (pre-cut) split instead — their descriptors set `splitsGrossFee`, since a per-entity
+ * share of a cut By Instructor already accounts for in full is money attributed twice
+ * (#971 for the summaries, #1156 for the drill-downs, which had been left disagreeing
+ * with the very tabs they hang off). Outstanding lives in `outstanding.ts`, which never
+ * applies the cut at all.
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
