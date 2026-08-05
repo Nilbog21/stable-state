@@ -63,7 +63,8 @@ export async function waitForHydrated(signal: Locator): Promise<void> {
 
 /**
  * Drives a control until a client-only consequence lands, for a page with no zero-interaction
- * hydration signal.
+ * hydration signal — but only where such a control exists; a page with neither is fact 13's case
+ * and gets no barrier at all.
  *
  * `isLive` must be a **non-retrying** predicate — one `count()`/`evaluate()`, no `waitFor` and no
  * web-first matcher. `toPass` owns the pacing; a retrying read inside would spend the whole

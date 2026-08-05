@@ -96,7 +96,9 @@ previous tab's figure — so wait on something that differs *between* tabs (a fi
 header, not a shared Gross/Expenses/Net one) with an auto-retrying matcher. *(#1244)*
 
 **12. The barn-vs-host zone axis is open, and cannot be closed from inside a spec.** The dev
-server runs under `TZ=UTC` (`package.json`'s `dev` script, pinned by #1221) and the barn-day
+server runs under `TZ=UTC` — measured by #1252's probe, which rendered a 4:00 PM Eastern lesson
+as 8:00 PM from a Server Component with the barn zone dropped, and only then confirmed against
+`package.json`'s `dev` script (pinned by #1221) — and the barn-day
 checklist items fix the barn to Eastern, so a regression that reads the host's clock instead of
 `barns.timezone` fails only in the ~4–5 hour window where the barn's day and the server's UTC day
 differ — and passes unnoticed outside it. That window cannot be arranged: `page.clock.setFixedTime`

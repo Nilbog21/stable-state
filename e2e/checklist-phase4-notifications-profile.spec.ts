@@ -461,7 +461,8 @@ test.describe('editing your own profile', () => {
     // A fill lost to hydration is caught by the read-back at the end of this test instead — the
     // stale value is what reaches the database, and the final assertion fails on it. That makes
     // the failure loud rather than silent, which is the property that actually matters here,
-    // because fact 9's prescribed remedy has nothing on this page to bind to: `ProfileForm` and
+    // because fact 9's prescribed remedy has nothing on this page to bind to — this page is
+    // fact 13's measured example, and this is the observation it was drawn from: `ProfileForm` and
     // `CalendarFeedSection` seed every piece of state from a server prop, so there is no markup
     // that cannot exist before hydration for `waitForHydrated`, and no control whose repeat is
     // harmless for `hydrateByDriving`.
