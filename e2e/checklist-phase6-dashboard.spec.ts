@@ -13,6 +13,13 @@ import { addHorse, addLeaseCharge, addTier, addUnpaidLesson, daysFromNow } from 
 // authenticates as. The barn therefore *does* hold unpaid items, which is the point: the
 // assertion proves the reminders query is scoped to the viewing rider, not merely that an
 // empty dashboard is empty. Do not reseed this against a barn with nothing outstanding.
+//
+// checklist-phase56-dashboard.spec.ts (#1326) asserts the rest of the rider's dashboard — Day
+// and Week role scoping, no appointments, `visible_to_roles` event filtering — and seeds its
+// own barn rather than joining this one. The two cannot merge: this file's whole claim needs
+// the viewing rider to have **nothing** of her own outstanding, while that file needs her to
+// have enrolled lessons to see and an appointment she must not. One `withBarn` callback cannot
+// seed both, and it runs once per (spec file x project).
 const barn = withBarn('phase6-dashboard', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
   const bella = await addHorse(supabase, barn.id, 'Bella')
