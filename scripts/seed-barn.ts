@@ -679,19 +679,28 @@ export async function seedBarn(
   }
 
   const defaultBoardFee = await getBarnDefaultBoardFee(barnId, supabase)
-  const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+  const { timezone } = mustSucceed<{ timezone: string }>(
+    await supabase.from('barns').select('timezone').eq('id', barnId).single(),
+    'select barn timezone'
+  )
+  // #1361: generateChargeForMonth resolves the month in the barn's frame, so these anchors
+  // have to be instants that fall inside the intended month *there* — midnight UTC on the
+  // 1st is the previous month in every zone the barn picker offers. Noon UTC on the 15th
+  // is the 15th in all of them.
+  const monthsAgo = (n: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - n, 15, 12))
+  const lastMonth = monthsAgo(1)
 
   const boardAgreement = await createAgreement(
     { barnId, riderId: riderRowIds[0], horseId: horseIds[0], fee: defaultBoardFee, kind: 'board', cadence: 'monthly' },
     supabase
   )
-  const boardLastMonthCharge = await generateChargeForMonth(boardAgreement.id, barnId, lastMonth, supabase)
+  const boardLastMonthCharge = await generateChargeForMonth(boardAgreement.id, barnId, timezone, lastMonth, supabase)
 
   const leaseAgreement = await createAgreement(
     { barnId, riderId: riderRowIds[1], horseId: horseIds[1], fee: 200, kind: 'lease', cadence: 'monthly' },
     supabase
   )
-  const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, barnId, lastMonth, supabase)
+  const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, barnId, timezone, lastMonth, supabase)
 
   // second, simultaneously-active agreement for the same rider (Emery) — exercises the
   // member detail page's multi-card Active Agreements view (#772)
@@ -699,13 +708,13 @@ export async function seedBarn(
     { barnId, riderId: riderRowIds[1], horseId: horseIds[2], fee: defaultBoardFee, kind: 'board', cadence: 'monthly' },
     supabase
   )
-  const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, barnId, lastMonth, supabase)
+  const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, barnId, timezone, lastMonth, supabase)
 
   // Two-months-ago charges left unpaid so the Outstanding page/section always has a
   // past-due board and lease charge to manually verify without hand-seeding (#865 testing).
-  const twoMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1))
-  await generateChargeForMonth(boardAgreement.id, barnId, twoMonthsAgo, supabase)
-  await generateChargeForMonth(leaseAgreement.id, barnId, twoMonthsAgo, supabase)
+  const twoMonthsAgo = monthsAgo(2)
+  await generateChargeForMonth(boardAgreement.id, barnId, timezone, twoMonthsAgo, supabase)
+  await generateChargeForMonth(leaseAgreement.id, barnId, timezone, twoMonthsAgo, supabase)
 
   // mark_agreement_charge_paid has no service-role escape hatch (interactive-only RPC,
   // see ARCHITECTURE.md) so this seed script can't call it — raw update to transactions
