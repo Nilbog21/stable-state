@@ -877,13 +877,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
-- [ ] (e2e-candidate) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo
-- [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
-- [ ] (e2e-candidate) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a non-manager
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the trainer's own barn instead
-- [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
-- [ ] (e2e-candidate) Setup (as manager, then switch back to the trainer) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
-- [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
+- [ ] (e2e: trainer_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo
+- [ ] (e2e: trainer_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
+- [ ] (e2e: trainer_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a non-manager
+- [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) Setup (as manager, then switch back to the trainer) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the trainer's own barn instead
+- [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
+- [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to the trainer) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
+- [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
 - [ ] (e2e-candidate) Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view
 - [ ] (e2e-candidate) That page shows no **Add Trainer**/**Add Rider** forms
 - [ ] (e2e-candidate) Uploading `scripts/data/test_1_kb.pdf` on your own member detail page works, optionally with a Reminder Date set
@@ -926,12 +926,12 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards
 - [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
 - [ ] (e2e: rider_tapping_an_available_card_opens_the_horse_detail_page) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
-- [ ] (e2e-candidate) Butter's detail page (Dana does **not** own her) displays her seeded photo
-- [ ] (e2e-candidate) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead
-- [ ] (e2e-candidate) Apple's detail page shows a **Registered Name** row below Status
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
-- [ ] (e2e-candidate) Apple's detail page then shows no **Registered Name** row
+- [ ] (e2e: rider_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (Dana does **not** own her) displays her seeded photo
+- [ ] (e2e: rider_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
+- [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) Setup (as manager, then switch back to Dana) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead
+- [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
+- [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
+- [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
 - [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
 - [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
@@ -939,9 +939,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
-- [ ] (e2e-candidate) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
-- [ ] (e2e-candidate) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
-- [ ] (e2e-candidate) (#1003) That photo then displays on Clover's detail page
+- [ ] (e2e: rider_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
+- [ ] (e2e: rider_setting_the_photo_on_their_own_horse_through_the_upload_screen_succeeds) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
+- [ ] (e2e: rider_the_photo_they_uploaded_displays_on_their_horses_detail_page) (#1003) That photo then displays on Clover's detail page
 - [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
 - [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) (#999) That horse's detail page now shows a **Documents** section for Dana
 - [ ] (e2e: rider_read_document_privilege_hides_the_add_document_button) (#999) That Documents section shows no **Add Document** button
