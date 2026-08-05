@@ -166,7 +166,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: setting_the_date_to_yesterday_hides_the_time_field) On the new-expense form, setting the date to yesterday hides the Time field
 - [ ] (e2e: setting_the_date_back_to_today_brings_the_time_field_back) Changing it back to today or a future date brings the Time field back
 
-**#1020 — month conflict calendar on the expense form's Date field.** All on `/barn/dev-barn/expenses/new` unless stated. Assumes the Phase 3 seeding above, which put lessons and a vet/farrier expense on known future days.
+**#1020 — month conflict calendar on the expense form's Date field.** All on `/barn/dev-barn/expenses/new` unless stated. Assumes the Phase 3 seeding (`phase-3-manager-lesson-entry.md`), which put lessons and a vet/farrier expense on known future days.
 
 - [ ] (#1020) The Date field renders as a month calendar grid, not a native date box
 - [ ] (#1020) Days before today are greyed out
