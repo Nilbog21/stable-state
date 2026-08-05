@@ -281,7 +281,8 @@ describe('getAllBarnDocuments', () => {
 
 describe('buildDocumentsBackupZip', () => {
   function makeDocsChain(data: unknown[] | null, error: Error | null = null) {
-    const mockEq = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }

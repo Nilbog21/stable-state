@@ -191,15 +191,28 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
 
   const lessonData = data
 
+  // #1286: both embeds below are to-many, and PostgREST leaves a to-many embed's rows in
+  // whatever order the planner produced — so the lesson detail page's horse and rider lists
+  // are sorted here, alphabetically, matching `getHorsesByBarn`'s `ORDER BY h.name`. Not
+  // done with `.order(..., { referencedTable })`: a rider's name lives in `profiles`, which
+  // the `lesson_riders → barn_memberships` embed never reaches (it is resolved by
+  // `resolveMemberNames` below), so only a post-fetch sort can order both lists the same
+  // way. Each sort carries the whole row, so `exertion_level` and the notes stay with their
+  // own horse/rider.
   const rawHorses = lessonData.lesson_horses as RawLessonHorse[]
   // #999: get_lesson_horse_exertion_levels now filters rows by privilege at the DB
   // layer (manager/trainer see everything, a rider sees only a horse they hold
   // lesson_read_privileges for), so this no longer needs its own role branch.
   const exertionByHorseId = await fetchExertionLevels(supabase, lessonId, barnId)
-  const lesson_horses = rawHorses.map((lh) => ({
-    ...lh,
-    exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
-  }))
+  // `horses` is null when the horses RLS policy filtered the joined row out; such a row
+  // sorts on an empty name rather than dropping out of the list.
+  const horseName = (lh: RawLessonHorse) => lh.horses?.name ?? ''
+  const lesson_horses = [...rawHorses]
+    .sort((a, b) => horseName(a).localeCompare(horseName(b)))
+    .map((lh) => ({
+      ...lh,
+      exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
+    }))
 
   const rawRiders = lessonData.lesson_riders as RawLessonRider[]
   // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
@@ -234,6 +247,11 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
     barn_membership: { id: string; user_id: string | null; name: string } | null
   }
 
+  // The membership id is the display name's fallback when the rider's profile isn't
+  // readable, so it's also what an unresolved rider sorts on — one expression, shared by
+  // the sort below and the row it builds, so the two can't disagree.
+  const riderName = (lr: RawLessonRider) => membershipMap.get(lr.rider_id) ?? lr.rider_id
+
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
     rider_notes: riderNotesById.get(lr.rider_id)?.rider_notes ?? null,
     private_notes: riderNotesById.get(lr.rider_id)?.private_notes ?? null,
@@ -242,7 +260,7 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
     barn_membership: {
       id: lr.rider_id,
       user_id: lr.barn_memberships?.user_id ?? null,
-      name: membershipMap.get(lr.rider_id) ?? lr.rider_id,
+      name: riderName(lr),
     },
   })
 
@@ -255,7 +273,9 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
     payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
     instructor_user_id,
-    lesson_riders: rawRiders.map(normalizeLr) as NormalizedLr[],
+    lesson_riders: [...rawRiders]
+      .sort((a, b) => riderName(a).localeCompare(riderName(b)))
+      .map(normalizeLr) as NormalizedLr[],
   } as LessonDetail
 }
 

@@ -57,15 +57,23 @@ export async function hydrateParticipants(
   return lessons.map((lesson) => {
     const instructorName = lesson.instructor_id ? membershipMap.get(lesson.instructor_id) ?? null : null
     const horseJunctionRows = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
+    // #1286: both participant lists are rendered as a sequence (LessonListItem,
+    // CalendarLessonCard), and neither junction query can order them — they carry ids only,
+    // with the names resolved above. Sorted alphabetically, matching `getHorsesByBarn`'s
+    // `ORDER BY h.name`. The sort is on the participant objects rather than on the name
+    // arrays, which is what keeps `horse_ids`/`rider_ids`/`rider_cancelled_ats` positionally
+    // aligned with the names derived from them below.
     const horseParticipants = horseJunctionRows
       .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id), status: lh.horses }))
       .filter((p): p is { id: string; name: string; status: LessonHorseJunctionRow['horses'] } => Boolean(p.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
     const horseNames = horseParticipants.map((p) => p.name)
     const horseIdsForLesson = horseParticipants.map((p) => p.id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
       .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id), cancelledAt: lr.cancelled_at ?? null }))
       .filter((p): p is { id: string; name: string; cancelledAt: string | null } => Boolean(p.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIdsForLesson = riderParticipants.map((p) => p.id)
     const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)

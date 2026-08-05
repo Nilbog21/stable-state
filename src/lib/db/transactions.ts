@@ -64,6 +64,10 @@ type RawRow = {
   occurred_at: string
 }
 
+// #1286 sweep: deliberately unordered. The one consumer that renders these rows as a
+// sequence is `backup.ts`'s All Transactions sheet, and `addSheet` already sorts every sheet
+// descending by its own first column (#1218) — ordering here would be re-sorted away. Every
+// other caller folds the rows into a Map, a Set, or a sum, where order is unobservable.
 export async function getTransactionRows(
   barnId: string,
   kinds: readonly TransactionKind[],

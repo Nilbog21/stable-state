@@ -32,11 +32,19 @@ async function attachHorseNames<T extends { id: string }>(
   const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
 
   return appointments.map((appointment) => {
-    const ids = rows.filter((r) => r.appointment_id === appointment.id).map((r) => r.horse_id)
+    // #1286: sorted alphabetically by name, matching `getHorsesByBarn`'s `ORDER BY h.name`,
+    // because the expense card renders these as a list. The junction query above can't do
+    // it — `appointment_horses` carries only `horse_id`, and the names arrive from
+    // `resolveHorseNames` afterwards. Sorting id/name pairs rather than the two arrays
+    // separately is what keeps `horse_ids[i]` the id of `horse_names[i]`.
+    const named = rows
+      .filter((r) => r.appointment_id === appointment.id)
+      .map((r) => ({ id: r.horse_id as string, name: horseNameMap.get(r.horse_id) ?? (r.horse_id as string) }))
+      .sort((a, b) => a.name.localeCompare(b.name))
     return {
       ...appointment,
-      horse_ids: ids,
-      horse_names: ids.map((id) => horseNameMap.get(id) ?? id),
+      horse_ids: named.map((h) => h.id),
+      horse_names: named.map((h) => h.name),
     }
   })
 }
