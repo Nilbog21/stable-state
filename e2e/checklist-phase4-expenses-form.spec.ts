@@ -233,7 +233,14 @@ function assertDayPinArithmetic(): void {
   if (new Date(`${yesterdayStr}T00:00:00Z`).getTime() !== shift(YESTERDAY_OFFSET)) {
     problems.push(`yesterdayStr is ${yesterdayStr}, expected ${YESTERDAY_OFFSET} day(s) from ${todayStr}`)
   }
-  if (plannedDayStr !== `${monthFromIndex(monthIndex(todayStr.slice(0, 7)) + 1)}-${PLANNED_DAY_OF_MONTH}`) {
+  // Checked by day arithmetic rather than by re-running `monthFromIndex(monthIndex(...) + 1)`,
+  // which is the expression that *produced* the value: re-executing it compares a thing to
+  // itself and cannot fail, so it would prove nothing about the very helpers whose off-by-one
+  // this guard exists to catch. Stepping back one day from the 1st of plannedDayStr's month has
+  // to land in todayStr's month, and that is arithmetic those helpers take no part in.
+  const plannedMonthStart = new Date(`${plannedDayStr.slice(0, 7)}-01T00:00:00Z`).getTime()
+  const monthBeforePlanned = new Date(plannedMonthStart - 24 * 60 * 60 * 1000).toISOString().slice(0, 7)
+  if (plannedDayStr.slice(8) !== PLANNED_DAY_OF_MONTH || monthBeforePlanned !== todayStr.slice(0, 7)) {
     problems.push(
       `plannedDayStr is ${plannedDayStr}, expected day ${PLANNED_DAY_OF_MONTH} of the month after ` +
         `${todayStr.slice(0, 7)}. Inside today's own month it stops driving tapDay's month alignment ` +
@@ -524,15 +531,46 @@ function monthFromIndex(index: number): string {
 }
 
 /**
+ * Hydration barrier for the month picker, run once before any paging.
+ *
+ * The drive is a re-tap of the day cell that is *already* selected, and that choice is the whole
+ * point rather than an arbitrary pick: `hydrateByDriving` re-dispatches while `isLive` is false,
+ * so it is only safe on a control whose repeat is harmless (its own module comment says so).
+ * `handleDayTap` on the selected day calls `onChange` with the value the form already holds and
+ * re-opens an already-open panel, so any number of retries leave the form exactly as they found
+ * it. The **month pager is the opposite** — a monotonic counter with no path back — which is why
+ * the barrier is here rather than around the presses below.
+ *
+ * The signal is the day panel's Close button. `useOutsideDismiss` seeds `open` as `useState(false)`
+ * and `ExpenseForm` passes `dayPanelAlwaysOpen={false}`, so the panel — and that button — cannot
+ * exist in the server's markup at all. That makes its appearance strictly post-hydration rather
+ * than merely correlated with it, which is what the module comment requires of a signal.
+ * `count()` rather than a `waitFor`, because `isLive` has to be non-retrying.
+ */
+async function hydrateMonthPicker(page: Page): Promise<void> {
+  const selectedDay = page.locator('button[aria-pressed="true"]').first()
+  await hydrateByDriving(
+    () => selectedDay.click(),
+    async () => (await page.getByRole('button', { name: 'Close', exact: true }).count()) > 0
+  )
+}
+
+/**
  * Pages the picker to `month`, one Prev/Next press per step.
  *
- * Each step goes through `hydrateByDriving` rather than a bare click, because a click dispatched
- * before React is listening is simply lost and nothing replays it (e2e/CLAUDE.md fact 10) — and
- * this is the *first* interaction on a freshly `goto`-ed form. A lost press would leave the grid
- * a month away from where the caller asked for, which the tap below would then report as a
- * missing day: a real failure, but for a reason that has nothing to do with the test. Driving
- * per step rather than for the whole delta keeps the drive non-idempotent-safe — `isLive` is
- * checked against that step's own target, so a press that merely lagged the read is not doubled.
+ * A click dispatched before React is listening is simply lost and nothing replays it
+ * (e2e/CLAUDE.md fact 10), and this is the *first* interaction on a freshly `goto`-ed form — so
+ * a press has to be made after hydration rather than retried into it. Retrying the pager itself
+ * is not an option: it is a counter, not a toggle, so a press that merely *lagged* the read
+ * would be dispatched a second time and overshoot, and nothing here ever drives backward. That
+ * failure mode is strictly worse than the lost click it would be guarding against — the loop
+ * could never converge again and would burn the whole test budget. So hydration is established
+ * once, on an idempotent control, and each press is then a plain click.
+ *
+ * The per-step wait is `expect.poll` on `displayedMonth`, whose 5s default is ample for a state
+ * re-render on an already-hydrated form; per fact 1 a number there could only loosen it, so none
+ * is written. It also makes an overshoot fail loudly and immediately, naming the month actually
+ * on screen, instead of surfacing later as a missing day cell.
  */
 async function showMonth(page: Page, month: string): Promise<void> {
   // A wait, not an assertion: `displayedMonth` is a one-shot `evaluate` with no auto-retry, so
@@ -543,13 +581,16 @@ async function showMonth(page: Page, month: string): Promise<void> {
   const from = await displayedMonth(page)
   if (from === null) throw new Error('the month calendar rendered no in-month day cell')
   const delta = monthIndex(month) - monthIndex(from)
-  const label = delta < 0 ? 'Previous month' : 'Next month'
+  // Nothing to page: leave the form untouched, so the overwhelmingly common case costs no extra
+  // interaction and behaves exactly as it did before #1283.
+  if (delta === 0) return
+
+  await hydrateMonthPicker(page)
+  const pager = page.getByRole('button', { name: delta < 0 ? 'Previous month' : 'Next month', exact: true })
   for (let step = 1; step <= Math.abs(delta); step++) {
     const target = monthFromIndex(monthIndex(from) + Math.sign(delta) * step)
-    await hydrateByDriving(
-      () => page.getByRole('button', { name: label, exact: true }).click(),
-      async () => (await displayedMonth(page)) === target
-    )
+    await pager.click()
+    await expect.poll(() => displayedMonth(page)).toBe(target)
   }
 }
 

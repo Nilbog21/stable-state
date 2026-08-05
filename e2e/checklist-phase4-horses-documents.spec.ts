@@ -13,14 +13,16 @@
 // edited without a reload, driven past due, and surfacing as a Dashboard Reminders card that
 // links back to the horse (PRE_RELEASE_TEST_CHECKLIST.md 441-454).
 //
-// Three horses, because each block needs a starting state the others would destroy. Willow
+// Four horses, because each block needs a starting state the others would destroy. Willow
 // carries the upload → list → open → delete chain and must end empty. Rowan takes the two
 // 4.4 MB pending-state uploads and the 4.6 MB rejection, so those large rows never crowd the
-// other two. Juniper must hold *exactly one* document for its whole chain — the reminder cell
+// others. Juniper must hold *exactly one* document for its whole chain — the reminder cell
 // and the dashboard card are both located without a per-row disambiguator, and a second
 // document on that horse would make either ambiguous or, worse, silently pick the wrong row.
+// Marigold (#1283) holds the reminder-due boundary pair and nothing else, for the same reason
+// in reverse: its two rows must be the only ones on that page whose dates sit on the cutoff.
 //
-// Three mutually non-substring names, deliberately: Playwright's text and accessible-name
+// Four mutually non-substring names, deliberately: Playwright's text and accessible-name
 // matching is substring-based, so an overlapping pair makes a filter for one silently match
 // both.
 import { createHash } from 'crypto'

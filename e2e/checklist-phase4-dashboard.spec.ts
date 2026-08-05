@@ -72,11 +72,15 @@ const PINNED_ZONE = BARN_TIMEZONES.reduce<string>(
 const MIN_MIDNIGHT_MARGIN_MINUTES = 120
 
 /**
- * Every day offset this file seeds a fixture at, which is also every offset `goToDaysAhead` and
- * the day-0 tests navigate to. Listed rather than inferred so the guard below has something to
- * check the seed against.
+ * Every day offset this file seeds a fixture at *or navigates to*, which are not the same set:
+ * day +1 carries no fixture but is where `dashboard_today_link_appears_when_viewing_another_day`
+ * and `dashboard_today_link_returns_to_todays_calendar` both stand. It is listed for that reason
+ * — leaving it out would let a test added at +1 later inherit a pin that looks arithmetic-checked
+ * and is not for that offset, which is the shape of the thing this guard exists to prevent.
+ *
+ * Listed rather than inferred so the guard below has something to check the seed against.
  */
-const SEEDED_DAY_OFFSETS = [-3, -1, 0, 2, 3, 4] as const
+const SEEDED_DAY_OFFSETS = [-3, -1, 0, 1, 2, 3, 4] as const
 
 /**
  * The pin's arithmetic, executable rather than written in a comment (#1252's `assertPinArithmetic`
