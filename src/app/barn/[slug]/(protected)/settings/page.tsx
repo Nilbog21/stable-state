@@ -22,6 +22,7 @@ import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
+import { GuardedForm } from '../NavigationBlocker'
 import { DownloadButton } from './DownloadButton'
 
 function AccordionSection({
@@ -94,7 +95,7 @@ export default async function SettingsPage({
       </h1>
 
       <AccordionSection title="Default Instructor Cut">
-        <form action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
+        <GuardedForm action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
               htmlFor="instructor_cut"
@@ -114,7 +115,7 @@ export default async function SettingsPage({
             />
           </div>
           <Button type="submit">Save</Button>
-        </form>
+        </GuardedForm>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
         </p>
@@ -131,7 +132,7 @@ export default async function SettingsPage({
       </AccordionSection>
 
       <AccordionSection title="Schedule Buffer">
-        <form action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
+        <GuardedForm action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
               htmlFor="schedule_buffer_minutes"
@@ -151,7 +152,7 @@ export default async function SettingsPage({
             />
           </div>
           <Button type="submit">Save</Button>
-        </form>
+        </GuardedForm>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Instructors are notified when another instructor books a lesson within this many minutes of one of their own.
         </p>
@@ -250,7 +251,7 @@ export default async function SettingsPage({
       </AccordionSection>
 
       <AccordionSection title="Default Board Fee">
-        <form action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+        <GuardedForm action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
               Monthly fee ($)
@@ -266,14 +267,14 @@ export default async function SettingsPage({
             />
           </div>
           <Button type="submit">Save</Button>
-        </form>
+        </GuardedForm>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Applies to new boarding agreements only — existing boarders are unchanged.
         </p>
       </AccordionSection>
 
       <AccordionSection title="Barn Timezone">
-        <form action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+        <GuardedForm action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
               Timezone
@@ -292,7 +293,7 @@ export default async function SettingsPage({
             </select>
           </div>
           <Button type="submit">Save</Button>
-        </form>
+        </GuardedForm>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Used to determine when scheduled expenses become past due and which month an expense falls into near month boundaries.
         </p>

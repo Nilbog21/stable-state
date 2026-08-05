@@ -6,6 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelRiderParticipationAction } from '@/app/actions/lesson-cancellation'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
+import { GuardedForm } from '../../../../NavigationBlocker'
 
 export default async function CancelRiderParticipationPage({
   params,
@@ -48,7 +49,7 @@ export default async function CancelRiderParticipationPage({
           This will cancel {targetRider.barn_membership.name}&apos;s spot in this lesson. This
           cannot be undone.
         </p>
-        <form action={cancel} className="flex flex-col gap-4">
+        <GuardedForm action={cancel} className="flex flex-col gap-4">
           {role !== 'rider' && (
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</legend>
@@ -89,7 +90,7 @@ export default async function CancelRiderParticipationPage({
             />
           </div>
           <Button type="submit" variant="danger">Confirm Cancellation</Button>
-        </form>
+        </GuardedForm>
       </div>
     </main>
   )

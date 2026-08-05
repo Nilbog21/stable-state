@@ -48,6 +48,50 @@ export function NavigationBlockerProvider({ children }: { children: React.ReactN
   )
 }
 
+/**
+ * Arms the nav guard while `dirty` is true: sets the context flag and dialog message, and
+ * warns on tab close via beforeunload. Cleans up on disarm and on unmount, so forms whose
+ * successful save redirects away clear the guard for free.
+ */
+export function useUnsavedChangesGuard(dirty: boolean) {
+  const { setDirty, setMessage } = useNavigationBlocker()
+  useEffect(() => {
+    setDirty(dirty)
+    if (dirty) setMessage('You have unsaved changes. Leave without saving?')
+    return () => setDirty(false)
+  }, [dirty, setDirty, setMessage])
+
+  useEffect(() => {
+    if (!dirty) return
+    function handler(e: BeforeUnloadEvent) { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+}
+
+/**
+ * Guard-armed <form> for server components: any bubbled change from the field children arms
+ * the guard, submit clears it. Suits void-returning actions with no error UI — after submit
+ * the fields hold exactly what was sent, so nothing is unsaved even if the page stays.
+ */
+export function GuardedForm({
+  action,
+  className,
+  children,
+}: {
+  action: (formData: FormData) => void | Promise<void>
+  className?: string
+  children: React.ReactNode
+}) {
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
+  return (
+    <form action={action} className={className} onChange={() => setDirty(true)} onSubmit={() => setDirty(false)}>
+      {children}
+    </form>
+  )
+}
+
 export function NavigationConfirmDialog() {
   const { pendingNav, setPendingNav, setDirty, message, onLeave, setOnLeave } = useNavigationBlocker()
   const router = useRouter()

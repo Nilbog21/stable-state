@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 import type { Profile } from '@/lib/db/types'
 
 interface Props {
@@ -17,6 +18,8 @@ export function ContactInfoForm({ profile, action }: Props) {
   const [ecPhone, setEcPhone] = useState(profile.emergency_contact_phone ?? '')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -36,6 +39,7 @@ export function ContactInfoForm({ profile, action }: Props) {
       return
     }
 
+    setDirty(false)
     router.refresh()
   }
 
@@ -44,7 +48,7 @@ export function ContactInfoForm({ profile, action }: Props) {
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Contact Info
       </h2>
-      <form aria-label="Contact Info" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form aria-label="Contact Info" onSubmit={handleSubmit} onChange={() => setDirty(true)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="contact-phone" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Phone

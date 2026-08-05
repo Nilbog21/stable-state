@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { createManagedMemberAction } from './actions'
+import { GuardedForm } from '../NavigationBlocker'
 
 export default async function MembersPage({
   params,
@@ -84,7 +85,7 @@ export default async function MembersPage({
           Trainers
         </h2>
         {membership.role === 'manager' && (
-          <form action={createManagedMemberAction.bind(null, slug, 'trainer')} className="mb-4 flex items-center gap-2">
+          <GuardedForm action={createManagedMemberAction.bind(null, slug, 'trainer')} className="mb-4 flex items-center gap-2">
             <input
               name="first_name"
               required
@@ -98,7 +99,7 @@ export default async function MembersPage({
               className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
             <Button type="submit">Add Trainer</Button>
-          </form>
+          </GuardedForm>
         )}
         {trainers.length > 0 ? (
           <ul className="space-y-2">
@@ -127,7 +128,7 @@ export default async function MembersPage({
           Riders
         </h2>
         {membership.role === 'manager' && (
-          <form action={createManagedMemberAction.bind(null, slug, 'rider')} className="mb-4 flex items-center gap-2">
+          <GuardedForm action={createManagedMemberAction.bind(null, slug, 'rider')} className="mb-4 flex items-center gap-2">
             <input
               name="first_name"
               required
@@ -141,7 +142,7 @@ export default async function MembersPage({
               className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
             <Button type="submit">Add Rider</Button>
-          </form>
+          </GuardedForm>
         )}
         {riders.length > 0 ? (
           <ul className="space-y-2">

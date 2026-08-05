@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import type { Barn, Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 type Status = 'active' | 'unavailable' | 'inactive'
 
@@ -48,10 +49,13 @@ export function HorseManagerForm({
     moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
     high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
   })
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
     if (!result.error) {
       flash()
+      setDirty(false)
       setSaveCount(c => c + 1)
       setThresholds(
         formData.get('use_barn_defaults') === 'true'
@@ -68,7 +72,7 @@ export function HorseManagerForm({
   )
 
   return (
-    <form action={formAction} onReset={(e) => e.preventDefault()} className="flex w-full flex-col gap-5">
+    <form action={formAction} onReset={(e) => e.preventDefault()} onChange={() => setDirty(true)} className="flex w-full flex-col gap-5">
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
@@ -119,7 +123,7 @@ export function HorseManagerForm({
               key={value}
               type="button"
               aria-pressed={status === value}
-              onClick={() => setStatus(value)}
+              onClick={() => { setStatus(value); setDirty(true) }}
               className={[
                 'px-4 py-2 text-sm font-medium first:rounded-l-md last:rounded-r-md focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-1',
                 status === value

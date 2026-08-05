@@ -5,6 +5,7 @@ import type { BarnEvent, Role } from '@/lib/db/types'
 import { DateHourPicker } from '../../lessons/DateHourPicker'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'manager', label: 'Manager' },
@@ -27,6 +28,10 @@ export function EventForm({ mode, timezone, initialEvent, action, deleteHref }: 
   // Decoding a stored instant back to form values is barn-local, same as entering one.
   const eventWallClock = initialEvent ? instantToLocalWallClock(new Date(initialEvent.event_at.at), timezone) : ''
   const [state, formAction] = useActionState(action, { error: null })
+  // Armed only by bubbled field changes — DateHourPicker's onChange also fires from a
+  // mount-time effect, so latching there would flag a pristine edit form as dirty.
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -36,7 +41,7 @@ export function EventForm({ mode, timezone, initialEvent, action, deleteHref }: 
         </Button>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="space-y-4" onChange={() => setDirty(true)}>
         {state.error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {state.error}
