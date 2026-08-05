@@ -122,9 +122,11 @@ export async function getOutstandingCharges(
 
   const supabase = client ?? await createClient()
   // #1309: the barn's own month, not the server host's. `agreement_charges.period` is a
-  // barn-local calendar month, so the boundary it's compared against has to be one too —
-  // every zone in BARN_TIMEZONES is behind UTC, so the host's month rolls over 4-10 hours
-  // early and briefly showed the still-current month's charges as overdue.
+  // zoneless calendar date naming a billing month — it carries no zone of its own, so it is
+  // whoever asks "is that month still current?" who has to supply one, and that question is
+  // about the barn's day. Every zone in BARN_TIMEZONES is behind UTC, so answering it on the
+  // host's clock rolled the boundary over 4-10 hours early and briefly showed the
+  // still-current month's charges as overdue.
   const firstOfCurrentMonth = firstOfMonth(barnToday(timezone))
 
   let riderAgreementIds: string[] | undefined

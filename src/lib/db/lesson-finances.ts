@@ -196,10 +196,12 @@ export async function getFinancialSummary(
     .reduce((sum, r) => sum + splitNetFee(r.fee, r.instructorCut, 1).netFee, 0)
 
   // #1309: the barn's own month, not the server host's — `ChargeSummaryRow.period` is a
-  // barn-local calendar month, and every zone in BARN_TIMEZONES is behind UTC, so the host's
-  // month rolled over 4-10 hours early and briefly flipped Pending income onto the next
-  // month's basis. (The `occurredAt > now` lesson rule above is untouched: that compares two
-  // real instants, which is zone-free.)
+  // zoneless calendar date naming a billing month, so it is this comparison that has to
+  // supply a zone, and "is that month current or later?" is a question about the barn's day.
+  // Every zone in BARN_TIMEZONES is behind UTC, so answering it on the host's clock rolled
+  // the boundary over 4-10 hours early and flipped Pending income onto the next month's
+  // basis. (The `occurredAt > now` lesson rule above is untouched: that compares two real
+  // instants, which is zone-free.)
   const firstOfCurrentMonth = firstOfMonth(barnToday(timezone))
 
   pendingIncome += charges
