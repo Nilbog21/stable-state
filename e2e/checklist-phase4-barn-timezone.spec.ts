@@ -760,8 +760,12 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
     await page.goto(`/barn/${barn.slug}/expenses/new`)
     // The Time field leads, and it is the hydration barrier as well as the test's own input
     // (#1363): an unhydrated `fill` moves the DOM value without firing `onChange`
-    // (e2e/CLAUDE.md fact 9), and React reconciles a controlled input's value at hydration — so a
-    // fill made before this barrier can be silently discarded. `occurred_at` is recomputed by
+    // (e2e/CLAUDE.md fact 9), so state never learns the value — and the *next* commit is what
+    // discards it. Hydration itself preserves the DOM value (React 19's `initInput` skips the
+    // sync while `isHydrating`, which is also why fact 7 holds); it is `updateInput`, on the
+    // first re-render after, that forces `element.value` back to the state React has. On this
+    // form that re-render always comes: `getScheduleRange`'s mount effect resolves and calls
+    // `setScheduleItems`. `occurred_at` is recomputed by
     // `computeOccurredAt` on every render and defaults to midnight while the Time field is blank,
     // so it carrying 23:30 Eastern is a write only client-side React can have made. Re-entering
     // the same time is idempotent, which is what makes it safe to re-dispatch.

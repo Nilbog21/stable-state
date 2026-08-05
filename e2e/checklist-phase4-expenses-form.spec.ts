@@ -550,15 +550,23 @@ function monthFromIndex(index: number): string {
  * than merely correlated with it, which is what the module comment requires of a signal.
  * `count()` rather than a `waitFor`, because `isLive` has to be non-retrying.
  *
+ * The panel the drive opened is then closed again, which `hydrateByDriving`'s comment names as the
+ * caller's job. It cost nothing while this ran only inside `showMonth`; at the call sites below it
+ * would leave every barriered test operating on a form the unbarriered ones don't have. The pager
+ * `showMonth` presses next is a sibling of the day grid rather than a child of the panel
+ * (`MonthCalendarPicker.tsx`), so shutting the panel doesn't take it out of reach.
+ *
  * Both `/expenses/new` and `/expenses/[id]` pass `getScheduleRange` to `ExpenseForm`, so the
  * calendar this reaches for is on every page the tests below open.
  */
 async function hydrateExpenseForm(page: Page): Promise<void> {
   const selectedDay = page.locator('button[aria-pressed="true"]').first()
+  const close = page.getByRole('button', { name: 'Close', exact: true })
   await hydrateByDriving(
     () => selectedDay.click(),
-    async () => (await page.getByRole('button', { name: 'Close', exact: true }).count()) > 0
+    async () => (await close.count()) > 0
   )
+  await close.click()
 }
 
 /**
@@ -622,10 +630,16 @@ async function tapDay(page: Page, day: string): Promise<void> {
 // Recipient-driven expense-type autofill
 // ---------------------------------------------------------------------------
 
-// The barrier is a *precondition* here rather than the uniformity it is at most sites below: the
-// autofill is `handleRecipientBlur`, so an unhydrated fill — which moves the DOM value and fires
-// no `onChange` (e2e/CLAUDE.md fact 9) — leaves `recipient` state empty, the blur returns early on
-// the empty trim, and the type field stays blank for a reason that has nothing to do with history.
+// The barrier fails *earlier* here than at the sites below, not more legitimately: the autofill is
+// `handleRecipientBlur`, so an unhydrated fill — which moves the DOM value and fires no `onChange`
+// (e2e/CLAUDE.md fact 9) — leaves `recipient` state empty, the blur returns early on the empty
+// trim, and the type field stays blank for a reason that has nothing to do with history.
+//
+// The sites below are not the mere uniformity #1363 took them for. Their values do survive to a
+// native form post, which reads the DOM rather than state — but only if they are still in the DOM
+// at submit time, and an unhydrated fill leaves them one re-render away from being overwritten
+// with the state React holds. `checklist-phase4-barn-timezone.spec.ts`'s expense test states that
+// mechanism in full, including why this form always supplies the re-render.
 test('entering_a_recipient_seen_before_autofills_the_expense_type @manager', async ({ page }) => {
   await page.goto(newExpensePath())
   await hydrateExpenseForm(page)
@@ -775,8 +789,16 @@ test('setting_the_date_to_yesterday_hides_the_time_field @manager', async ({ pag
 
 // The detached wait is flow control, not an assertion — it is what makes the expectation below a
 // *return*. Without it a page whose Time field never left would satisfy the final line trivially.
+//
+// It is also why this test needs the barrier where its sibling above does not, though neither is a
+// `fill`: that wait is tier-1 and therefore unbounded (e2e/CLAUDE.md fact 1), so a first `tapDay`
+// lost to hydration (fact 10) leaves `#expense-time` attached and blocks until the test's whole
+// 30s budget is gone — the slow-timeout shape #1363 exists to remove, not the fast red the
+// sibling's 5s `expect.poll` gives. `tapDay` can't supply the barrier itself: it reaches
+// `showMonth` with `delta === 0` for both of these days, which returns before hydrating.
 test('setting_the_date_back_to_today_brings_the_time_field_back @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   await tapDay(page, yesterdayStr)
   await page.locator('#expense-time').waitFor({ state: 'detached' })
   await tapDay(page, todayStr)
@@ -889,8 +911,15 @@ test('a_payment_type_set_on_the_new_expense_form_persists @manager', async ({ pa
   await expect(page.locator('#expense-payment-type')).toHaveValue('zelle')
 })
 
+// This one is barriered for the opposite reason to every site above: its unhydrated failure is not
+// red at all. The select is submitted through `<form action={formAction}>`, and
+// `actions/expenses.ts` reads `formData.get('payment_type')` off the live DOM — so a
+// `selectOption` that never reached React still posts, still persists, and the reload assertion
+// still passes. Unbarriered this is a check that cannot fail for the reason it names, which is
+// #1252's break-the-code-probe-that-PASSED class rather than a flake.
 test('a_payment_type_set_on_the_edit_expense_form_persists @manager', async ({ page }) => {
   await page.goto(expenseHref(payEdit))
+  await hydrateExpenseForm(page)
   await page.locator('#expense-payment-type').selectOption('check')
   await submitForm(page, 'Save Changes')
   await page.goto(expenseHref(payEdit))
