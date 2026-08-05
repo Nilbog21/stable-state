@@ -5,10 +5,12 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Eleven things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in the
-places you would look for them, and each of which cost the #1187–#1252 batch at least one round
-— several rediscovered independently by two or three slices. Every one is measured, not
-inferred. The spec named after each fact carries the worked example.
+Thirteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+the places you would look for them, and each of which cost a batch at least one round — several
+rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
+12 and 13 from the 2026-08-04 backlog run. Every one is measured, not inferred. The spec named
+after each fact carries the worked example, with fact 12 the exception by construction: it exists
+to say why no spec does the thing it describes.
 
 Facts 1 and 2 are stated in full where you meet them; the rest are stated here.
 
@@ -92,6 +94,33 @@ React is listening navigates the document rather than being lost, so the worst c
 **one-shot** read — a soft nav's re-render races `innerText`/`textContent` and hands back the
 previous tab's figure — so wait on something that differs *between* tabs (a first column
 header, not a shared Gross/Expenses/Net one) with an auto-retrying matcher. *(#1244)*
+
+**12. The barn-vs-host zone axis is open, and cannot be closed from inside a spec.** The dev
+server runs under `TZ=UTC` — measured by #1252's probe, which rendered a 4:00 PM Eastern lesson
+as 8:00 PM from a Server Component with the barn zone dropped, and only then confirmed against
+`package.json`'s `dev` script (pinned by #1221) — and the barn-day
+checklist items fix the barn to Eastern, so a regression that reads the host's clock instead of
+`barns.timezone` fails only in the ~4–5 hour window where the barn's day and the server's UTC day
+differ — and passes unnoticed outside it. That window cannot be arranged: `page.clock.setFixedTime`
+pins the browser, and the server's clock is unreachable from a browser context. Nor can any *date*
+assertion separate all three frames at once, because Eastern always equals either the Honolulu day
+or the UTC day; only an *hour* assertion does, which is how
+`checklist-phase4-barn-timezone.spec.ts`'s pin-arithmetic items close the UTC axis on a different
+page. This is the stated reason no spec pins the server clock — it is a known-open axis, not an
+oversight, so don't spend a round rediscovering that it can't be closed. *(#1288)*
+
+**13. A page whose markup is byte-identical pre- and post-hydration has no barrier target at
+all.** Facts 9 and 10 both prescribe a barrier, and both assume a signal exists; on some pages
+neither shape in `support/hydration.ts` applies. Bare `/profile` is the measured example. Every
+`ProfileForm` field is `useState`-seeded from a server prop, so the rendered value is the same
+before and after hydration and `waitForHydrated` has nothing to bind to; and its only conditional
+markup — the `error` and `saved` lines — appears solely in response to a real form submit, which
+is not harmless to repeat, so `hydrateByDriving` has no safe control to drive. Where the
+`?barn=<slug>` variant of the route is acceptable, the barn nav that `src/app/profile/layout.tsx`
+then renders brings a target with it: the `UserMenu` popover toggle is `useState`-gated markup and
+a toggle, so it is safe to re-dispatch. Reference implementation:
+`checklist-phase56-nav-profile.spec.ts`'s `openAvatarMenu` (drive open, assert, then
+`closeAvatarMenu` to leave the page as it was found). *(#1289)*
 
 ## Spec maintenance
 
