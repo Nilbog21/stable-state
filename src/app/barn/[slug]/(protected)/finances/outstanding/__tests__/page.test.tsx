@@ -63,7 +63,7 @@ describe('OutstandingPage', () => {
 
   it('should_call_getOutstandingCharges_with_user_id_and_role', async () => {
     await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'manager')
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone, mockUser.id, 'manager')
   })
 
   it('should_render_empty_state_when_no_outstanding_items', async () => {

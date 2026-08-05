@@ -28,7 +28,7 @@ export default async function OutstandingPage({
   const role = membership.role as Role
   const [lessons, charges, cancellationFees] = await Promise.all([
     getOutstandingLessons(barn.id, user.id, role),
-    getOutstandingCharges(barn.id, user.id, role),
+    getOutstandingCharges(barn.id, barn.timezone, user.id, role),
     getOutstandingCancellationFees(barn.id, user.id, role),
   ])
   const items = mergeOutstandingItems(lessons, charges, cancellationFees, barn.timezone)
