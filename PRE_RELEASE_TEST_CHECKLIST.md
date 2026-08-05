@@ -891,13 +891,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: managed_rider_row_renders_as_a_card_link_to_their_member_page) In the Riders section, a managed/unclaimed row (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) renders as a normal card link showing the name only
 - [ ] (e2e: managed_rider_row_shows_no_unlinked_badge) No **Unlinked** badge appears on that row
 - [ ] (e2e: managed_member_page_shows_no_manage_member_controls_to_a_trainer) No Copy Invite/Revoke controls appear on that row for any role — those live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either
-- [ ] (e2e-candidate) Harper Test's member detail page shows Contact Info as read-only, with blank fields rendering "—"
-- [ ] (e2e-candidate) That page shows no Save button for Contact Info
-- [ ] (e2e-candidate) Another trainer's or a manager's member detail page, opened from the roster, loads (no 404) and shows their name
-- [ ] (e2e-candidate) (#863) That page shows their **Contact Info** section — a trainer can view any member's Contact Info
-- [ ] (e2e-candidate) That page shows **no Documents section**
-- [ ] (e2e-candidate) Blake's (a rider's) detail page likewise shows their **Contact Info** section
-- [ ] (e2e-candidate) (#779) Blake's detail page shows no Documents section — #779 narrowed rider-document access to manager/self only
+- [ ] (e2e: trainer_sees_em_dashes_for_a_stub_members_blank_contact_fields) Harper Test's member detail page shows Contact Info as read-only, with blank fields rendering "—"
+- [ ] (e2e: trainer_sees_no_save_button_in_contact_info) That page shows no Save button for Contact Info
+- [ ] (e2e: trainer_opens_a_managers_detail_page_from_the_roster) Another trainer's or a manager's member detail page, opened from the roster, loads (no 404) and shows their name
+- [ ] (e2e: trainer_sees_contact_info_on_a_managers_detail_page) (#863) That page shows their **Contact Info** section — a trainer can view any member's Contact Info
+- [ ] (e2e: trainer_sees_no_documents_section_on_a_managers_detail_page) That page shows **no Documents section**
+- [ ] (e2e: trainer_sees_contact_info_on_a_riders_detail_page) Blake's (a rider's) detail page likewise shows their **Contact Info** section
+- [ ] (e2e: trainer_sees_no_documents_section_on_a_riders_detail_page) (#779) Blake's detail page shows no Documents section — #779 narrowed rider-document access to manager/self only
 - [ ] (e2e: trainer_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 - [ ] (e2e-candidate) That page also lists any uncollected cancellation fees for lessons you instruct
@@ -994,11 +994,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: managed_rider_row_shows_no_unlinked_badge) No **Unlinked** badge appears on any managed/unclaimed row (a rider never sees it, unlike a manager)
 - [ ] (e2e: rider_own_documents_section_shows_the_empty_state) Your own member detail page's Documents section shows the empty state ("No documents yet")
 - [ ] (e2e: rider_own_documents_section_has_no_add_document_button) (#864) That section shows **no Add Document button** — rider self-service is read-only
-- [ ] (e2e-candidate) Another member's detail page (a trainer, a manager), opened from the roster, loads (no 404) and shows their name
-- [ ] (e2e-candidate) (#863) That page shows their **Contact Info** section
-- [ ] (e2e-candidate) That page shows no Documents section
-- [ ] (e2e-candidate) Emery's member detail page (her photo is seeded) displays that photo
-- [ ] (e2e-candidate) That page shows no **Set Photo**/**Replace Photo**/**Remove** control
+- [ ] (e2e: rider_opens_a_managers_detail_page_from_the_roster) Another member's detail page (a trainer, a manager), opened from the roster, loads (no 404) and shows their name
+- [ ] (e2e: rider_sees_contact_info_on_a_managers_detail_page) (#863) That page shows their **Contact Info** section
+- [ ] (e2e: rider_sees_no_documents_section_on_a_managers_detail_page) That page shows no Documents section
+- [ ] (e2e: rider_sees_the_seeded_photo_on_another_members_page) Emery's member detail page (her photo is seeded) displays that photo
+- [ ] (e2e: rider_sees_no_photo_controls_on_another_members_page) That page shows no **Set Photo**/**Replace Photo**/**Remove** control
 
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. Phase 2-4's own-photo check exercises this code path for real on **your own** profile (no impersonation) — the only locally-linked one, and there's no role branch in the path. The version where the self-writer is *someone other than you* needs a real second account and is verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — don't re-add a self-photo check to an impersonated phase.
 
