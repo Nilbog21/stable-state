@@ -12,7 +12,9 @@ vi.mock('../lesson-tiers')
 
 import {
   getHorseIncomeDetail,
+  getHorseIncomeSummary,
   getRiderIncomeDetail,
+  getRiderIncomeSummary,
   getTrainerIncomeDetail,
 } from '../lesson-finances'
 import {
@@ -209,18 +211,23 @@ describe('getHorseIncomeDetail', () => {
     })
   })
 
-  describe('instructor cut netting', () => {
-    it('should_net_cut_from_row_fee_when_single_horse_in_lesson', async () => {
+  // #1156: HORSE_INCOME_DESCRIPTOR.splitsGrossFee now reaches detail mode too, so a
+  // drill-down row carries the same pre-cut fee its By Horse tab row is built from.
+  // Apportioning a slice of the instructor's cut to a horse was an arbitrary split of
+  // money already accounted for in full on By Instructor, and it was the sole reason the
+  // two pages' Net figures didn't reconcile.
+  describe('gross (pre-cut) fee split', () => {
+    it('should_return_the_pre_cut_fee_on_the_row_when_single_horse_in_lesson', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-      expect(result.rows[0].fee).toBe(75)
+      expect(result.rows[0].fee).toBe(100)
     })
 
-    it('should_net_cut_once_before_splitting_across_two_horses', async () => {
+    it('should_split_the_pre_cut_fee_across_two_horses', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
@@ -230,7 +237,7 @@ describe('getHorseIncomeDetail', () => {
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-      expect(result.rows[0].splitAmount).toBe(37.5)
+      expect(result.rows[0].splitAmount).toBe(50)
     })
 
     it('should_not_apply_cut_to_charge_rows_or_total', async () => {
@@ -245,14 +252,38 @@ describe('getHorseIncomeDetail', () => {
       expect(result.total).toBe(500)
     })
 
-    it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+    // The pre-#1156 shape of this case asserted -25: the cut was subtracted from a fee
+    // that wasn't there. A comped lesson earns the horse nothing, and the cut it still
+    // cost the barn belongs to By Instructor, so zero is the whole of this row.
+    it('should_show_a_comped_lessons_zero_fee_rather_than_a_negative_cut', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 0, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-      expect(result.total).toBe(-25)
+      expect(result.total).toBe(0)
+    })
+
+    // The page-level claim the e2e spec asserts (drill-down Net == By Horse Net) reduces
+    // to this once both sides subtract the same expense figure: the horse page computes
+    // `total - expenseDetail.total`, the tab computes `totalIncome - expenses`.
+    it('should_match_the_by_horse_summarys_total_income_for_the_same_horse', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2' },
+      ])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+      const [summary, detail] = await Promise.all([
+        getHorseIncomeSummary('barn-1', startDate, endDate),
+        getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York'),
+      ])
+
+      expect(detail.total).toBe(summary.find((h) => h.horseId === 'horse-1')!.totalIncome)
     })
   })
 })
@@ -458,18 +489,20 @@ describe('getRiderIncomeDetail', () => {
     })
   })
 
-  describe('instructor cut netting', () => {
-    it('should_net_cut_from_row_fee_when_single_rider_in_lesson', async () => {
+  // #1156 — see the same block under getHorseIncomeDetail above; RIDER_INCOME_DESCRIPTOR
+  // carries splitsGrossFee for the same reason and detail mode now honors it.
+  describe('gross (pre-cut) fee split', () => {
+    it('should_return_the_pre_cut_fee_on_the_row_when_single_rider_in_lesson', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
-      expect(result.rows[0].fee).toBe(75)
+      expect(result.rows[0].fee).toBe(100)
     })
 
-    it('should_net_cut_once_before_splitting_across_two_riders', async () => {
+    it('should_split_the_pre_cut_fee_across_two_riders', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
@@ -479,7 +512,7 @@ describe('getRiderIncomeDetail', () => {
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
-      expect(result.rows[0].splitAmount).toBe(37.5)
+      expect(result.rows[0].splitAmount).toBe(50)
     })
 
     it('should_not_apply_cut_to_charge_rows_or_total', async () => {
@@ -494,14 +527,34 @@ describe('getRiderIncomeDetail', () => {
       expect(result.total).toBe(500)
     })
 
-    it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+    it('should_show_a_comped_lessons_zero_fee_rather_than_a_negative_cut', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 0, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
-      expect(result.total).toBe(-25)
+      expect(result.total).toBe(0)
+    })
+
+    // By Rider has no expense concept, so the tab's Net *is* its Gross — this equality is
+    // the whole of the page-level claim its e2e spec asserts.
+    it('should_match_the_by_rider_summarys_total_income_for_the_same_rider', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-2' },
+      ])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+      const [summary, detail] = await Promise.all([
+        getRiderIncomeSummary('barn-1', startDate, endDate),
+        getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York'),
+      ])
+
+      expect(detail.total).toBe(summary.find((r) => r.riderId === 'mem-1')!.totalIncome)
     })
   })
 })

@@ -1,11 +1,18 @@
 /**
- * Lesson income reporting, net of each lesson's own snapshotted instructor cut (#776):
- * pure fold helpers (`splitNetFee`, `computeGroupedIncome`, `computeHorseNetIncome`),
- * the barn-wide `getFinancialSummary`, and per-entity income summaries/details
- * dispatched through `getEntityIncome` over the horse/rider/trainer
+ * Lesson income reporting: pure fold helpers (`splitNetFee`, `computeGroupedIncome`,
+ * `computeHorseNetIncome`), the barn-wide `getFinancialSummary`, and per-entity income
+ * summaries/details dispatched through `getEntityIncome` over the horse/rider/trainer
  * `EntityIncomeDescriptor`s. Lesson-derived rows come from
- * `lesson-finance-queries.ts:getLessonFeeRows` (the `transactions` ledger, #827);
- * Outstanding lives in `outstanding.ts`, which never applies the cut.
+ * `lesson-finance-queries.ts:getLessonFeeRows` (the `transactions` ledger, #827).
+ *
+ * Whether the instructor cut is netted off is per-view, not module-wide. Each lesson's
+ * own snapshotted cut (#776) is subtracted for the tier breakdown and the whole trainer
+ * view, where that cut is the subject. The horse and rider views report the gross
+ * (pre-cut) split instead — their descriptors set `splitsGrossFee`, since a per-entity
+ * share of a cut By Instructor already accounts for in full is money attributed twice
+ * (#971 for the summaries, #1156 for the drill-downs, which had been left disagreeing
+ * with the very tabs they hang off). Outstanding lives in `outstanding.ts`, which never
+ * applies the cut at all.
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -123,7 +130,12 @@ function hasLesson(row: LessonFeeRow): row is LessonFeeRow & { lessonId: string 
   return row.lessonId !== null
 }
 
-/** Shared per-lesson-row body for getEntityIncomeDetail's horse/rider/trainer paths — per-lesson rows for a single target participant. */
+/**
+ * Shared per-lesson-row body for getEntityIncomeDetail's horse/rider/trainer paths —
+ * per-lesson rows for a single target participant. Like computeGroupedIncome, it always
+ * runs splitNetFee; a `splitsGrossFee` descriptor gets its gross split by having the
+ * caller zero each row's cut first, rather than by a second code path in here.
+ */
 function computeDetailRows<P>(
   lessons: { lessonId: string; fee: number; occurredAt: string; instructorCut: number }[],
   participantsByLessonId: (lessonId: string) => P[],
@@ -276,7 +288,8 @@ export interface EntityIncomeDescriptor {
    * #971: horse/rider only — summary mode's own totalIncome becomes the gross (pre-cut) split
    * instead of net-of-cut, since By Horse/By Rider no longer track a per-entity share of
    * instructor cut (it's "outside this view" for those tables — see finances-reconciliation.ts).
-   * Detail mode is unaffected (drill-down pages stay net-of-cut, out of #971's scope).
+   * #1156 extended the flag to detail mode, so a drill-down reconciles with the tab it was
+   * reached from; #971 had scoped detail out, and that gap was the whole of the discrepancy.
    */
   splitsGrossFee?: boolean
 }
@@ -440,13 +453,20 @@ async function getEntityIncomeDetail(
   const nameMap = await descriptor.resolveNames([targetId], barnId, supabase)
   const name = nameMap.get(targetId) ?? targetId
 
+  // #1156: the same zero-the-cut-then-split move getEntityIncomeSummary makes, so a
+  // drill-down row is the pre-cut split its own tab's row is built from. Apportioning a
+  // slice of the instructor's cut to a horse or a rider splits money that By Instructor
+  // already accounts for in full, and was the sole reason the two pages disagreed.
+  // Trainer detail keeps the cut — there it's the subject of the view, not a stray share.
+  const detailLessons = descriptor.splitsGrossFee ? lessonsData.map((l) => ({ ...l, instructorCut: 0 })) : lessonsData
+
   let detailRows: EntityIncomeDetailRow[] = []
   if (lessonsData.length) {
     const lessonIds = lessonsData.map((l) => l.lessonId)
     if (descriptor.junctionTable) {
       const junctionRows = await getLessonJunctionRows(descriptor.junctionTable, descriptor.participantColumn!, barnId, lessonIds, supabase)
       detailRows = computeDetailRows(
-        lessonsData,
+        detailLessons,
         (lessonId) => junctionRows.filter((j) => j.lesson_id === lessonId),
         (j) => j[descriptor.participantColumn!],
         targetId
@@ -454,7 +474,7 @@ async function getEntityIncomeDetail(
     } else {
       const instructorByLessonId = new Map(lessonsData.map((l) => [l.lessonId, l.instructorId]))
       detailRows = computeDetailRows(
-        lessonsData,
+        detailLessons,
         (lessonId) => {
           const instructorId = instructorByLessonId.get(lessonId)
           return instructorId ? [instructorId] : []

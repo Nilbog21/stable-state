@@ -7,7 +7,7 @@ import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './suppor
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
-import type { Horse, LessonTier } from '@/lib/db/types'
+import type { Horse } from '@/lib/db/types'
 
 // Per-horse figures. Every horse's Gross is distinct, and the gross-descending order
 // computeHorseNetIncome returns rows in differs from the name-ascending order the client
@@ -34,7 +34,6 @@ const NET_COL = 3
 const GROSS_INFO_TEXT = "This horse's lesson and agreement income, before the instructor's cut"
 
 type Seeded = {
-  tier: LessonTier
   apollo: Horse
   bella: Horse
   comet: Horse
@@ -132,7 +131,7 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
     horseIds: [comet.id],
   })
 
-  seeded = { tier, apollo, bella, comet, willow, dancer, bellaExpense }
+  seeded = { apollo, bella, comet, willow, dancer, bellaExpense }
 })
 
 // ---------------------------------------------------------------------------
@@ -353,26 +352,23 @@ test('horse_drilldown_expense_split_renders_in_parentheses @manager', async ({ p
 })
 
 /**
- * The checklist previously claimed these two Net figures match. They don't, and can't:
- * HORSE_INCOME_DESCRIPTOR sets `splitsGrossFee`, so getEntityIncomeSummary zeroes each
- * lesson's cut and the tab's Gross/Net are pre-cut, while getEntityIncomeDetail has no
- * such branch and runs every row through splitNetFee — #971 changed summary mode only.
+ * These two Net figures disagreed by this horse's share of its lessons' snapshotted cuts
+ * until #1156: #971 made the tab pre-cut via `HORSE_INCOME_DESCRIPTOR.splitsGrossFee` but
+ * scoped detail mode out, so `getEntityIncomeDetail` went on running every row through
+ * `splitNetFee`. #1156 zeroes the cut on the detail path too, and the gap closes.
  *
- * The real invariant is the difference: this horse's *share* of each of its lessons'
- * snapshotted cuts. Both sides divide by the lesson's horse count — computeGroupedIncome
- * splits the cut-zeroed fee across participants, computeDetailRows splits fee-minus-cut
- * across the same participants — so a lesson contributes cut/horseCount to the gap, not
- * the whole cut. Bella has exactly one lesson this month, she is its only horse, and it
- * was booked on the Standard tier whose instructor_cut create_lesson_with_participants
- * snapshots onto it; her share is therefore the entire cut, which is what makes the
- * expected value expressible without a horse-count divisor here.
+ * Bella's row is the one worth asserting on: she has a lesson, a lease charge, and an
+ * expense this month, so the equality holds across all three of the drill-down's row
+ * types and not just the lesson split that changed. Both sides subtract the same expense
+ * figure — the page computes `total - expenseDetail.total`, the tab `gross - expenses` —
+ * so this is a stricter check than the DAL-level `total === totalIncome` unit test.
  */
-test('horse_drilldown_net_is_the_by_horse_net_less_the_horses_share_of_its_lessons_instructor_cuts @manager', async ({ page }) => {
+test('horse_drilldown_net_matches_the_by_horse_net @manager', async ({ page }) => {
   await page.goto(financesUrl())
   const tabNet = parseMoney(await cellText(horseRow(page, seeded.bella), NET_COL))
 
   await page.goto(horseDrilldownUrl(seeded.bella.id))
-  expect(parseMoney(await drilldownNetFigure(page).innerText())).toBe(tabNet - seeded.tier.instructor_cut)
+  expect(parseMoney(await drilldownNetFigure(page).innerText())).toBe(tabNet)
 })
 
 // The previous month, not the current one: on the current month the assertion would hold

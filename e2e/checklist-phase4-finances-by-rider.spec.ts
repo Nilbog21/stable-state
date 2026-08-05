@@ -11,10 +11,11 @@ import { formatMonthParam } from '@/lib/finances-month'
 // aggregation the page under test uses.
 //
 // INSTRUCTOR_CUT is flat per-lesson dollars, snapshotted onto `lessons.instructor_cut` at
-// creation from the tier named by the lesson. It is deliberately *not* the barn's
-// default_instructor_cut (25): create_lesson_with_participants falls back to that default
-// whenever the tier name doesn't resolve, so a distinct value here makes the drill-down check
-// below fail loudly if the tier lookup ever stops matching, instead of silently agreeing.
+// creation from the tier named by the lesson. Its job since #1156 is to be *non-zero*: the
+// tab and the drill-down are both pre-cut now, so their equality check only has teeth if
+// there is a cut that could have driven them apart. It also stays deliberately distinct
+// from the barn's default_instructor_cut (25), which create_lesson_with_participants falls
+// back to whenever a lesson's tier name doesn't resolve.
 const INSTRUCTOR_CUT = 20
 const RIDER_LESSON_FEE = 60
 const RIDER_LEASE_FEE = 90
@@ -273,15 +274,15 @@ test('rider_drilldown_table_has_a_type_column @manager', async ({ page }) => {
 })
 
 // #971 made the By Rider tab's Gross pre-cut (RIDER_INCOME_DESCRIPTOR.splitsGrossFee) but
-// left the drill-down net-of-cut, so the two figures differ by exactly the snapshotted cut on
-// the rider's lessons in view — one lesson this month, hence one INSTRUCTOR_CUT. The Gross is
-// read off the tab rather than computed, so this asserts the *relationship* between the two
-// pages and not a total either of them derives.
-test('rider_drilldown_total_is_the_by_rider_gross_less_the_instructor_cut @manager', async ({ page }) => {
+// left the drill-down net-of-cut, so the two figures used to differ by exactly the
+// snapshotted cut on the rider's lessons in view. #1156 carries the flag into detail mode
+// and they now agree. The Gross is read off the tab rather than computed, so this asserts
+// the *relationship* between the two pages and not a total either of them derives.
+test('rider_drilldown_total_matches_the_by_rider_gross @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
   const gross = parseMoney(await riderRow(page, RIDER_NAME).locator('td').nth(1).innerText())
   await page.goto(drilldownUrl())
-  expect(parseMoney(await drilldownTotal(page).innerText())).toBe(gross - INSTRUCTOR_CUT)
+  expect(parseMoney(await drilldownTotal(page).innerText())).toBe(gross)
 })
 
 test('rider_drilldown_preserves_the_month_param @manager', async ({ page }) => {
