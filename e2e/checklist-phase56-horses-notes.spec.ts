@@ -108,7 +108,18 @@ const barn = withBarn('phase56-horses-notes', async ({ supabase, barn, members }
   // Clover's owning member. Seeded inline rather than through a builder, per this batch's
   // seed-inline ruling: HorseOptions covers ownership but there is no member_horse_privileges
   // builder, and support/fixtures.ts is off limits to the fifteen slices running in parallel.
-  // Same three-line shape checklist-phase4-horses-detail.spec.ts uses for the same table.
+  //
+  // Unlike the identically shaped insert in checklist-phase4-horses-detail.spec.ts, this row is
+  // *not* load-bearing, and the difference is worth knowing before anyone extends this file.
+  // There it is a hard precondition: that spec drives the UI's Set as Owner button, and
+  // set_horse_owner raises 'privilege_grant_not_found' for a member holding no privileges row
+  // (20260725115546). Here ownership is planted directly through addHorse, and the write path
+  // under test — update_horse_notes (20260724155324) — authorizes on horses.owning_member_id
+  // alone and never reads this table. The row is seeded because checklist line 873 names it, so
+  // that the fixture says what the manual step says. Don't read a document-privileges claim into
+  // its value: granting ownership through the real UI elevates the new owner to write plus
+  // lesson-read (#1069), which this deliberately does not replay, since nothing in this slice's
+  // line range is about privileges.
   mustSucceed(
     await supabase
       .from('member_horse_privileges')
