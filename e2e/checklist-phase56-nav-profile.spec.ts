@@ -1,6 +1,8 @@
 // covers: src/app/barn/[slug]/(protected)/layout.tsx
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
+// covers: src/app/barn/[slug]/(protected)/BarnSwitcher.tsx
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/app/barn/[slug]/(protected)/UserMenu.tsx
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
@@ -10,7 +12,7 @@
 // The barn chrome a non-manager sees, both roles, in one file: the four-link nav and what it
 // omits, the two manager-only routes that must 404 rather than bounce to a login page, the same
 // nav rendered on the barn-scoped Profile page, and #1018's calendar feed scoped to the caller's
-// own membership (PRE_RELEASE_TEST_CHECKLIST.md 823-825, 902, 908-910 and 922-924, 982,
+// own membership (PRE_RELEASE_TEST_CHECKLIST.md 823-825, 901, 908-910 and 922-924, 982,
 // 1009-1011).
 //
 // `layout.tsx` is already in select-specs.sh's ALWAYS_FULL, and is declared above anyway per
@@ -40,8 +42,8 @@
 //    `buildNavLinks` returns a literal array and the layout renders the barn-name link ahead of
 //    it, so these five anchors are fixed JSX siblings rather than rows out of a query. Every
 //    list here that IS query-derived — the calendar feed's UIDs — is compared as a sorted set,
-//    because #1286 is still adding ORDER BY to get_calendar_feed and a membership assertion is
-//    correct either side of it. `toHaveText` on the array auto-retries and pins the match count
+//    because #1286 adds ORDER BY to get_calendar_feed and a membership assertion is correct
+//    either side of it. `toHaveText` on the array auto-retries and pins the match count
 //    as well as each string, so it is its own settle guard (support/read.ts's ceiling section).
 //
 // 4. THE FEED FETCHES DELIBERATELY USE THE PLAIN `request` FIXTURE, WHICH CARRIES A SESSION.
@@ -123,6 +125,20 @@ function navWithBarnName(): string[] {
 const TRAINER_HIDDEN = /^(Finances|Manage Barn|Leases|Boarding|Expenses)$/
 const RIDER_HIDDEN = /^(Leases|Boarding|Expenses)$/
 
+/**
+ * Positive control for the two "hides X" tests, and not one of their assertions — a zero count
+ * is satisfied by a page that never rendered, and `toHaveCount(0)` would happily agree with it.
+ * Waiting on a link the nav DOES carry means the zero is read from a nav that exists.
+ *
+ * A bare `waitFor` rather than a second `expect`, so each of those tests carries exactly one
+ * assertion (root CLAUDE.md's testing conventions). It loses nothing: `waitFor` throws on
+ * timeout, so the guard still fails the test outright, and it is unbounded where an `expect`
+ * matcher would have run on expect's 5s budget (e2e/CLAUDE.md fact 1).
+ */
+async function navHasRendered(page: Page): Promise<void> {
+  await nav(page).getByRole('link', { name: 'Lessons', exact: true }).waitFor()
+}
+
 function barnPageUrl(): string {
   return `/barn/${barn.slug}/lessons`
 }
@@ -138,10 +154,7 @@ test('trainer_nav_shows_the_four_link_nav_beside_the_barn_name @trainer', async 
 
 test('trainer_nav_hides_finances_manage_barn_leases_boarding_and_expenses @trainer', async ({ page }) => {
   await page.goto(barnPageUrl())
-  // Positive control, not the claim: a zero count is satisfied by a page that never rendered,
-  // and `toHaveCount` would happily agree with it. Waiting on a link the nav DOES carry means
-  // the zero below is read from a nav that exists.
-  await expect(nav(page).getByRole('link', { name: 'Lessons', exact: true })).toBeVisible()
+  await navHasRendered(page)
 
   await expect(nav(page).getByRole('link', { name: TRAINER_HIDDEN })).toHaveCount(0)
 })
@@ -153,7 +166,7 @@ test('rider_nav_shows_the_four_link_nav_beside_the_barn_name @rider', async ({ p
 
 test('rider_nav_hides_leases_boarding_and_expenses @rider', async ({ page }) => {
   await page.goto(barnPageUrl())
-  await expect(nav(page).getByRole('link', { name: 'Lessons', exact: true })).toBeVisible()
+  await navHasRendered(page)
 
   await expect(nav(page).getByRole('link', { name: RIDER_HIDDEN })).toHaveCount(0)
 })
@@ -231,6 +244,14 @@ async function goToProfileViaAvatarMenu(page: Page) {
   // No explicit timeout: navigationTimeout defaults to unbounded and a number could only
   // tighten it (#1211). 'commit' is enough — the claim is that the URL changed.
   await page.waitForURL(new RegExp(`/profile\\?barn=${barn.slug}$`), { waitUntil: 'commit' })
+  // And then a DESTINATION-ONLY signal, which is the half that actually matters here. The nav
+  // bar the caller is about to assert on renders on the SOURCE page too, and a `Link` click is
+  // a soft navigation: the URL flips while the previous route is still mounted, so an assertion
+  // taken at `commit` can match the page we just left and pass without the Profile page ever
+  // rendering. `Edit Profile` is ProfileForm's heading and exists nowhere on a barn page, so
+  // waiting on it is what makes the URL claim and the render claim the same event. #1207 fixed
+  // this exact shape once already, on the manager's copy of this flow.
+  await page.getByRole('heading', { name: 'Edit Profile', exact: true }).waitFor()
 }
 
 /**
