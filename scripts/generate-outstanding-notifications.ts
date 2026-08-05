@@ -49,7 +49,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
 
       const [lessons, charges] = await Promise.all([
         getOutstandingLessons(barn.id, undefined, 'manager', supabase),
-        getOutstandingCharges(barn.id, undefined, 'manager', supabase),
+        getOutstandingCharges(barn.id, barn.timezone, undefined, 'manager', supabase),
       ])
       const count = lessons.length + charges.length
       const total = lessons.reduce((sum, l) => sum + (l.fee ?? 0), 0) + charges.reduce((sum, c) => sum + c.fee, 0)
