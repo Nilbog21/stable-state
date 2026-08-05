@@ -106,9 +106,14 @@ let seededRegisteredName: string
  * checklist-phase4-horses-photos.spec.ts documents (a control that passes only in declaration
  * order and fails under a standalone --grep, against a perfectly healthy app).
  *
- * setHorsePhoto goes through replaceHorsePhoto, which only ever *clears* photo_uploaded_by, so
- * neither owned horse is photo-locked and the owner keeps write access — which is the state
- * lines 882/942 are about.
+ * Neither owned horse ends up photo-locked, so its owner keeps write access — the state lines
+ * 882/942 are about. That is createHorse's doing rather than setHorsePhoto's, and the difference
+ * matters if this seed is ever copied: a service-role *set* goes through updateHorsePhotoPath,
+ * which writes photo_uploaded_by only when the path is being cleared and otherwise leaves
+ * whatever attribution was already there untouched (src/lib/db/horses.ts). The column starts
+ * NULL from the insert and nothing here stamps it, so isPhotoLockedToOwner stays false. Reaching
+ * the *locked* state needs a separate write — see checklist-phase4-horses-photos.spec.ts's
+ * Butter, which stamps it explicitly for exactly that reason.
  */
 const barn = withBarn('phase56-horses-media', async ({ supabase, barn, members }) => {
   butterId = (await addHorse(supabase, barn.id, BUTTER)).id
