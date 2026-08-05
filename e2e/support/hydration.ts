@@ -53,7 +53,9 @@ import { expect, type Locator } from '@playwright/test'
  * a signal that can never become *visible* runs out the budget rather than failing.
  *
  * For a page that renders identically until it is driven, there is no such signal and this is
- * the wrong tool: use `hydrateByDriving`.
+ * the wrong tool: use `hydrateByDriving` — unless that page also has no control whose repeat is
+ * harmless, in which case neither helper applies and there is no barrier to place at all
+ * (e2e/CLAUDE.md fact 13, which names the measured example and the one workaround).
  */
 export async function waitForHydrated(signal: Locator): Promise<void> {
   await signal.first().waitFor()
