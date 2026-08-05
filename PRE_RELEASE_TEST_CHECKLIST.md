@@ -434,7 +434,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: owned_horse_shows_a_green_active_badge_under_my_horses) (#1000) Clover shows a green **Active** badge there
 - [ ] (e2e: owned_horse_no_longer_appears_under_available) (#1000) Clover no longer appears under Available
 - [ ] (e2e: clearing_registered_name_removes_the_card_parenthetical) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
-- [ ] (e2e: re_checking_use_barn_defaults_reverts_thresholds_on_reload) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
+- [ ] (e2e: re_checking_use_barn_defaults_reverts_thresholds_on_reload) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload
 - [ ] (e2e: moderate_not_below_high_is_rejected_with_an_error) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
 - [ ] (e2e: no_saved_confirmation_appears_for_a_rejected_save) No "✓ Saved" confirmation appears for that rejected save
 - [ ] (e2e: a_rejected_save_leaves_the_name_and_status_unchanged) The horse's name and status are unchanged by it

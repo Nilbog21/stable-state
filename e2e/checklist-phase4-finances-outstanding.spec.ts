@@ -20,10 +20,9 @@ import { formatShortDateOnly } from '@/lib/format-date'
 import { calendarDate } from '@/lib/local-day'
 import type { Agreement, Horse, Lesson } from '@/lib/db/types'
 
-// The stub rider addMemberships seeds (first_name 'Test', last_name 'Rider2'). Used instead
-// of the `rider` login for the lesson this file marks paid, because "Test Rider" is a
-// substring of "Test Rider2" — filtering rows by the shorter name would match both.
-const RIDER2_NAME = 'Test Rider2'
+// The stub rider addMemberships seeds. Used instead of the `rider` login for the lesson this
+// file marks paid, so the paid and unpaid rows belong to different members.
+const RIDER2_NAME = 'Test Sutton'
 
 // Typed into the expense edit form partway through the Outstanding Expenses chain, so it
 // can't come from a builder — every assertion about it is still expressed as this value

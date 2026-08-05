@@ -323,10 +323,11 @@ test('clearing_registered_name_removes_the_card_parenthetical @manager', async (
   await expect(horseCardLink(page, 'Available', appleId)).toHaveText(APPLE_RENAMED)
 })
 
-// The reload proves durability, not redraw. The checkbox's own text records a "known limitation,
-// accepted as-is: the Moderate/High inputs don't visually refresh until reload" — that limitation
-// is stale. HorseManagerForm remounts both inputs on every successful save (`key={saveCount}`) and
-// seeds them from the submitted FormData, and its unit test
+// The reload proves durability, not redraw. The checkbox used to carry a "known limitation,
+// accepted as-is: the Moderate/High inputs don't visually refresh until reload"; #1288 deleted
+// that clause, because it was stale by the time it was written. HorseManagerForm remounts both
+// inputs on every successful save (`key={saveCount}`) and seeds them from the submitted
+// FormData, and its unit test
 // should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values asserts
 // 5/11 immediately after submit with no reload. So the reload here earns its keep by proving the
 // per-horse overrides were actually nulled in the database, which is the half a redraw can't show.

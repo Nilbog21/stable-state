@@ -26,13 +26,12 @@ const TIER_PRICE = 80
 /**
  * The three riders every group lesson here enrols.
  *
- * They are inline managed stubs rather than `members.rider`/`members.rider2`, and the reason is
- * not cosmetic: those two render as **"Test Rider"** and **"Test Rider2"**, so one name is a
- * strict substring of the other. Every locator below that reaches a rider's row by name uses
+ * They are inline managed stubs rather than `members.rider`/`members.rider2`: every group lesson
+ * here enrols three riders and the shared fixtures plant two. The three names are mutually
+ * non-substring and share no prefix with 'Test Manager'/'Test Trainer'/'Test Rider'/'Test Sutton',
+ * deliberately — every locator below that reaches a rider's row by name uses
  * `filter({ hasText })` or `getByRole(..., { name })`, both of which are substring matchers by
- * default — `hasText: 'Test Rider'` would select Test Rider2's row as well. That is #1202's
- * containment hazard living in the fixture rather than in an assertion. These three names are
- * mutually non-substring and share no prefix with 'Test Manager'/'Test Trainer'.
+ * default, so an overlapping pair would let one name select the other's row (#1202).
  *
  * `addManagedMember` leaves `user_id` null, which is what keeps `teardownBarn`'s profile sweep
  * able to see them (#1282 moved that filter off `is_managed`, which any caller can flip, onto

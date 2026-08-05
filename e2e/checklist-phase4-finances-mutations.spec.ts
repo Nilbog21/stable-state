@@ -35,8 +35,7 @@ const LEASE_FEE = 150
 const STANDARD_TIER = 'Standard'
 const COMPED_TIER = 'Comped'
 
-// resolveMemberNames renders each login's profile. `Test Rider` is matched exactly so it
-// can't also match the managed stub `Test Rider2`.
+// resolveMemberNames renders each login's profile.
 const MANAGER_NAME = 'Test Manager'
 const TRAINER_NAME = 'Test Trainer'
 const RIDER_NAME = 'Test Rider'

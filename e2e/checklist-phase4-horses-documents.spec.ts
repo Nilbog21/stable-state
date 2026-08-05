@@ -21,8 +21,8 @@
 // document on that horse would make either ambiguous or, worse, silently pick the wrong row.
 //
 // Three mutually non-substring names, deliberately: Playwright's text and accessible-name
-// matching is substring-based, so a fixture pair like the shared `Test Rider`/`Test Rider2`
-// makes a filter for one silently match both.
+// matching is substring-based, so an overlapping pair makes a filter for one silently match
+// both.
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import type { Locator } from '@playwright/test'
