@@ -279,6 +279,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: saving_the_flagged_lesson_with_its_inactive_horse_still_attached_succeeds) The banner does not block editing or saving that lesson
 - [ ] (e2e: clicking_a_nav_link_on_the_flagged_edit_page_raises_the_unresolved_horse_dialog) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
 - [ ] (e2e: choosing_stay_dismisses_the_dialog_and_keeps_you_on_the_edit_page) Choosing **Stay** in that dialog dismisses it without navigating away
+- [ ] (e2e: the_nav_guard_dialog_opens_with_stay_focused) That dialog opens with **Stay** focused, so Enter takes the safe choice
+- [ ] (e2e: pressing_escape_dismisses_the_nav_guard_dialog_as_stay) Pressing **Escape** in that dialog dismisses it as **Stay**, without navigating away
 - [ ] (e2e: swapping_the_inactive_horse_for_an_active_one_stops_the_navigation_prompt) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
 - [ ] (e2e: horse_notes_render_read_only_on_the_lesson_detail_page) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
 - [ ] (e2e: rider_notes_render_read_only_on_the_lesson_detail_page) On that same page, rider notes render read-only
