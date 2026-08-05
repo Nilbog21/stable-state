@@ -500,7 +500,34 @@ describe('generateChargeForMonth', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+    await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
+      p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
+    })
+  })
+
+  // #1361: the two boundary cases the UTC truncation got wrong — an instant that has already
+  // rolled into the next month in UTC but is still last month at the barn. Two zones, four
+  // hours apart, so the fix can't be a constant offset.
+  it('should_truncate_to_the_barn_month_when_utc_has_already_rolled_into_the_next_month', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    // 2026-08-01 03:00 UTC is 2026-07-31 23:00 in New York (UTC-4 in August)
+    await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-08-01T03:00:00Z'))
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
+      p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
+    })
+  })
+
+  it('should_truncate_to_the_barn_month_at_a_honolulu_boundary', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    // 2026-08-01 09:00 UTC is 2026-07-31 23:00 in Honolulu (UTC-10, no DST)
+    await generateChargeForMonth('agreement-1', 'barn-1', 'Pacific/Honolulu', new Date('2026-08-01T09:00:00Z'))
 
     expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
       p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
@@ -511,7 +538,7 @@ describe('generateChargeForMonth', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
 
     expect(result).toEqual(mockCharge)
   })
@@ -521,7 +548,7 @@ describe('generateChargeForMonth', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
-      generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+      generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
     ).rejects.toThrow('rpc failed')
   })
 
@@ -529,7 +556,7 @@ describe('generateChargeForMonth', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
     const mockClient = { rpc: mockRpc } as any
 
-    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'), mockClient)
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'), mockClient)
 
     expect(result).toEqual(mockCharge)
   })
