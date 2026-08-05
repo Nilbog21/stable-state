@@ -17,6 +17,7 @@
 // block here.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, daysFromNow, monthAnchor, type SeededAppointment } from './support/fixtures'
+import { hydrateByDriving } from './support/hydration'
 import { updateExpense } from '@/lib/db/expenses'
 import { formatMonthParam } from '@/lib/finances-month'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
@@ -162,16 +163,100 @@ let sweeper: SeededAppointment
 let todayStr = ''
 let yesterdayStr = ''
 /**
- * A comfortably future day, for the planned expense this file creates through the form.
+ * A comfortably future day, for the planned expense this file creates through the form: **the
+ * 5th of the month after the barn's today**.
  *
  * The form defaults its Date to the barn's today, and that is not far enough ahead: the card's
  * own isExpensePastDue builds its due instant as `expense_date + 'T23:59:59.999Z'` — UTC-framed,
  * against a date chosen in the *barn's* frame — so a today-dated unamounted expense already
- * reads Past Due in any barn west of UTC. Five days out clears that gap by a full day either
- * way, and is what "planned" means in the first place. (#1194's planned fixture sits at +5 for
- * the same reason.)
+ * reads Past Due in any barn west of UTC. The 5th of next month is never fewer than five days
+ * out (worst case: today is the last day of its month), which clears that gap by a full day
+ * either way and is what "planned" means in the first place. (#1194's planned fixture sits at +5
+ * for the same reason.)
+ *
+ * **Next month rather than today + 5, and that is the point rather than a detail (#1283).** A
+ * relative +5 sat inside the picker's own 42-cell window on all but one calendar date — day 31
+ * of a 31-day month whose 1st is a Saturday, where it cleared the far end with exactly zero
+ * margin — so `tapDay`'s new month alignment would have been dead code roughly 999 runs in 1000,
+ * exercised only on the dates it exists to survive. Pinning the fixture to the *next month*
+ * makes every run drive that alignment, and removes the zero-margin near-miss outright rather
+ * than leaving it one calendar reshuffle from being a second live flake in this file.
  */
 let plannedDayStr = ''
+
+/**
+ * How the three days above are built, lifted to constants so the guard below can assert them
+ * rather than restate them. See each day's own note for why its value is what it is; neither
+ * `plannedDayStr`'s next-month framing nor its five-day floor is free.
+ */
+const YESTERDAY_OFFSET = -1
+const PLANNED_DAY_OF_MONTH = '05'
+const MIN_PLANNED_LEAD_DAYS = 5
+
+/**
+ * The day pins' arithmetic, executable rather than written in a comment (#1283, the shape
+ * #1252's `assertPinArithmetic` landed).
+ *
+ * It cannot run at collection the way that one does: these three days are barn-local, and the
+ * barn row does not exist until `withBarn`'s callback runs. So it is the last statement of the
+ * seed instead — still once per file, still throwing, still ahead of every test.
+ *
+ * What it asserts is the separation the tests below actually discriminate: `ExpenseForm`'s only
+ * date-sensitive branch is `isPastDate = expenseDate < todayStr`, and the three tests that tap a
+ * day are aimed one at each side of it. A seed edit that moved `yesterdayStr` onto or past
+ * `todayStr` would leave `setting_the_date_to_yesterday_hides_the_time_field` asserting the
+ * *absence* of a field that was never going to leave — green, and vacuous. Likewise a
+ * `plannedDayStr` that stopped being future would put a Past Due badge into the very <p>
+ * `leaving_the_amount_blank_saves_a_planned_expense` reads.
+ *
+ * Grid *containment* is deliberately not asserted here, and that is the point of the #1283 fix
+ * rather than an omission: `tapDay` now pages the picker to the requested day's own month, so a
+ * day is reachable because it is a real day, not because the current month's 42-cell window
+ * happens to reach it. Before that, `yesterdayStr` fell off the grid whenever the barn's today
+ * was the 1st *and* that 1st was a Sunday (`getMonthGrid` starts at the 1st minus its weekday,
+ * so a Sunday 1st leaves no leading spill-over cells) — about 0.5% of run dates — and
+ * `plannedDayStr` cleared the far end with exactly zero margin at day 31 of a 31-day month whose
+ * 1st is a Saturday.
+ */
+function assertDayPinArithmetic(): void {
+  const problems: string[] = []
+  const shift = (days: number) =>
+    new Date(`${todayStr}T00:00:00Z`).getTime() + days * 24 * 60 * 60 * 1000
+
+  for (const [name, value] of [
+    ['todayStr', todayStr],
+    ['yesterdayStr', yesterdayStr],
+    ['plannedDayStr', plannedDayStr],
+  ] as const) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) problems.push(`${name} is ${JSON.stringify(value)}, not a "YYYY-MM-DD"`)
+  }
+  if (new Date(`${yesterdayStr}T00:00:00Z`).getTime() !== shift(YESTERDAY_OFFSET)) {
+    problems.push(`yesterdayStr is ${yesterdayStr}, expected ${YESTERDAY_OFFSET} day(s) from ${todayStr}`)
+  }
+  if (plannedDayStr !== `${monthFromIndex(monthIndex(todayStr.slice(0, 7)) + 1)}-${PLANNED_DAY_OF_MONTH}`) {
+    problems.push(
+      `plannedDayStr is ${plannedDayStr}, expected day ${PLANNED_DAY_OF_MONTH} of the month after ` +
+        `${todayStr.slice(0, 7)}. Inside today's own month it stops driving tapDay's month alignment ` +
+        'on every run, which is the only thing that keeps that alignment from being dead code.'
+    )
+  }
+  if (new Date(`${plannedDayStr}T00:00:00Z`).getTime() < shift(MIN_PLANNED_LEAD_DAYS)) {
+    problems.push(
+      `plannedDayStr is ${plannedDayStr}, under the ${MIN_PLANNED_LEAD_DAYS}-day lead ${todayStr} needs ` +
+        "to clear ExpenseCard's UTC-framed Past Due window"
+    )
+  }
+  if (!(yesterdayStr < todayStr && todayStr < plannedDayStr)) {
+    problems.push(
+      `the three day pins are ${yesterdayStr}/${todayStr}/${plannedDayStr}, which are not strictly ` +
+        'ordered past < today < future — ExpenseForm\'s isPastDate branch is what these tests ' +
+        'discriminate, and an unordered triple leaves at least one of them vacuous.'
+    )
+  }
+  if (problems.length > 0) {
+    throw new Error(`the expense-form day pins are misaimed:\n  ${problems.join('\n  ')}`)
+  }
+}
 
 /**
  * Gives an already-seeded expense a payment type, which is what makes its ledger row
@@ -209,8 +294,10 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn }) => {
   await addHorse(supabase, barn.id, BUTTER)
 
   todayStr = instantToLocalWallClock(daysFromNow(0, barn.timezone), barn.timezone).slice(0, 10)
-  yesterdayStr = instantToLocalWallClock(daysFromNow(-1, barn.timezone), barn.timezone).slice(0, 10)
-  plannedDayStr = instantToLocalWallClock(daysFromNow(5, barn.timezone), barn.timezone).slice(0, 10)
+  yesterdayStr = instantToLocalWallClock(daysFromNow(YESTERDAY_OFFSET, barn.timezone), barn.timezone).slice(0, 10)
+  // Built from `todayStr`'s month rather than from a day offset — see plannedDayStr's own note.
+  plannedDayStr = `${monthFromIndex(monthIndex(todayStr.slice(0, 7)) + 1)}-${PLANNED_DAY_OF_MONTH}`
+  assertDayPinArithmetic()
 
   // Insertion order deliberately differs from date order — see HISTORY_RECIPIENT above.
   for (const [day, expenseType] of [
@@ -398,8 +485,87 @@ async function submitForm(page: Page, label: string): Promise<void> {
   await page.waitForURL(`**${listPath()}`, { waitUntil: 'commit' })
 }
 
-/** Selects a day in the #1020 month calendar. Past days are greyed but never disabled. */
+/**
+ * The month the picker is currently showing, "YYYY-MM", read off the first cell it marks as
+ * in-month. `null` if the grid has not rendered yet.
+ *
+ * `data-outside="false"` rather than the heading: `formatMonthHeading` renders "August 2026",
+ * and parsing a localised month name back into a number is both fragile and a second copy of
+ * that formatter. Every cell carries its own "YYYY-MM-DD" as `aria-label`, so an in-month cell
+ * states the displayed month directly. Safe as an attribute read despite e2e/CLAUDE.md fact 7
+ * (React 19 leaves a mismatched attribute at the server's value): `data-outside` is derived from
+ * `month`, which is React state the *test itself* drives, so there is no server/client answer to
+ * disagree about — and the retry loop below is what proves the state actually moved.
+ *
+ * One `page.evaluate`, deliberately: `hydrateByDriving` requires a non-retrying predicate, and
+ * `locator.getAttribute` auto-waits.
+ */
+function displayedMonth(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const cell = document.querySelector('button[data-outside="false"]')
+    return cell?.getAttribute('aria-label')?.slice(0, 7) ?? null
+  })
+}
+
+/**
+ * "YYYY-MM" as a count of months, and back, so two months subtract and a delta re-applies.
+ *
+ * Restated here rather than imported from `month-calendar.ts`'s `shiftMonth`, which is the code
+ * this file's calendar tests exercise: navigation built out of the module under test would page
+ * to whichever month a bug in it named, and then find the day there.
+ */
+function monthIndex(month: string): number {
+  const [year, monthNumber] = month.split('-').map(Number)
+  return year * 12 + (monthNumber - 1)
+}
+
+function monthFromIndex(index: number): string {
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, '0')}`
+}
+
+/**
+ * Pages the picker to `month`, one Prev/Next press per step.
+ *
+ * Each step goes through `hydrateByDriving` rather than a bare click, because a click dispatched
+ * before React is listening is simply lost and nothing replays it (e2e/CLAUDE.md fact 10) — and
+ * this is the *first* interaction on a freshly `goto`-ed form. A lost press would leave the grid
+ * a month away from where the caller asked for, which the tap below would then report as a
+ * missing day: a real failure, but for a reason that has nothing to do with the test. Driving
+ * per step rather than for the whole delta keeps the drive non-idempotent-safe — `isLive` is
+ * checked against that step's own target, so a press that merely lagged the read is not doubled.
+ */
+async function showMonth(page: Page, month: string): Promise<void> {
+  // A wait, not an assertion: `displayedMonth` is a one-shot `evaluate` with no auto-retry, so
+  // without this it can be taken against a document that has not painted the grid yet and read
+  // `null` — which would throw the "rendered no in-month day cell" error for a page that was
+  // merely early rather than wrong.
+  await page.locator('button[data-outside="false"]').first().waitFor()
+  const from = await displayedMonth(page)
+  if (from === null) throw new Error('the month calendar rendered no in-month day cell')
+  const delta = monthIndex(month) - monthIndex(from)
+  const label = delta < 0 ? 'Previous month' : 'Next month'
+  for (let step = 1; step <= Math.abs(delta); step++) {
+    const target = monthFromIndex(monthIndex(from) + Math.sign(delta) * step)
+    await hydrateByDriving(
+      () => page.getByRole('button', { name: label, exact: true }).click(),
+      async () => (await displayedMonth(page)) === target
+    )
+  }
+}
+
+/**
+ * Selects a day in the #1020 month calendar. Past days are greyed but never disabled.
+ *
+ * The picker is paged to the day's **own** month first (#1283). Without that the reachable days
+ * were whatever `getMonthGrid` happened to spill into the 42-cell window around the barn's
+ * current month, which is a property of the calendar rather than of the day being asked for —
+ * see `assertDayPinArithmetic` for the two boundaries that made it a flake and a zero-margin
+ * near-miss. A day is always inside its own month's grid, so after the alignment the tap is
+ * total. The rejected alternative was a conditional "page back if the cell is missing", which
+ * would have made a *genuinely* absent day read as a successful tap somewhere else.
+ */
 async function tapDay(page: Page, day: string): Promise<void> {
+  await showMonth(page, day.slice(0, 7))
   const cell = page.getByRole('button', { name: day, exact: true })
   await cell.focus()
   await cell.press('Enter')
