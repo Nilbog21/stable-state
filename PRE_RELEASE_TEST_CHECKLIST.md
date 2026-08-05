@@ -820,9 +820,9 @@ bash scripts/change-user.sh dev-barn
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
-- [ ] (e2e-candidate) Nav shows the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) alongside the barn name
-- [ ] (e2e-candidate) That nav shows **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
-- [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
+- [ ] (e2e: trainer_nav_shows_the_four_link_nav_beside_the_barn_name) Nav shows the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) alongside the barn name
+- [ ] (e2e: trainer_nav_hides_finances_manage_barn_leases_boarding_and_expenses) That nav shows **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
+- [ ] (e2e: trainer_expenses_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] (e2e: trainer_lessons_list_defaults_to_my_lessons) Lessons list defaults to **My Lessons**, showing only the lessons you instruct (Alex's, now reassigned to you)
 - [ ] (e2e: trainer_all_filter_shows_every_barn_lesson_including_another_instructors) Switching to **All** shows every barn lesson, including another instructor's (Blake's)
 - [ ] (e2e: trainer_filter_pills_show_the_same_six_filters_as_the_manager_view) The filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
@@ -898,16 +898,16 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) That page shows **no Documents section**
 - [ ] (e2e-candidate) Blake's (a rider's) detail page likewise shows their **Contact Info** section
 - [ ] (e2e-candidate) (#779) Blake's detail page shows no Documents section — #779 narrowed rider-document access to manager/self only
-- [ ] (e2e-candidate) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
+- [ ] (e2e: trainer_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 - [ ] (e2e-candidate) That page also lists any uncollected cancellation fees for lessons you instruct
 - [ ] (e2e-candidate) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] (e2e-candidate) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
 - [ ] (e2e-candidate) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
 - [ ] (e2e-candidate) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
-- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
-- [ ] (e2e-candidate) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
-- [ ] (e2e-candidate) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
+- [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
 
 ## Phase 6 — Rider
 
@@ -919,9 +919,9 @@ Switch role (pick **Dana** from the same member list as Phase 5):
 bash scripts/change-user.sh dev-barn
 ```
 
-- [ ] (e2e-candidate) Nav shows the **full 4-link rider nav** (Lessons, Horses, Members, Guide) alongside the barn name
-- [ ] (e2e-candidate) That nav shows **no Leases, no Boarding, no Expenses**
-- [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
+- [ ] (e2e: rider_nav_shows_the_four_link_nav_beside_the_barn_name) Nav shows the **full 4-link rider nav** (Lessons, Horses, Members, Guide) alongside the barn name
+- [ ] (e2e: rider_nav_hides_leases_boarding_and_expenses) That nav shows **no Leases, no Boarding, no Expenses**
+- [ ] (e2e: rider_expenses_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] (e2e: rider_available_and_unavailable_cards_carry_only_name_and_reason) Horses page shows Available/Unavailable cards carrying the name (and unavailability reason) only
 - [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards
 - [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
@@ -979,7 +979,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) That row shows the same **Cancelled** badge on the lesson detail page
 - [ ] (e2e-candidate) The rest of the lesson — other riders in a group lesson included — is unaffected by that cancellation
 - [ ] (e2e-candidate) The instructor receives a "Lesson participation cancelled" notification (verify the `notifications` row directly, as in Phase 5 — the recipient is a different persona; an e2e run reads the row with its own service client)
-- [ ] (e2e-candidate) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
+- [ ] (e2e: rider_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e-candidate) `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
 - [ ] (e2e-candidate) That page also shows her own outstanding lease/boarding charges, if any are past due
 - [ ] (e2e-candidate) That page also shows her own uncollected late-cancellation fees
@@ -1006,9 +1006,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Her own member detail page renders the same Active Agreements cards from Phase 4
 - [ ] (e2e-candidate) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
 - [ ] (manual) Those cards carry no hover state — a visual affordance judgement, not a behavior a click path can assert
-- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
-- [ ] (e2e-candidate) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
-- [ ] (e2e-candidate) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
+- [ ] (e2e: rider_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e: rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (e2e: rider_calendar_feed_carries_only_lessons_they_are_enrolled_in) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
 
 ## Phase 7 — Multi-barn
 
