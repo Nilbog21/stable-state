@@ -6,13 +6,14 @@
 // claim belongs to slice 1, which owns the nav link sets; the clause in lines 907/989 is the
 // rationale for why these cards matter, not a second assertion).
 //
-// PRE_RELEASE_TEST_CHECKLIST.md lines 902-903 and 906-907 (Phase 5), 983-990 (Phase 6) — the
-// numbering #1325 filed them under, and the identifier every `P5 nnn`/`line nnn` below uses. It
-// is deliberately not the *current* number: fifteen slices are landing against this file
-// concurrently, so a live line number is stale by the next merge, and a comment nobody can
-// re-derive is worse than one that names a fixed reference. Those twelve lines sit at 904-905,
-// 908-909 and 985-992 as of this branch's rebase onto #1021 — the one citation to re-check
-// before merge, since the tags themselves are what pin the mapping.
+// Lines 902-903 and 906-907 (Phase 5), 983-990 (Phase 6) of the pre-#1358 monolithic
+// PRE_RELEASE_TEST_CHECKLIST.md — the numbering #1325 filed them under, and the identifier every
+// `P5 nnn`/`line nnn` below uses. It is deliberately not the *current* number: fifteen slices are
+// landing against this file concurrently, so a live line number is stale by the next merge, and a
+// comment nobody can re-derive is worse than one that names a fixed reference. Those twelve lines
+// sit at checklists/pre-release/phase-5-trainer.md 96-97 and 100-101, and phase-6-rider.md 74-81,
+// as of #1358's split — the one citation to re-check before merge, since the tags themselves are
+// what pin the mapping.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the

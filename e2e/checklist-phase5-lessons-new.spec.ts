@@ -16,7 +16,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Horse } from '@/lib/db/types'
 
 // The trainer's New Lesson form and the notification a nearby lesson writes for the *other*
-// instructor (PRE_RELEASE_TEST_CHECKLIST.md Phase 5, lines 831-835, 847, 851-852).
+// instructor (checklists/pre-release/phase-5-trainer.md, lines 23-27, 39 and 43-44).
 //
 // ## The other instructor is `members.manager`
 //

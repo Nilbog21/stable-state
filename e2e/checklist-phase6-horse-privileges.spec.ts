@@ -3,8 +3,8 @@
 // covers: src/components/ExhaustionBar.tsx
 //
 // #999's `member_horse_privileges` through a rider's eye, end to end — the only automated coverage
-// that table's two grants have anywhere. `PRE_RELEASE_TEST_CHECKLIST.md` lines 945-957 and 968-970
-// (Phase 6, sixteen checkboxes).
+// that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md` lines 36-48
+// and 59-61 (sixteen checkboxes).
 //
 // `document_privileges` in three states and `lesson_read_privileges` in two, and every *absent*
 // state needs a horse of its own, because a horse cannot simultaneously hold a grant and not hold

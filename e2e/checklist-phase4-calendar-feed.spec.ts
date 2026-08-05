@@ -4,7 +4,7 @@
 // The #1018 calendar feed end to end, as a manager: the Calendar Feed section on the
 // barn-scoped profile page, minting a link, copying it, what the resulting `/calendar.ics`
 // URL serves to an unauthenticated subscriber, and rotation invalidating the old URL
-// (PRE_RELEASE_TEST_CHECKLIST.md 795-803).
+// (checklists/pre-release/phase-4-manager-verification.md 607-615).
 //
 // `src/lib/ics.ts` and `src/lib/db/calendar-feed.ts` are deliberately NOT declared above:
 // `select-specs.sh`'s ALWAYS_FULL already carries the whole of `src/lib/**` (and, since #1281,

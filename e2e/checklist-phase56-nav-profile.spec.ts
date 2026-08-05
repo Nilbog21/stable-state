@@ -12,8 +12,8 @@
 // The barn chrome a non-manager sees, both roles, in one file: the four-link nav and what it
 // omits, the two manager-only routes that must 404 rather than bounce to a login page, the same
 // nav rendered on the barn-scoped Profile page, and #1018's calendar feed scoped to the caller's
-// own membership (PRE_RELEASE_TEST_CHECKLIST.md 823-825, 901, 908-910 and 922-924, 982,
-// 1009-1011).
+// own membership (checklists/pre-release/phase-5-trainer.md 17-19, 95, 102-104, and
+// phase-6-rider.md 13-15, 73, 100-102).
 //
 // `layout.tsx` is already in select-specs.sh's ALWAYS_FULL, and is declared above anyway per
 // #1281 — the nav bar it renders is this file's main subject, so the declaration states

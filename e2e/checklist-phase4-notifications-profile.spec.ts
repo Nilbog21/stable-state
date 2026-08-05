@@ -17,7 +17,7 @@
 // covers: src/app/terms/page.tsx
 // covers: src/app/privacy/page.tsx
 //
-// PRE_RELEASE_TEST_CHECKLIST.md 765-791: the notification bell, the profile page reached from
+// checklists/pre-release/phase-4-manager-verification.md 576-603: the notification bell, the profile page reached from
 // the avatar menu, the four static pages off that menu, and the ~390px mobile spot-check.
 //
 // The `covers:` block above was written by enumerating the modules this file actually drives,
@@ -55,7 +55,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 const HORSE = 'Marigold'
 const TIER = 'Standard'
 
-// The nine manager nav labels, in the order PRE_RELEASE_TEST_CHECKLIST.md line 772 enumerates
+// The nine manager nav labels, in the order phase-4-manager-verification.md line 583 enumerates
 // them. Written out rather than imported from `buildNavLinks`: the checklist line *is* the
 // specification, and importing the code under test would make this assertion agree with any
 // future reordering or omission in it.

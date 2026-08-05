@@ -39,10 +39,11 @@
 // detect the change. `src/lib/**` IS in ALWAYS_FULL, so `format-date.ts` and `barn-timezone.ts`
 // need no glob of their own.
 //
-// PRE_RELEASE_TEST_CHECKLIST.md lines 702-712: barn-local *instant* rendering and entry — the
-// display half of the viewer timezone frame #1222 deleted. Adjacent slices: #1204 owns 696-701
-// (the barn-*day* cutoff half of the same "Under that setup" run) and #1205 owns 713-720.
-// Nothing outside 702-712 is touched.
+// checklists/pre-release/phase-4-manager-verification.md lines 513-523: barn-local *instant*
+// rendering and entry — the display half of the viewer timezone frame #1222 deleted. Adjacent
+// slices: #1204 owns 507-512 (the barn-*day* cutoff half of the same "Under that setup" run)
+// and #1205 owns 524-531.
+// Nothing outside 513-523 is touched.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'

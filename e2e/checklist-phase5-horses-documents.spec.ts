@@ -8,12 +8,13 @@
 // column header, no Exhaustion Thresholds section, and a Reminder Date column that is text
 // rather than an input.
 //
-// PRE_RELEASE_TEST_CHECKLIST.md lines 865-869 (Phase 5) — the numbering #1330 filed them
-// under, and the identifier every `P5 nnn` below uses. Deliberately not the *current* number:
-// the batch's slices are landing against that file concurrently, so a live line number is stale
-// by the next merge, and a comment nobody can re-derive is worse than one naming a fixed
-// reference. Those five lines sit at 867-871 as of this branch — the one citation to re-check
-// before merge, since the tags themselves are what pin the mapping.
+// Lines 865-869 of the pre-#1358 monolithic PRE_RELEASE_TEST_CHECKLIST.md (Phase 5) — the
+// numbering #1330 filed them under, and the identifier every `P5 nnn` below uses. Deliberately
+// not the *current* number: the batch's slices are landing against that file concurrently, so a
+// live line number is stale by the next merge, and a comment nobody can re-derive is worse than
+// one naming a fixed reference. Those five lines sit at checklists/pre-release/phase-5-trainer.md
+// 59-63 as of #1358's split — the one citation to re-check before merge, since the tags
+// themselves are what pin the mapping.
 //
 // ## Why two horses
 //

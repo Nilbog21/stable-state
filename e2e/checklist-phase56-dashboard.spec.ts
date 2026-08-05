@@ -6,8 +6,8 @@
 // role scoping, #1019's appointment reaching a trainer's calendar, #1148's tappable
 // appointment card, the rider seeing no appointments at all, events filtered by
 // `visible_to_roles`, and #1148's renamed empty-state subtext in both views.
-// PRE_RELEASE_TEST_CHECKLIST.md lines 836-837 / 845-846 / 906-907 (Phase 5) and 960-963
-// (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 28-29 / 37-38 / 98-99, and
+// phase-6-rider.md lines 49-52.
 //
 // ## Why this file exists alongside checklist-phase6-dashboard.spec.ts
 //

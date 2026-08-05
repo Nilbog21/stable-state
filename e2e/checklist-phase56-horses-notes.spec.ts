@@ -5,9 +5,9 @@
 // a horse you do not own renders both fields as read-only text with no textarea and no Save
 // button, a field that is unset drops its row entirely rather than rendering blank, and a horse
 // you *own* renders both as editable textareas with a Save whose write survives a reload.
-// PRE_RELEASE_TEST_CHECKLIST.md lines 870-876 (Phase 5) and 935-938 (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 64-70, and phase-6-rider.md lines 26-29.
 //
-// Three of those eleven checkboxes are `Setup —` lines (871, 873, 935): a manager mutation the
+// Three of those eleven checkboxes are `Setup —` lines (P5 65, P5 67, P6 26): a manager mutation the
 // manual walkthrough performs between assertions, which an e2e run seeds instead. Each is tagged
 // with the name of the test its seeding serves, per the issue's "several checkboxes may share a
 // single test" rule — the seed and the assertion it enables are one indivisible step here, and

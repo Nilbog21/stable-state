@@ -6,7 +6,7 @@
 // rider-only claims that the Available/Unavailable cards carry the name and unavailability
 // reason and nothing else, show no exhaustion bar, render no Inactive section, and are
 // tappable through to the horse detail page (#1002).
-// PRE_RELEASE_TEST_CHECKLIST.md lines 877-879 (Phase 5) and 925-928, 939-941 (Phase 6).
+// checklists/pre-release/phase-5-trainer.md lines 71-73, and phase-6-rider.md lines 16-19, 30-32.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the

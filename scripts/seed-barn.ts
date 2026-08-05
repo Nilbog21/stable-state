@@ -312,7 +312,7 @@ export async function seedBarn(
 
   // #1004: Emery has a photo pre-set so "view another member's photo, read-only" is
   // manually testable without a live upload (which the change-user.sh role swap can't
-  // do for a self-write — see PRE_RELEASE_TEST_CHECKLIST.md's Phase 6 note).
+  // do for a self-write — see checklists/pre-release/phase-6-rider.md's note).
   // #505: the existsSync guard stays even though #1135 made scripts/data/ tracked — Next's
   // file tracer won't follow the runtime-computed DATA_DIR path, so these files may still be
   // absent from the deployed bundle where /demo calls seedBarn(). Skip rather than crash.
