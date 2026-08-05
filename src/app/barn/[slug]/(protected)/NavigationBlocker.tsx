@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
@@ -52,6 +52,19 @@ export function NavigationConfirmDialog() {
   const { pendingNav, setPendingNav, setDirty, message, onLeave, setOnLeave } = useNavigationBlocker()
   const router = useRouter()
 
+  // Escape resolves as Stay — the non-destructive choice, exactly what the Stay button does.
+  // Listening on the document rather than on the dialog element because the dialog has no focus
+  // trap: focus can be tabbed out of it, and a container-scoped handler would go silently dead
+  // the moment that happened.
+  useEffect(() => {
+    if (!pendingNav) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPendingNav(null)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [pendingNav, setPendingNav])
+
   if (!pendingNav) return null
 
   function handleLeave() {
@@ -73,10 +86,14 @@ export function NavigationConfirmDialog() {
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg dark:bg-zinc-900">
         <p className="mb-6 text-sm text-zinc-900 dark:text-zinc-50">{message}</p>
         <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={() => setPendingNav(null)}>
+          <Button variant="ghost" onClick={handleLeave}>
+            Leave
+          </Button>
+          {/* Rightmost, primary, and focused on open: Stay is the safe choice, so it carries the
+              emphasis and is what Enter activates. */}
+          <Button autoFocus onClick={() => setPendingNav(null)}>
             Stay
           </Button>
-          <Button onClick={handleLeave}>Leave</Button>
         </div>
       </div>
     </div>
