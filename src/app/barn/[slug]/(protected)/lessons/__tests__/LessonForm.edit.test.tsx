@@ -14,15 +14,14 @@ const mockHorse: Horse = createMockHorse()
 const mockRider = { id: 'rider-1', name: 'Alice' }
 const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
-// A round 10:00Z, which is 06:00 in the fixture barn's America/New_York — a whole barn hour,
-// which is what the edit form's date/hour picker can represent. This fixture used to be
-// 10:30Z to dodge the viewer-frame version of this, where the surviving hour depended on the
-// *viewer's* offset; #1222 deleted that frame, so the round trip is now the same for
-// everyone. Whole-hour granularity itself is #1021's picker to fix.
+// 10:30Z — 06:30 in the fixture barn's America/New_York. Deliberately *not* a whole hour: this
+// fixture was pinned to 10:00Z only because the old hour-only picker could not represent
+// anything else and silently rewrote the minutes away. #1021 restored the half hour, so every
+// edit-mode test below now exercises the minute-granular round trip rather than dodging it.
 const normalLesson: LessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: instant('2026-05-17T10:00:00Z'),
+  lesson_at: instant('2026-05-17T10:30:00Z'),
   submitted_at: '2026-05-17T10:35:00Z',
   lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
 })
@@ -904,7 +903,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm timezone={'America/New_York'} {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1']))
   })
 
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
@@ -923,7 +922,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     // Round-tripping initialLesson.lesson_at through the (local-aware) date/hour
     // picker and back into a UTC instant reproduces the same instant exactly.
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1', 'horse-2']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1', 'horse-2']))
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
@@ -1024,9 +1023,26 @@ describe('LessonForm (edit mode) — timezone-aware date/hour prefill', () => {
     expect(dateInput.value).toBe('2026-05-16')
   })
 
-  it('should_prefill_the_hour_selector_with_the_local_hour_not_the_utc_hour', () => {
+  it('should_prefill_the_start_time_with_the_local_hour_not_the_utc_hour', () => {
     render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lessonNearUtcMidnight} />)
-    const select = screen.getByLabelText('Hour') as HTMLSelectElement
-    expect(select.value).toBe('22')
+    expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('22:00')
+  })
+
+  // #1021 — the regression this issue closes: the hour-only picker seeded itself from the hour
+  // alone and recombined at :00, so saving an untouched edit form moved a 4:30 lesson to 4:00.
+  it('should_prefill_the_start_time_without_truncating_the_minutes', () => {
+    const halfPast: LessonDetail = { ...normalLesson, lesson_at: instant('2026-05-17T20:45:00Z') }
+
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={halfPast} />)
+
+    expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('16:45')
+  })
+
+  it('should_round_trip_a_non_whole_hour_lesson_at_back_to_the_same_instant', () => {
+    const halfPast: LessonDetail = { ...normalLesson, lesson_at: instant('2026-05-17T20:45:00Z') }
+
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={halfPast} />)
+
+    expect((container.querySelector('input[name="lesson_at"]') as HTMLInputElement).value).toBe('2026-05-17T20:45:00.000Z')
   })
 })

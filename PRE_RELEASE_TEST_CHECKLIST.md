@@ -163,16 +163,16 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) A day where Apple already has a lesson shows a small red dot below the date number
 - [ ] (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
 - [ ] (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
-- [ ] (#1019) Change the Hour dropdown from an early hour to a late one — at least one day's shading shifts
+- [ ] (#1019, #1021) Change the **Start Time** field in the day panel from an early hour to a late one — at least one day's shading shifts
 - [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks below need both) — then reopen this form with Apple selected — that day shows a dot
 - [ ] (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
 - [ ] (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
 - [ ] (#1019) With Apple selected, a greyed-out past day shows no shading
 - [ ] (#1019) With Apple selected, a greyed-out past day shows no dot
-- [ ] (#1019) Tap a day that has a lesson on it — a popup lists that day's items
-- [ ] (#1019) That popup shows each item's time in 12-hour AM/PM format
-- [ ] (#1019) That popup shows each item's horse and rider names
-- [ ] (#1019) Tap a day with nothing on it — the popup reads "Nothing scheduled for this day."
+- [ ] (#1019, #1021) Tap a day that has a lesson on it — the day panel below the grid lists that day's items
+- [ ] (#1019) That day panel shows each item's time in 12-hour AM/PM format
+- [ ] (#1019) That day panel shows each item's horse and rider names
+- [ ] (#1019) Tap a day with nothing on it — the day panel reads "Nothing scheduled for this day."
 - [ ] (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
 - [ ] (#1019) Tap **&gt;** — the grid advances one month
 - [ ] (#1019) The **&lt;** / **&gt;** month arrows are the same size as the ones on the Finances page
@@ -188,7 +188,7 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
 - [ ] On any lesson form, set the fee to `0` — Payment Type field disappears; raise it back above `0` — field reappears
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker
-- [ ] Check one horse and confirm it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked), Daisy sorted last; set the date/hour to the past — no bars render; set it back — bars reappear
+- [ ] Check one horse and confirm it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked), Daisy sorted last; set the date/start time to the past — no bars render; set it back — bars reappear
 - [ ] Check **Recurring (weekly)** — Date field label changes to "Starting Date" (reverts when unchecked); checkbox sits directly above the date field
 - [ ] Create a **recurring lesson** (dated 7 days out): check **Recurring (weekly)**, Beginner tier, trainer Alex, horse Apple, rider Dana — saves; the checkbox doesn't appear when editing
 - [ ] The recurring lesson shows a **Recurring** badge on the Lessons list row and its detail page
@@ -204,6 +204,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — it must be that time in the **barn's** timezone converted to UTC, regardless of your own machine's zone (#1222)
 - [ ] (e2e: lesson_list_shows_the_barn_local_wall_clock_time_entered_on_the_form) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered — with your machine's clock set to a zone that is neither UTC nor the barn's, this proves the display follows the barn (#1222) rather than your device or the server host
 - [ ] (e2e: lesson_detail_shows_the_same_barn_local_wall_clock_time) On that lesson's detail page, its displayed time matches the same wall-clock time
+- [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) (#1021) A lesson created with a **Start Time** on the half hour (e.g. 2:30 PM) stores those minutes — the hour-only picker this replaced could not express them at all
+- [ ] (e2e: resaving_the_edit_form_unchanged_preserves_the_lessons_minutes) (#1021) Opening that half-hour lesson's **Edit** form and saving without changing anything leaves its stored minutes untouched — the old picker silently moved it to the top of the hour
 
 Dashboard (`/barn/dev-barn`):
 
@@ -706,10 +708,10 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: lessons_list_shows_the_barn_local_four_pm_not_the_devices_ten_am) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
 - [ ] (e2e: lesson_detail_shows_the_barn_local_four_pm) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
 - [ ] (e2e: dashboard_calendar_card_shows_the_barn_local_four_pm) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
-- [ ] (e2e: edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_hour) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker (#1222)
+- [ ] (e2e: edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_start_time) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/start-time picker (#1222)
 - [ ] (e2e: resaving_the_edit_form_unchanged_leaves_the_stored_time_untouched) Under that setup, saving that **Edit** form without changing anything leaves the stored time untouched (#1222)
 - [ ] (e2e: new_lesson_date_prefills_the_barns_day_not_the_devices) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
-- [ ] (e2e: new_lesson_hour_select_opens_on_the_barns_hour_not_the_devices) Under that setup, **New Lesson**'s hour select opens on the barn's current hour, not your device's (#1222)
+- [ ] (e2e: new_lesson_start_time_opens_on_the_barns_hour_not_the_devices) Under that setup, **New Lesson**'s **Start Time** field opens on the barn's current hour, not your device's (#1222)
 - [ ] (e2e: creating_a_lesson_at_four_pm_stores_four_pm_barn_local) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
 - [ ] (e2e: adding_an_expense_at_eleven_thirty_pm_stores_it_barn_local_in_transactions) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
 - [ ] (e2e: barn_event_row_on_manage_barn_shows_the_barn_local_four_pm) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)

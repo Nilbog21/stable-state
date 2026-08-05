@@ -956,7 +956,9 @@ describe('LessonForm exhaustion bars', () => {
 })
 
 // #1019 — the date field becomes a month conflict calendar when the form is given a
-// schedule reader; without one it stays the plain native date input (see DateHourPicker).
+// schedule reader; without one it stays a plain native date input. Since #1021 that fallback is
+// LessonForm's own inline `#lesson-date` input, not DateHourPicker's — the lesson form no longer
+// uses that component at all.
 describe('LessonForm — month conflict calendar', () => {
   beforeEach(() => {
     vi.useFakeTimers()

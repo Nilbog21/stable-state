@@ -63,7 +63,8 @@ describe('createLessonWithParticipants', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    // Mirrors DateHourPicker.tsx's own construction: a lesson entered for "4:00 PM" at a
+    // Mirrors LessonStartTime.tsx's own construction (#1021 moved it off DateHourPicker, which
+    // now serves only EventForm): a lesson entered for "4:00 PM" at a
     // barn in America/New_York (EDT, UTC-4) on 2026-05-16. The host's own zone no longer
     // participates in either direction, which is the whole point of #1222 — so unlike the
     // pre-#1222 version of this test, nothing here touches process.env.TZ.
