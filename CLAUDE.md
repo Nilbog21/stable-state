@@ -32,7 +32,7 @@ Update the architecture docs whenever a migration or role change is committed:
 - RPC change (new/changed function, grants, `SECURITY DEFINER`/`INVOKER`) → the function's domain file in `docs/architecture/rpc/`, plus its index entry in `docs/architecture/rpc.md` and in `ARCHITECTURE.md`'s Supabase RPC section if a function was added/removed
 - Route change (new/changed page, role gating) → the route's group file in `docs/architecture/routes/`, plus its index entry in `docs/architecture/routes.md` and in `ARCHITECTURE.md`'s Routes section if a route was added/removed
 - DAL change (new/changed function in `src/lib/db/`) → the module's file in `docs/architecture/dal/`, plus its index entry in `docs/architecture/dal.md` and in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
-- Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
+- Role change (new role, permissions matrix) → `ARCHITECTURE.md`'s Role system section; a new/changed RLS helper's rationale → `docs/architecture/rls.md`, plus its one-line index entry in `ARCHITECTURE.md`'s RLS conventions section
 
 ## Barn Data Backup
 

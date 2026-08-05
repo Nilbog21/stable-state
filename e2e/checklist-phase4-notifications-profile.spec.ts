@@ -27,7 +27,7 @@
 // that). `src/lib/**`, `src/app/actions/**`, `src/components/**` and the protected layout are in
 // `ALWAYS_FULL` — verified rather than assumed. `useOutsideDismiss` and `src/app/actions/`
 // entries therefore document what this file drives rather than select it, and stay declared for
-// that reason (scripts/CLAUDE.md): before #1281 only `src/components/ui/**` was always-full, and
+// that reason (docs/scripts.md): before #1281 only `src/components/ui/**` was always-full, and
 // the open and tap-dismiss state this file asserts on for both dropdowns is that module's own.
 //
 // The list is what this spec DRIVES, not what it renders, and the difference is deliberate.

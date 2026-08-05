@@ -14,13 +14,13 @@
 // clicks), and `ReminderDueBadge` supplies the badge text the reminder item counts. #1281 put
 // the whole of `src/components/**` into `select-specs.sh`'s ALWAYS_FULL, so both lines now
 // document what this spec drives rather than select it; they stay because that membership is not
-// permanent and the accuracy rule binds either way (scripts/CLAUDE.md). Before #1281 only
+// permanent and the accuracy rule binds either way (docs/scripts.md). Before #1281 only
 // `src/components/ui/**` and `src/lib/**` were always-full, so a change to either component
 // selected nothing and this spec never ran for it — and `--lint` cannot catch that: it proves a
 // glob is well-formed and matches something, never that a module the spec drives has a glob.
 //
 // The lessons/ and expenses/ globs are deliberately the whole subtree rather than `new/**`.
-// A `/**` glob is a literal string PREFIX (scripts/CLAUDE.md), and the components these tests
+// A `/**` glob is a literal string PREFIX (docs/scripts.md), and the components these tests
 // actually assert on — `lessons/LessonForm.tsx`'s month calendar and `expenses/ExpenseForm.tsx`'s
 // date prefill and past-date Time branch — sit one level ABOVE `new/`. Declaring `new/**` still
 // passes `select-specs.sh --lint`, because it matches `new/page.tsx`; it just silently fails to

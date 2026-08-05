@@ -141,7 +141,7 @@ If an item recommends running the local checklist e2e suite (`npm run test:check
 cd {worktree-path} && gh pr diff --name-only | bash scripts/select-specs.sh
 ```
 
-Every `e2e/*.spec.ts` declares the source paths it exercises in `// covers:` lines, and the selector intersects those with the diff (`scripts/CLAUDE.md` documents the contract; CI lints the declarations). Act on the `mode=` line it prints:
+Every `e2e/*.spec.ts` declares the source paths it exercises in `// covers:` lines, and the selector intersects those with the diff (`docs/scripts.md` documents the contract; CI lints the declarations). Act on the `mode=` line it prints:
 
 - **`mode=none`** — nothing e2e-relevant changed. Skip this check entirely; don't run the suite "just in case".
 - **`mode=scoped`** — run exactly the specs it lists: `cd {worktree-path} && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {file}`, repeating `--spec` per reported spec.

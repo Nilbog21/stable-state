@@ -182,7 +182,7 @@ cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url 
 
 **Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and on `/fableFleet` a full run also burns the fleet-wide mutex. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here. The mutex itself is `/fableFleet`'s, and is stated in its Step 5.
 
-A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md`) — `scripts/ci.sh` fails without them.
+A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`) — `scripts/ci.sh` fails without them.
 
 If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — deciding it at step 4 instead strands the spec after the loop it was supposed to drive.
 
