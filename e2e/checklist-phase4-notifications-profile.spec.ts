@@ -446,7 +446,25 @@ test.describe('editing your own profile', () => {
     await page.goto(`/profile?barn=${barn.slug}`)
     const phoneInput = page.getByLabel('Phone', { exact: true })
     await phoneInput.fill(RELOADED_PHONE)
-    // Same guard as the redirect test above, for the same hydration reason.
+    // NOT a hydration guard, despite the redirect test above describing its identical line as
+    // one. `fill()` moves the DOM value whether or not React is listening, and this reads that
+    // same DOM property straight back, so it passes in both worlds and can prove nothing about
+    // hydration — `support/hydration.ts`'s module comment is explicit that a signal has to be
+    // something that cannot exist before hydration, and a value this test just wrote itself is
+    // weaker than "merely present".
+    //
+    // What it does prove is worth one line: the field about to be submitted is the one this test
+    // located, and it holds exactly what was typed. A wrong locator, or an input that reformats
+    // its value, fails here rather than four lines later wearing the costume of a persistence
+    // bug.
+    //
+    // A fill lost to hydration is caught by the read-back at the end of this test instead — the
+    // stale value is what reaches the database, and the final assertion fails on it. That makes
+    // the failure loud rather than silent, which is the property that actually matters here,
+    // because fact 9's prescribed remedy has nothing on this page to bind to: `ProfileForm` and
+    // `CalendarFeedSection` seed every piece of state from a server prop, so there is no markup
+    // that cannot exist before hydration for `waitForHydrated`, and no control whose repeat is
+    // harmless for `hydrateByDriving`.
     await expect(phoneInput).toHaveValue(RELOADED_PHONE)
 
     await page.getByRole('button', { name: 'Save', exact: true }).click()
