@@ -194,10 +194,26 @@ const uploadForm = (page: Page) => page.locator('main form')
  * The submit button, located structurally rather than by its accessible name.
  *
  * Not decoration: the label is `{pending ? 'Uploading…' : 'Upload'}`, so a non-exact name match
- * would match "Upload" as a prefix of "Uploading…" — the containment hazard #1202 found, live in
- * this form.
+ * would match "Upload" as a prefix of "Uploading…" — the same substring-containment trap #1202
+ * recorded for the fee text on these pages, in a second place on the same flow.
+ * checklist-phase4-horses-documents.spec.ts locates this same form's submit structurally for this
+ * reason; the shape is copied from there deliberately rather than reinvented.
  */
 const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
+
+/**
+ * The upload screen's reminder-date field — and the barrier the upload test waits on after its
+ * click, rather than the submit button above.
+ *
+ * That choice is load-bearing rather than arbitrary. `waitUntil: 'commit'` resolves on the URL
+ * flip while the route being left is still mounted, and the member detail page *also* satisfies
+ * `main form button[type="submit"]`: DeleteDocumentButton wraps its own submit in a <form>, and
+ * the seeded document means that row is on screen when the click happens. A submit-button barrier
+ * would therefore be satisfied by the page just left, proving nothing about the page arrived at —
+ * the soft-nav vacuity #1319 fixed one slice over. This input exists only on DocumentUploadForm,
+ * so it is a destination-only signal, and it is the very field the test fills next.
+ */
+const reminderDateField = (page: Page) => uploadForm(page).locator('input[name="reminder_date"]')
 
 /**
  * Both destinations, as RegExp rather than Playwright's URL glob — `?` is a wildcard there rather
@@ -298,9 +314,11 @@ test('own_document_reminder_date_renders_as_read_only_text_to_a_trainer @trainer
 // handling runs in the input's React onChange and its pending state comes from useActionState, so
 // an unhydrated form submits as a native POST with no client state at all; arriving by a
 // client-side navigation means the destination is rendered by an already-running React root, so its
-// handlers are attached before the fill below (#1197). The wait is on the submit button rather than
-// the Choose File one, because `input[type="file"]` also carries the button role and resolves to
-// "Choose File" by accessible name — that locator is a strict-mode violation rather than a guard.
+// handlers are attached before the fill below (#1197). The barrier is the reminder-date field
+// rather than the submit button or the Choose File one — see reminderDateField above for why the
+// submit button cannot serve here, and note that `input[type="file"]` also carries the button role
+// and resolves to "Choose File" by accessible name, making that locator a strict-mode violation
+// rather than a guard.
 //
 // One assertion covers the whole line: the row existing proves the upload landed, and its cell
 // holding the date proves the optional Reminder Date rode along with it.
@@ -311,9 +329,9 @@ test('trainer_can_upload_a_document_with_a_reminder_date_on_their_own_member_pag
   await page.goto(memberUrl(membershipId))
   await documentsSection(page).getByRole('link', { name: 'Add Document', exact: true }).click()
   await page.waitForURL(atDocumentUpload(membershipId), { waitUntil: 'commit' })
-  await submitButton(page).waitFor()
+  await reminderDateField(page).waitFor()
 
-  await uploadForm(page).locator('input[name="reminder_date"]').fill(UPLOADED_REMINDER_DATE)
+  await reminderDateField(page).fill(UPLOADED_REMINDER_DATE)
   await page.setInputFiles('input[type="file"]', assetPath(UPLOADED_DOCUMENT))
   await submitButton(page).click()
   await page.waitForURL(atMemberDetail(membershipId), { waitUntil: 'commit' })
