@@ -531,23 +531,29 @@ function monthFromIndex(index: number): string {
 }
 
 /**
- * Hydration barrier for the month picker, run once before any paging.
+ * Hydration barrier for the expense form, in either of its two placements: `showMonth`'s
+ * precondition before any paging, and — since #1363 — the barrier every test below puts between
+ * its `goto` and its first `fill`.
  *
- * The drive is a re-tap of the day cell that is *already* selected, and that choice is the whole
- * point rather than an arbitrary pick: `hydrateByDriving` re-dispatches while `isLive` is false,
- * so it is only safe on a control whose repeat is harmless (its own module comment says so).
- * `handleDayTap` on the selected day calls `onChange` with the value the form already holds and
- * re-opens an already-open panel, so any number of retries leave the form exactly as they found
- * it. The **month pager is the opposite** — a monotonic counter with no path back — which is why
- * the barrier is here rather than around the presses below.
+ * It serves both because it perturbs no form field at all. The drive is a re-tap of the day cell
+ * that is *already* selected, and that choice is the whole point rather than an arbitrary pick:
+ * `hydrateByDriving` re-dispatches while `isLive` is false, so it is only safe on a control whose
+ * repeat is harmless (its own module comment says so). `handleDayTap` on the selected day calls
+ * `onChange` with the value the form already holds and re-opens an already-open panel, so any
+ * number of retries leave the form exactly as they found it. The **month pager is the opposite** —
+ * a monotonic counter with no path back — which is why the barrier is here rather than around the
+ * presses `showMonth` makes below.
  *
  * The signal is the day panel's Close button. `useOutsideDismiss` seeds `open` as `useState(false)`
  * and `ExpenseForm` passes `dayPanelAlwaysOpen={false}`, so the panel — and that button — cannot
  * exist in the server's markup at all. That makes its appearance strictly post-hydration rather
  * than merely correlated with it, which is what the module comment requires of a signal.
  * `count()` rather than a `waitFor`, because `isLive` has to be non-retrying.
+ *
+ * Both `/expenses/new` and `/expenses/[id]` pass `getScheduleRange` to `ExpenseForm`, so the
+ * calendar this reaches for is on every page the tests below open.
  */
-async function hydrateMonthPicker(page: Page): Promise<void> {
+async function hydrateExpenseForm(page: Page): Promise<void> {
   const selectedDay = page.locator('button[aria-pressed="true"]').first()
   await hydrateByDriving(
     () => selectedDay.click(),
@@ -585,7 +591,7 @@ async function showMonth(page: Page, month: string): Promise<void> {
   // interaction and behaves exactly as it did before #1283.
   if (delta === 0) return
 
-  await hydrateMonthPicker(page)
+  await hydrateExpenseForm(page)
   const pager = page.getByRole('button', { name: delta < 0 ? 'Previous month' : 'Next month', exact: true })
   for (let step = 1; step <= Math.abs(delta); step++) {
     const target = monthFromIndex(monthIndex(from) + Math.sign(delta) * step)
@@ -616,8 +622,13 @@ async function tapDay(page: Page, day: string): Promise<void> {
 // Recipient-driven expense-type autofill
 // ---------------------------------------------------------------------------
 
+// The barrier is a *precondition* here rather than the uniformity it is at most sites below: the
+// autofill is `handleRecipientBlur`, so an unhydrated fill — which moves the DOM value and fires
+// no `onChange` (e2e/CLAUDE.md fact 9) — leaves `recipient` state empty, the blur returns early on
+// the empty trim, and the type field stays blank for a reason that has nothing to do with history.
 test('entering_a_recipient_seen_before_autofills_the_expense_type @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   const recipientField = page.locator('#expense-recipient')
   await recipientField.fill(HISTORY_RECIPIENT)
   await recipientField.blur()
@@ -631,9 +642,14 @@ test('entering_a_recipient_seen_before_autofills_the_expense_type @manager', asy
  * makes the read order-independent — and pins the actual claim: a field that gained a ring and
  * never released it is not a flash, and `[false, true]` fails here where a toHaveClass race
  * would have passed.
+ *
+ * The barrier is the same precondition the test above states, and it goes ahead of the observer
+ * too: the ring is applied by `setTypeFlashing`, so an unhydrated fill produces no transitions at
+ * all and the log reads `[false]` — a failure that names the observer rather than the hydration.
  */
 test('the_autofilled_expense_type_field_flashes @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   const typeField = page.locator('#expense-type')
   await typeField.evaluate((el) => {
     const w = window as unknown as { __ringLog: boolean[] }
@@ -665,6 +681,7 @@ test('the_autofilled_expense_type_field_flashes @manager', async ({ page }) => {
 // today-dated unamounted expense renders a Past Due badge into the very <p> this asserts on.
 test('leaving_the_amount_blank_saves_a_planned_expense @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   await page.locator('#expense-recipient').fill(NEW_PLANNED_RECIPIENT)
   await page.locator('#expense-type').fill(NEW_PLANNED_TYPE)
   await horseCheckbox(page, APPLE).check()
@@ -682,6 +699,7 @@ test('leaving_the_amount_blank_saves_a_planned_expense @manager', async ({ page 
 // Full-string equality, so '$88.00' cannot be satisfied by '$880.00' or by the no-amount branch.
 test('reopening_a_planned_expense_lets_its_amount_be_filled_in @manager', async ({ page }) => {
   await page.goto(expenseHref(plannedFillable))
+  await hydrateExpenseForm(page)
   await page.locator('#expense-amount').fill('88')
   await submitForm(page, 'Save Changes')
 
@@ -719,6 +737,7 @@ test('checking_all_disables_the_horse_checkboxes @manager', async ({ page }) => 
 // no amount it never reaches the ledger, so this test cannot reach across the file.
 test('saving_a_barn_wide_expense_shows_entire_barn_on_its_card @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   await page.locator('#expense-recipient').fill(NEW_BARNWIDE_RECIPIENT)
   await page.locator('#expense-type').fill(NEW_BARNWIDE_TYPE)
   await allCheckbox(page).check()
@@ -822,6 +841,7 @@ test('the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state @manager'
 // recipient has no history, so the blur autofill correctly leaves the type alone.
 test('changing_the_recipient_and_saving_updates_the_card @manager', async ({ page }) => {
   await page.goto(expenseHref(recipientEdit))
+  await hydrateExpenseForm(page)
   await page.locator('#expense-recipient').fill(RENAMED_RECIPIENT)
   await submitForm(page, 'Save Changes')
 
@@ -834,6 +854,7 @@ test('changing_the_recipient_and_saving_updates_the_card @manager', async ({ pag
 // the assertion.
 test('changing_the_amount_and_saving_updates_the_card @manager', async ({ page }) => {
   await page.goto(expenseHref(amountEdit))
+  await hydrateExpenseForm(page)
   await page.locator('#expense-amount').fill('275')
   await submitForm(page, 'Save Changes')
 
@@ -849,6 +870,7 @@ test('changing_the_amount_and_saving_updates_the_card @manager', async ({ page }
 // by re-opening the saved expense's own edit page, which is a fresh server render.
 test('a_payment_type_set_on_the_new_expense_form_persists @manager', async ({ page }) => {
   await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
   await page.locator('#expense-recipient').fill(NEW_PAID_RECIPIENT)
   await page.locator('#expense-type').fill(NEW_PAID_TYPE)
   await horseCheckbox(page, APPLE).check()

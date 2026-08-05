@@ -488,18 +488,28 @@ const HYDRATION_BARRIER_DAY =
     : shiftDay(BARN_TODAY, -1)
 
 /**
- * Whether the hidden `lesson_at` input already reports the given barn-local field, which only
+ * Whether the named hidden input already reports the given barn-local field, which only
  * client-side React can write. `slice` picks the field: `[0, 10]` for the date, `[11, 13]` for
- * the hour.
+ * the hour, `[0, 19]` for the whole wall clock.
+ *
+ * `name` because two forms here carry such an input: the lesson form's `lesson_at` and — since
+ * #1363 — `ExpenseForm`'s `occurred_at`, which `computeOccurredAt` recomputes from the date and
+ * time fields on every render.
  *
  * A one-shot predicate rather than a `waitForFunction`, because `hydrateByDriving` owns the
  * pacing — a retrying read inside its loop would spend the whole budget on the first attempt
  * that lands before hydration (#1280).
  */
-async function pickerFieldIs(page: Page, from: number, to: number, expected: string): Promise<boolean> {
+async function pickerFieldIs(
+  page: Page,
+  name: string,
+  from: number,
+  to: number,
+  expected: string
+): Promise<boolean> {
   return page.evaluate(
-    ([zone, want, start, end]) => {
-      const el = document.querySelector('input[name="lesson_at"]') as HTMLInputElement | null
+    ([zone, want, start, end, field]) => {
+      const el = document.querySelector(`input[name="${field as string}"]`) as HTMLInputElement | null
       if (!el?.value) return false
       const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone: zone as string,
@@ -510,7 +520,7 @@ async function pickerFieldIs(page: Page, from: number, to: number, expected: str
       const wall = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
       return wall.slice(start as number, end as number) === want
     },
-    [EASTERN, expected, from, to] as const
+    [EASTERN, expected, from, to, name] as const
   )
 }
 
@@ -546,7 +556,7 @@ async function hydrateByChangingTime(page: Page): Promise<void> {
     () => page.locator('#lesson-start-time').fill(HYDRATION_BARRIER_TIME),
     // 11..16 rather than 11..13 since #1021: the wall clock the hidden input now carries is
     // minute-granular, so the barrier has to match "HH:MM" or it would pass on a truncation.
-    () => pickerFieldIs(page, 11, 16, HYDRATION_BARRIER_TIME)
+    () => pickerFieldIs(page, 'lesson_at', 11, 16, HYDRATION_BARRIER_TIME)
   )
 }
 
@@ -562,7 +572,7 @@ async function hydrateByChangingTime(page: Page): Promise<void> {
 async function hydrateByChangingDay(page: Page): Promise<void> {
   await hydrateByDriving(
     () => page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click(),
-    () => pickerFieldIs(page, 0, 10, HYDRATION_BARRIER_DAY)
+    () => pickerFieldIs(page, 'lesson_at', 0, 10, HYDRATION_BARRIER_DAY)
   )
 }
 
@@ -748,13 +758,25 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
 
   test('adding_an_expense_at_eleven_thirty_pm_stores_it_barn_local_in_transactions @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/expenses/new`)
-    await page.locator('#expense-recipient').fill(EXPENSE_RECIPIENT)
-    await page.locator('#expense-type').fill(EXPENSE_TYPE)
+    // The Time field leads, and it is the hydration barrier as well as the test's own input
+    // (#1363): an unhydrated `fill` moves the DOM value without firing `onChange`
+    // (e2e/CLAUDE.md fact 9), and React reconciles a controlled input's value at hydration — so a
+    // fill made before this barrier can be silently discarded. `occurred_at` is recomputed by
+    // `computeOccurredAt` on every render and defaults to midnight while the Time field is blank,
+    // so it carrying 23:30 Eastern is a write only client-side React can have made. Re-entering
+    // the same time is idempotent, which is what makes it safe to re-dispatch.
+    //
     // The Date field is left on its own pre-fill, which is the server's `todayStr`. That is
     // deliberate on two counts: it is BARN_TODAY, and `ExpenseForm` hides the Time field
     // entirely for a past date — so touching the date is what would put line 710's own subject
-    // out of reach.
-    await page.locator('#expense-time').fill(EXPENSE_TIME)
+    // out of reach. The [0, 19] slice pins that date alongside the time, since `occurred_at`
+    // carries both.
+    await hydrateByDriving(
+      () => page.locator('#expense-time').fill(EXPENSE_TIME),
+      () => pickerFieldIs(page, 'occurred_at', 0, 19, EXPENSE_WALL_CLOCK)
+    )
+    await page.locator('#expense-recipient').fill(EXPENSE_RECIPIENT)
+    await page.locator('#expense-type').fill(EXPENSE_TYPE)
     // Without an amount `sync_expense_transaction` writes no `transactions` row at all, and
     // line 710's assertion is about that row's `occurred_at`.
     await page.locator('#expense-amount').fill(EXPENSE_AMOUNT)
