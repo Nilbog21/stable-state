@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
+import { getMyHorseDocumentPrivilege } from '@/lib/db/member-horse-privileges'
 import { getProfileById } from '@/lib/db/profiles'
 import { canManage } from '@/lib/document-target'
 import { DocumentUploadForm } from './DocumentUploadForm'
@@ -75,9 +76,15 @@ export default async function NewDocumentPage({
   }
 
   if (entity === 'horse') {
-    const { barn } = await requireMembership(slug, ['manager', 'trainer'])
+    const { barn, membership: callerMembership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
     const horse = await getHorseById(id, barn.id)
     if (!horse) notFound()
+
+    // #1359: a rider reaches this page only through a 'write' horse-document
+    // privilege (the horse page's Add Document button gates on the same value).
+    if (callerMembership.role === 'rider' && (await getMyHorseDocumentPrivilege(horse.id, barn.id)) !== 'write') {
+      notFound()
+    }
 
     return (
       <main className="mx-auto max-w-md px-4 py-12">
