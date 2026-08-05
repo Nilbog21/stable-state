@@ -65,9 +65,11 @@ import type { Lesson } from '@/lib/db/types'
 // text mandates both by name ("assert their status directly", "verify the `notifications` row
 // directly ... an e2e run reads the row with its own service client"). Neither answer is renderable
 // to this persona: a co-rider's Cancelled badge is gated on `canManageLesson` (a manager or the
-// instructing trainer, never a rider), and the notification belongs to the trainer. Each read
-// carries its own in-assertion control — the actor's own row in 982, the row count in 983 — so a
-// query pointed at the wrong barn or key fails rather than reading as a clean pass.
+// instructing trainer, never a rider), and the notification belongs to someone else — a rider's own
+// cancellation notifies the instructor *and* every active manager
+// (`resolveCancellationRecipients`), of whom line 983 names the instructor. Each read carries its
+// own in-assertion control — the actor's own row in 982, the row count in 983 — so a query pointed
+// at the wrong barn or key fails rather than reading as a clean pass.
 
 const COMET = 'Comet' // seededCancelled
 const JUNIPER = 'Juniper' // headerCancel
@@ -462,10 +464,16 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
     })
   })
 
-  // The recipient is the trainer, so the row is read with the service client rather than through a
-  // UI this persona will never see — the issue mandates that directly, and seeding the row with
+  // The recipients are other people, so the row is read with the service client rather than through
+  // a UI this persona will never see — the issue mandates that directly, and seeding the row with
   // addNotification instead would make the assertion vacuous, which is why that builder is not
   // imported by this file.
+  //
+  // A rider's own cancellation notifies the instructor *and* every active manager
+  // (resolveCancellationRecipients' `rider_participation` + `actorRole === 'rider'` branch), so this
+  // barn ends up with two rows of this type. Line 983 is about the instructor's, and the query is
+  // keyed on his user id — which is why the equality below can still be an exact one-row match
+  // rather than a membership check over an open-ended recipient list.
   //
   // No poll: cancelRiderParticipationAction awaits the notification write *before* its redirect,
   // and the test above already waited for the redirected detail page to render, so the row is
