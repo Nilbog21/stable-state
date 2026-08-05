@@ -823,9 +823,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) Nav shows the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) alongside the barn name
 - [ ] (e2e-candidate) That nav shows **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] (e2e-candidate) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
-- [ ] (e2e-candidate) Lessons list defaults to **My Lessons**, showing only the lessons you instruct (Alex's, now reassigned to you)
-- [ ] (e2e-candidate) Switching to **All** shows every barn lesson, including another instructor's (Blake's)
-- [ ] (e2e-candidate) The filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
+- [ ] (e2e: trainer_lessons_list_defaults_to_my_lessons) Lessons list defaults to **My Lessons**, showing only the lessons you instruct (Alex's, now reassigned to you)
+- [ ] (e2e: trainer_all_filter_shows_every_barn_lesson_including_another_instructors) Switching to **All** shows every barn lesson, including another instructor's (Blake's)
+- [ ] (e2e: trainer_filter_pills_show_the_same_six_filters_as_the_manager_view) The filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
 - [ ] (e2e-candidate) Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
 - [ ] (e2e-candidate) With a date picked on that form, exhaustion bars render below each horse, same as the manager view
 - [ ] (e2e-candidate) (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
@@ -848,10 +848,10 @@ bash scripts/change-user.sh dev-barn
 
 - [ ] (e2e-candidate) A `notifications` row exists for Blake's `user_id` with `type = 'instructor_lesson_nearby'` and `link = '/barn/dev-barn/lessons'` (an e2e run reads the row with its own service client — the constraint above is `change-user.sh`'s, not the suite's)
 - [ ] (e2e-candidate) That row's `title` reads **"1 new lesson scheduled nearby"** (or an incremented count, e.g. "2 new lessons scheduled nearby", if a prior nearby lesson already landed this same row this pass)
-- [ ] (e2e-candidate) Editing one of your own lessons shows the instructor field **hidden entirely** — no label, no read-only text, just locked server-side
-- [ ] (e2e-candidate) Blake's lesson, opened from the Lessons list, shows no **Edit** link
-- [ ] (e2e-candidate) Navigating directly to that lesson's `/edit` URL does not let you save changes
-- [ ] (e2e-candidate) No **Delete** button is shown on any lesson, your own included
+- [ ] (e2e: trainer_edit_form_hides_the_instructor_field_on_their_own_lesson) Editing one of your own lessons shows the instructor field **hidden entirely** — no label, no read-only text, just locked server-side
+- [ ] (e2e: trainer_sees_no_edit_link_on_another_instructors_lesson) Blake's lesson, opened from the Lessons list, shows no **Edit** link
+- [ ] (e2e: trainer_cannot_save_changes_via_another_instructors_edit_url) Navigating directly to that lesson's `/edit` URL returns **404** — the edit form never renders, so there is no save to reach
+- [ ] (e2e: trainer_sees_no_delete_button_on_any_lesson) No **Delete** button is shown on any lesson, your own included
 - [ ] (e2e-candidate) A lesson you instruct shows a **Cancel** button in its detail-page header
 - [ ] (e2e-candidate) Cancelling a rider's spot (or the whole lesson) from there works the same as the manager flow
 - [ ] (e2e-candidate) Blake's lesson shows no header **Cancel** button
