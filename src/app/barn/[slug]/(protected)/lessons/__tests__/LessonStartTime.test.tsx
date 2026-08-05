@@ -86,6 +86,36 @@ describe('LessonStartTime', () => {
     expect(hidden(container)).toBeNull()
   })
 
+  // A native time input reports '' whenever the user clears it — select-all-and-delete, or
+  // backspacing through the segments. The old hour `<select>` could never emit that, so the
+  // empty branch is new with #1021. Unguarded, `wallClockToInstant('2026-06-01T:00', tz)` builds
+  // an Invalid Date and throws RangeError out of `Intl.DateTimeFormat.formatToParts` *during
+  // render*, unmounting the whole form and discarding every other field the user had filled in.
+  it('should_not_throw_when_the_time_is_cleared', () => {
+    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+
+    expect(() =>
+      fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
+    ).not.toThrow()
+  })
+
+  it('should_omit_the_hidden_input_when_the_time_is_cleared', () => {
+    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+
+    fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
+
+    expect(hidden(container)).toBeNull()
+  })
+
+  it('should_call_onChange_with_an_empty_string_when_the_time_is_cleared', () => {
+    const onChange = vi.fn()
+    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" onChange={onChange} />)
+
+    fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
+
+    expect(onChange).toHaveBeenLastCalledWith('')
+  })
+
   it('should_call_onChange_with_the_combined_value_on_mount', () => {
     const onChange = vi.fn()
 

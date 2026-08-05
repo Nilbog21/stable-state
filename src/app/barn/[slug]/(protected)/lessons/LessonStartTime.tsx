@@ -38,7 +38,13 @@ export function LessonStartTime({
     initialTime ?? (() => `${instantToLocalWallClock(new Date(), timezone).slice(11, 13)}:00`)
   )
 
-  const combinedValue = date
+  // Both halves are guarded, and `time` is not the redundant one it looks like: a native time
+  // input reports '' whenever the user clears it, which the hour `<select>` this replaced could
+  // never do. Unguarded, that empty string builds an Invalid Date inside `wallClockToInstant`
+  // and throws RangeError out of `formatToParts` *during render* — unmounting the form and
+  // taking every other field the user had filled in with it. `required` on the input blocks the
+  // submit; it does nothing about the render.
+  const combinedValue = date && time
     ? wallClockToInstant(`${date}T${time}:00`, timezone).toISOString()
     : ''
 
@@ -62,7 +68,7 @@ export function LessonStartTime({
         required
         className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
       />
-      {date && <input type="hidden" name="lesson_at" value={combinedValue} />}
+      {combinedValue && <input type="hidden" name="lesson_at" value={combinedValue} />}
     </div>
   )
 }

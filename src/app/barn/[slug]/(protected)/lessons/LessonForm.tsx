@@ -26,9 +26,11 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
   return true
 }
 
-// "Past" is measured against the start of the barn's current hour, not the host's: the
-// picker only offers whole barn hours, so the current one must not count as past. Truncating
-// a host-zone Date instead lands 30 minutes off in any half-hour-offset zone (#1222).
+// "Past" is measured against the start of the barn's current hour, not the host's, so a
+// lesson already under way still counts as bookable. #1021 made start times minute-granular,
+// which widens what that lenience covers — anything from :00 of the current hour onward — but
+// does not change the rule or its direction. Truncating a host-zone Date instead lands 30
+// minutes off in any half-hour-offset zone (#1222).
 function isPastLessonAt(lessonAt: string, timezone: string): boolean {
   if (!lessonAt) return false
   const barnHourStart = wallClockToInstant(
@@ -273,8 +275,10 @@ export function LessonForm({
   const selectedRiderIds = lessonType === 'normal'
     ? (normalRiderId ? [normalRiderId] : [])
     : [...checkedRiderIds]
-  // Falls back to midnight only for the first render, before DateHourPicker's mount effect
-  // reports a lessonAt — by the time a horse is selected the real hour is in hand.
+  // Falls back to midnight only for the first render, before LessonStartTime's mount effect
+  // reports a lessonAt — by the time a horse is selected the real hour is in hand. Deliberately
+  // still the hour alone: `computeDayDecorations` buckets by hour for its +/-3-day exertion
+  // window (see month-calendar.ts), so the minutes #1021 added are not wanted here.
   const selectedHour = lessonAt ? Number(instantToLocalWallClock(new Date(lessonAt), timezone).slice(11, 13)) : 0
   const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
     selectedHorseIds: [...checkedHorseIds],
