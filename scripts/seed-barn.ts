@@ -56,7 +56,7 @@ export const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] a
 
 // #1038: real JPEGs rather than a 1x1 placeholder, since dev-photo seeding needs images a
 // human can tell apart on the page. #1135 made scripts/data/ a tracked directory, so these
-// are in every checkout — see scripts/CLAUDE.md's Test assets section for the manifest.
+// are in every checkout — see docs/scripts.md's Test assets section for the manifest.
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), 'data')
 
 export const DEV_TIER_NAME = 'Normal Tier'

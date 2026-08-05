@@ -6,8 +6,8 @@ cd "$(git rev-parse --show-toplevel)"
 LIMIT=150000
 MAIN_DOC="ARCHITECTURE.md"
 
-# Per-file budgets for the auto-loaded context set (#1354) — these load into every session
-# (or every scripts/-touching session), so regrowth is a per-turn tax and fails CI here.
+# Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
+# scoped CLAUDE.mds load whenever their area is touched. Regrowth is a per-turn tax — fail CI.
 BUDGETS=(
   "ARCHITECTURE.md:20000"
   "CLAUDE.md:10000"
