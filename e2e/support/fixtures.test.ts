@@ -12,6 +12,8 @@ import {
   assetPath,
   daysFromNow,
   addUnpaidLesson,
+  E2E_USERS,
+  E2E_STUB_RIDER,
   type SeededBarn,
 } from './fixtures'
 
@@ -238,5 +240,34 @@ describe('assetPath', () => {
 
   it('should_throw_naming_the_missing_asset', () => {
     expect(() => assetPath('no-such-asset.pdf')).toThrow(/scripts\/data\/no-such-asset\.pdf/)
+  })
+})
+
+/**
+ * #1284: the four members `addMemberships` plants in every seeded barn, held to the two
+ * collision constraints stated on `E2E_STUB_RIDER`. This is the guard the previous three
+ * reports of the same defect (#1192, #1202, #1208) each worked around locally instead —
+ * `last_name` was a bare literal inside an insert, so there was nothing to assert on.
+ *
+ * Both cases fail on a name whose *rendered* form collides, not on a name that merely looks
+ * similar, so they stay silent on any future fixture that is genuinely distinct.
+ */
+describe('seeded member names', () => {
+  type Named = { firstName: string; lastName: string }
+  const members: Named[] = [...Object.values(E2E_USERS), E2E_STUB_RIDER]
+  const fullName = (who: Named) => `${who.firstName} ${who.lastName}`
+  /** What get_calendar_feed renders: first name plus the surname's initial. */
+  const truncated = (who: Named) => `${who.firstName} ${who.lastName[0]}.`
+
+  // Filtered rather than asserted pairwise so the failure message names the offending fixture
+  // ("Test Rider") instead of just reporting that some pair overlapped.
+  it('should_seed_no_member_name_that_contains_another', () => {
+    const names = members.map(fullName)
+    expect(names.filter((name) => names.some((other) => other !== name && other.includes(name)))).toEqual([])
+  })
+
+  it('should_seed_a_distinct_truncated_surname_form_for_every_member', () => {
+    const forms = members.map(truncated)
+    expect(forms.filter((form, i) => forms.indexOf(form) !== i)).toEqual([])
   })
 })
