@@ -353,7 +353,6 @@ test('by_instructor_filter_url_carries_the_instructor_membership_id @manager', a
 test('by_rider_filter_shows_only_that_riders_lessons @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/lessons`)
   await pickTopFilter(page, 'By Rider', 'rider')
-  // exact: true, or this also matches the stub rider "Test Rider2".
   await pickSubFilter(page, RIDER_NAME)
   await expect.poll(() => visibleLessonIds(page)).toEqual([willowUpcomingId, managerRecentId, willowPastId])
 })

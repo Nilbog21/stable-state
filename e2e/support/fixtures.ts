@@ -54,6 +54,31 @@ export const E2E_USERS = {
 
 export type E2eRole = keyof typeof E2E_USERS
 
+/**
+ * The fourth seeded member — a managed stub, not a login (addMemberships explains why below).
+ * Named here rather than inline at its insert so the collision constraint every seeded name is
+ * held to can actually be asserted: see fixtures.test.ts's `seeded member names` block.
+ *
+ * That constraint has two halves, and the second is the one that keeps getting missed (#1284,
+ * the third independent report):
+ *
+ * - **No name may contain another.** Playwright's `hasText`, `getByText` and
+ *   `getByRole({ name })` are all substring matchers, so a filter for the shorter of two
+ *   overlapping names silently selects both rows.
+ * - **No two may share a first-initial-derived form.** `get_calendar_feed` renders
+ *   `first_name || ' ' || left(last_name, 1) || '.'`, and no boundary-safe locator defends
+ *   against *that* collapse — an expectation derived from one fixture matches the other by
+ *   coincidence rather than by derivation, which is an assertion that is true, falsifiable,
+ *   mutation-proof, and pointed at the wrong fixture.
+ *
+ * Both halves bind any name added here or passed to `addManagedMember`. `Sutton` rather than the
+ * `Rider2` this was until #1284 — a surname echoing the fixture key reads well and failed *both*
+ * halves against the `rider` login at once. Don't name it after the key again; `S` in particular
+ * is load-bearing only in that it keeps `Test Rider` < `Test Sutton` < `Test Trainer`, the name
+ * ordering checklist-phase4-finances-by-rider.spec.ts's three-way sort table is written against.
+ */
+export const E2E_STUB_RIDER = { firstName: 'Test', lastName: 'Sutton' } as const
+
 export type SeededBarn = { id: string; slug: string; name: string; timezone: string }
 export type SeededMember = { membershipId: string; userId: string | null; profileId: string }
 export type SeededMembers = Record<E2eRole, SeededMember> & { rider2: SeededMember }
@@ -256,7 +281,7 @@ export async function addMemberships(supabase: SupabaseClient, barnId: string): 
   const rider2Profile = mustSucceed<{ id: string }>(
     await supabase
       .from('profiles')
-      .insert({ first_name: 'Test', last_name: 'Rider2', is_managed: true })
+      .insert({ first_name: E2E_STUB_RIDER.firstName, last_name: E2E_STUB_RIDER.lastName, is_managed: true })
       .select('id')
       .single(),
     'insert stub rider profile'

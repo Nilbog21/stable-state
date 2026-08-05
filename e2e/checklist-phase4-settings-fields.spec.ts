@@ -271,8 +271,7 @@ const BARN_TIMEZONE_CHANGE = HAWAII
 
 /**
  * Line 695's three planned expenses. Recipients are mutually non-substring, so a `hasText`
- * or `getByText` read can never match two of them — the fixture hazard `members.rider` /
- * `members.rider2` already demonstrates in the shared fixtures.
+ * or `getByText` read can never match two of them.
  *
  * - CONTROL is past-due in both zones: the same-document positive half, present before *and*
  *   after the timezone change, so the "before" read proves the section renders on a page
