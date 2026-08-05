@@ -961,19 +961,19 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
 - [ ] (e2e-candidate) It shows no events outside her role's `visible_to_roles`
 - [ ] (e2e-candidate) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
-- [ ] (e2e-candidate) Lessons list shows only Dana's enrolled lessons
-- [ ] (e2e-candidate) Its filter pills are `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill
-- [ ] (e2e-candidate) Dana's own name does not appear on her own lesson cards
-- [ ] (e2e-candidate) An enrolled lesson's detail page shows Dana's own rider notes read-only
-- [ ] (e2e-candidate) That page shows **no private notes**
-- [ ] (e2e-candidate) That page shows no exertion rating next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
+- [ ] (e2e: rider_lessons_list_shows_only_enrolled_lessons) Lessons list shows only Dana's enrolled lessons
+- [ ] (e2e: rider_filter_pills_omit_my_lessons_and_by_rider) Its filter pills are `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill
+- [ ] (e2e: rider_own_name_absent_from_own_lesson_cards) Dana's own name does not appear on her own lesson cards
+- [ ] (e2e: rider_own_rider_notes_render_read_only_on_the_lesson_detail_page) An enrolled lesson's detail page shows Dana's own rider notes read-only
+- [ ] (e2e: rider_private_notes_stay_hidden_on_the_lesson_detail_page) That page shows **no private notes**
+- [ ] (e2e: rider_sees_no_exertion_rating_on_an_unprivileged_horse) That page shows no exertion rating next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
 - [ ] (e2e: rider_privileged_horse_shows_an_exertion_rating_on_the_lesson_detail_page) (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse does show an exertion rating
 - [ ] (e2e: rider_privileged_horse_shows_its_horse_notes_on_the_lesson_detail_page) (#999) That same horse shows its horse notes (if any) on that page
 - [ ] (e2e: rider_other_riders_notes_stay_hidden_on_the_privileged_lesson_detail_page) (#999) On that page, other riders' rider and private notes stay hidden from Dana
 - [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead
 - [ ] (e2e-candidate) That lesson's detail page renders the same read-only **Cancellation Notes** row the manager gets
-- [ ] (e2e-candidate) An enrolled **group** lesson's detail page shows every co-rider's real name, not a blank or raw ID
-- [ ] (e2e-candidate) Visiting `/barn/dev-barn/lessons/[id]` directly for a lesson Dana is **not** enrolled in, with no horse she holds lesson-read privileges on, shows **404** rather than the lesson details
+- [ ] (e2e: rider_group_lesson_shows_every_co_riders_real_name) An enrolled **group** lesson's detail page shows every co-rider's real name, not a blank or raw ID
+- [ ] (e2e: rider_unenrolled_unprivileged_lesson_404s) Visiting `/barn/dev-barn/lessons/[id]` directly for a lesson Dana is **not** enrolled in, with no horse she holds lesson-read privileges on, shows **404** rather than the lesson details
 - [ ] (e2e-candidate) An enrolled lesson's detail-page header carries a **Cancel** button
 - [ ] (e2e-candidate) No Cancel button appears on the Lessons list or the Dashboard
 - [ ] (e2e-candidate) Cancelling your own spot from that header marks your row **Cancelled** on the Lessons list
