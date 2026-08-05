@@ -149,6 +149,28 @@ describe('getExpensesByBarn', () => {
     expect(result[0].horse_ids).toEqual(['horse-a', 'horse-z'])
   })
 
+  it('should_break_a_horse_name_tie_on_horse_id', async () => {
+    const expense = createMockHorseExpense()
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'appointments') return makeExpensesChain([expense])
+      if (table === 'appointment_horses')
+        return makeJunctionChain([
+          { appointment_id: expense.id, horse_id: 'horse-z' },
+          { appointment_id: expense.id, horse_id: 'horse-a' },
+        ])
+      if (table === 'appointment_costs') return makeCostChain([])
+      return makeNamesChain([
+        { id: 'horse-z', name: 'Duke' },
+        { id: 'horse-a', name: 'Duke' },
+      ])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getExpensesByBarn('barn-1')
+
+    expect(result[0].horse_ids).toEqual(['horse-a', 'horse-z'])
+  })
+
   it('should_return_empty_horse_arrays_for_barn_wide_expense', async () => {
     const expense = createMockHorseExpense({ applies_to_all_horses: true })
     const fromFn = vi.fn().mockImplementation((table: string) => {

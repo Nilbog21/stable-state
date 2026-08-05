@@ -64,10 +64,16 @@ type RawRow = {
   occurred_at: string
 }
 
-// #1286 sweep: deliberately unordered. The one consumer that renders these rows as a
-// sequence is `backup.ts`'s All Transactions sheet, and `addSheet` already sorts every sheet
-// descending by its own first column (#1218) — ordering here would be re-sorted away. Every
-// other caller folds the rows into a Map, a Set, or a sum, where order is unobservable.
+// #1286 sweep: deliberately unordered, because no consumer's rendered order is decided here.
+// `backup.ts`'s All Transactions sheet is the one caller that renders these rows directly,
+// and `addSheet` already re-sorts every sheet descending by its own first column (#1218), so
+// an order imposed here would be discarded. The callers that reshape the rows into an array
+// rather than folding them — `agreement-finances.ts`'s `getChargesForSummary`/`getPaidCharges`
+// and `expense-finances.ts`'s `fetchExpenseTransactionsInRange` — likewise never render in
+// this order: each one's output is re-sorted by date at the page that displays it (see the
+// finances drill-downs' own `sortableDate` sorts) or folded into a total. The rest resolve
+// the rows into a Map or Set, where order is unobservable. Adding an `.order()` here would
+// therefore buy nothing and cost a sort on the barn's whole ledger.
 export async function getTransactionRows(
   barnId: string,
   kinds: readonly TransactionKind[],

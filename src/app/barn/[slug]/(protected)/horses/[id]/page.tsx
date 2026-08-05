@@ -89,7 +89,7 @@ export default async function HorseDetailPage({
       documentPrivileges: p.document_privileges,
       lessonReadPrivileges: p.lesson_read_privileges,
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
   const grantedMemberIds = new Set(privileges.map((p) => p.member_id))
   const availableMembers = allMembers.filter((m) => !grantedMemberIds.has(m.membershipId))
 

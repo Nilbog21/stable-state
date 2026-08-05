@@ -55,7 +55,7 @@ vi.mock('../HorseAccessSection', () => ({
     <div data-testid="horse-access-section">
       <ol data-testid="grant-names">
         {props.grants.map((g) => (
-          <li key={g.id}>{g.name}</li>
+          <li key={g.id} data-grant-id={g.id}>{g.name}</li>
         ))}
       </ol>
       <button onClick={() => props.onGrant('mem-test')}>test-grant</button>
@@ -1026,6 +1026,21 @@ describe('HorseDetailPage', () => {
     expect(
       Array.from(screen.getByTestId('grant-names').querySelectorAll('li')).map((li) => li.textContent)
     ).toEqual(['Ada Rider', 'Zoe Rider'])
+  })
+
+  it('should_break_an_access_grant_name_tie_on_member_id', async () => {
+    vi.mocked(getHorsePrivileges).mockResolvedValue([
+      { id: 'privilege-z', barn_id: 'barn-1', member_id: 'mem-z', horse_id: 'horse-1', document_privileges: 'read', lesson_read_privileges: true, created_at: '' },
+      { id: 'privilege-a', barn_id: 'barn-1', member_id: 'mem-a', horse_id: 'horse-1', document_privileges: 'none', lesson_read_privileges: false, created_at: '' },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'John Smith'], ['mem-a', 'John Smith']]))
+
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+
+    expect(
+      Array.from(screen.getByTestId('grant-names').querySelectorAll('li')).map((li) => li.getAttribute('data-grant-id'))
+    ).toEqual(['privilege-a', 'privilege-z'])
   })
 
   it('should_wire_grant_action_with_barn_slug_and_horse_id', async () => {

@@ -205,10 +205,14 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
   // lesson_read_privileges for), so this no longer needs its own role branch.
   const exertionByHorseId = await fetchExertionLevels(supabase, lessonId, barnId)
   // `horses` is null when the horses RLS policy filtered the joined row out; such a row
-  // sorts on an empty name rather than dropping out of the list.
+  // sorts on an empty name and id rather than dropping out of the list. The id tiebreak
+  // follows `schedule.ts`'s `a.start … || a.id …` (a #1015 review finding): two horses can
+  // share a name, and their rows carry different `exertion_level` and `horse_notes`, so a
+  // name-only sort would leave which set of notes shows first up to the planner.
   const horseName = (lh: RawLessonHorse) => lh.horses?.name ?? ''
+  const horseId = (lh: RawLessonHorse) => lh.horses?.id ?? ''
   const lesson_horses = [...rawHorses]
-    .sort((a, b) => horseName(a).localeCompare(horseName(b)))
+    .sort((a, b) => horseName(a).localeCompare(horseName(b)) || horseId(a).localeCompare(horseId(b)))
     .map((lh) => ({
       ...lh,
       exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
@@ -274,7 +278,9 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
     instructor_name,
     instructor_user_id,
     lesson_riders: [...rawRiders]
-      .sort((a, b) => riderName(a).localeCompare(riderName(b)))
+      // Membership-id tiebreak for the same reason as `lesson_horses` above: two riders can
+      // share a name, and their rows carry different notes and cancellation state.
+      .sort((a, b) => riderName(a).localeCompare(riderName(b)) || a.rider_id.localeCompare(b.rider_id))
       .map(normalizeLr) as NormalizedLr[],
   } as LessonDetail
 }

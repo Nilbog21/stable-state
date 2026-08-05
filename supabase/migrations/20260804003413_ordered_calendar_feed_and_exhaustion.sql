@@ -177,6 +177,11 @@ BEGIN
     AND l.cancelled_at IS NULL
     AND l.lesson_at BETWEEN p_target_date - INTERVAL '3 days' AND p_target_date + INTERVAL '3 days'
     AND (p_exclude_lesson_id IS NULL OR l.id <> p_exclude_lesson_id)
-  ORDER BY l.lesson_at;
+  -- Ordered on the whole returned tuple, not `lesson_at` alone: a horse can hold two rows at
+  -- one instant (nothing prevents double-booking), and their `exertion_level`s are what
+  -- ExhaustionBar renders beside the shared date. Two rows agreeing on both columns are
+  -- indistinguishable in the output, so this is as deterministic as the result set gets --
+  -- the same reason get_calendar_feed above carries an `item->>'id'` tiebreak.
+  ORDER BY l.lesson_at, lh.exertion_level;
 END;
 $$;

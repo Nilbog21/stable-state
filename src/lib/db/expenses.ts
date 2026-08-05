@@ -40,7 +40,7 @@ async function attachHorseNames<T extends { id: string }>(
     const named = rows
       .filter((r) => r.appointment_id === appointment.id)
       .map((r) => ({ id: r.horse_id as string, name: horseNameMap.get(r.horse_id) ?? (r.horse_id as string) }))
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
     return {
       ...appointment,
       horse_ids: named.map((h) => h.id),
