@@ -20,6 +20,8 @@ import {
 import { getChargesForSummary, getPaidCharges } from './agreement-finances'
 import type { PaidCharge } from './agreement-finances'
 import { getTiersByBarn } from './lesson-tiers'
+import { firstOfMonth } from '../local-day'
+import { barnToday } from '../barn-timezone'
 import type {
   CalendarDate,
   FinancialSummary,
@@ -171,7 +173,8 @@ export function computeHorseNetIncome(
 export async function getFinancialSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<FinancialSummary> {
   const supabase = await createClient()
   const now = new Date()
@@ -192,7 +195,12 @@ export async function getFinancialSummary(
     .filter((r) => !r.collected && new Date(r.occurredAt) > now)
     .reduce((sum, r) => sum + splitNetFee(r.fee, r.instructorCut, 1).netFee, 0)
 
-  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
+  // #1309: the barn's own month, not the server host's — `ChargeSummaryRow.period` is a
+  // barn-local calendar month, and every zone in BARN_TIMEZONES is behind UTC, so the host's
+  // month rolled over 4-10 hours early and briefly flipped Pending income onto the next
+  // month's basis. (The `occurredAt > now` lesson rule above is untouched: that compares two
+  // real instants, which is zone-free.)
+  const firstOfCurrentMonth = firstOfMonth(barnToday(timezone))
 
   pendingIncome += charges
     .filter((c) => c.payment_type === null && c.period >= firstOfCurrentMonth)

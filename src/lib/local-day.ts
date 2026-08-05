@@ -29,6 +29,14 @@ export function addDays(date: CalendarDate, delta: number): CalendarDate {
   return calendarDate(d.toISOString().slice(0, 10))
 }
 
+// The first of the month containing the given date. Pure string surgery on a "YYYY-MM-DD",
+// so no timezone is involved — the caller decides *whose* day it is (barn-timezone.ts's
+// `barnToday` for "this month", `barnDay` for the month a past instant fell in) and this
+// only walks it back to the 1st. Not a `CalendarDate` mint: a CalendarDate goes in.
+export function firstOfMonth(date: CalendarDate): CalendarDate {
+  return calendarDate(date.slice(0, 8) + '01')
+}
+
 // The Sunday-start calendar week (Sun-Sat) containing the given date.
 export function getWeekDates(date: CalendarDate): CalendarDate[] {
   const dayOfWeek = new Date(date + 'T00:00:00Z').getUTCDay() // 0 = Sunday
