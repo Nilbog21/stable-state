@@ -21,7 +21,7 @@
 // get_active_barn_member_summaries RPC, synthesising invite_token: null. That fallback is what
 // lines 896/997's "loads (no 404)" is actually asserting.
 //
-// ## Four fixture decisions worth stating
+// ## Five fixture decisions worth stating
 //
 // 1. **The blank-contact-fields subject is a stub with NULL columns, not empty strings.**
 //    ContactInfo renders `profile?.phone ?? '—'` — `??`, not `||` — so an empty string would
@@ -47,13 +47,31 @@
 //    document on the manager and a rider document on Blake, a *manager* viewing either page would
 //    render the section, so the absence is a claim about the gate rather than about the data.
 //
-// ## Line 997's parenthetical is read as exemplification (ruled 2026-08-05)
+// 5. **The photographed subject is Quinn Ashford, deliberately *not* "Emery".** Line 1000 names
+//    Emery, but the checklist's Emery is a *claimed* rider seeded in Phase 1 and reached via
+//    change-user.sh (see its "Seeded baseline after reset" line), so reusing that name for an
+//    unclaimed stub would invert what the checklist means by it. That is not a fresh judgement:
+//    checklist-phase4-members-agreements.spec.ts already carries the same substitution and the
+//    same reason, applied there as a review finding on PR #1258. The photo *asset* stays
+//    emery-photo.jpg — scripts/CLAUDE.md's asset table assigns that file to a profile, and an
+//    asset name is not a person's name. Whose page is photographed is immaterial to what line
+//    1000 asserts anyway: no gate on this page branches on is_managed for a rider viewer, so the
+//    substitution costs the line nothing. The checklist keeps its wording and only its tag
+//    changes, which is how this whole batch handles a fixture whose name differs from the
+//    dev-barn walkthrough's.
+//
+// ## Line 997's parenthetical is read as exemplification (#1324, PR #1345)
 //
 // "Another member's detail page (a trainer, a manager)" names which *kinds* of member count, not
 // two navigations to assert. The mechanism under test — auth_can_read_barn_member_profile — has no
-// role-conditional branch between rider→trainer and rider→manager, so one subject exercises the
-// helper; and #1251's own one-assertion-per-checkbox split argues against a two-navigation test.
-// The manager is the subject covered.
+// role-conditional branch between rider→trainer and rider→manager, and neither does this page:
+// its only target-role-sensitive gate is canViewAgreements, which requires `targetRole === 'rider'`
+// and so collapses a trainer target and a manager target to the same rendered shape. One subject
+// therefore exercises everything two would, and #1251's own one-assertion-per-checkbox split
+// argues against spending a second navigation on it. The manager is the subject covered.
+//
+// The consequence worth stating plainly, since the line's text is broader than the test: "a
+// trainer viewing another *trainer's* page" is not separately exercised anywhere in this suite.
 //
 // ## Divergence from the paired-slice ruling, and why
 //
@@ -79,11 +97,11 @@ import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs — addManagedMember takes these and returns only ids. No name
 // contains another and no two share a first-initial-derived form (`Harper T.`, `Blake N.`,
-// `Emery V.` against the four seeded `Test M./T./R./S.`), the two-part collision rule
+// `Quinn A.` against the four seeded `Test M./T./R./S.`), the two-part collision rule
 // fixtures.ts's E2E_STUB_RIDER comment states.
 const HARPER = { firstName: 'Harper', lastName: 'Test' } // contact columns left NULL
 const BLAKE = { firstName: 'Blake', lastName: 'Norwood' } // contact columns populated below
-const EMERY = { firstName: 'Emery', lastName: 'Vaughn' } // photographed
+const QUINN = { firstName: 'Quinn', lastName: 'Ashford' } // photographed — see header note 5
 
 /** scripts/CLAUDE.md's asset table assigns this one to a profile. */
 const EMERY_PHOTO = 'emery-photo.jpg'
@@ -101,7 +119,7 @@ const CONTACT_FIELD_COUNT = 3
 
 const BLAKE_CONTACT = {
   phone: '555-0142',
-  emergency_contact_name: 'Rowan Keeley',
+  emergency_contact_name: 'Sidney Keeley',
   emergency_contact_phone: '555-0198',
 }
 
@@ -110,7 +128,7 @@ const MANAGER_NAME = fullName(E2E_USERS.manager)
 
 let harperId: string
 let blakeId: string
-let emeryId: string
+let quinnId: string
 let managerMembershipId: string
 /** Read back off the UPDATE's returned row, so no test compares BLAKE_CONTACT to itself. */
 let seededBlakeContact: string[]
@@ -153,9 +171,9 @@ const barn = withBarn('phase56-members-others', async ({ supabase, barn, members
     fileName: 'blake-waiver.pdf',
   })
 
-  const emery = await addManagedMember(supabase, barn.id, { ...EMERY, role: 'rider' })
-  emeryId = emery.membershipId
-  await setMemberPhoto(supabase, barn, emery.profileId, EMERY_PHOTO)
+  const quinn = await addManagedMember(supabase, barn.id, { ...QUINN, role: 'rider' })
+  quinnId = quinn.membershipId
+  await setMemberPhoto(supabase, barn, quinn.profileId, EMERY_PHOTO)
 })
 
 // ---------------------------------------------------------------------------
@@ -170,7 +188,7 @@ const atMemberPage = (membershipId: string) => new RegExp(`/members/${membership
 
 /** The <section> owning a given h2 — the member detail page is h2-partitioned. */
 function section(page: Page, heading: string) {
-  return page.locator('section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
+  return page.locator('main section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
 }
 
 /**
@@ -352,14 +370,14 @@ test('rider_sees_no_documents_section_on_a_managers_detail_page @rider', async (
 // #1004: any active barn member can view any other's photo. Asserted by digest so the claim is
 // that *this seeded file* is on screen, not merely that some img rendered.
 test('rider_sees_the_seeded_photo_on_another_members_page @rider', async ({ page }) => {
-  await page.goto(memberUrl(emeryId))
-  expect(await displayedPhotoDigest(page, fullName(EMERY))).toBe(digestOf(readFileSync(assetPath(EMERY_PHOTO))))
+  await page.goto(memberUrl(quinnId))
+  expect(await displayedPhotoDigest(page, fullName(QUINN))).toBe(digestOf(readFileSync(assetPath(EMERY_PHOTO))))
 })
 
-// Emery is seeded *with* a photo deliberately: that is what gives this absence something to be
+// The subject is seeded *with* a photo deliberately: that is what gives this absence something to be
 // absent against. An editable section in this state renders Replace Photo and Remove alongside the
 // img, so the read-only one is the only variant answering exactly one.
 test('rider_sees_no_photo_controls_on_another_members_page @rider', async ({ page }) => {
-  await page.goto(memberUrl(emeryId))
+  await page.goto(memberUrl(quinnId))
   await expect(photoNodes(page)).toHaveCount(1)
 })
