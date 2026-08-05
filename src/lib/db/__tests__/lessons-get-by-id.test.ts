@@ -220,6 +220,140 @@ describe('getLessonById', () => {
     expect(result?.lesson_riders).toHaveLength(2)
   })
 
+  // #1286: both embeds are to-many, and PostgREST returns a to-many embed's rows in
+  // unspecified order. Sorted here rather than via .order(..., { referencedTable }) because
+  // a rider's name lives in `profiles`, which this query's embed never reaches — it is
+  // resolved by resolveMemberNames afterwards, so only a post-fetch sort can order both
+  // lists the same way. Alphabetical, matching getHorsesByBarn's ORDER BY h.name.
+  it('should_order_lesson_horses_alphabetically_by_name', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [
+        { horse_notes: null, horses: { id: 'horse-z', name: 'Zephyr' } },
+        { horse_notes: null, horses: { id: 'horse-a', name: 'Apollo' } },
+      ],
+      lesson_riders: [],
+    }
+    mockLessonsFrom(lessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_horses.map((lh) => lh.horses?.name)).toEqual(['Apollo', 'Zephyr'])
+  })
+
+  it('should_sort_a_lesson_horse_with_no_readable_horse_row_before_named_ones', async () => {
+    // `horses` comes back null when the row is filtered out by the horses RLS policy.
+    // Such a row sorts on an empty name rather than throwing.
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [
+        { horse_notes: null, horses: { id: 'horse-a', name: 'Apollo' } },
+        { horse_notes: null, horses: null },
+      ],
+      lesson_riders: [],
+    }
+    mockLessonsFrom(lessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_horses.map((lh) => lh.horses?.name ?? null)).toEqual([null, 'Apollo'])
+  })
+
+  it('should_break_a_lesson_horse_name_tie_on_horse_id', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [
+        { horse_notes: 'second', horses: { id: 'horse-z', name: 'Duke' } },
+        { horse_notes: 'first', horses: { id: 'horse-a', name: 'Duke' } },
+      ],
+      lesson_riders: [],
+    }
+    mockLessonsFrom(lessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_horses.map((lh) => lh.horses?.id)).toEqual(['horse-a', 'horse-z'])
+  })
+
+  it('should_leave_two_unreadable_lesson_horses_in_a_stable_order', async () => {
+    // Both rows key on an empty name and an empty id, so neither comparison can separate
+    // them — the assertion is that this is handled, not that a particular one wins.
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [
+        { horse_notes: 'first', horses: null },
+        { horse_notes: 'second', horses: null },
+      ],
+      lesson_riders: [],
+    }
+    mockLessonsFrom(lessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_horses.map((lh) => lh.horse_notes)).toEqual(['first', 'second'])
+  })
+
+  it('should_order_lesson_riders_alphabetically_by_name', async () => {
+    const lessonData = {
+      ...createMockLesson({ lesson_type: 'group', instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [
+        { rider_id: 'mem-2', barn_memberships: { user_id: null } },
+        { rider_id: 'mem-1', barn_memberships: { user_id: null } },
+      ],
+    }
+    mockLessonsFrom(lessonData)
+    vi.mocked(resolveMemberNames).mockResolvedValue(
+      new Map([
+        ['mem-2', 'Ada Rider'],
+        ['mem-1', 'Zoe Rider'],
+      ])
+    )
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_riders.map((lr) => lr.barn_membership?.name)).toEqual(['Ada Rider', 'Zoe Rider'])
+  })
+
+  it('should_break_a_rider_name_tie_on_membership_id', async () => {
+    const lessonData = {
+      ...createMockLesson({ lesson_type: 'group', instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [
+        { rider_id: 'mem-z', barn_memberships: { user_id: null } },
+        { rider_id: 'mem-a', barn_memberships: { user_id: null } },
+      ],
+    }
+    mockLessonsFrom(lessonData)
+    vi.mocked(resolveMemberNames).mockResolvedValue(
+      new Map([
+        ['mem-z', 'John Smith'],
+        ['mem-a', 'John Smith'],
+      ])
+    )
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_riders.map((lr) => lr.barn_membership?.id)).toEqual(['mem-a', 'mem-z'])
+  })
+
+  it('should_sort_an_unresolved_rider_by_the_membership_id_it_falls_back_to', async () => {
+    const lessonData = {
+      ...createMockLesson({ lesson_type: 'group', instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [
+        { rider_id: 'mem-unresolved', barn_memberships: { user_id: null } },
+        { rider_id: 'mem-1', barn_memberships: { user_id: null } },
+      ],
+    }
+    mockLessonsFrom(lessonData)
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Ada Rider']]))
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
+
+    expect(result?.lesson_riders.map((lr) => lr.barn_membership?.name)).toEqual(['Ada Rider', 'mem-unresolved'])
+  })
+
   it('should_query_by_lesson_id_and_barn_id', async () => {
     const { mockEq1, mockEq2 } = mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 

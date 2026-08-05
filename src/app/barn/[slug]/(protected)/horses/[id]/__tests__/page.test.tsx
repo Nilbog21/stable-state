@@ -45,6 +45,7 @@ vi.mock('../HorseNotesForm', () => ({
 }))
 vi.mock('../HorseAccessSection', () => ({
   HorseAccessSection: (props: {
+    grants: { id: string; name: string }[]
     onGrant: (memberId: string) => Promise<void>
     onUpdateDocument: (privilegeId: string, value: 'none' | 'read' | 'write') => Promise<void>
     onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
@@ -52,6 +53,11 @@ vi.mock('../HorseAccessSection', () => ({
     onSetOwner: (memberId: string | null) => Promise<void>
   }) => (
     <div data-testid="horse-access-section">
+      <ol data-testid="grant-names">
+        {props.grants.map((g) => (
+          <li key={g.id} data-grant-id={g.id}>{g.name}</li>
+        ))}
+      </ol>
       <button onClick={() => props.onGrant('mem-test')}>test-grant</button>
       <button onClick={() => props.onUpdateDocument('privilege-1', 'write')}>test-update-doc</button>
       <button onClick={() => props.onUpdateLesson('privilege-1', true)}>test-update-lesson</button>
@@ -1002,6 +1008,39 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByTestId('horse-access-section')).toBeDefined()
+  })
+
+  // #1286: member_horse_privileges rows carry only member_id, so getHorsePrivileges can't
+  // order by name at the DB — the names are resolved here, and the Access table renders one
+  // row per grant.
+  it('should_order_access_grants_alphabetically_by_member_name', async () => {
+    vi.mocked(getHorsePrivileges).mockResolvedValue([
+      { id: 'privilege-z', barn_id: 'barn-1', member_id: 'mem-z', horse_id: 'horse-1', document_privileges: 'read', lesson_read_privileges: true, created_at: '' },
+      { id: 'privilege-a', barn_id: 'barn-1', member_id: 'mem-a', horse_id: 'horse-1', document_privileges: 'read', lesson_read_privileges: true, created_at: '' },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'Zoe Rider'], ['mem-a', 'Ada Rider']]))
+
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+
+    expect(
+      Array.from(screen.getByTestId('grant-names').querySelectorAll('li')).map((li) => li.textContent)
+    ).toEqual(['Ada Rider', 'Zoe Rider'])
+  })
+
+  it('should_break_an_access_grant_name_tie_on_member_id', async () => {
+    vi.mocked(getHorsePrivileges).mockResolvedValue([
+      { id: 'privilege-z', barn_id: 'barn-1', member_id: 'mem-z', horse_id: 'horse-1', document_privileges: 'read', lesson_read_privileges: true, created_at: '' },
+      { id: 'privilege-a', barn_id: 'barn-1', member_id: 'mem-a', horse_id: 'horse-1', document_privileges: 'none', lesson_read_privileges: false, created_at: '' },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-z', 'John Smith'], ['mem-a', 'John Smith']]))
+
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+
+    expect(
+      Array.from(screen.getByTestId('grant-names').querySelectorAll('li')).map((li) => li.getAttribute('data-grant-id'))
+    ).toEqual(['privilege-a', 'privilege-z'])
   })
 
   it('should_wire_grant_action_with_barn_slug_and_horse_id', async () => {
