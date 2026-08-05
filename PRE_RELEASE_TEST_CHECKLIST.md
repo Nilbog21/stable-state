@@ -852,16 +852,16 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_sees_no_edit_link_on_another_instructors_lesson) Blake's lesson, opened from the Lessons list, shows no **Edit** link
 - [ ] (e2e: trainer_cannot_save_changes_via_another_instructors_edit_url) Navigating directly to that lesson's `/edit` URL returns **404** — the edit form never renders, so there is no save to reach
 - [ ] (e2e: trainer_sees_no_delete_button_on_any_lesson) No **Delete** button is shown on any lesson, your own included
-- [ ] (e2e-candidate) A lesson you instruct shows a **Cancel** button in its detail-page header
-- [ ] (e2e-candidate) Cancelling a rider's spot (or the whole lesson) from there works the same as the manager flow
-- [ ] (e2e-candidate) Blake's lesson shows no header **Cancel** button
-- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
-- [ ] (e2e-candidate) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
-- [ ] (e2e-candidate) The recurring lesson created in Phase 3, now reassigned to you, still shows its **Recurring** badge on its Lessons list row
-- [ ] (e2e-candidate) That same lesson shows its **Recurring** badge on its detail page
-- [ ] (e2e-candidate) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
-- [ ] (e2e-candidate) That page shows a **Stop Recurring Lessons** button in the same place
-- [ ] (e2e-candidate) Stopping the series from there works the same as the manager flow
+- [ ] (e2e: trainer_sees_a_cancel_button_in_the_header_of_a_lesson_they_instruct) A lesson you instruct shows a **Cancel** button in its detail-page header
+- [ ] (e2e: trainer_cancelling_one_group_riders_spot_cancels_only_that_rider) Cancelling a rider's spot (or the whole lesson) from there works the same as the manager flow
+- [ ] (e2e: trainer_sees_no_cancel_button_on_another_instructors_lesson) Blake's lesson shows no header **Cancel** button
+- [ ] (e2e: trainer_edit_page_of_a_cancelled_lesson_shows_the_cancellation_notes_textarea) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
+- [ ] (e2e: cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
+- [ ] (e2e: trainer_lessons_list_row_shows_the_recurring_badge) The recurring lesson created in Phase 3, now reassigned to you, still shows its **Recurring** badge on its Lessons list row
+- [ ] (e2e: trainer_lesson_detail_page_shows_the_recurring_badge) That same lesson shows its **Recurring** badge on its detail page
+- [ ] (e2e: trainer_edit_page_shows_the_recurring_series_indicator) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
+- [ ] (e2e: trainer_edit_page_shows_the_stop_recurring_lessons_button) That page shows a **Stop Recurring Lessons** button in the same place
+- [ ] (e2e: trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page) Stopping the series from there works the same as the manager flow
 - [ ] (e2e-candidate) Horse detail page lists documents with working links
 - [ ] (e2e-candidate) Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date
 - [ ] (e2e-candidate) That documents table has **no Actions column at all** — not merely a hidden delete button
