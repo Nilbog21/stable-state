@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/actions/lessons.ts
 // covers: src/app/actions/lesson-cancellation.ts
+// covers: src/components/ExhaustionBar.tsx
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import {
@@ -300,9 +301,18 @@ function cancellationNotesField(page: Page): Locator {
  * Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
  * `DateHourPicker`'s mount effect, so a submit dispatched before hydration posts no date at all.
  *
- * The three tests that only *read* the edit form (858, 862, 863) deliberately skip it: their
- * claims are about server-rendered markup, and waiting for hydration to assert one would be the
- * SSR-default confusion running the other way.
+ * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
+ * (858, 862, 863) — waiting for hydration to assert one of those would be the SSR-default
+ * confusion running the other way.
+ *
+ * The fourth, 864, *writes* and still skips it, which is the one case here that needs its reason
+ * stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
+ * landing before React is listening is not lost the way fact 10's button is: the browser submits
+ * the form natively and the action runs regardless. Hydration only decides whether the
+ * `window.confirm` is raised first, and that confirm is not what line 864 claims. Driving it
+ * through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
+ * "a control the test does not assert on, and one whose repeat is harmless", and this control is
+ * both the mutation under test and one a retry would re-issue.
  */
 async function waitForEditFormHydrated(page: Page) {
   await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
@@ -334,6 +344,14 @@ async function saveLessonForm(page: Page) {
  * renders, though, so a 404 or a 500 at the right URL satisfies the URL half equally; the `<dl>`
  * is the render proof, and neither `/cancel` nor `/edit` has one, so a submit that failed and
  * re-rendered its own page fails here rather than sailing through.
+ *
+ * That `<dl>` is also what makes this helper safe against the soft-nav hazard #1319's review
+ * found: after a `waitUntil: 'commit'` the previous route can still be mounted, so a read taken
+ * on markup **both** pages render can answer from the page just left. `<dl>` appears nowhere in
+ * the `lessons/` route tree except the detail page itself, so it cannot resolve against `/cancel`
+ * or `/edit` — and both callers then read through auto-retrying detail-only locators
+ * (`riderRows`, `detailField`) rather than shared chrome. Copying this helper onto a flow whose
+ * *source* page has a `<dl>` reintroduces the hazard; check that before reusing it.
  */
 async function landOnDetail(page: Page, key: LessonKey) {
   await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}$`), { waitUntil: 'commit' })
