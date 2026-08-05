@@ -6,6 +6,7 @@ vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getMembershipById: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
+vi.mock('@/lib/db/member-horse-privileges', () => ({ getMyHorseDocumentPrivilege: vi.fn() }))
 vi.mock('../actions', () => ({ uploadDocumentAction: vi.fn() }))
 vi.mock('../../../horses/[id]/actions', () => ({ uploadHorsePhotoAction: vi.fn() }))
 vi.mock('../../../members/[membership_id]/actions', () => ({ uploadProfilePhotoAction: vi.fn() }))
@@ -22,6 +23,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
+import { getMyHorseDocumentPrivilege } from '@/lib/db/member-horse-privileges'
 import NewDocumentPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -50,6 +52,8 @@ describe('NewDocumentPage', () => {
     vi.mocked(getHorseById).mockReset()
     vi.mocked(getMembershipById).mockReset()
     vi.mocked(getProfileById).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('none')
     mockNotFound.mockClear()
 
     vi.mocked(requireMembership).mockResolvedValue({
@@ -86,9 +90,46 @@ describe('NewDocumentPage', () => {
     expect(screen.getByRole('heading', { name: /thunderbolt/i })).toBeDefined()
   })
 
-  it('should_call_requireMembership_with_manager_and_trainer_for_horse_entity', async () => {
+  it('should_call_requireMembership_with_all_three_roles_for_horse_entity', async () => {
     await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_render_form_for_rider_with_write_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
+    render(jsx)
+    expect(getMyHorseDocumentPrivilege).toHaveBeenCalledWith('horse-1', mockBarn.id)
+    expect(screen.getByTestId('document-upload-form').textContent).toBe('horse')
+  })
+
+  it('should_call_notFound_for_rider_with_read_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('read')
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_call_notFound_for_rider_with_no_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_not_check_privilege_for_manager_on_horse_entity', async () => {
+    await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
+    expect(getMyHorseDocumentPrivilege).not.toHaveBeenCalled()
   })
 
   it('should_render_document_upload_form_with_horse_entity', async () => {
