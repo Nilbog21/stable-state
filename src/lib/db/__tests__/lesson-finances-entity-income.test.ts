@@ -218,7 +218,7 @@ describe('reconciliation regression', () => {
     // #971: getHorseIncomeSummary's totalIncome is gross (pre-cut) since HORSE_INCOME_DESCRIPTOR
     // sets splitsGrossFee — it no longer reconciles with collectedIncome (net-of-cut), only with
     // the tier breakdown's own gross figure (subtotal + instructorCut summed).
-    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate)
+    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
     const tierGrossTotal = breakdown.reduce((sum, b) => sum + b.subtotal + b.instructorCut, 0)
     const horseIncome = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
@@ -228,7 +228,7 @@ describe('reconciliation regression', () => {
   })
 
   it('should_reconcile_by_rider_gross_breakdown_with_tier_gross_total', async () => {
-    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate)
+    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
     const tierGrossTotal = breakdown.reduce((sum, b) => sum + b.subtotal + b.instructorCut, 0)
     const riderIncome = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
@@ -238,7 +238,7 @@ describe('reconciliation regression', () => {
   })
 
   it('should_reconcile_by_trainer_breakdown_with_collected_income', async () => {
-    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate)
+    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
     const trainerIncome = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
     const trainerTotal = trainerIncome.reduce((sum, r) => sum + r.totalIncome, 0)

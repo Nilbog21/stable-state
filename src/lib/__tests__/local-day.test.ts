@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isValidDateString, addDays, getWeekDates } from '../local-day'
+import { isValidDateString, addDays, getWeekDates, firstOfMonth } from '../local-day'
 import { calendarDate } from '@/lib/local-day'
 
 describe('isValidDateString', () => {
@@ -39,6 +39,20 @@ describe('addDays', () => {
 
   it('should_roll_over_a_year_boundary', () => {
     expect(addDays(calendarDate('2026-12-31'), 1)).toBe('2027-01-01')
+  })
+})
+
+describe('firstOfMonth', () => {
+  it('should_return_the_first_of_the_month_for_a_mid_month_date', () => {
+    expect(firstOfMonth(calendarDate('2026-07-23'))).toBe('2026-07-01')
+  })
+
+  it('should_return_the_input_unchanged_when_it_is_already_the_first', () => {
+    expect(firstOfMonth(calendarDate('2026-07-01'))).toBe('2026-07-01')
+  })
+
+  it('should_return_the_first_of_the_same_month_for_the_last_day_of_the_month', () => {
+    expect(firstOfMonth(calendarDate('2026-07-31'))).toBe('2026-07-01')
   })
 })
 

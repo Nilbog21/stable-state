@@ -571,7 +571,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockRiderMembership.role)
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone, mockUser.id, mockRiderMembership.role)
   })
 
   it('should_call_getOutstandingLessons_for_trainer', async () => {
@@ -587,7 +587,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone, mockUser.id, mockTrainerMembership.role)
   })
 
   it('should_call_getOutstandingCancellationFees_for_trainer', async () => {
