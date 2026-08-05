@@ -20,12 +20,14 @@ import type { Horse } from '@/lib/db/types'
 //
 // ## The other instructor is `members.manager`
 //
-// The checklist calls them Blake. `addMemberships` already gives the manager login
-// `can_instruct: true`, and it is the only seeded member holding a `user_id` that is not the
-// acting trainer — so a lesson seeded under its membership id is "another instructor's lesson"
-// for every check here, and it is a genuinely different `notifications.user_id` for the last
-// two. No fourth persona, and no name added to the set `support/fixtures.test.ts` holds to its
-// collision constraint.
+// The checklist calls them Blake. Of the four members `addMemberships` seeds, the manager login
+// is the only one other than the acting trainer that satisfies BOTH halves of what these lines
+// need: `can_instruct: true` (the `rider` login and the `rider2` stub are both false), and a
+// real `user_id` (`rider2` has none at all). So a lesson seeded under its membership id is
+// "another instructor's lesson" for every check here, and it is a genuinely different
+// `notifications.user_id` for the last two — the `rider` login also holds a `user_id`, but it
+// can never be an instructor, so it is not a candidate. No fourth persona, and no name added to
+// the set `support/fixtures.test.ts` holds to its collision constraint.
 //
 // ## Line 833's "same as the manager view" is a source-level fact, not an e2e claim
 //
@@ -59,7 +61,17 @@ const TIER_PRICE = 80
 
 // Barn-local wall clocks. The barrier time is re-entered on every form open (it is idempotent,
 // which is what makes it safe inside `hydrateByDriving`); the rest pin fixture placement.
-const BARRIER_TIME = '10:00'
+//
+// ITS MINUTES MUST NOT BE `:00`, and that is the whole reason for the odd-looking value.
+// `LessonStartTime` defaults `time` to the top of the barn's CURRENT hour — `${HH}:00` — and it
+// runs that initializer on the server too, so the hidden `lesson_at` input is already in the
+// server-rendered HTML carrying today at `HH:00`. A barrier time of `10:00` therefore *already
+// matches* whenever the suite happens to run during the barn's 10:00-10:59 hour: `isLive()`
+// returns true on its first pre-drive call, the fill is never dispatched, and the barrier
+// resolves having proved nothing — leaving every click after it exposed to the lost-click hazard
+// (e2e/CLAUDE.md facts 9 and 10) for a one-hour window once a day. Non-zero minutes cannot be
+// produced by that default at any hour, so the match can only come from this spec's own fill.
+const BARRIER_TIME = '10:37'
 const SHADED_LESSON_TIME = '10:00'
 const APPOINTMENT_TIME = '09:00'
 const OTHER_INSTRUCTOR_TIME = '14:00'
@@ -314,10 +326,17 @@ async function visibleLessonIds(page: Page): Promise<string[]> {
 type NearbyNotification = { user_id: string; type: string; link: string; title: string }
 
 /**
- * The `instructor_lesson_nearby` row this barn holds, read with the spec's own service client.
+ * The one `instructor_lesson_nearby` row this barn holds, read with the spec's own service client.
  *
  * The row is never seeded — `addNotification` is deliberately not imported. These two checkboxes
  * claim the APP wrote a row, so planting one would make both of them vacuous.
+ *
+ * The retry condition is `toHaveLength(1)` on the QUERY RESULT, not on an accumulator: "some row
+ * has appeared" would be satisfied by two rows as readily as by one, and the query carries no
+ * `ORDER BY`, so a duplication regression would silently hand back an arbitrary one of them and
+ * both tests below would go on asserting its contents. `notifications.ts`'s own module comment
+ * names that risk directly — `instructor_lesson_nearby` has two independent producers sharing one
+ * `(user_id, barn_id, type)` upsert key — so it is a live regression, not a hypothetical.
  *
  * `toPass` is unbounded and owns the retry, so no number is written here. In practice the row is
  * already there: `submitLesson` awaits `notifyNearbyInstructors` before it redirects, and the
@@ -334,8 +353,9 @@ async function nearbyNotification(): Promise<NearbyNotification> {
         .eq('type', 'instructor_lesson_nearby'),
       'read nearby-instructor notifications'
     )
-    if (found.length === 0 && rows.length > 0) found.push(rows[0])
-    expect(found).toHaveLength(1)
+    expect(rows).toHaveLength(1)
+    found.length = 0
+    found.push(rows[0])
   }).toPass()
   return found[0]
 }
