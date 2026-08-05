@@ -59,7 +59,9 @@ describe('wallClockToInstant', () => {
 // wrong side of the boundary and the result is an hour off for a whole band of morning
 // hours, not just the skipped/repeated one. Harmless while every caller passed midnight,
 // but #1222 routes DateHourPicker, EventForm and LessonForm's isPastLessonAt through this
-// with arbitrary user-picked hours.
+// with arbitrary user-picked hours — and #1021 adds LessonStartTime, whose wall clocks carry
+// user-picked *minutes* too, so the transition-day band this guards is now entered at any
+// minute offset rather than only on the hour.
 describe('wallClockToInstant across a DST transition (#1222)', () => {
   // 04:00 is past the 2am jump, so it is already EDT (UTC-4). Sampling the offset at the
   // naive guess measured EST instead and produced 09:00Z, an hour late.

@@ -195,3 +195,59 @@ describe('MonthCalendarPicker — selecting a day', () => {
     expect(screen.queryByText('Nothing scheduled for this day.')).toBeNull()
   })
 })
+
+// #1021 — the lesson form hosts its start-time field inside this panel, so the panel stops being
+// a transient popup there and becomes a form field: open from first render, no Close button.
+// ExpenseForm passes neither prop and keeps the tap-to-open, dismissible popup asserted above.
+describe('MonthCalendarPicker — day panel', () => {
+  it('should_render_a_supplied_dayPanel_in_the_open_panel', () => {
+    renderPicker({ dayPanel: <p>start time field</p> })
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-11' }))
+
+    expect(screen.getByText('start time field')).toBeDefined()
+  })
+
+  it('should_not_render_a_supplied_dayPanel_before_a_day_is_tapped', () => {
+    renderPicker({ dayPanel: <p>start time field</p> })
+
+    expect(screen.queryByText('start time field')).toBeNull()
+  })
+
+  it('should_open_the_panel_on_the_selected_day_from_first_render_when_always_open', () => {
+    renderPicker({ value: '2026-03-10', dayPanelAlwaysOpen: true })
+
+    expect(screen.getByText('Tuesday, Mar 10')).toBeDefined()
+  })
+
+  it('should_render_the_dayPanel_from_first_render_when_always_open', () => {
+    renderPicker({ dayPanel: <p>start time field</p>, dayPanelAlwaysOpen: true })
+
+    expect(screen.getByText('start time field')).toBeDefined()
+  })
+
+  it('should_show_the_selected_days_schedule_from_first_render_when_always_open', () => {
+    renderPicker({
+      value: '2026-03-10',
+      dayPanelAlwaysOpen: true,
+      items: [createMockScheduleItem({ id: 'l1', start: '2026-03-10T14:00:00' })],
+      describeItem: () => 'Lesson — Bella',
+    })
+
+    expect(screen.getByText('Lesson — Bella')).toBeDefined()
+  })
+
+  it('should_not_offer_a_close_button_when_always_open', () => {
+    renderPicker({ dayPanelAlwaysOpen: true })
+
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull()
+  })
+
+  it('should_follow_the_tapped_day_when_always_open', () => {
+    renderPicker({ value: '2026-03-10', dayPanelAlwaysOpen: true })
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-11' }))
+
+    expect(screen.getByText('Wednesday, Mar 11')).toBeDefined()
+  })
+})

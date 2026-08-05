@@ -2,13 +2,13 @@
 
 import { useActionState, useState, useEffect } from 'react'
 import type { CalendarDate, Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
-import { DateHourPicker } from './DateHourPicker'
+import { LessonStartTime } from './LessonStartTime'
 import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays } from '@/lib/local-day'
-import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 
 type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
@@ -26,9 +26,11 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
   return true
 }
 
-// "Past" is measured against the start of the barn's current hour, not the host's: the
-// picker only offers whole barn hours, so the current one must not count as past. Truncating
-// a host-zone Date instead lands 30 minutes off in any half-hour-offset zone (#1222).
+// "Past" is measured against the start of the barn's current hour, not the host's, so a
+// lesson already under way still counts as bookable. #1021 made start times minute-granular,
+// which widens what that lenience covers — anything from :00 of the current hour onward — but
+// does not change the rule or its direction. Truncating a host-zone Date instead lands 30
+// minutes off in any half-hour-offset zone (#1222).
 function isPastLessonAt(lessonAt: string, timezone: string): boolean {
   if (!lessonAt) return false
   const barnHourStart = wallClockToInstant(
@@ -143,6 +145,17 @@ export function LessonForm({
   const [lessonAt, setLessonAt] = useState('')
   // Decoding a stored instant back to form values is barn-local, same as entering one.
   const initialWallClock = initialLesson ? instantToLocalWallClock(new Date(initialLesson.lesson_at.at), timezone) : ''
+  // "HH:MM", not "HH" — slicing to the hour is exactly the truncation #1021 closes: it silently
+  // rewrote a 4:30 lesson to 4:00 on any save, including one that never touched the time.
+  const initialTime = mode === 'edit' && initialLesson ? initialWallClock.slice(11, 16) : undefined
+  // The selected day, owned here now that the calendar and the time field are siblings rather
+  // than one control. `barnToday(timezone)` rather than the `todayStr` prop, preserving
+  // DateHourPicker's default exactly: the two agree in production (the pages compute `todayStr`
+  // with the same call), and switching sources here would only change behaviour in fixtures that
+  // set an inconsistent `todayStr` — not a change #1021 has any reason to make.
+  const [lessonDate, setLessonDate] = useState(
+    mode === 'edit' && initialLesson ? initialWallClock.slice(0, 10) : (() => String(barnToday(timezone)))
+  )
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
   const [calendarMonth, setCalendarMonth] = useState(
     (initialLesson ? initialWallClock.slice(0, 10) : todayStr).slice(0, 7)
@@ -257,12 +270,15 @@ export function LessonForm({
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
   const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
   const isPastLesson = isPastLessonAt(lessonAt, timezone)
+  const dateLabel = isRecurring ? 'Starting Date' : 'Date'
 
   const selectedRiderIds = lessonType === 'normal'
     ? (normalRiderId ? [normalRiderId] : [])
     : [...checkedRiderIds]
-  // Falls back to midnight only for the first render, before DateHourPicker's mount effect
-  // reports a lessonAt — by the time a horse is selected the real hour is in hand.
+  // Falls back to midnight only for the first render, before LessonStartTime's mount effect
+  // reports a lessonAt — by the time a horse is selected the real hour is in hand. Deliberately
+  // still the hour alone: `computeDayDecorations` buckets by hour for its +/-3-day exertion
+  // window (see month-calendar.ts), so the minutes #1021 added are not wanted here.
   const selectedHour = lessonAt ? Number(instantToLocalWallClock(new Date(lessonAt), timezone).slice(11, 13)) : 0
   const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
     selectedHorseIds: [...checkedHorseIds],
@@ -631,25 +647,41 @@ export function LessonForm({
         </label>
       )}
 
-      <DateHourPicker
-        timezone={timezone}
-        initialDate={mode === 'edit' && initialLesson ? initialWallClock.slice(0, 10) : undefined}
-        initialHour={mode === 'edit' && initialLesson ? Number(initialWallClock.slice(11, 13)) : undefined}
-        onChange={setLessonAt}
-        dateLabel={isRecurring ? 'Starting Date' : 'Date'}
-        renderDate={getScheduleRange && ((value, setValue) => (
-          <MonthCalendarPicker
-            value={value}
-            onChange={setValue}
-            month={calendarMonth}
-            onMonthChange={setCalendarMonth}
-            decorations={dayDecorations}
-            items={scheduleItems}
-            describeItem={describeScheduleItem}
-            label={isRecurring ? 'Starting Date' : 'Date'}
-          />
-        ))}
-      />
+      {/* #1021 — the start time is minute-granular and lives in the calendar's day panel, beside
+          the schedule it has to fit around. Without a schedule reader there is no calendar to
+          host it, so the date falls back to a plain native input and the time field sits beside
+          it; every real caller supplies one. */}
+      {getScheduleRange ? (
+        <MonthCalendarPicker
+          value={lessonDate}
+          onChange={setLessonDate}
+          month={calendarMonth}
+          onMonthChange={setCalendarMonth}
+          decorations={dayDecorations}
+          items={scheduleItems}
+          describeItem={describeScheduleItem}
+          label={dateLabel}
+          dayPanelAlwaysOpen
+          dayPanel={<LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="lesson-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dateLabel}
+            </label>
+            <input
+              id="lesson-date"
+              type="date"
+              value={lessonDate}
+              onChange={e => setLessonDate(e.target.value)}
+              required
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </div>
+          <LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

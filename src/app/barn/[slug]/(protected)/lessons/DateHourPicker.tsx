@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 
 function hourLabel(h: number) {
@@ -9,13 +9,22 @@ function hourLabel(h: number) {
   return `${display}:00 ${period}`
 }
 
+/**
+ * Date + whole-hour picker. **`EventForm` is its only consumer** since #1021 moved the lesson
+ * form to `LessonStartTime`'s minute-granular control; the `renderDate` render-prop that existed
+ * solely for the lesson form's month calendar went with it. A barn event is an all-day-ish marker
+ * rather than a scheduled slot, so whole hours are the right granularity here.
+ *
+ * It still emits its hidden input as `lesson_at`; `EventForm` ignores that and reads the value
+ * through `onChange` into its own `event_at` field. Pre-existing, and harmless (an unread
+ * FormData key), but see this issue's follow-ups.
+ */
 export function DateHourPicker({
   timezone,
   initialDate,
   initialHour,
   onChange,
   dateLabel = 'Date',
-  renderDate,
 }: {
   /** The barn's `barns.timezone`. Required, and the only frame this control works in: the
    *  date and hour a user picks mean that wall clock *at the barn*, so both the defaults and
@@ -25,9 +34,6 @@ export function DateHourPicker({
   initialHour?: number
   onChange?: (lessonAt: string) => void
   dateLabel?: string
-  /** Replaces the native date input with a caller-supplied control — #1019's month conflict
-   *  calendar. Omitted by EventForm, which keeps the plain input. */
-  renderDate?: (value: string, setValue: (date: string) => void) => ReactNode
 }) {
   const [date, setDate] = useState(initialDate ?? (() => barnToday(timezone)))
   const [hour, setHour] = useState(
@@ -43,25 +49,20 @@ export function DateHourPicker({
   }, [date, hour, combinedValue, onChange])
 
   return (
-    // A month calendar needs the full width; the native input sits beside the hour select.
-    <div className={renderDate ? 'flex flex-col gap-4' : 'flex gap-2'}>
-      {renderDate ? (
-        renderDate(date, setDate)
-      ) : (
-        <div className="flex flex-col gap-1 flex-1">
-          <label htmlFor="dh-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            {dateLabel}
-          </label>
-          <input
-            id="dh-date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-      )}
+    <div className="flex gap-2">
+      <div className="flex flex-col gap-1 flex-1">
+        <label htmlFor="dh-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {dateLabel}
+        </label>
+        <input
+          id="dh-date"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
       <div className="flex flex-col gap-1">
         <label htmlFor="dh-hour" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Hour

@@ -18,7 +18,7 @@
 //
 // The subtree globs are deliberately whole subtrees rather than `new/**`. A `/**` glob is a
 // literal string PREFIX (scripts/CLAUDE.md), and the components these tests actually assert on
-// — `lessons/DateHourPicker.tsx`, `lessons/LessonForm.tsx`, `lessons/LessonListItem.tsx`,
+// — `lessons/LessonStartTime.tsx`, `lessons/LessonForm.tsx`, `lessons/LessonListItem.tsx`,
 // `expenses/ExpenseForm.tsx` — sit one level ABOVE `new/`. `select-specs.sh --lint` passes
 // either way, because `new/**` matches `new/page.tsx`; it just silently fails to select this
 // spec when the form components themselves change, which is the only case that matters
@@ -157,6 +157,10 @@ const NEW_LESSON_DAY = shiftDay(BARN_TODAY, 3)
  * assertions and fails it, and an app rendering in UTC produces "8:00 PM" and fails it too.
  */
 const BARN_HOUR = 16
+// The same 4 PM as an "HH:MM" wall clock, which is what #1021's minute-granular Start Time field
+// reads and writes. `BARN_HOUR` survives alongside it for the Add Event form, which still uses
+// the whole-hour `DateHourPicker`.
+const BARN_TIME = `${BARN_HOUR}:00`
 const BARN_HOUR_DISPLAY = '4:00 PM'
 const LESSON_WALL_CLOCK = `${LESSON_DAY}T${BARN_HOUR}:00:00`
 const NEW_LESSON_WALL_CLOCK = `${NEW_LESSON_DAY}T${BARN_HOUR}:00:00`
@@ -193,7 +197,7 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * `page.clock.setFixedTime`, never `page.clock.install()`: `install` also fakes the timers
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
  * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically — the one page
- * whose `DateHourPicker` computes its defaults from the browser clock in a `useState`
+ * whose `LessonStartTime` computes its defaults from the browser clock in a `useState`
  * initialiser, which is exactly the surface items 707/708 read.
  *
  * **Why this pin and not #1204's 1pm-Hawaii one.** Its six items all assert values the SERVER
@@ -210,7 +214,9 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * rather than trusted.
  */
 const PIN_INSTANT = wallClockToInstant(`${BARN_TODAY}T01:00:00`, EASTERN)
-const PIN_BARN_HOUR = '1'
+// "HH:MM" since #1021: the New Lesson default is now read off a minute-granular time input
+// rather than an hour `<select>`, so the expected value carries the :00 the field renders.
+const PIN_BARN_TIME = '01:00'
 
 /**
  * The pin's arithmetic, executable rather than written in a comment.
@@ -448,9 +454,13 @@ async function submitForm(page: Page, label: string, destination: RegExp): Promi
 }
 
 /**
- * Pages the month grid to the month containing `day`, then taps that day and dismisses the
- * schedule popup it opens. The bounded-loop shape is `checklist-timezone.spec.ts`'s; the days
- * this file picks are at most 3 ahead, so one page forward is the most that is ever needed.
+ * Pages the month grid to the month containing `day`, then taps that day. The bounded-loop shape
+ * is `checklist-timezone.spec.ts`'s; the days this file picks are at most 3 ahead, so one page
+ * forward is the most that is ever needed.
+ *
+ * #1021 removed the dismiss that used to close the day panel here: on the lesson form that panel
+ * hosts the Start Time field, so it is always open and has no Close button. (ExpenseForm still
+ * has one — `checklist-phase4-settings-fields.spec.ts` continues to click it.)
  */
 async function pickCalendarDay(page: Page, day: string): Promise<void> {
   const monthHeading = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -460,11 +470,10 @@ async function pickCalendarDay(page: Page, day: string): Promise<void> {
   }
   await expect(page.getByText(monthHeading, { exact: true })).toBeVisible()
   await page.getByRole('button', { name: day, exact: true }).click()
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
 }
 
-/** The hour the hour-axis barrier below selects. Never the picker's own default. */
-const HYDRATION_BARRIER_HOUR = 9
+/** The time the time-axis barrier below enters. Never the picker's own default. */
+const HYDRATION_BARRIER_TIME = '09:00'
 
 /**
  * A day in the same calendar month as the barn's today, so it is always inside the rendered
@@ -505,13 +514,14 @@ async function pickerFieldIs(page: Page, from: number, to: number, expected: str
 }
 
 /**
- * Blocks until React has hydrated `DateHourPicker` and taken over its state.
+ * Blocks until React has hydrated `LessonStartTime` and taken over its state.
  *
- * A precondition that throws, not an assertion — and it is not optional. Waiting for `#dh-hour`
- * to appear proves nothing about hydration: that element is in the SERVER-rendered HTML, so a
- * read taken straight after it sees the server's answer. That is #1191's "unsettled page"
- * hazard in its quietest form, because the server's answer is usually the right one, so the
- * assertion passes for the wrong reason. Both barriers below were forced by probes that PASSED.
+ * A precondition that throws, not an assertion — and it is not optional. Waiting for
+ * `#lesson-start-time` to appear proves nothing about hydration: that element is in the
+ * SERVER-rendered HTML, so a read taken straight after it sees the server's answer. That is
+ * #1191's "unsettled page" hazard in its quietest form, because the server's answer is usually
+ * the right one, so the assertion passes for the wrong reason. Both barriers below were forced
+ * by probes that PASSED.
  *
  * Each barrier perturbs the axis the test it serves does NOT assert, then waits for the hidden
  * `lesson_at` input to carry the change — a write only client-side React can produce, so
@@ -527,32 +537,32 @@ async function pickerFieldIs(page: Page, from: number, to: number, expected: str
  *
  * Both go through `hydrateByDriving` (`support/hydration.ts`, #1280) rather than driving once and
  * waiting: a control driven before React is listening receives nothing and nothing replays it, so
- * a single drive can only run out the budget. Re-selecting the same hour is idempotent, which is
- * what makes the hour axis safe to retry.
+ * a single drive can only run out the budget. Re-entering the same time is idempotent, which is
+ * what makes the time axis safe to retry.
  */
-async function hydrateByChangingHour(page: Page): Promise<void> {
+async function hydrateByChangingTime(page: Page): Promise<void> {
   await hydrateByDriving(
-    () => page.locator('#dh-hour').selectOption(String(HYDRATION_BARRIER_HOUR)),
-    () => pickerFieldIs(page, 11, 13, String(HYDRATION_BARRIER_HOUR).padStart(2, '0'))
+    () => page.locator('#lesson-start-time').fill(HYDRATION_BARRIER_TIME),
+    // 11..16 rather than 11..13 since #1021: the wall clock the hidden input now carries is
+    // minute-granular, so the barrier has to match "HH:MM" or it would pass on a truncation.
+    () => pickerFieldIs(page, 11, 16, HYDRATION_BARRIER_TIME)
   )
 }
 
 /**
- * The date-axis barrier, for the test that asserts the HOUR and so must not perturb it.
+ * The date-axis barrier, for the test that asserts the TIME and so must not perturb it.
  *
- * Only the day click is retried; the popup it opens is dismissed *after* the loop converges. That
- * ordering is load-bearing rather than cosmetic: `Close` is rendered inside MonthCalendarPicker's
- * `useState`-gated popup, so on the pre-hydration attempt this barrier exists to survive there is
- * no Close button to click, and a dismiss inside the drive would wait for one forever under
- * `actionTimeout: 0`. Once `lesson_at` carries the day, React is provably live and the popup is
- * provably open, which is exactly when Close is reachable (#1280).
+ * #1021 removed the trailing dismiss this used to carry. It existed because `Close` lived inside
+ * MonthCalendarPicker's `useState`-gated popup, so it was unreachable on the pre-hydration
+ * attempt and had to wait until `lesson_at` proved React was live (#1280). The lesson form now
+ * passes `dayPanelAlwaysOpen`, so that panel is open from the server's own markup and renders no
+ * Close button at all — there is nothing left to dismiss, and the ordering hazard is gone with it.
  */
 async function hydrateByChangingDay(page: Page): Promise<void> {
   await hydrateByDriving(
     () => page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click(),
     () => pickerFieldIs(page, 0, 10, HYDRATION_BARRIER_DAY)
   )
-  await page.getByRole('button', { name: 'Close', exact: true }).click()
 }
 
 /**
@@ -614,28 +624,26 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
     await expect(lessonCard(page, seededLesson.id).locator('> p').first()).toHaveText(BARN_HOUR_DISPLAY)
   })
 
-  test('edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_hour @manager', async ({ page }) => {
+  test('edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_start_time @manager', async ({ page }) => {
     await page.goto(`${lessonHref(seededLesson.id)}/edit`)
-    await page.locator('#dh-hour').waitFor()
+    await page.locator('#lesson-start-time').waitFor()
 
-    // Both halves of line 705 in one equality. The hour is the discriminating half: a
-    // viewer-framed decode of this instant yields 10, and a UTC one yields 20 (measured — a
-    // probe pointing the decode at the runtime's own zone produced exactly `hour: "20"`).
+    // Both halves of line 705 in one equality. The time is the discriminating half: a
+    // viewer-framed decode of this instant yields 10:00, and a UTC one yields 20:00 (measured —
+    // a probe pointing the decode at the runtime's own zone produced exactly `time: "20:00"`).
     //
-    // The seed-equals-default question has a sharper answer here than "the select's first
-    // option is 0": `DateHourPicker` falls back to `instantToLocalWallClock(new Date(), tz)`,
-    // i.e. THE BARN'S CURRENT HOUR, when `initialHour` is absent. So a form that dropped the
-    // prop entirely renders '16' during the 16:00-16:59 barn-local hour and this half agrees
-    // with it. Narrow (1-in-24) and time-of-day dependent, so it reads as a flake rather than
-    // as vacuity — recorded here rather than papered over, since the obvious comment about
-    // option '0' is simply wrong about this control.
+    // The seed-equals-default question has a sharper answer here than "the field starts empty":
+    // `LessonStartTime` falls back to THE BARN'S CURRENT HOUR at :00 when `initialTime` is
+    // absent. So a form that dropped the prop entirely renders '16:00' during the 16:00-16:59
+    // barn-local hour and this half agrees with it. Narrow (1-in-24) and time-of-day dependent,
+    // so it reads as a flake rather than as vacuity — recorded here rather than papered over.
     //
     // The date half is asserted because the line names it, but 4:00 PM Eastern and 10:00 AM
     // Honolulu are the same calendar day, so it does not discriminate on its own.
     expect({
       date: (await pressedDayLabels(page))[0],
-      hour: await page.locator('#dh-hour').inputValue(),
-    }).toEqual({ date: LESSON_DAY, hour: String(BARN_HOUR) })
+      time: await page.locator('#lesson-start-time').inputValue(),
+    }).toEqual({ date: LESSON_DAY, time: BARN_TIME })
   })
 
   test('resaving_the_edit_form_unchanged_leaves_the_stored_time_untouched @manager', async ({ page }) => {
@@ -647,7 +655,7 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
     }
 
     await page.goto(`${lessonHref(seededLesson.id)}/edit`)
-    await page.locator('#dh-hour').waitFor()
+    await page.locator('#lesson-start-time').waitFor()
     await submitForm(page, 'Save', new RegExp(`/lessons/${seededLesson.id}$`))
 
     // The redirect above is what makes this a real claim rather than a tautology: it proves the
@@ -675,12 +683,12 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
   test('new_lesson_date_prefills_the_barns_day_not_the_devices @manager', async ({ page }) => {
     await page.clock.setFixedTime(PIN_INSTANT)
     await page.goto(`/barn/${barn.slug}/lessons/new`)
-    await hydrateByChangingHour(page)
+    await hydrateByChangingTime(page)
 
     // The pre-filled date, read as the barn-local date of the value the form will submit.
     //
     // **Not `aria-pressed`, and that is the finding this test cost two probes to reach.** A
-    // first version asserted the selected day cell straight after `#dh-hour` appeared, and a
+    // first version asserted the selected day cell straight after the picker appeared, and a
     // probe breaking the date default to the DEVICE's day PASSED against it — twice over: the
     // read happened before hydration, and `aria-pressed` is an ATTRIBUTE that React 19 leaves
     // at the server's value on a hydration mismatch anyway. Measured: under that probe the cell
@@ -699,7 +707,7 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     expect(barnWallClock(new Date(submitted), EASTERN).slice(0, 10)).toBe(BARN_TODAY)
   })
 
-  test('new_lesson_hour_select_opens_on_the_barns_hour_not_the_devices @manager', async ({ page }) => {
+  test('new_lesson_start_time_opens_on_the_barns_hour_not_the_devices @manager', async ({ page }) => {
     await page.clock.setFixedTime(PIN_INSTANT)
     await page.goto(`/barn/${barn.slug}/lessons/new`)
     await hydrateByChangingDay(page)
@@ -709,11 +717,11 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     // here that separates the barn's frame from the device's AND from UTC at once, which is
     // what closes the axis item 707 provably cannot (see assertPinArithmetic).
     //
-    // One residue, stated rather than hidden: the SERVER renders this select from the real
+    // One residue, stated rather than hidden: the SERVER renders this field from the real
     // clock, not the pinned one, so during the 01:00-01:59 barn-local hour the server's own
-    // markup already says '1'. The barrier above is what makes the read a client read, and it
-    // is load-bearing for that window specifically.
-    await expect(page.locator('#dh-hour')).toHaveValue(PIN_BARN_HOUR)
+    // markup already says '01:00'. The barrier above is what makes the read a client read, and
+    // it is load-bearing for that window specifically.
+    await expect(page.locator('#lesson-start-time')).toHaveValue(PIN_BARN_TIME)
   })
 })
 
@@ -727,7 +735,7 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
     await page.getByRole('checkbox', { name: HORSE_NAME, exact: true }).check()
     await page.locator('#rider_id').selectOption({ label: RIDER_NAME })
     await pickCalendarDay(page, NEW_LESSON_DAY)
-    await page.locator('#dh-hour').selectOption(String(BARN_HOUR))
+    await page.locator('#lesson-start-time').fill(BARN_TIME)
     await submitForm(page, 'Submit', new RegExp(`/barn/${barn.slug}/lessons$`))
 
     // Exact array over "every lesson but the seeded one", so a form that created nothing reads
@@ -767,7 +775,8 @@ test.describe.serial("A barn event's time renders in the barn's zone", () => {
   test('barn_event_row_on_manage_barn_shows_the_barn_local_four_pm @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/settings/events/new`)
     await page.locator('#event-title').fill(EVENT_TITLE)
-    // EventForm passes no `renderDate`, so `DateHourPicker` keeps the plain native date input.
+    // EventForm is `DateHourPicker`'s only consumer since #1021, and it has always used the
+    // plain native date input and whole-hour select asserted here.
     await page.locator('#dh-date').fill(EVENT_DAY)
     await page.locator('#dh-hour').selectOption(String(BARN_HOUR))
     await submitForm(page, 'Save', new RegExp(`/barn/${barn.slug}/settings$`))
