@@ -41,7 +41,7 @@ Write inputs stay bare `string` — `ExpenseInput.expenseDate` and the agreement
 
 **Ordering of lists that reach the UI (#1286).** A read whose rows are rendered as a *sequence* orders them here; Postgres and PostgREST both return rows in planner order otherwise, and a PostgREST to-many embed is never ordered unless asked.
 Two rulings, and no third: **name lists sort alphabetically**, matching `getHorsesByBarn`'s `ORDER BY h.name` so the app is internally consistent, and **schedules sort chronologically**.
-Where the ordering can be pushed into the query it is (`.order(...)`, or an `ORDER BY` inside the RPC — see `get_calendar_feed` and `get_horse_projected_exhaustion` in [`rpc.md`](rpc.md)).
+Where the ordering can be pushed into the query it is (`.order(...)`, or an `ORDER BY` inside the RPC — see `get_calendar_feed` and `get_horse_projected_exhaustion` in [`rpc/calendar.md`](rpc/calendar.md) and [`rpc/horses.md`](rpc/horses.md)).
 Where it can't, it happens in TypeScript, and always for the same reason: the junction row carries a participant *id*, while the name the list is sorted by is resolved afterwards by `resolveHorseNames`/`resolveMemberNames`.
 Every such sort carries whole participant objects rather than the name array alone, which is what keeps the parallel `*_ids`/`rider_cancelled_ats` arrays positionally aligned with the names derived from them.
 Ties are broken on the row's id, following `schedule.ts`'s `a.start.localeCompare(b.start) || a.id.localeCompare(b.id)` (a #1015 review finding): two horses or two members can share a name, and the entries tied on it still differ in what the row links to and in the notes, exertion, or cancellation state it carries.

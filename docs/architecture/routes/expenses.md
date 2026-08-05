@@ -4,13 +4,21 @@
 
 **Roles:** manager
 
-Expenses split at 7-day cutoff (same pattern as lessons): recent shown immediately, older behind `OlderExpensesToggle`; each expense renders as a full-card link (`ExpenseCard`, #947 — replacing the former table, matching the Horses/Agreements/Members/Lessons card pattern) to `/barn/[slug]/expenses/[id]`, the shared edit page — there's no separate read-only detail view; card shows date, time (or `—`), recipient, expense type, horse(s) or "Entire Barn" (or `—` if none), and amount (or `—` if not yet entered); "Add Expense" button links to `/barn/[slug]/expenses/new`; no row-level Delete affordance on the list — Delete remains reachable one click further via the edit page's own Delete button; card fields render via the shared expense formatters in `src/lib/format-expense.ts` (`formatExpenseDate`/`formatExpenseTime`/`formatExpenseAmount`/`formatExpenseHorses`), also used by the delete-confirmation page and the dashboard's `UpcomingExpenseCard` (whose `formatExpenseDateTime` now delegates its time segment to `formatExpenseTime`)
+Expenses split at 7-day cutoff (same pattern as lessons): recent shown immediately, older behind `OlderExpensesToggle`;
+each expense renders as a full-card link (`ExpenseCard`, #947 — replacing the former table, matching the Horses/Agreements/Members/Lessons card pattern) to `/barn/[slug]/expenses/[id]`, the shared edit page — there's no separate read-only detail view;
+card shows date, time (or `—`), recipient, expense type, horse(s) or "Entire Barn" (or `—` if none), and amount (or `—` if not yet entered);
+"Add Expense" button links to `/barn/[slug]/expenses/new`;
+no row-level Delete affordance on the list — Delete remains reachable one click further via the edit page's own Delete button;
+card fields render via the shared expense formatters in `src/lib/format-expense.ts` (`formatExpenseDate`/`formatExpenseTime`/`formatExpenseAmount`/`formatExpenseHorses`), also used by the delete-confirmation page and the dashboard's `UpcomingExpenseCard` (whose `formatExpenseDateTime` now delegates its time segment to `formatExpenseTime`)
 
 ## `/barn/[slug]/expenses/new`
 
 **Roles:** manager
 
-`ExpenseForm`: recipient (required, free-text via native `<input list>`/`<datalist>` seeded from `getRecentRecipients`, most-recent-first), expense type (optional, same autocomplete pattern seeded from `getRecentExpenseTypes`; blank/whitespace normalized to `"Unspecified"` server-side), date (required), time (optional — presence signals a planned/scheduled expense), amount (optional — blank for planned expenses), an "All" toggle (first row inside the Horses fieldset, divided off from the horse rows) that disables the horse checkbox list and sets `applies_to_all_horses=true` (native `disabled` semantics exclude `horse_id` from the submitted `FormData`, no extra JS needed), and notes; on recipient blur, `getMostCommonExpenseTypeAction` auto-fills expense type from `getMostCommonTypeForRecipient` and flashes it (`ring-2 ring-blue-400`, same pattern as jumping→exertion flash in `LessonForm`); `createExpenseAction` validates and calls `createExpense`, then redirects to `/barn/[slug]/expenses`
+`ExpenseForm`: recipient (required, free-text via native `<input list>`/`<datalist>` seeded from `getRecentRecipients`, most-recent-first), expense type (optional, same autocomplete pattern seeded from `getRecentExpenseTypes`;
+blank/whitespace normalized to `"Unspecified"` server-side), date (required), time (optional — presence signals a planned/scheduled expense), amount (optional — blank for planned expenses), an "All" toggle (first row inside the Horses fieldset, divided off from the horse rows) that disables the horse checkbox list and sets `applies_to_all_horses=true` (native `disabled` semantics exclude `horse_id` from the submitted `FormData`, no extra JS needed), and notes;
+on recipient blur, `getMostCommonExpenseTypeAction` auto-fills expense type from `getMostCommonTypeForRecipient` and flashes it (`ring-2 ring-blue-400`, same pattern as jumping→exertion flash in `LessonForm`);
+`createExpenseAction` validates and calls `createExpense`, then redirects to `/barn/[slug]/expenses`
 
 ## `/barn/[slug]/expenses/[id]`
 

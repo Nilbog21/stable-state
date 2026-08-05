@@ -1,7 +1,6 @@
 # Notification RPCs
 
-`create_or_update_notification(p_user_id, p_barn_id, p_type, p_title, p_body, p_link)` — atomically upserts a `notifications` row via `INSERT ...
-ON CONFLICT (user_id, barn_id, type) DO UPDATE`.
+`create_or_update_notification(p_user_id, p_barn_id, p_type, p_title, p_body, p_link)` — atomically upserts a `notifications` row via `INSERT ... ON CONFLICT (user_id, barn_id, type) DO UPDATE`.
 `read_at` is only reset to `NULL` in the `DO UPDATE` when title, body, or link (compared with `IS DISTINCT FROM`) differ from the existing row — an unchanged re-upsert (e.g. `incomplete_profile`/`member_incomplete_profile` re-fired on every login) leaves an already-read notification's `read_at` untouched instead of flipping it back to unread (#742).
 `SECURITY DEFINER`, since Postgres requires the `DO UPDATE` clause to satisfy the table's `notifications_update_own` (self-only) UPDATE policy even when no conflict actually occurs — this made every cross-user notification (`lesson_cancelled`, `recurring_series_stopped`, etc.) fail RLS outright when called directly against the table.
 Since `EXECUTE` is granted to `authenticated` (reachable directly, not only through the Next.js server action), the function requires the caller to be an active member of `p_barn_id` — this checks the caller's own membership, not the recipient's, so it doesn't reintroduce a "recipient not guaranteed active" gap; beyond that it matches `notifications_insert_authenticated`'s existing permissive-by-design trust model (the calling server action has already authorized the recipient, so no further per-type or per-recipient check is added).
