@@ -1,6 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 
-import { test, expect, withBarn } from './support/test'
+import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, daysFromNow } from './support/fixtures'
 import type { Appointment } from '@/lib/db/types'
 
@@ -59,11 +59,56 @@ test('trainer_appointment_page_never_shows_the_amount @trainer', async ({ page }
   await expect(page.getByText(String(APPOINTMENT_AMOUNT), { exact: false })).toHaveCount(0)
 })
 
-// Not re-asserted here: that the dashboard card is now a link for every role. It has no
-// role-partitioned RLS in it — CalendarAppointmentCard.test.tsx covers the unconditional
-// href directly, and the live trainer dashboard is walked in PRE_RELEASE_TEST_CHECKLIST.md.
-// Reaching a specific day here would mean re-deriving the barn-local date the dashboard
-// buckets by, the exact UTC-vs-barn-calendar trap #1151 fixed elsewhere.
+// =============================================================================================
+// #1326 — the two read-only claims about this same page: no Save Changes, no Delete.
+//
+// They live here rather than in checklist-phase56-dashboard.spec.ts (which owns the rest of
+// that slice) because this file already seeds exactly the appointment they assert on and
+// already owns the five lines above them. Appended, so every pre-existing test keeps its
+// declaration position; nothing here mutates a row.
+//
+// Both are absence claims, so both are written as one expectation over a pair rather than as a
+// bare toHaveCount(0): a page that 404'd, redirected, or never compiled renders no Save button
+// either, and a zero count cannot tell that apart from the read-only view working. Pairing the
+// count with the Appointment heading makes the assertion require the right page to have
+// rendered before it can be satisfied.
+//
+// Scoped to <main> — AppointmentDetail renders its own, and so does the manager's edit form,
+// which is where both controls live. That keeps the claim about the page's own body rather
+// than about the surrounding nav chrome.
+// =============================================================================================
+
+const appointmentHeading = (page: Page) => page.getByRole('heading', { name: /^appointment$/i })
+
+test('trainer_appointment_page_shows_no_save_changes_button @trainer', async ({ page }) => {
+  await page.goto(appointmentPath())
+  const saveButton = page.getByRole('main').getByRole('button', { name: /save changes/i })
+  // count() is a one-shot read with no auto-wait; the heading settles the page first.
+  await appointmentHeading(page).waitFor()
+  expect([await appointmentHeading(page).count(), await saveButton.count()]).toEqual([1, 0])
+})
+
+// `.or()` covers both renderings deliberately. The manager's Delete is a `<Button href>`, which
+// Button.tsx emits as a Next <Link> rather than a <button> — so a button-only locator would
+// report zero against a page that had grown exactly the control this line forbids.
+test('trainer_appointment_page_shows_no_delete_button @trainer', async ({ page }) => {
+  await page.goto(appointmentPath())
+  const main = page.getByRole('main')
+  const deleteControl = main
+    .getByRole('button', { name: /^delete$/i })
+    .or(main.getByRole('link', { name: /^delete$/i }))
+  await appointmentHeading(page).waitFor()
+  expect([await appointmentHeading(page).count(), await deleteControl.count()]).toEqual([1, 0])
+})
+
+// Still not asserted here: that the dashboard card is a link, and that the appointment reaches
+// a trainer's calendar at all. Reaching a specific day from this barn would mean re-deriving
+// the barn-local date the dashboard buckets by, the exact UTC-vs-barn-calendar trap #1151
+// fixed elsewhere. #1326 covers both from a barn seeded on fixed calendar anchors instead —
+// see checklist-phase56-dashboard.spec.ts's
+// trainer_dashboard_appointment_card_is_a_link_to_its_detail_page and
+// trainer_dashboard_calendar_shows_the_appointment_alongside_their_own_lessons. The
+// unconditional href itself is still covered directly by CalendarAppointmentCard.test.tsx.
 
 // The manager half of the same claim: the cost is not merely hidden in the UI, it is
 // readable by exactly one role. Without this, "the trainer sees no amount" would pass

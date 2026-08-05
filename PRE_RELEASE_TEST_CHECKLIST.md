@@ -833,17 +833,17 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
 - [ ] (e2e-candidate) (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
 - [ ] (e2e-candidate) (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 3) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
-- [ ] (e2e-candidate) (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
-- [ ] (e2e-candidate) (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
+- [ ] (e2e: trainer_dashboard_calendar_shows_the_appointment_alongside_their_own_lessons) (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
+- [ ] (e2e: trainer_dashboard_appointment_card_is_a_link_to_its_detail_page) (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
 - [ ] (e2e: trainer_can_open_the_appointment_detail_page) (#1148) Opening it reaches a page headed **Appointment**
 - [ ] (e2e: trainer_appointment_page_shows_the_recipient) (#1148) That page shows the appointment's recipient
 - [ ] (e2e: trainer_appointment_page_shows_the_assigned_horse) (#1148) That page shows the appointment's horse
 - [ ] (e2e: trainer_appointment_page_shows_the_notes) (#1148) That page shows the appointment's notes
 - [ ] (e2e: trainer_appointment_page_never_shows_the_amount) (#1148) That page shows no amount anywhere — the figure entered on it in Phase 3 appears nowhere on the page
-- [ ] (e2e-candidate) (#1148) That page shows no **Save Changes** button — it is read-only, not the manager's edit form
-- [ ] (e2e-candidate) (#1148) That page shows no **Delete** button
-- [ ] (e2e-candidate) (#1148) The Dashboard's empty-state subtext on a day with nothing on it reads "No lessons, appointments, or events scheduled for this day." — "appointments", not "expenses"
-- [ ] (e2e-candidate) (#1148) The **Week** view's empty-state subtext likewise says "appointments", not "expenses"
+- [ ] (e2e: trainer_appointment_page_shows_no_save_changes_button) (#1148) That page shows no **Save Changes** button — it is read-only, not the manager's edit form
+- [ ] (e2e: trainer_appointment_page_shows_no_delete_button) (#1148) That page shows no **Delete** button
+- [ ] (e2e: trainer_dashboard_day_view_empty_state_names_appointments_not_expenses) (#1148) The Dashboard's empty-state subtext on a day with nothing on it reads "No lessons, appointments, or events scheduled for this day." — "appointments", not "expenses"
+- [ ] (e2e: trainer_dashboard_week_view_empty_state_names_appointments_not_expenses) (#1148) The **Week** view's empty-state subtext likewise says "appointments", not "expenses"
 - [ ] (e2e-candidate) Creating one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) succeeds with no error
 
 > This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query). The live bell UI these rows feed is exercised on a genuinely different account, in both directions, in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — that supplements these row checks rather than replacing them.
@@ -903,8 +903,8 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_finances_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] (e2e: trainer_outstanding_lists_only_the_lessons_they_instruct) `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 - [ ] (e2e: trainer_outstanding_lists_uncollected_cancellation_fees_for_lessons_they_instruct) That page also lists any uncollected cancellation fees for lessons you instruct
-- [ ] (e2e-candidate) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
-- [ ] (e2e-candidate) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
+- [ ] (e2e: trainer_dashboard_day_view_shows_only_lessons_they_instruct) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
+- [ ] (e2e: trainer_dashboard_week_view_shows_only_lessons_they_instruct_across_the_week) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
 - [ ] (e2e: trainer_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
 - [ ] (e2e: trainer_unpaid_lessons_card_navigates_to_the_outstanding_page) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
@@ -957,10 +957,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page) (#999) Tapping a lesson in that Upcoming Lessons list that Dana is **not** enrolled in loads the lesson detail page (no 404)
 - [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_exhaustion_bar) (#999) On a horse Dana has no lesson-read privilege on, no Exhaustion bar appears
 - [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section) (#999) On that same horse, no Upcoming Lessons section appears either
-- [ ] (e2e-candidate) Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day
-- [ ] (e2e-candidate) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
-- [ ] (e2e-candidate) It shows no events outside her role's `visible_to_roles`
-- [ ] (e2e-candidate) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
+- [ ] (e2e: rider_dashboard_day_view_shows_only_lessons_she_is_enrolled_in) Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day
+- [ ] (e2e: rider_dashboard_day_view_shows_no_appointment_cards) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
+- [ ] (e2e: rider_dashboard_day_view_hides_an_event_outside_her_visible_to_roles) It shows no events outside her role's `visible_to_roles`
+- [ ] (e2e: rider_dashboard_week_view_shows_only_her_enrolled_lessons_across_the_week) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
 - [ ] (e2e: rider_lessons_list_shows_only_enrolled_lessons) Lessons list shows only Dana's enrolled lessons
 - [ ] (e2e: rider_filter_pills_omit_my_lessons_and_by_rider) Its filter pills are `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill
 - [ ] (e2e: rider_own_name_absent_from_own_lesson_cards) Dana's own name does not appear on her own lesson cards
