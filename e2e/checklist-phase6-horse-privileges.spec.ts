@@ -24,11 +24,11 @@
 // ## Why Butter, and not Pepper, carries the "no lesson-read privilege" lines (956-957)
 //
 // Both horses satisfy the line as written. Butter is the stronger fixture because she *has* a
-// privileges row — one granting document access — so her missing Exhaustion bar isolates
-// `lesson_read_privileges` itself. On Pepper the absent row would explain the absence just as well,
-// and the assertion could no longer tell the flag from the row. Butter also carries a real upcoming
-// lesson, so the rows the bar would summarise genuinely exist and are being withheld, rather than
-// being absent for want of data.
+// privileges row — one granting document access, with `lesson_read_privileges` explicitly false —
+// so her missing Exhaustion bar isolates that flag itself. On Pepper the absent row would explain
+// the absence just as well, and the assertion could no longer tell the flag from the row. Butter
+// also carries a real upcoming lesson, so the rows the bar would summarise genuinely exist and are
+// being withheld, rather than being absent for want of data.
 //
 // ## Why no horse documents are seeded
 //
@@ -45,8 +45,9 @@
 //
 // None of the four document checkboxes here claims anything about document *rows* — they claim the
 // section appears, and that the Add Document button does or doesn't. An empty Documents section
-// (its `EmptyState`) carries all four exactly, so this file seeds none and the storage gap is filed
-// as a follow-up rather than worked around.
+// (its `EmptyState`) carries all four exactly, so this file seeds none. The gap itself is left for
+// an issue of its own rather than worked around here: closing it needs a `storage.objects` policy,
+// i.e. a migration, which a spec-only slice cannot carry.
 //
 // ## Ordering
 //
@@ -120,10 +121,11 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
   })
 
   // The notes lines 969 and 970 assert on. Inline service-role writes rather than builder options:
-  // create_lesson_with_participants takes neither horse notes nor rider notes, the two dedicated
-  // RPCs (update_lesson_rider_notes, and the horse path beside it) authorize on auth.uid() which a
-  // service-role caller doesn't have, and support/fixtures.ts is off limits to this batch's
-  // parallel slices.
+  // create_lesson_with_participants takes neither horse notes nor rider notes, and neither of
+  // lesson-participants.ts's two write paths (update_lesson_rider_notes, and the plain
+  // lesson_horses update beside it) takes an injectable client — the same reason addLeaseCharge
+  // gives for not calling updateChargePaymentType. support/fixtures.ts, where a builder would
+  // otherwise go, is off limits to this batch's parallel slices.
   mustSucceed(
     await supabase
       .from('lesson_horses')
@@ -148,8 +150,13 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
   // The two grants, inserted inline for the same reason as the notes above — there is no
   // member_horse_privileges builder. `member_id` is a *membership* id despite the name, and
   // `barn_id` is required: the table's FKs are composite, (barn_id, member_id) and
-  // (barn_id, horse_id). `lesson_read_privileges` defaults to false, which is exactly the absent
-  // state Butter needs, so it is passed only where a state requires it.
+  // (barn_id, horse_id).
+  //
+  // Every state is written as an explicit key, including the two that match the column defaults
+  // (Apple's `document_privileges: 'none'`, Butter's `lesson_read_privileges: false`). The row a
+  // manager's real grant produces is identical either way — grantHorsePrivilege inserts neither —
+  // so nothing is lost in fidelity, and a fixture whose states are readable off the seed rather
+  // than off the schema is what the assertions below are worth reading against.
   //
   // Load-bearing rows, unlike the identically shaped insert in checklist-phase56-horses-notes
   // .spec.ts: the auth_get_horse_document_privilege / auth_has_horse_lesson_read_privilege helpers
@@ -176,6 +183,7 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
         horse_id: butterId,
         member_id: members.rider.membershipId,
         document_privileges: 'read',
+        lesson_read_privileges: false,
       })
       .select('id')
       .single(),
@@ -253,11 +261,12 @@ function horseHeading(page: Page, name: string) {
  * Taps the Exhaustion bar and leaves its popover open — line 953's interaction, and a hydration
  * barrier in the same act.
  *
- * The popover is `useState`-gated, so it cannot exist before hydration; a tap dispatched before
- * React is listening is simply lost and nothing replays it (e2e/CLAUDE.md facts 9 and 10). That is
- * why this retries through `hydrateByDriving` rather than clicking once and waiting — a single
- * drive that lands early can only run out the test's budget. The toggle is safe to re-dispatch
- * because `hydrateByDriving` re-drives only while the popover is still shut.
+ * The popover is `useState`-gated, so it cannot exist before hydration; a click dispatched before
+ * React is listening is simply lost and nothing replays it (e2e/CLAUDE.md fact 10 — fact 9 is the
+ * `fill()` half of the same hazard and doesn't reach this page). That is why this retries through
+ * `hydrateByDriving` rather than clicking once and waiting — a single drive that lands early can
+ * only run out the test's budget. The toggle is safe to re-dispatch because `hydrateByDriving`
+ * re-drives only while the popover is still shut.
  *
  * The bare `waitFor` first names the cause before the retry loop can bury it: without it, a missing
  * bar degrades into an anonymous timeout inside `toPass`. Unbounded, so it tightens nothing (#1211).
@@ -385,13 +394,23 @@ test('rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown @rider', 
   await expect(exhaustionPopoverRows(page)).toHaveCount(APPLE_EXERTIONS.length)
 })
 
-// Three assertions for one checkbox that makes three claims about one page state — the section is
+// Three assertions, for one checkbox that makes three claims about one page state — the section is
 // at the bottom, it is collapsed, and it lists this horse's lessons. The position claim is
 // structural (see `lastSection`) and the other two are scoped through it, so all three fail
 // together if the section moved.
 //
-// Set membership rather than row order: #1286 is still adding ORDER BY to the reads behind lists
-// like this one, and a membership assertion is correct either side of it.
+// Neither way of splitting this is available, which is why they are bundled rather than merely
+// convenient to bundle. Splitting the *test* three ways would leave line 954 naming one of them and
+// the other two claims asserted by tests no checklist line names — the batch's bundling rule is
+// about several checkboxes sharing one test, and offers nothing for one checkbox making several
+// claims. Splitting the *line* three ways would insert two lines into a file fifteen slices are
+// editing concurrently, shifting every line number below it into their ranges — the one edit this
+// slice is explicitly forbidden to make.
+//
+// Set membership rather than row order: #1286 has since ordered `get_horse_projected_exhaustion`
+// and getLessonById's embeds, but `getUpcomingLessonsForHorse` is a plain `.order('lesson_at')` and
+// order is not what this line claims — the claim is which lessons are listed. A membership
+// assertion is correct either side of that, and stays correct if the ordering moves again.
 test('rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section @rider', async ({ page }) => {
   await page.goto(horseHref(appleId))
 
