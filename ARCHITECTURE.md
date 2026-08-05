@@ -35,7 +35,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | lesson_series | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT, INSERT, UPDATE own (`instructor_id` locked to caller's own membership) | — |
 | profiles | SELECT own + barn members; UPDATE own + any barn member's managed/stub profile only (contact fields and photo only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
 | notifications | SELECT/UPDATE/DELETE own; INSERT any authenticated (cross-user UPDATE/INSERT also reachable via `create_or_update_notification` RPC, gated on active membership in the target barn; cross-user SELECT of the `instructor_lesson_nearby` title only, also gated on active barn membership, via `get_unread_notification_title`, #1017) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) |
-| horse_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT (barn-scoped) | — |
+| horse_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT (barn-scoped) | — except via `member_horse_privileges` (#997/#999): SELECT with a `'read'`/`'write'` grant, INSERT with `'write'`, enforced at both the table (`horse_documents_*_privilege` policies) and, since #1359, the storage layer (`rider_horse_documents_select`/`_insert` on `storage.objects`' `horses/` prefix — previously the missing storage half 500'd the horse page for exactly the riders the table grant admitted) |
 | staff_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, DELETE own rows only | — |
 | rider_documents | SELECT, INSERT, UPDATE, DELETE | — | SELECT own rows only |
 | agreements | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (both kinds) |
@@ -44,7 +44,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | appointment_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped, #1019 — see `appointments`) | — |
 | appointment_costs | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — (#1148 — the money half of the appointment/cost split, manager-only like `transactions`; the `authenticated` table grant is intact, so a trainer's read returns zero rows rather than an error, which is what lets `expenses.ts`'s `attachCosts` stay role-blind) | — |
 | transactions | SELECT (barn-scoped); no INSERT/UPDATE/DELETE grant to `authenticated` — writes only via `SECURITY DEFINER` RPCs (`sync_lesson_transactions`/`collect_lesson_payment`/`delete_lesson_with_transactions`, #827) | — | — |
-| member_horse_privileges | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — (no direct read/write grant — a privileged rider's access is exercised only through the `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helper functions and the policies they back on `horse_documents`/`lessons`/`lesson_horses`/`lesson_riders`, #997) |
+| member_horse_privileges | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — (no direct read/write grant — a privileged rider's access is exercised only through the `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helper functions and the policies they back on `horse_documents`/`lessons`/`lesson_horses`/`lesson_riders` (#997) and on `storage.objects`' `horses/` prefix (#1359)) |
 | barn_events | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (role-filtered via `visible_to_roles`) | SELECT (role-filtered via `visible_to_roles`) |
 
 ## DB schema
@@ -64,7 +64,7 @@ Policy-helper functions — all `SECURITY DEFINER` SQL, each existing to break a
 - `auth_can_read_instructor_membership(p_membership_id, p_barn_id)` — auth check inside `get_instructor_membership_names` (a row policy would expose `invite_token`)
 - `auth_is_active_barn_member(p_barn_id)` — used inside `get_active_barn_member_summaries` (same `invite_token` reason)
 - `auth_can_read_barn_member_profile(p_profile_id)` — backs `profiles_barn_members_read`
-- `auth_get_horse_document_privilege(p_horse_id, p_barn_id)` — backs the two `horse_documents` privilege policies
+- `auth_get_horse_document_privilege(p_horse_id, p_barn_id)` — backs the two `horse_documents` privilege policies and their `storage.objects` counterparts (#1359)
 - `auth_has_horse_lesson_read_privilege(p_horse_id, p_barn_id)` — backs `lesson_horses_select_horse_privilege` and `get_horse_projected_exhaustion`'s check
 - `auth_lesson_has_privileged_horse(p_lesson_id, p_barn_id)` — backs `lessons_select_horse_privilege`/`lesson_riders_select_horse_privilege`
 

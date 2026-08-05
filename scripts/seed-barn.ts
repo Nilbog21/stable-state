@@ -411,6 +411,33 @@ export async function seedBarn(
     'seed horse privilege grant'
   )
 
+  // #1359: a document on the privileged horse, so the read grant above is manually visible —
+  // pre-fix, a document row here was exactly what 500'd the horse page for the granted rider.
+  // Same existsSync guard as the photos (see the #505 note above).
+  const butterDocPath = join(DATA_DIR, 'test_1_kb.pdf')
+  if (existsSync(butterDocPath)) {
+    const butterDocBytes = readFileSync(butterDocPath)
+    const butterDocStoragePath = `${barnId}/horses/${horseIds[1]}/butter-coggins.pdf`
+    mustSucceed(
+      await supabase.storage.from('documents').upload(butterDocStoragePath, butterDocBytes, {
+        contentType: 'application/pdf',
+        upsert: true,
+      }),
+      'upload seed horse document'
+    )
+    mustSucceed(
+      await supabase.from('horse_documents').insert({
+        barn_id: barnId,
+        horse_id: horseIds[1],
+        record_type: 'coggins',
+        storage_path: butterDocStoragePath,
+        file_name: 'butter-coggins.pdf',
+        file_size: butterDocBytes.length,
+      }),
+      'seed horse document row'
+    )
+  }
+
   const lessonDates = buildLessonDates(now)
   const lessonTotal = lessonDates.length
 

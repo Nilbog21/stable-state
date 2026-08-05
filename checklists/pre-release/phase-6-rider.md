@@ -36,8 +36,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
 - [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) (#999) That horse's detail page now shows a **Documents** section for Dana
 - [ ] (e2e: rider_read_document_privilege_hides_the_add_document_button) (#999) That Documents section shows no **Add Document** button
+- [ ] (e2e: rider_read_document_privilege_opens_a_seeded_document) (#1359) Tapping a document's filename in that section opens the file
 - [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) Setup (as manager, then switch back to Dana) — change that same grant to `document_privileges='write'`
 - [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) (#999) The **Add Document** button now appears in that horse's Documents section
+- [ ] (e2e: rider_write_document_privilege_upload_succeeds) (#1359) Using that Add Document button as Dana to upload a file succeeds, and the new document's row appears in the horse's Documents section
 - [ ] (e2e: rider_without_a_document_privilege_sees_no_documents_section) (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
 - [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
 - [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) (#999) That horse's detail page now shows an **Exhaustion** bar for Dana
