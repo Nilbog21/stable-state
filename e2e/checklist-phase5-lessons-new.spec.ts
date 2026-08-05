@@ -89,11 +89,13 @@ const SHADED_EXERTION = 5
 
 const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 
-// `expect.poll` runs on expect's own 5s default, which `test.slow()` does not raise — so unlike
-// every `waitFor*` in this file, a number here *loosens* rather than tightens (e2e/CLAUDE.md
-// fact 1). Both polls below wait on the lesson form's one-per-displayed-month schedule read,
-// which is a Server Action round trip behind a `next dev` compile of a route the run may be
-// touching for the first time; 5s is not reliably enough for that under full-suite load.
+// `expect.poll` and web-first matchers run on expect's own 5s default, which `test.slow()` does
+// not raise — so unlike every `waitFor*` in this file, a number here *loosens* rather than
+// tightens (e2e/CLAUDE.md fact 1). All three consumers below (two polls on the lesson form's
+// one-per-displayed-month schedule read, one `toHaveCount` on the post-pick projected-exhaustion
+// read) wait on a Server Action round trip behind a `next dev` compile of a route the run may be
+// touching for the first time; 5s is not reliably enough for that under full-suite load (#1372
+// measured exactly that: two failures under load, 8/8 standalone at the same HEAD).
 const SCHEDULE_FETCH_BUDGET = 20_000
 
 // "YYYY-MM" of the month every fixture below sits in, and the days within it. Resolved in the
@@ -381,13 +383,16 @@ test.describe("the trainer's New Lesson form", () => {
   // Line 832. One bar per seeded horse, counted from the builder's own return value rather than
   // a literal. The count starts at 0 and can only reach the expected number after React has
   // hydrated, resolved the Server Action and re-rendered, so `toHaveCount` is doing real waiting
-  // here rather than confirming server-rendered markup.
+  // here rather than confirming server-rendered markup — specifically on the post-pick
+  // projected-exhaustion Server Action round trip, which is why it carries the budget (#1372).
   test('trainer_picking_a_date_renders_an_exhaustion_bar_below_every_horse @trainer', async ({ page }) => {
     await openNewLessonForm(page)
     await goToNextMonth(page)
     await pickDay(page, shadedDay)
 
-    await expect(page.getByTestId('exhaustion-bar-solid')).toHaveCount(seededHorses.length)
+    await expect(page.getByTestId('exhaustion-bar-solid')).toHaveCount(seededHorses.length, {
+      timeout: SCHEDULE_FETCH_BUDGET,
+    })
   })
 
   // Line 834. The shaded day's only lesson belongs to the *manager*, so a heatmap narrowed to
