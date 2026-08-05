@@ -566,7 +566,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: horse_drilldown_table_has_a_type_column) The horse drill-down's combined table has a **Type** column
 - [ ] (e2e: horse_drilldown_expense_amount_renders_in_parentheses) The horse drill-down's expense **Amount** renders in parentheses (e.g. `($25.00)`)
 - [ ] (e2e: horse_drilldown_expense_split_renders_in_parentheses) The horse drill-down's expense **Split** renders in parentheses too
-- [ ] (e2e: horse_drilldown_net_is_the_by_horse_net_less_the_horses_share_of_its_lessons_instructor_cuts) The horse drill-down's bottom **Net** figure equals this horse's Net on the By Horse tab **minus this horse's share of the instructor cut on each of its lessons that month** — a lesson's cut is split across its horses exactly as its fee is, so on a two-horse lesson the gap is half that lesson's cut, not all of it. The two figures are deliberately not the same number: #971 made the By Horse/By Rider summary figures pre-cut gross (`splitsGrossFee`), but left the drill-down's per-lesson rows net of each lesson's own snapshotted cut
+- [ ] (e2e: horse_drilldown_net_matches_the_by_horse_net) The horse drill-down's bottom **Net** figure equals this horse's Net on the By Horse tab exactly — no instructor-cut gap between the two pages (#1156: the drill-down's per-lesson rows are the same pre-cut split the tab is built from, since a horse's apportioned share of the instructor's cut is money By Instructor already accounts for in full)
 - [ ] (e2e: horse_drilldown_link_preserves_the_month_param) The horse drill-down preserves the month param
 - [ ] (e2e: by_horse_rows_load_sorted_by_horse_name_ascending) On page load, By Horse rows are sorted by **Horse** name ascending (A→Z)
 - [ ] (e2e: by_horse_horse_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Horse's **Horse** header
@@ -601,7 +601,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: rider_drilldown_combines_lessons_and_agreement_charges_in_one_table) The rider drill-down shows one combined table of lessons and leases/boarding charges, matching the By Horse drill-down's layout
 - [ ] (e2e: rider_drilldown_rows_are_ordered_by_date_ascending) The rider drill-down's combined table is ordered by date ascending
 - [ ] (e2e: rider_drilldown_table_has_a_type_column) The rider drill-down's combined table has a **Type** column
-- [ ] (e2e: rider_drilldown_total_is_the_by_rider_gross_less_the_instructor_cut) The rider drill-down's bottom **Total** equals that rider's **Gross** on the By Rider tab less that rider's share of the instructor cut on their lessons this month (a lesson's cut is split across its riders, exactly as its fee is — so a solo lesson's whole cut, half of a two-rider lesson's) — the tab is pre-cut since #971, the drill-down is net-of-cut
+- [ ] (e2e: rider_drilldown_total_matches_the_by_rider_gross) The rider drill-down's bottom **Total** equals that rider's **Gross** on the By Rider tab exactly — no instructor-cut gap between the two pages (#1156: both are pre-cut now, where the tab alone was since #971)
 - [ ] (e2e: rider_drilldown_preserves_the_month_param) The rider drill-down preserves the month param
 - [ ] (e2e: by_rider_rows_load_sorted_by_rider_name_ascending) On page load, By Rider rows are sorted by **Rider** name ascending
 - [ ] (e2e: by_rider_rider_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Rider's **Rider** header
