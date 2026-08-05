@@ -13,24 +13,26 @@
 // edited without a reload, driven past due, and surfacing as a Dashboard Reminders card that
 // links back to the horse (PRE_RELEASE_TEST_CHECKLIST.md 441-454).
 //
-// Three horses, because each block needs a starting state the others would destroy. Willow
+// Four horses, because each block needs a starting state the others would destroy. Willow
 // carries the upload → list → open → delete chain and must end empty. Rowan takes the two
 // 4.4 MB pending-state uploads and the 4.6 MB rejection, so those large rows never crowd the
-// other two. Juniper must hold *exactly one* document for its whole chain — the reminder cell
+// others. Juniper must hold *exactly one* document for its whole chain — the reminder cell
 // and the dashboard card are both located without a per-row disambiguator, and a second
 // document on that horse would make either ambiguous or, worse, silently pick the wrong row.
+// Marigold (#1283) holds the reminder-due boundary pair and nothing else, for the same reason
+// in reverse: its two rows must be the only ones on that page whose dates sit on the cutoff.
 //
-// Three mutually non-substring names, deliberately: Playwright's text and accessible-name
+// Four mutually non-substring names, deliberately: Playwright's text and accessible-name
 // matching is substring-based, so an overlapping pair makes a filter for one silently match
 // both.
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
-import { addHorse, assetPath } from './support/fixtures'
+import { addHorse, addHorseDocument, assetPath, updateBarnSettings } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
-import { barnToday } from '@/lib/barn-timezone'
+import { BARN_TIMEZONES, barnToday, instantToLocalWallClock } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -39,6 +41,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 const WILLOW = 'Willow'
 const ROWAN = 'Rowan'
 const JUNIPER = 'Juniper'
+/** The fourth horse, added by #1283 — it owns the reminder-due boundary pair and nothing else. */
+const MARIGOLD = 'Marigold'
 
 // Every asset the checklist lines name, verbatim. The two large ones exist for exactly this
 // slice: 4,600,000 bytes is over DocumentUploadForm's 4,500,000 limit and 4,400,000 is the
@@ -73,9 +77,103 @@ function shortDate(day: string): string {
 
 const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
+// ---------------------------------------------------------------------------
+// The barn-zone pin (#1283)
+// ---------------------------------------------------------------------------
+
+/**
+ * The barn's own timezone, pinned to whichever `BARN_TIMEZONES` member currently sits furthest
+ * from its *own* midnight.
+ *
+ * **Why the barn's zone and not `page.clock`.** #1252's idiom pins the browser's clock, and that
+ * reaches only values the browser computes (e2e/CLAUDE.md fact 7). Every "today" this file
+ * depends on is computed on the **server**: `ReminderDueBadge` takes `today` as a required prop
+ * (#1149/#1223 — it is explicitly *not* defaulted to the viewer's clock), and `getDueDocuments`
+ * takes the barn's day as its `lte` cutoff. A browser pin would therefore change nothing here
+ * and would be green while doing nothing, which is precisely the #1204 failure mode the idiom
+ * exists to prevent. The barn's `timezone` column is the one lever that does reach the server's
+ * answer, and this spec owns its barn.
+ *
+ * **What the pin buys.** The boundary fixtures below are seeded relative to `barnToday` in
+ * `beforeAll`, and the assertions read a page that recomputes `barnToday` per request. Those two
+ * agree unless the run straddles barn-local midnight — and the boundary pair sits *exactly on*
+ * that day, which is the only place `>` can be told from `>=` and `lte` from `lt`, and also the
+ * only place a straddle flips an answer. Choosing the zone furthest from its own midnight turns
+ * that from a race into a margin the guard below states in minutes.
+ */
+const PIN_NOW = new Date()
+
+/** Minutes between `at` and the nearest midnight in `zone`, so 12:00 local reads 720 and 00:00 reads 0. */
+function minutesFromBarnMidnight(zone: string, at: Date): number {
+  const wall = instantToLocalWallClock(at, zone)
+  const sinceMidnight = Number(wall.slice(11, 13)) * 60 + Number(wall.slice(14, 16))
+  return Math.min(sinceMidnight, 24 * 60 - sinceMidnight)
+}
+
+const PINNED_ZONE = BARN_TIMEZONES.reduce<string>(
+  (best, candidate) =>
+    minutesFromBarnMidnight(candidate.value, PIN_NOW) > minutesFromBarnMidnight(best, PIN_NOW)
+      ? candidate.value
+      : best,
+  BARN_TIMEZONES[0].value
+)
+
+/**
+ * The floor the pin has to clear, and it is not arbitrary.
+ *
+ * `BARN_TIMEZONES` spans UTC−4 (EDT) to UTC−10, so at any instant the seven zones offer six
+ * distinct local hours, and the worst UTC hour to be standing at is 07:xx — Eastern reads 03:xx
+ * and Honolulu 21:xx, leaving a best available distance of about three hours. Two is therefore
+ * under the worst case by a full hour and cannot fire spuriously today, while a future edit that
+ * narrowed the zone list far enough to matter fails at collection instead of flaking one run in
+ * a hundred.
+ */
+const MIN_MIDNIGHT_MARGIN_MINUTES = 120
+
+/**
+ * The pin's arithmetic, executable rather than written in a comment (#1252's `assertPinArithmetic`
+ * shape, adopted here by #1283 — the throwing guard is the load-bearing half of that idiom, not
+ * the pin: #1204's pin sat one axis away from the regression it existed to catch and only review
+ * noticed).
+ *
+ * The second check looks redundant beside the first and is not the same claim. A margin of ≥120
+ * minutes *implies* that ±120 minutes stays on one calendar day — as arithmetic. The check
+ * asserts that `barnToday` and `minutesFromBarnMidnight` actually agree about it, which is the
+ * part a helper change could break silently: they are two different readings of the same zone,
+ * and only one of them is the one the app uses.
+ */
+function assertZonePinArithmetic(): void {
+  const problems: string[] = []
+  const margin = minutesFromBarnMidnight(PINNED_ZONE, PIN_NOW)
+  if (margin < MIN_MIDNIGHT_MARGIN_MINUTES) {
+    problems.push(
+      `barn-local now in ${PINNED_ZONE} is ${margin} minutes from its own midnight, under the ` +
+        `${MIN_MIDNIGHT_MARGIN_MINUTES}-minute floor — no BARN_TIMEZONES member is far enough from midnight.`
+    )
+  }
+  const spanMs = MIN_MIDNIGHT_MARGIN_MINUTES * 60 * 1000
+  const days = {
+    behind: barnToday(PINNED_ZONE, new Date(PIN_NOW.getTime() - spanMs)),
+    at: barnToday(PINNED_ZONE, PIN_NOW),
+    ahead: barnToday(PINNED_ZONE, new Date(PIN_NOW.getTime() + spanMs)),
+  }
+  if (days.behind !== days.at || days.ahead !== days.at) {
+    problems.push(
+      `the barn day in ${PINNED_ZONE} is ${days.behind}/${days.at}/${days.ahead} at ` +
+        `−${MIN_MIDNIGHT_MARGIN_MINUTES}min/now/+${MIN_MIDNIGHT_MARGIN_MINUTES}min. All three are ` +
+        'expected to be equal: barnToday and minutesFromBarnMidnight disagree about this zone.'
+    )
+  }
+  if (problems.length > 0) {
+    throw new Error(`the barn-zone pin ${PINNED_ZONE} is misaimed:\n  ${problems.join('\n  ')}`)
+  }
+}
+assertZonePinArithmetic()
+
 let willowId: string
 let rowanId: string
 let juniperId: string
+let marigoldId: string
 /** Captured in the seed so the storage sweep and the storage-path read can't depend on `barn.data`. */
 let seedClient: SupabaseClient | null = null
 let seedBarnId = ''
@@ -97,20 +195,99 @@ let editedReminderDate = ''
 let softSavedReminderDate = ''
 let pastReminderDate = ''
 
+/**
+ * Marigold's pair, and the only two dates in this file that sit *on* a boundary rather than
+ * three-plus days clear of one.
+ *
+ * `ReminderDueBadge` renders unless `reminderDate > today`, and `getDueDocuments` filters
+ * `lte('reminder_date', today)`. Both boundaries are inclusive, and both are invisible to every
+ * other fixture here: at ±30/45/60/3 a `>=`-for-`>` or an `lt`-for-`lte` regression answers
+ * exactly the same on all four. Only a document dated **today** can tell them apart, and only a
+ * document dated **today + 1** proves the filter is a boundary rather than an unconditional
+ * yes — which is why they are seeded as a pair rather than singly.
+ *
+ * These are what the zone pin above is for. Every other date in this file has three days of
+ * slack against a midnight straddle; these have none by construction.
+ */
+let boundaryDueDate = ''
+let boundaryNotDueDate = ''
+
+/** Marigold's two rows. Free-form names — `addHorseDocument` uploads a small Buffer, not an asset
+ *  off disk — and mutually non-substring, plus non-substring with the three real assets above. */
+const BOUNDARY_DUE_PDF = 'boundary_due.pdf'
+const BOUNDARY_NOT_DUE_PDF = 'boundary_clear.pdf'
+/** Distinct from each other and from Juniper's Coggins, so a dashboard card names which row it is. */
+const BOUNDARY_DUE_RECORD_TYPE = { value: 'shot_record', label: 'Shot Record' } as const
+const BOUNDARY_NOT_DUE_RECORD_TYPE = { value: 'contract', label: 'Contract' } as const
+
 const barn = withBarn('phase4-horses-documents', async ({ supabase, barn }) => {
   seedClient = supabase
   seedBarnId = barn.id
 
+  // Before anything is seeded, so every date below — and every date the *pages* compute — is in
+  // the pinned zone rather than the barn's default. `barn` is the object every builder reads its
+  // timezone from, so the local copy is moved with the row (#1283).
+  await updateBarnSettings(supabase, barn.id, { timezone: PINNED_ZONE })
+  barn.timezone = PINNED_ZONE
+
   willowId = (await addHorse(supabase, barn.id, WILLOW)).id
   rowanId = (await addHorse(supabase, barn.id, ROWAN)).id
   juniperId = (await addHorse(supabase, barn.id, JUNIPER)).id
+  marigoldId = (await addHorse(supabase, barn.id, MARIGOLD)).id
 
   const today = barnToday(barn.timezone)
   uploadedReminderDate = addDays(today, 30)
   editedReminderDate = addDays(today, 45)
   softSavedReminderDate = addDays(today, 60)
   pastReminderDate = addDays(today, -3)
+  boundaryDueDate = today
+  boundaryNotDueDate = addDays(today, 1)
+
+  await addHorseDocument(supabase, barn, marigoldId, {
+    recordType: BOUNDARY_DUE_RECORD_TYPE.value,
+    fileName: BOUNDARY_DUE_PDF,
+    reminderDate: boundaryDueDate,
+  })
+  await addHorseDocument(supabase, barn, marigoldId, {
+    recordType: BOUNDARY_NOT_DUE_RECORD_TYPE.value,
+    fileName: BOUNDARY_NOT_DUE_PDF,
+    reminderDate: boundaryNotDueDate,
+  })
+
+  assertBoundaryPinArithmetic()
 })
+
+/**
+ * The boundary pair's own arithmetic, run once the barn's zone has fixed what "today" means.
+ *
+ * Separate from `assertZonePinArithmetic` because it asserts a different thing: that one is
+ * about the *margin* the pin buys, this one about the **separation the two tests below actually
+ * discriminate**. A pair that drifted onto the same side of the cutoff — or a `boundaryDueDate`
+ * that stopped being today exactly — would leave both of them green and asserting nothing about
+ * `>` vs `>=` at all, which is the whole reason those two lines were uncovered before #1283.
+ */
+function assertBoundaryPinArithmetic(): void {
+  const today = barnToday(PINNED_ZONE)
+  const problems: string[] = []
+  if (boundaryDueDate !== today) {
+    problems.push(
+      `the due side is ${boundaryDueDate}, expected the barn's own today (${today}). ` +
+        'Off the boundary it no longer separates ReminderDueBadge\'s `>` from `>=`.'
+    )
+  }
+  if (boundaryNotDueDate !== addDays(today, 1)) {
+    problems.push(`the not-due side is ${boundaryNotDueDate}, expected ${addDays(today, 1)} — today + 1 exactly`)
+  }
+  if (!(boundaryDueDate <= today && boundaryNotDueDate > today)) {
+    problems.push(
+      `${boundaryDueDate}/${boundaryNotDueDate} do not straddle ${today}: the pair has to land on ` +
+        'opposite sides of the cutoff, or the absence half is satisfied by a filter that returns nothing.'
+    )
+  }
+  if (problems.length > 0) {
+    throw new Error(`the reminder-due boundary pair is misaimed:\n  ${problems.join('\n  ')}`)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Locators and helpers
@@ -595,9 +772,15 @@ test.describe.serial('a horse document reminder date', () => {
     }).toEqual({ badgesWhileFuture: 0, badges: 1, dateValue: pastReminderDate })
   })
 
-  // `count: 1` is a real claim, not a formality: getDueDocuments is barn-wide across horse,
-  // trainer and rider documents, and this barn's only other documents (Rowan's two 4.4 MB
-  // uploads) carry no reminder date at all — so exactly one card is the whole filter asserted.
+  // `count` is a real claim, not a formality: getDueDocuments is barn-wide across horse, trainer
+  // and rider documents, and the only rows in this barn carrying a reminder date at all are
+  // Juniper's (driven past due by the test above) and Marigold's boundary pair. Rowan's two 4.4 MB
+  // uploads carry none. So the exact count is the whole filter asserted — including the half that
+  // is an absence, since the not-due side of Marigold's pair is a row this section must *not*
+  // reach (#1283).
+  //
+  // Two, therefore, and not one: #1283 added the pair, and `getDueDocuments` sorts ascending by
+  // reminder date, so Juniper's today − 3 still leads and `.first()` still names it.
   //
   // The text is compared as a full string rather than by containment (#1202: Playwright's text
   // matching is substring-based), which pins the owner name, the record type and the date
@@ -609,18 +792,92 @@ test.describe.serial('a horse document reminder date', () => {
     await cards.first().waitFor()
 
     expect({ count: await cards.count(), text: await cards.first().innerText() }).toEqual({
-      count: 1,
+      count: 2,
       text: `${JUNIPER} — ${JUNIPER_RECORD_TYPE.label} — ${shortDate(pastReminderDate)}`,
     })
   })
 
-  // Deliberately not `.first()`: an unqualified locator makes Playwright's strict mode fail if a
-  // second card ever appears, which is a stronger guarantee than picking one and hoping. The href
-  // is compared as a full string, so it pins *which* horse rather than merely that it points at
-  // some horse page.
+  // The whole href list rather than one card's, which is what keeps the original claim's strength
+  // now that #1283's boundary pair puts a second card in this section. The unqualified locator it
+  // used to carry leant on Playwright's strict mode to fail if a second card ever appeared;
+  // `.first()` would have been the weak repair, since it can no longer tell "links to Juniper"
+  // from "links to Juniper and to something arbitrary". An exact array pins the count, the order
+  // and both destinations as full strings, so it still says *which* horse each card points at.
+  //
+  // evaluateAll is one-shot, so the wait ahead of it is what stops it sampling an unpainted
+  // section and reading `[]` — an empty array would otherwise satisfy nothing and pass nothing
+  // (root CLAUDE.md's rule; here the following toEqual would fail on it, but the wait is what
+  // makes that a real read rather than a lucky one).
   test('the_dashboard_reminder_card_links_back_to_the_horse @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}`)
+    const cards = remindersSection(page).getByRole('link')
+    await cards.first().waitFor()
 
-    await expect(remindersSection(page).getByRole('link')).toHaveAttribute('href', horseUrl(juniperId))
+    const hrefs = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('href')))
+    expect(hrefs).toEqual([horseUrl(juniperId), horseUrl(marigoldId)])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Marigold: the reminder-due boundary, on both sides (#1283)
+// ---------------------------------------------------------------------------
+
+// Not serial and not chained: both tests read a pair seeded at the boundary and neither mutates
+// anything. They are the two halves of one cutoff — the badge's `reminderDate > today` and
+// getDueDocuments' `lte('reminder_date', today)` — and each is asserted with its own absence
+// beside it, in the same document, so neither can go vacuous the way a presence-only check can.
+test.describe('the reminder-due boundary', () => {
+  // Both sides in one comparison, because "the cutoff includes today" is a single claim and its
+  // halves are only meaningful together: the presence alone is satisfied by a badge that ignores
+  // `reminderDate` entirely, and the absence alone by a badge that never renders. Read in one
+  // document off two rows of the same table, so the two readings cannot be of different states.
+  //
+  // The dates are asserted alongside, for the reason the past-date test above gives: inputValue()
+  // throws rather than returning a falsy default if a cell fails to resolve, so a mislocated row
+  // fails here instead of quietly contributing a zero to the absence half.
+  test('a_reminder_date_of_today_is_due_and_the_next_day_is_not @manager', async ({ page }) => {
+    await page.goto(horseUrl(marigoldId))
+    const dueCell = reminderDateCell(page, BOUNDARY_DUE_PDF)
+    const notDueCell = reminderDateCell(page, BOUNDARY_NOT_DUE_PDF)
+    const badge = (cell: Locator) => cell.getByText('Reminder Due', { exact: true })
+    await notDueCell.locator('input[type="date"]').waitFor()
+    await badge(dueCell).waitFor()
+
+    expect({
+      dueBadges: await badge(dueCell).count(),
+      notDueBadges: await badge(notDueCell).count(),
+      dueDate: await dueCell.locator('input[type="date"]').inputValue(),
+      notDueDate: await notDueCell.locator('input[type="date"]').inputValue(),
+    }).toEqual({
+      dueBadges: 1,
+      notDueBadges: 0,
+      dueDate: boundaryDueDate,
+      notDueDate: boundaryNotDueDate,
+    })
+  })
+
+  // The dashboard half of the same cutoff, and a different filter: the badge is a client-side
+  // comparison in ReminderDueBadge, this is `lte('reminder_date', today)` inside getDueDocuments.
+  // An `lt` there would drop the today-dated card while leaving Juniper's past-dated one — which
+  // is exactly why the assertion is the *set* of card texts rather than a hasText on one.
+  //
+  // Full strings rather than containment, so `Marigold — Shot Record — <today>` cannot be
+  // satisfied by the Contract row that must not be here.
+  //
+  // Narrowed to Marigold's own cards rather than asserting the whole section, deliberately: the
+  // only other card there is Juniper's, and it exists only because a test in the serial block
+  // above drove that document's date into the past. Asserting the full list would make this test
+  // fail under `--grep` for a reason that has nothing to do with the boundary. Filtering a list
+  // already read is not the conditional this file's helpers avoid — an empty result still fails
+  // the comparison, which is the case the narrowing has to stay honest about.
+  test('the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}`)
+    const cards = remindersSection(page).getByRole('link')
+    await cards.first().waitFor()
+
+    const texts = await cards.evaluateAll((els) => els.map((el) => el.textContent ?? ''))
+    expect(texts.filter((text) => text.startsWith(MARIGOLD))).toEqual([
+      `${MARIGOLD} — ${BOUNDARY_DUE_RECORD_TYPE.label} — ${shortDate(boundaryDueDate)}`,
+    ])
   })
 })
