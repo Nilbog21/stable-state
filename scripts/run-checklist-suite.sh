@@ -15,23 +15,40 @@ LOG_PATH="$PWD/checklist-suite.log"
 # Truncated with `>` before anything else runs, so a log left behind by a dead run can never
 # be mistaken for this one's; the header says which barns and when.
 echo "=== run-checklist-suite.sh — barn prefix $RUN_PREFIX — started $(date) ===" > "$LOG_PATH"
+# Pre-scanned rather than read off the arg loop below, because that loop runs after the
+# redirect this decides. `--interactive` implies it: a headed run is a human watching.
+VERBOSE=false
+case " $* " in *" --verbose "*|*" --interactive "*) VERBOSE=true ;; esac
+
 # Send this script's stdout and stderr — and that of everything it runs — through `tee`, so
 # the log gets the whole run, including the early bails that kill it under `set -e` before
 # Playwright writes a line. Costs the `list` reporter its live in-place progress (stdout is
 # no longer a TTY); one static line per test is the better trade for a file read afterwards.
-exec > >(tee -a "$LOG_PATH") 2>&1
+if [ "$VERBOSE" = true ]; then
+  exec > >(tee -a "$LOG_PATH") 2>&1
+else
+  # The log still gets the whole run; stdout drops only the reporter's per-test ✓/- lines,
+  # which is ~190 of a 191-test run's 209 and is re-paid as cache-read input on every later
+  # turn of the invoking session. Everything else passes through — this script's own echoes
+  # (so early bails are untouched), `Running N tests`, ✘ lines, the failure detail blocks,
+  # the pass/fail summary counts, teardown, and the exit terminator. A stream filter rather
+  # than a reporter swap because the log has to keep full `list` output either way.
+  # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
+  exec > >(tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
+fi
 
 echo "Logging to $LOG_PATH"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open]
+Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open] [--verbose]
 
-  --interactive     Headed run including @visual specs (default: headless, @visual excluded)
+  --interactive     Headed run including @visual specs (default: headless, @visual excluded); implies --verbose
   --base-url URL    Origin under test (default: http://localhost:3000)
   --spec PATH       Playwright spec path or glob; repeatable (default: full suite)
   --allow-prod      Target a non-dev Supabase project; requires --base-url
   --hold-open       Prompt before teardown, so the seeded barns survive manual checklist steps
+  --verbose         Stream the reporter's per-test lines to stdout too (default: log only)
 EOF
 }
 
@@ -101,6 +118,10 @@ while [ $# -gt 0 ]; do
       ;;
     --hold-open)
       HOLD_OPEN=true
+      shift
+      ;;
+    --verbose)
+      # Already applied by the pre-scan above; consumed here so it isn't an unknown arg.
       shift
       ;;
     *)
