@@ -250,24 +250,26 @@ test('trainer_sees_no_edit_link_on_another_instructors_lesson @trainer', async (
  */
 test('trainer_cannot_save_changes_via_another_instructors_edit_url @trainer', async ({ page }) => {
   const response = await page.goto(`${lessonPath(othersFirst)}/edit`)
-  const attempt = {
+  const outcome = {
     status: response!.status(),
     saveButtons: await page.getByRole('button', { name: 'Save', exact: true }).count(),
+    row: mustSucceed<Pick<Lesson, 'fee' | 'instructor_id' | 'lesson_at'>>(
+      await barn.data.supabase
+        .from('lessons')
+        .select('fee, instructor_id, lesson_at')
+        .eq('id', othersFirst.id)
+        .single(),
+      'read back the lesson a trainer could not edit'
+    ),
   }
-  expect(attempt).toEqual({ status: 404, saveButtons: 0 })
-
-  const row = mustSucceed<Pick<Lesson, 'fee' | 'instructor_id' | 'lesson_at'>>(
-    await barn.data.supabase
-      .from('lessons')
-      .select('fee, instructor_id, lesson_at')
-      .eq('id', othersFirst.id)
-      .single(),
-    'read back the lesson a trainer could not edit'
-  )
-  expect(row).toEqual({
-    fee: othersFirst.fee,
-    instructor_id: othersFirst.instructor_id,
-    lesson_at: othersFirst.lesson_at,
+  expect(outcome).toEqual({
+    status: 404,
+    saveButtons: 0,
+    row: {
+      fee: othersFirst.fee,
+      instructor_id: othersFirst.instructor_id,
+      lesson_at: othersFirst.lesson_at,
+    },
   })
 })
 
