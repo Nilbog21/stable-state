@@ -942,19 +942,19 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
 - [ ] (e2e-candidate) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
 - [ ] (e2e-candidate) (#1003) That photo then displays on Clover's detail page
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
-- [ ] (e2e-candidate) (#999) That horse's detail page now shows a **Documents** section for Dana
-- [ ] (e2e-candidate) (#999) That Documents section shows no **Add Document** button
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — change that same grant to `document_privileges='write'`
-- [ ] (e2e-candidate) (#999) The **Add Document** button now appears in that horse's Documents section
-- [ ] (e2e-candidate) (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
-- [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
-- [ ] (e2e-candidate) (#999) That horse's detail page now shows an **Exhaustion** bar for Dana
-- [ ] (e2e-candidate) (#999) Tapping that Exhaustion bar expands it to show the ±3-day breakdown
-- [ ] (e2e-candidate) (#999) That same horse's page shows a collapsed **Upcoming Lessons** section at the bottom, listing its scheduled lessons
-- [ ] (e2e-candidate) (#999) Tapping a lesson in that Upcoming Lessons list that Dana is **not** enrolled in loads the lesson detail page (no 404)
-- [ ] (e2e-candidate) (#999) On a horse Dana has no lesson-read privilege on, no Exhaustion bar appears
-- [ ] (e2e-candidate) (#999) On that same horse, no Upcoming Lessons section appears either
+- [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
+- [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) (#999) That horse's detail page now shows a **Documents** section for Dana
+- [ ] (e2e: rider_read_document_privilege_hides_the_add_document_button) (#999) That Documents section shows no **Add Document** button
+- [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) Setup (as manager, then switch back to Dana) — change that same grant to `document_privileges='write'`
+- [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) (#999) The **Add Document** button now appears in that horse's Documents section
+- [ ] (e2e: rider_without_a_document_privilege_sees_no_documents_section) (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
+- [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
+- [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) (#999) That horse's detail page now shows an **Exhaustion** bar for Dana
+- [ ] (e2e: rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown) (#999) Tapping that Exhaustion bar expands it to show the ±3-day breakdown
+- [ ] (e2e: rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section) (#999) That same horse's page shows a collapsed **Upcoming Lessons** section at the bottom, listing its scheduled lessons
+- [ ] (e2e: rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page) (#999) Tapping a lesson in that Upcoming Lessons list that Dana is **not** enrolled in loads the lesson detail page (no 404)
+- [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_exhaustion_bar) (#999) On a horse Dana has no lesson-read privilege on, no Exhaustion bar appears
+- [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section) (#999) On that same horse, no Upcoming Lessons section appears either
 - [ ] (e2e-candidate) Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day
 - [ ] (e2e-candidate) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
 - [ ] (e2e-candidate) It shows no events outside her role's `visible_to_roles`
@@ -965,9 +965,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) An enrolled lesson's detail page shows Dana's own rider notes read-only
 - [ ] (e2e-candidate) That page shows **no private notes**
 - [ ] (e2e-candidate) That page shows no exertion rating next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
-- [ ] (e2e-candidate) (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse does show an exertion rating
-- [ ] (e2e-candidate) (#999) That same horse shows its horse notes (if any) on that page
-- [ ] (e2e-candidate) (#999) On that page, other riders' rider and private notes stay hidden from Dana
+- [ ] (e2e: rider_privileged_horse_shows_an_exertion_rating_on_the_lesson_detail_page) (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse does show an exertion rating
+- [ ] (e2e: rider_privileged_horse_shows_its_horse_notes_on_the_lesson_detail_page) (#999) That same horse shows its horse notes (if any) on that page
+- [ ] (e2e: rider_other_riders_notes_stay_hidden_on_the_privileged_lesson_detail_page) (#999) On that page, other riders' rider and private notes stay hidden from Dana
 - [ ] (e2e-candidate) Setup (as manager, then switch back to Dana) — cancel a lesson Dana is enrolled in and record cancellation notes on it. An e2e run seeds the cancelled lesson and its notes in the rider's own barn instead
 - [ ] (e2e-candidate) That lesson's detail page renders the same read-only **Cancellation Notes** row the manager gets
 - [ ] (e2e-candidate) An enrolled **group** lesson's detail page shows every co-rider's real name, not a blank or raw ID
