@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 import { withBlocker } from '@/test/navigation-blocker-harness'
@@ -11,6 +11,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getActiveMembersWithProfiles: vi.fn(),
 }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileByUserId: vi.fn() }))
+vi.mock('../actions', () => ({ createManagedMemberAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -36,6 +37,18 @@ describe('MembersPage — navigation dirty state', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(withBlocker(jsx))
     fireEvent.change(screen.getAllByPlaceholderText('First name')[0], { target: { value: 'Alice' } })
+    expect(screen.getByTestId('dirty').textContent).toBe('dirty')
+  })
+
+  it('should_stay_dirty_when_the_sibling_add_member_form_submits', async () => {
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(withBlocker(jsx))
+    const [trainerFirstName, riderFirstName] = screen.getAllByPlaceholderText('First name')
+    fireEvent.change(trainerFirstName, { target: { value: 'Alice' } })
+    fireEvent.change(riderFirstName, { target: { value: 'Bob' } })
+    await act(async () => {
+      fireEvent.submit(riderFirstName.closest('form')!)
+    })
     expect(screen.getByTestId('dirty').textContent).toBe('dirty')
   })
 })

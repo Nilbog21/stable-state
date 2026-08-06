@@ -39,17 +39,18 @@ function PendingNavDisplay() {
 }
 
 function DirtyToggle() {
-  const { setDirty } = useNavigationBlocker()
-  return <button data-testid="make-dirty" onClick={() => setDirty(true)}>dirty</button>
+  const { markDirty } = useNavigationBlocker()
+  return <button data-testid="make-dirty" onClick={() => markDirty('toggle-form', true)}>dirty</button>
 }
 
 function SetPendingNavButton({ href }: { href: string }) {
-  const { setDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  const { markDirty, setPendingNav, setMessage } = useNavigationBlocker()
   return (
     <button
       data-testid="set-pending"
       onClick={() => {
-        setDirty(true)
+        markDirty('form-a', true)
+        markDirty('form-b', true)
         setMessage('Test message')
         setPendingNav({ type: 'push', href })
       }}
@@ -60,12 +61,12 @@ function SetPendingNavButton({ href }: { href: string }) {
 }
 
 function SetBackNavButton() {
-  const { setDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  const { markDirty, setPendingNav, setMessage } = useNavigationBlocker()
   return (
     <button
       data-testid="set-back"
       onClick={() => {
-        setDirty(true)
+        markDirty('form-a', true)
         setMessage('Test message')
         setPendingNav({ type: 'back' })
       }}
@@ -188,7 +189,7 @@ describe('NavigationConfirmDialog', () => {
     expect(mockPush).toHaveBeenCalledWith('/destination')
   })
 
-  it('should_set_dirty_false_on_leave_click', () => {
+  it('should_clear_every_dirty_form_on_leave_click', () => {
     function DirtyDisplay() {
       const { dirty } = useNavigationBlocker()
       return <div data-testid="dirty">{dirty ? 'dirty' : 'clean'}</div>

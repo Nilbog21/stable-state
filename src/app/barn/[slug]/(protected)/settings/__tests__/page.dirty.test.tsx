@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 import { withBlocker } from '@/test/navigation-blocker-harness'
@@ -16,6 +16,7 @@ vi.mock('../actions', async (importOriginal) => {
     ...actual,
     downloadAllDocumentsAction: vi.fn(),
     downloadBarnDataAction: vi.fn(),
+    updateBarnTimezoneAction: vi.fn(),
   }
 })
 
@@ -59,6 +60,16 @@ describe('SettingsPage — navigation dirty state', () => {
   it('should_set_dirty_when_timezone_selected', async () => {
     await renderPage()
     fireEvent.change(screen.getByLabelText(/timezone/i), { target: { value: 'America/Chicago' } })
+    expect(screen.getByTestId('dirty').textContent).toBe('dirty')
+  })
+
+  it('should_stay_dirty_when_a_sibling_settings_form_submits', async () => {
+    await renderPage()
+    fireEvent.change(screen.getByLabelText(/default per-lesson instructor cut/i), { target: { value: '30' } })
+    fireEvent.change(screen.getByLabelText(/timezone/i), { target: { value: 'America/Chicago' } })
+    await act(async () => {
+      fireEvent.submit(screen.getByLabelText(/timezone/i).closest('form')!)
+    })
     expect(screen.getByTestId('dirty').textContent).toBe('dirty')
   })
 })

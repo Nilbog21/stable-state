@@ -10,6 +10,11 @@ function Guard({ dirty }: { dirty: boolean }) {
   return null
 }
 
+function MessagedGuard({ dirty, message }: { dirty: boolean; message: string }) {
+  useUnsavedChangesGuard(dirty, message)
+  return null
+}
+
 function MessageProbe() {
   const { message } = useNavigationBlocker()
   return <div data-testid="message">{message}</div>
@@ -149,5 +154,78 @@ describe('GuardedForm', () => {
       )
     )
     expect((screen.getByLabelText('Name').closest('form') as HTMLFormElement).className).toBe('flex gap-2')
+  })
+})
+
+describe('per-form dirty aggregation', () => {
+  const action = vi.fn(async () => {})
+
+  function TwoGuards({ a, b }: { a: boolean; b: boolean }) {
+    return (
+      <NavigationBlockerProvider>
+        <DirtyProbe />
+        <Guard dirty={a} />
+        <Guard dirty={b} />
+      </NavigationBlockerProvider>
+    )
+  }
+
+  it('should_stay_dirty_while_a_sibling_guard_is_still_dirty', () => {
+    const { rerender } = render(<TwoGuards a={true} b={true} />)
+    rerender(<TwoGuards a={true} b={false} />)
+    expect(screen.getByTestId('dirty').textContent).toBe('dirty')
+  })
+
+  it('should_go_clean_when_every_guard_clears', () => {
+    const { rerender } = render(<TwoGuards a={true} b={true} />)
+    rerender(<TwoGuards a={false} b={false} />)
+    expect(screen.getByTestId('dirty').textContent).toBe('clean')
+  })
+
+  it('should_stay_clean_when_a_never_dirty_guard_unmounts', () => {
+    const { rerender } = render(
+      <NavigationBlockerProvider>
+        <DirtyProbe />
+        <Guard dirty={false} />
+      </NavigationBlockerProvider>
+    )
+    rerender(
+      <NavigationBlockerProvider>
+        <DirtyProbe />
+      </NavigationBlockerProvider>
+    )
+    expect(screen.getByTestId('dirty').textContent).toBe('clean')
+  })
+
+  it('should_stay_dirty_when_a_sibling_guarded_form_submits', async () => {
+    render(
+      withBlocker(
+        <>
+          <GuardedForm action={action}>
+            <input name="a" aria-label="Field A" />
+            <button type="submit">Save A</button>
+          </GuardedForm>
+          <GuardedForm action={action}>
+            <input name="b" aria-label="Field B" />
+          </GuardedForm>
+        </>
+      )
+    )
+    fireEvent.change(screen.getByLabelText('Field A'), { target: { value: 'x' } })
+    fireEvent.change(screen.getByLabelText('Field B'), { target: { value: 'y' } })
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: 'Save A' }).closest('form')!)
+    })
+    expect(screen.getByTestId('dirty').textContent).toBe('dirty')
+  })
+
+  it('should_show_a_caller_provided_message', () => {
+    render(
+      <NavigationBlockerProvider>
+        <MessageProbe />
+        <MessagedGuard dirty={true} message="Custom warning" />
+      </NavigationBlockerProvider>
+    )
+    expect(screen.getByTestId('message').textContent).toBe('Custom warning')
   })
 })
