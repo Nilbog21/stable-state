@@ -228,4 +228,30 @@ describe('per-form dirty aggregation', () => {
     )
     expect(screen.getByTestId('message').textContent).toBe('Custom warning')
   })
+
+  it('should_show_default_message_when_two_dirty_forms_have_different_messages', () => {
+    render(
+      <NavigationBlockerProvider>
+        <MessageProbe />
+        <Guard dirty={true} />
+        <MessagedGuard dirty={true} message="Custom warning" />
+      </NavigationBlockerProvider>
+    )
+    expect(screen.getByTestId('message').textContent).toBe('You have unsaved changes. Leave without saving?')
+  })
+
+  it('should_revert_to_surviving_forms_message_when_the_other_form_clears', () => {
+    function Pair({ defaultFormDirty }: { defaultFormDirty: boolean }) {
+      return (
+        <NavigationBlockerProvider>
+          <MessageProbe />
+          <MessagedGuard dirty={true} message="Custom warning" />
+          <Guard dirty={defaultFormDirty} />
+        </NavigationBlockerProvider>
+      )
+    }
+    const { rerender } = render(<Pair defaultFormDirty={true} />)
+    rerender(<Pair defaultFormDirty={false} />)
+    expect(screen.getByTestId('message').textContent).toBe('Custom warning')
+  })
 })
