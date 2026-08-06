@@ -10,7 +10,7 @@ export default defineConfig({
     // e2e/support holds the pure fixture helpers (date anchoring, slug derivation) the
     // Playwright specs build on — unit-tested here, not by running the suite. Matched on
     // *.test.ts only, so Playwright's own *.spec.ts files are never handed to vitest.
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.ts', 'e2e/support/**/*.test.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.{test,spec}.ts', 'e2e/support/**/*.test.ts', 'eslint-rules/**/*.test.ts'],
     // Pinned so viewer-local, barn-local and UTC are three *different* frames in every run
     // (#1221). Unpinned, the runner is the developer's own zone — usually America/New_York,
     // which is the barns.timezone default, collapsing viewer-local into barn-local — and UTC
