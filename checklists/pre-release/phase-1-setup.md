@@ -1,6 +1,6 @@
 # Phase 1 — Setup
 
-<!-- Asserting role: role-agnostic setup — an unauthenticated visitor, then the shared demo user, then the developer's own account pre-membership and as its manager. -->
+<!-- Asserting role: role-agnostic — setup: an unauthenticated visitor, then the shared demo user, then the developer's own account pre-membership and as its manager. -->
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 

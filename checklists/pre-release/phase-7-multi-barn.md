@@ -1,6 +1,6 @@
 # Phase 7 — Multi-barn
 
-<!-- Asserting role: manager, across two barns. Cross-barn isolation, not cross-role. -->
+<!-- Asserting role: manager — across two barns. Cross-barn isolation, not cross-role. -->
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 
