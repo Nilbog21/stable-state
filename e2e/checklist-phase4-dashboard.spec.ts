@@ -269,7 +269,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   // produce by accident, and insertion order is one of them.
   const barnNoon = (date: string) => wallClockToInstant(`${date}T12:00:00`, barn.timezone)
 
-  await addBarnEvent(supabase, barn.id, { at: barnNoon('2030-05-17'), title: 'Spring Open House' })
+  await addBarnEvent(supabase, barn, { at: barnNoon('2030-05-17'), title: 'Spring Open House' })
   await addExpense(supabase, barn, {
     at: barnNoon('2030-05-16'),
     time: '14:00',

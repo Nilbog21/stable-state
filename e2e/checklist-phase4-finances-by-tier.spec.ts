@@ -35,7 +35,7 @@ const barn = withBarn('phase4-finances-by-tier', async ({ supabase, barn, member
   // it, and withBarn creates this barn *now* — so without backdating, the empty month and the
   // charge-only month below would both silently resolve to the current month instead.
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -96,16 +96,17 @@ const barn = withBarn('phase4-finances-by-tier', async ({ supabase, barn, member
 // ---------------------------------------------------------------------------
 
 /**
- * finances/page.tsx resolves its default month from the server clock, so every navigation
- * here names its month explicitly. UTC arithmetic, because resolveFinancesMonth parses and
- * compares `?month=` in UTC.
+ * finances/page.tsx resolves its default month through `barnToday` (#1360), so every
+ * navigation here names its month explicitly — and names it off the same barn-framed anchor
+ * the fixtures are placed by, so the two can't disagree. A param computed in the host's UTC
+ * names next month, and gets clamped back down to the barn's, for the hours each month after
+ * UTC rolls over and the barn hasn't.
  */
-function monthParam(monthsAgo: number): string {
-  const now = new Date()
-  return formatMonthParam(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 1)))
+function monthParam(monthsAgo: 0 | 1 | 2): string {
+  return formatMonthParam(monthAnchor(monthsAgo, barn.data.barn.timezone))
 }
 
-function byTierUrl(monthsAgo = 0): string {
+function byTierUrl(monthsAgo: 0 | 1 | 2 = 0): string {
   return `/barn/${barn.slug}/finances?month=${monthParam(monthsAgo)}&tab=tier`
 }
 

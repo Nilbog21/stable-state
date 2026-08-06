@@ -69,13 +69,13 @@ let seeded: Seeded
 
 const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, members }) => {
   // resolveFinancesMonth clamps a requested month *up* to the barn's own creation month, and
-  // withBarn creates this barn now. MONTH below is fixed at import while this runs in
-  // beforeAll, so a UTC month rollover in between would leave the barn a month ahead of
-  // MONTH, clamping it away and reading every table below as empty. Backdating removes the
-  // ordering dependency outright. (Both are UTC-framed since #1151, so there is no longer a
-  // standing skew between them for this to paper over.)
+  // withBarn creates this barn now — so a barn month rolling over between this seed and a
+  // later navigation would leave the barn a month ahead of `month()`, clamping it away and
+  // reading every table below as empty. Backdating removes the ordering dependency outright.
+  // (Both sides resolve through barnToday since #1360, so there is no longer a standing skew
+  // between them for this to paper over.)
   mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(1).toISOString() }).eq('id', barn.id),
+    await supabase.from('barns').update({ created_at: monthAnchor(1, barn.timezone).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
   )
 
@@ -98,7 +98,7 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
   const birch = await addHorse(supabase, barn.id, 'Birch')
   const comet = await addHorse(supabase, barn.id, 'Comet')
 
-  const thisMonth = monthAnchor(0)
+  const thisMonth = thisMonthAnchor(barn.timezone)
 
   // Apple's lesson is instructed by the *manager*, not the trainer — the trainer's only
   // lesson is Birch's below, so the removal block's Unattributed delta has exactly one
@@ -142,24 +142,37 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
 
 /**
  * The month every fixture above lands in, derived from the same anchor the builders use
- * rather than from `new Date()`. finances/page.tsx resolves its default month from the server
- * clock, so a spec must always pass `?month=` — and deriving the two independently would let
- * them name different months if a UTC month rolled over between the two calls. Both sides are
- * UTC-framed (#1151), so the anchor and formatMonthParam agree by construction; see the
- * seed's note above for the ordering window the barn backdate closes.
+ * rather than from `new Date()`. finances/page.tsx resolves its default month through
+ * `barnToday` (#1360), so a spec must always pass `?month=` — and computing it from the host
+ * clock would name *next* month for the hours each month after UTC rolls over and the barn
+ * hasn't, only for resolveFinancesMonth's upper bound to clamp it back down.
+ *
+ * A function rather than a module constant: `barn.data` throws on a module-scope read (see
+ * support/test.ts), so anything derived from the barn is evaluated at test time. Memoized so
+ * that deferral doesn't cost the one-anchor property — the seed and every later navigation
+ * still resolve the same instant, not one `new Date()` per call.
  */
-const MONTH = formatMonthParam(monthAnchor(0))
+let anchor: Date | undefined
+
+function thisMonthAnchor(timezone: string): Date {
+  anchor ??= monthAnchor(0, timezone)
+  return anchor
+}
+
+function month(): string {
+  return formatMonthParam(thisMonthAnchor(barn.data.barn.timezone))
+}
 
 type Tab = (typeof NET_TABS)[number]
 
 // Required, not optional: every caller names a tab, and a defaulted one would silently
 // assert against whichever tab the page happens to open on.
 function financesUrl(tab: Tab): string {
-  return `/barn/${barn.slug}/finances?month=${MONTH}&tab=${tab}`
+  return `/barn/${barn.slug}/finances?month=${month()}&tab=${tab}`
 }
 
 function horseDrilldownUrl(horseId: string): string {
-  return `/barn/${barn.slug}/finances/horses/${horseId}?month=${MONTH}`
+  return `/barn/${barn.slug}/finances/horses/${horseId}?month=${month()}`
 }
 
 /**
@@ -236,7 +249,7 @@ test.describe.serial('booking a comped lesson', () => {
     baselineTotalNets = await totalNetPerTab(page)
 
     await addPaidLesson(barn.data.supabase, barn.data.barn, {
-      at: monthAnchor(0),
+      at: monthAnchor(0, barn.data.barn.timezone),
       instructorId: barn.data.members.manager.membershipId,
       tierName: COMPED_TIER,
       fee: COMPED_FEE,

@@ -19,49 +19,55 @@ import {
 
 vi.mock('@/lib/db/lesson-participants', () => ({ createLessonWithParticipants: vi.fn() }))
 
-// Both `now` inputs and assertions are UTC-framed throughout, matching what the helpers
-// promise (see their docs) — a local `new Date(2026, 6, 27)` here would make every case below
-// mean something different depending on the runner's zone, which is the very bug under test.
+// The barn every case below is framed in. `America/New_York` is the e2e default, and it is
+// four or five hours behind UTC — which is the whole skew under test, so the zone is named
+// rather than left to a fixture's default.
+const TZ = 'America/New_York'
+
+// `now` inputs are explicit UTC ISO instants and the anchors' assertions read UTC digits: an
+// anchor is a UTC-midnight Date whose *digits* are the barn's month, which is the frame
+// formatMonthParam reads and resolveFinancesMonth's startDate/endDate are in.
 describe('monthAnchor', () => {
   it('should_land_on_day_15', () => {
-    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 27))).getUTCDate()).toBe(15)
+    expect(monthAnchor(0, TZ, new Date('2026-07-27T12:00:00Z')).getUTCDate()).toBe(15)
   })
 
   it('should_stay_in_the_current_month_for_zero', () => {
-    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(6)
+    expect(monthAnchor(0, TZ, new Date('2026-07-27T12:00:00Z')).getUTCMonth()).toBe(6)
   })
 
   it('should_step_back_one_month_for_one', () => {
-    expect(monthAnchor(1, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(5)
+    expect(monthAnchor(1, TZ, new Date('2026-07-27T12:00:00Z')).getUTCMonth()).toBe(5)
   })
 
   it('should_step_back_two_months_for_two', () => {
-    expect(monthAnchor(2, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(4)
+    expect(monthAnchor(2, TZ, new Date('2026-07-27T12:00:00Z')).getUTCMonth()).toBe(4)
   })
 
   it('should_roll_the_year_back_when_stepping_past_january', () => {
-    expect(monthAnchor(2, new Date(Date.UTC(2026, 0, 10))).getUTCFullYear()).toBe(2025)
+    expect(monthAnchor(2, TZ, new Date('2026-01-10T12:00:00Z')).getUTCFullYear()).toBe(2025)
   })
 
   it('should_wrap_to_november_when_stepping_two_months_back_from_january', () => {
-    expect(monthAnchor(2, new Date(Date.UTC(2026, 0, 10))).getUTCMonth()).toBe(10)
+    expect(monthAnchor(2, TZ, new Date('2026-01-10T12:00:00Z')).getUTCMonth()).toBe(10)
   })
 })
 
 describe('pastInstantInMonth', () => {
   it('should_return_one_hour_ago_when_mid_month', () => {
-    const now = new Date(Date.UTC(2026, 6, 27, 14, 0, 0))
-    expect(pastInstantInMonth(0, now).getTime()).toBe(now.getTime() - 60 * 60 * 1000)
+    const now = new Date('2026-07-15T14:00:00Z')
+    expect(pastInstantInMonth(0, TZ, now).getTime()).toBe(now.getTime() - 60 * 60 * 1000)
   })
 
-  it('should_clamp_to_start_of_month_within_the_first_hour_of_a_month', () => {
-    const now = new Date(Date.UTC(2026, 6, 1, 0, 20, 0))
-    expect(pastInstantInMonth(0, now).getTime()).toBe(Date.UTC(2026, 6, 1))
+  // The barn's month start, not the UTC-digit midnight: `2026-07-01T00:00:00Z` decodes to
+  // June 30th at the barn, which is the previous bucket for every expense read.
+  it('should_clamp_to_the_barn_month_start_within_the_first_hour_of_the_barn_month', () => {
+    expect(pastInstantInMonth(0, TZ, new Date('2026-07-01T04:30:00Z')).toISOString()).toBe('2026-07-01T04:00:00.000Z')
   })
 
   it('should_delegate_to_month_anchor_for_a_prior_month', () => {
-    const now = new Date(Date.UTC(2026, 6, 27, 14, 0, 0))
-    expect(pastInstantInMonth(1, now).getTime()).toBe(monthAnchor(1, now).getTime())
+    const now = new Date('2026-07-27T14:00:00Z')
+    expect(pastInstantInMonth(1, TZ, now).getTime()).toBe(monthAnchor(1, TZ, now).getTime())
   })
 })
 
@@ -71,7 +77,6 @@ describe('pastInstantInMonth', () => {
  * day (23:30 barn-local), which is exactly the skew a runner-relative offset used to smuggle in.
  */
 describe('daysFromNow', () => {
-  const TZ = 'America/New_York'
   // 03:30Z is 23:30 the *previous* day in the barn's zone, so a UTC-framed offset would land
   // a day later than the dashboard's own "+2 days" does.
   const now = new Date('2026-07-21T03:30:00Z')
@@ -141,42 +146,60 @@ describe('addUnpaidLesson', () => {
 })
 
 /**
- * #1151: the app buckets Finances by UTC month (resolveFinancesMonth, formatMonthParam), so
- * these anchors have to as well — a local-calendar anchor lands in a different bucket than the
- * `?month=` a spec navigates to for the |UTC offset| hours either side of a month boundary.
+ * #1360: the app buckets Finances by the *barn's* month (resolveFinancesMonth resolves "now"
+ * through barnToday), so these anchors have to as well. Every zone in BARN_TIMEZONES is behind
+ * UTC, so for the 4-5 hours each month after UTC rolls over and the barn hasn't, a UTC-framed
+ * anchor names next month while resolveFinancesMonth's upper bound clamps the matching
+ * `?month=` back down to the barn's — the seed lands in one bucket and every navigation asks
+ * for another. (Before #1360 both sides were UTC, which is why #1151's UTC framing held.)
  *
- * The runner's own zone is whatever the developer's machine says, so each case pins TZ rather
- * than depending on it: `Pacific/Niue` (UTC−11) is still in the previous month at 00:30 UTC on
- * the 1st, and `Pacific/Kiritimati` (UTC+14) is already in the next one at 23:30 UTC on the
- * last day. Mutating process.env.TZ mid-process does repoint Date's local getters on Node —
- * the same save/restore shape the runPrefix block below uses for its own env var.
+ * `2026-08-01T02:00Z` is that window: August at UTC, still July 31st in `America/New_York`.
+ *
+ * The runner's own zone is whatever the developer's machine says, so the second half pins TZ
+ * rather than depending on it — `Pacific/Niue` (UTC−11) and `Pacific/Kiritimati` (UTC+14)
+ * bracket UTC from both sides and neither may move the answer. Mutating process.env.TZ
+ * mid-process does repoint Date's local getters on Node — the same save/restore shape the
+ * runPrefix block below uses for its own env var.
  */
-describe('UTC month framing across a zone-skewed month boundary', () => {
-  const originalTZ = process.env.TZ
+describe('barn month framing across a zone-skewed month boundary', () => {
+  const rollover = new Date('2026-08-01T02:00:00Z')
 
-  afterEach(() => {
-    if (originalTZ === undefined) delete process.env.TZ
-    else process.env.TZ = originalTZ
+  it('should_anchor_in_the_barn_month_when_utc_has_already_rolled_over', () => {
+    expect(monthAnchor(0, TZ, rollover).getUTCMonth()).toBe(6)
   })
 
-  it('should_anchor_in_the_utc_month_when_the_runner_is_behind_utc', () => {
-    process.env.TZ = 'Pacific/Niue'
-    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 1, 0, 30))).getUTCMonth()).toBe(6)
+  it('should_step_back_from_the_barn_month_when_utc_has_already_rolled_over', () => {
+    expect(monthAnchor(1, TZ, rollover).getUTCMonth()).toBe(5)
   })
 
-  it('should_anchor_in_the_utc_month_when_the_runner_is_ahead_of_utc', () => {
-    process.env.TZ = 'Pacific/Kiritimati'
-    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 31, 23, 30))).getUTCMonth()).toBe(6)
+  // The last instant still inside July's transaction window — an hour before `now` would be
+  // 2026-08-01T01:00Z, which resolveFinancesMonth reads as August while the page shows July.
+  it('should_clamp_the_current_month_instant_inside_the_barn_month_when_utc_has_rolled_over', () => {
+    expect(pastInstantInMonth(0, TZ, rollover).toISOString()).toBe('2026-07-31T23:59:59.000Z')
   })
 
-  it('should_clamp_to_the_utc_month_start_when_the_runner_is_behind_utc', () => {
-    process.env.TZ = 'Pacific/Niue'
-    expect(pastInstantInMonth(0, new Date(Date.UTC(2026, 6, 1, 0, 30))).getTime()).toBe(Date.UTC(2026, 6, 1))
-  })
+  describe('runner zone independence', () => {
+    const originalTZ = process.env.TZ
 
-  it('should_clamp_to_the_utc_month_start_when_the_runner_is_ahead_of_utc', () => {
-    process.env.TZ = 'Pacific/Kiritimati'
-    expect(pastInstantInMonth(0, new Date(Date.UTC(2026, 7, 1, 0, 30))).getTime()).toBe(Date.UTC(2026, 7, 1))
+    afterEach(() => {
+      if (originalTZ === undefined) delete process.env.TZ
+      else process.env.TZ = originalTZ
+    })
+
+    it('should_ignore_a_runner_behind_utc', () => {
+      process.env.TZ = 'Pacific/Niue'
+      expect(monthAnchor(0, TZ, rollover).getUTCMonth()).toBe(6)
+    })
+
+    it('should_ignore_a_runner_ahead_of_utc', () => {
+      process.env.TZ = 'Pacific/Kiritimati'
+      expect(monthAnchor(0, TZ, rollover).getUTCMonth()).toBe(6)
+    })
+
+    it('should_ignore_the_runner_zone_when_clamping', () => {
+      process.env.TZ = 'Pacific/Kiritimati'
+      expect(pastInstantInMonth(0, TZ, rollover).toISOString()).toBe('2026-07-31T23:59:59.000Z')
+    })
   })
 })
 

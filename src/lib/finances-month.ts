@@ -1,8 +1,20 @@
 /**
  * Month resolution for the Finances pages — parses/clamps the `?month=YYYY-MM`
  * param and formats a resolved month back into that param value. Used by
- * `finances/page.tsx` and its three drill-down pages.
+ * `finances/page.tsx` and its four drill-down pages.
+ *
+ * #1360: "current month" is the *barn's* month, resolved through `barnToday`, not the
+ * server host's UTC month. Every zone in BARN_TIMEZONES is behind UTC, so the host rolls
+ * over 4-10 hours early and a manager opening /finances in that window used to land on
+ * next month's empty window — with `isCurrentMonth` and both pager URLs wrong too. Same
+ * defect #1309 fixed one call further down the chain.
+ *
+ * `startDate`/`endDate` stay UTC-midnight `Date`s: their digits *are* the barn-local month
+ * boundary, which is how downstream readers already treat them (see
+ * `expense-finances.ts:fetchExpenseTransactionsInRange`).
  */
+import { barnDay, barnToday } from './barn-timezone'
+import { formatMonthHeading } from './local-day'
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -19,7 +31,7 @@ function toMonthIndex(year: number, month: number): number {
 export function resolveFinancesMonth(
   monthParam: string | undefined,
   barnCreatedAt: string,
-  now: Date
+  timezone: string
 ): {
   startDate: Date
   endDate: Date
@@ -28,8 +40,9 @@ export function resolveFinancesMonth(
   prevMonthUrl: string | null
   nextMonthUrl: string | null
 } {
-  const nowYear = now.getUTCFullYear()
-  const nowMonth = now.getUTCMonth()
+  const today = barnToday(timezone)
+  const nowYear = parseInt(today.slice(0, 4), 10)
+  const nowMonth = parseInt(today.slice(5, 7), 10) - 1
 
   let year = nowYear
   let month = nowMonth
@@ -50,9 +63,14 @@ export function resolveFinancesMonth(
     }
   }
 
+  // `barns.created_at` is a real instant, so the month it falls in is the barn's, not UTC's —
+  // a barn created just after UTC midnight on the 1st was created *last* month locally.
+  // The guard stays because `barnDay` would throw on an Invalid Date: an unparseable
+  // timestamp degrades to no lower bound, as before.
   const barnDate = new Date(barnCreatedAt)
-  const barnYear = isNaN(barnDate.getTime()) ? 0 : barnDate.getUTCFullYear()
-  const barnMonth = isNaN(barnDate.getTime()) ? 0 : barnDate.getUTCMonth()
+  const barnCreated = isNaN(barnDate.getTime()) ? null : barnDay(barnDate, timezone)
+  const barnYear = barnCreated === null ? 0 : parseInt(barnCreated.slice(0, 4), 10)
+  const barnMonth = barnCreated === null ? 0 : parseInt(barnCreated.slice(5, 7), 10) - 1
 
   if (toMonthIndex(year, month) < toMonthIndex(barnYear, barnMonth)) {
     year = barnYear
@@ -67,10 +85,7 @@ export function resolveFinancesMonth(
   const isCurrentMonth = year === nowYear && month === nowMonth
   const endDate = new Date(Date.UTC(year, month + 1, 1))
 
-  const monthLabel =
-    new Date(Date.UTC(year, month, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }) +
-    ' ' +
-    year
+  const monthLabel = formatMonthHeading(`${pad4(year)}-${pad2(month + 1)}`)
 
   const atBarnFirst = toMonthIndex(year, month) === toMonthIndex(barnYear, barnMonth)
   let prevMonthUrl: string | null = null

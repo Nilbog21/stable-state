@@ -483,7 +483,7 @@ describe('FinancesPage', () => {
   it('should_clamp_to_barn_creation_month_when_param_is_before_it', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-03-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-03-01T12:00:00Z' }))
     await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({ month: '2025-01' }),
@@ -530,7 +530,7 @@ describe('FinancesPage', () => {
   it('should_not_show_prev_link_at_barn_creation_month', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T12:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: '<' })).toBeNull()
@@ -607,7 +607,7 @@ describe('FinancesPage', () => {
   it('should_show_prev_link_when_viewing_january', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T12:00:00Z' }))
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({ month: '2026-01' }),
@@ -619,7 +619,7 @@ describe('FinancesPage', () => {
   it('should_link_prev_to_previous_year_when_viewing_january', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T12:00:00Z' }))
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({ month: '2026-01' }),
@@ -653,7 +653,7 @@ describe('FinancesPage', () => {
   it('should_style_prev_arrow_link_with_border_when_present', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-01-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-01-01T12:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const prevLink = screen.queryByRole('link', { name: '<' })
@@ -675,7 +675,7 @@ describe('FinancesPage', () => {
   it('should_render_prev_placeholder_text_when_prev_arrow_absent', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T12:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByText('<')).not.toBeNull()
@@ -684,7 +684,7 @@ describe('FinancesPage', () => {
   it('should_not_render_prev_placeholder_as_link_when_prev_arrow_absent', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T12:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: '<' })).toBeNull()

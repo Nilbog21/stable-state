@@ -35,7 +35,7 @@ export default async function AgreementsPage({
       agreements.map((a) => a.horse_id),
       barn.id
     ),
-    getUnpaidAgreementIds(barn.id),
+    getUnpaidAgreementIds(barn.id, barn.timezone),
   ])
 
   return (

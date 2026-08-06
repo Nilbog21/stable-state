@@ -1,6 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
-import { addExpense, addHorse, addPaidLesson, addTier, addUnpaidLesson } from './support/fixtures'
+import { addExpense, addHorse, addPaidLesson, addTier, addUnpaidLesson, monthAnchor } from './support/fixtures'
 import { formatMonthParam } from '@/lib/finances-month'
 
 // The page-level invariants this file covers hold across every tab, so every assertion is
@@ -67,9 +67,14 @@ const barn = withBarn('phase4-finances-page-chrome', async ({ supabase, barn, me
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+/**
+ * Derived from the same barn-framed anchor the fixtures are placed by, never from the raw
+ * clock: finances/page.tsx resolves its default month through `barnToday` (#1360), so a param
+ * computed in the host's UTC names next month — and gets clamped back down to the barn's —
+ * for the hours each month after UTC rolls over and the barn hasn't.
+ */
 function currentMonth(): string {
-  return formatMonthParam(new Date())
+  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
 }
 
 function financesUrl(tab?: (typeof TABS)[number]): string {

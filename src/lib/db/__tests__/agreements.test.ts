@@ -625,7 +625,7 @@ describe('getUnpaidAgreementIds', () => {
     vi.mocked(createClient).mockResolvedValue(mockClient)
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T12:00:00Z'))
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(getTransactionRows).toHaveBeenCalledWith(
       'barn-1', ['lease_charge', 'board_charge'],
       { endDate: new Date(Date.UTC(2026, 6, 1)), collected: false },
@@ -633,16 +633,32 @@ describe('getUnpaidAgreementIds', () => {
     )
   })
 
+  it('should_bound_on_the_barn_month_when_utc_has_already_rolled_over', async () => {
+    // 2026-08-01T02:00Z is still 2026-07-31 21:00 in New York, so July's charge is
+    // current-month and must stay out of the unpaid set.
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+    const mockClient = { from: vi.fn() } as any
+    vi.mocked(createClient).mockResolvedValue(mockClient)
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-01T02:00:00Z'))
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
+    expect(getTransactionRows).toHaveBeenCalledWith(
+      'barn-1', ['lease_charge', 'board_charge'],
+      { endDate: new Date('2026-07-01T00:00:00Z'), collected: false },
+      mockClient
+    )
+  })
+
   it('should_return_empty_set_when_no_unpaid_transactions', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set())
   })
 
   it('should_query_agreement_charges_for_the_returned_charge_ids', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     const { mockEq, mockIn } = makeChargesChain([{ id: 'charge-1', agreement_id: 'agreement-1' }])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     expect(mockIn).toHaveBeenCalledWith('id', ['charge-1'])
   })
@@ -656,7 +672,7 @@ describe('getUnpaidAgreementIds', () => {
       { id: 'charge-1', agreement_id: 'agreement-1' },
       { id: 'charge-2', agreement_id: 'agreement-1' },
     ])
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set(['agreement-1']))
   })
 
@@ -666,40 +682,40 @@ describe('getUnpaidAgreementIds', () => {
       unpaidChargeRow({ id: 'txn-2', agreementChargeId: 'charge-2' }),
     ])
     const { mockIn } = makeChargesChain([{ id: 'charge-2', agreement_id: 'agreement-2' }])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(mockIn).toHaveBeenCalledWith('id', ['charge-2'])
   })
 
   it('should_skip_followup_query_when_there_are_no_unpaid_rows', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
     const { from } = makeChargesChain([])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(from).not.toHaveBeenCalled()
   })
 
   it('should_skip_followup_query_when_every_charge_id_is_null', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow({ agreementChargeId: null })])
     const { from } = makeChargesChain([])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(from).not.toHaveBeenCalled()
   })
 
   it('should_return_empty_set_when_followup_data_is_null', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     makeChargesChain(null)
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set())
   })
 
   it('should_throw_when_followup_query_errors', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     makeChargesChain(null, new Error('db error'))
-    await expect(getUnpaidAgreementIds('barn-1')).rejects.toThrow('db error')
+    await expect(getUnpaidAgreementIds('barn-1', 'America/New_York')).rejects.toThrow('db error')
   })
 
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('transactions error'))
-    await expect(getUnpaidAgreementIds('barn-1')).rejects.toThrow('transactions error')
+    await expect(getUnpaidAgreementIds('barn-1', 'America/New_York')).rejects.toThrow('transactions error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
@@ -710,7 +726,7 @@ describe('getUnpaidAgreementIds', () => {
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
 
-    const result = await getUnpaidAgreementIds('barn-1', mockClient)
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York', mockClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(result).toEqual(new Set(['agreement-1']))

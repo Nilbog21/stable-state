@@ -17,7 +17,7 @@ import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import HorseIncomePage from '../page'
 import { calendarDate } from '@/lib/local-day'
 
-const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
+const mockBarn = createMockBarn({ created_at: '2026-01-01T12:00:00Z' })
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ role: 'manager' })
 

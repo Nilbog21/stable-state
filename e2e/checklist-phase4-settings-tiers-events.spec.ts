@@ -111,7 +111,7 @@ const barn = withBarn('settings-tiers-events', async ({ supabase, barn: seededBa
   // rather than whatever a horseless barn renders.
   await addHorse(supabase, seededBarn.id, 'Juniper')
 
-  await addBarnEvent(supabase, seededBarn.id, {
+  await addBarnEvent(supabase, seededBarn, {
     at: SURVIVING_EVENT.at,
     title: SURVIVING_EVENT.title,
     visibleToRoles: ['manager'],

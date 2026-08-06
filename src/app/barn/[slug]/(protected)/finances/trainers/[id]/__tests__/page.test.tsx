@@ -14,7 +14,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
 import TrainerIncomePage from '../page'
 
-const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
+const mockBarn = createMockBarn({ created_at: '2026-01-01T12:00:00Z' })
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ role: 'manager' })
 

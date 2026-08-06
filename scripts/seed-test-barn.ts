@@ -157,7 +157,7 @@ async function run() {
   })
 
   // Barn event — Manage Barn's Barn Events list, and the dashboard calendar's interleaving.
-  await addBarnEvent(supabase, barn.id, { at: daysFromNow(6, barn.timezone), title: 'Spring Schooling Show', notes: 'Entries close Friday.' })
+  await addBarnEvent(supabase, barn, { at: daysFromNow(6, barn.timezone), title: 'Spring Schooling Show', notes: 'Entries close Friday.' })
 
   // Pre-set photos, so the read-only and replace/remove flows start from real state. Clover
   // and Harper's own assets are left unused here on purpose — they're the upload sources.

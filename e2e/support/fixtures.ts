@@ -88,45 +88,59 @@ export type SeededMembers = Record<E2eRole, SeededMember> & { rider2: SeededMemb
 // ---------------------------------------------------------------------------
 
 /**
- * Day 15 of the UTC month `monthsAgo` back from `now` — Finances is month-scoped, so fixtures
- * are placed by explicit month anchor rather than by day offset. A `past(5)`-style offset
- * silently lands in the previous month whenever the suite runs in the first days of a month,
- * which would read as a once-a-month phantom flake against every month-bucketed assertion.
+ * Day 15 of the *barn's* month `monthsAgo` back from `now` — Finances is month-scoped, so
+ * fixtures are placed by explicit month anchor rather than by day offset. A `past(5)`-style
+ * offset silently lands in the previous month whenever the suite runs in the first days of a
+ * month, which would read as a once-a-month phantom flake against every month-bucketed
+ * assertion.
  *
- * UTC rather than the local calendar (#1151), because that is the framing the thing being
- * asserted against uses: resolveFinancesMonth buckets on getUTCMonth() and formatMonthParam
- * formats from UTC. A local-calendar anchor and the `?month=` a spec navigates to name
- * *different* months for the |UTC offset| hours either side of a month boundary, so the seed
- * lands in one bucket while every navigation asks for another.
+ * Barn-framed since #1360, when resolveFinancesMonth stopped resolving "now" from the host's
+ * UTC clock and started resolving it through barnToday — same reasoning as daysFromNow below:
+ * the anchor is placed in the frame the thing being asserted against resolves in, so the two
+ * agree outright rather than by cancellation. Every zone in BARN_TIMEZONES is behind UTC, so a
+ * UTC-framed anchor names *next* month for the 4-5 hours each month after UTC rolls over and
+ * the barn hasn't, while resolveFinancesMonth's upper bound clamps the matching `?month=` back
+ * down to the barn's — the seed lands in one bucket and every navigation asks for another.
  *
- * Don't retry fixing this by pinning a timezone instead. Playwright's `timezoneId` isn't even
- * a candidate — it sets the *browser context's* zone, while these helpers run in the Node
- * runner process during beforeAll seeding, off process.env.TZ. Exporting TZ=UTC from
+ * The returned Date is still a UTC midnight, and deliberately so: its *digits* are the barn's
+ * month, which is the frame formatMonthParam reads and resolveFinancesMonth's
+ * startDate/endDate are in. Only the choice of month moved.
+ *
+ * Don't retry fixing this by pinning the runner's zone instead. Playwright's `timezoneId`
+ * isn't even a candidate — it sets the *browser context's* zone, while these helpers run in
+ * the Node runner process during beforeAll seeding, off process.env.TZ. Exporting TZ from
  * scripts/run-checklist-suite.sh would work, but only for runs that go through that script: a
- * bare `npx playwright test` or an IDE runner would silently get the skew back. Framing the
- * anchors in UTC fixes it at the source, for every caller and every entry point.
+ * bare `npx playwright test` or an IDE runner would silently get the skew back. Taking the
+ * barn's zone as an argument fixes it at the source, for every caller and every entry point.
  */
-export function monthAnchor(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date {
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 15))
+export function monthAnchor(monthsAgo: 0 | 1 | 2, timezone: string, now: Date = new Date()): Date {
+  const [year, month] = barnToday(timezone, now).split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1 - monthsAgo, 15))
 }
 
 /**
- * An instant inside the UTC month `monthsAgo` back that is guaranteed to already be in the
- * past — day 15 for a prior month, and an hour ago for the current one. Same UTC framing as
- * monthAnchor above, and for the same reason; its month-start clamp is UTC too, so the
- * clamped instant can't land in the previous bucket.
+ * An instant inside the barn's month `monthsAgo` back that is guaranteed to already be in the
+ * past — day 15 for a prior month, and an hour ago for the current one. Same barn framing as
+ * monthAnchor above, and for the same reason.
  *
- * ponytail: an hour before `now` can precede the month start when the suite runs within the
- * first hour of a month, so it clamps to the month start instead. That clamped instant is
- * *not* strictly in the past, so a fixture placed there can miss a `< now` filter in that
- * one-hour window. Upgrade path if that ever bites: seed the current-month fixture at the
- * previous month's end and widen the assertion, rather than adding retry logic.
+ * Its two clamps are framed differently on purpose, because a fixture placed here is read
+ * through two different windows and has to sit in the intersection: lesson and charge
+ * transactions bucket on `occurred_at` against the raw UTC-digit month range
+ * (lesson-finance-queries.ts, agreement-finances.ts), while addExpense decodes to a barn-local
+ * calendar day (expense-finances.ts). So the floor is the barn-local month start — a UTC-digit
+ * midnight decodes to the *previous* barn day — and the ceiling is one second before the
+ * UTC-digit month end, since the barn-local month end falls outside the transaction range.
+ *
+ * The ceiling is what the rollover window needs: at 02:00Z on the 1st the barn is still on the
+ * 31st, and an unclamped "an hour ago" would be an August instant seeding a July page.
  */
-export function pastInstantInMonth(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date {
-  if (monthsAgo > 0) return monthAnchor(monthsAgo, now)
-  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-  const anHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
-  return anHourAgo > startOfMonth ? anHourAgo : startOfMonth
+export function pastInstantInMonth(monthsAgo: 0 | 1 | 2, timezone: string, now: Date = new Date()): Date {
+  if (monthsAgo > 0) return monthAnchor(monthsAgo, timezone, now)
+  const today = barnToday(timezone, now)
+  const [year, month] = today.split('-').map(Number)
+  const monthStart = wallClockToInstant(`${today.slice(0, 8)}01T00:00:00`, timezone).getTime()
+  const monthEnd = Date.UTC(year, month, 1) - 1000
+  return new Date(Math.max(monthStart, Math.min(now.getTime() - 60 * 60 * 1000, monthEnd)))
 }
 
 /**
@@ -154,8 +168,8 @@ export function daysFromNow(days: number, timezone: string, now: Date = new Date
 /** Exactly one of `at`/`monthsAgo`; `monthsAgo` is the month-scoped Finances path. */
 export type When = { at: Date; monthsAgo?: never } | { monthsAgo: 0 | 1 | 2; at?: never }
 
-export function resolveWhen(when: When): Date {
-  return when.at ?? pastInstantInMonth(when.monthsAgo!)
+export function resolveWhen(when: When, timezone: string): Date {
+  return when.at ?? pastInstantInMonth(when.monthsAgo!, timezone)
 }
 
 // ---------------------------------------------------------------------------
@@ -453,7 +467,7 @@ export async function addUnpaidLesson(
   barn: SeededBarn,
   opts: LessonOptions
 ): Promise<Lesson> {
-  const when = resolveWhen(opts)
+  const when = resolveWhen(opts, barn.timezone)
   const lessonAt = opts.time ? atBarnLocalTime(when, barn.timezone, opts.time) : when
 
   return createLessonWithParticipants(
@@ -636,7 +650,7 @@ export async function addExpense(
   // appointments.expense_date is DATE-only and is compared against a barn-timezone
   // wall-clock window (see barns.timezone in docs/architecture/schema.md), so it has to land
   // on the barn's own calendar day, not UTC's.
-  const expenseDate = instantToLocalWallClock(resolveWhen(opts), barn.timezone).slice(0, 10)
+  const expenseDate = instantToLocalWallClock(resolveWhen(opts, barn.timezone), barn.timezone).slice(0, 10)
   const appointment = await createExpense(
     barn.id,
     {
@@ -683,7 +697,7 @@ export async function addLeaseCharge(
   opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board'; paid?: boolean }
 ): Promise<Agreement> {
   const isBoard = opts.kind === 'board'
-  const when = resolveWhen(opts)
+  const when = resolveWhen(opts, barn.timezone)
   const agreement = await createAgreement(
     {
       barnId: barn.id,
@@ -873,16 +887,16 @@ export async function addManagedMember(
  */
 export async function addBarnEvent(
   supabase: SupabaseClient,
-  barnId: string,
+  barn: SeededBarn,
   opts: When & { title: string; notes?: string; visibleToRoles?: Role[] }
 ): Promise<BarnEvent> {
   return mustSucceed<BarnEvent>(
     await supabase
       .from('barn_events')
       .insert({
-        barn_id: barnId,
+        barn_id: barn.id,
         title: opts.title,
-        event_at: resolveWhen(opts).toISOString(),
+        event_at: resolveWhen(opts, barn.timezone).toISOString(),
         notes: opts.notes ?? null,
         visible_to_roles: opts.visibleToRoles ?? ['manager', 'trainer', 'rider'],
       })
