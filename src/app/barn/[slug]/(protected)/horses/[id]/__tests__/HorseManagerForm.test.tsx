@@ -326,7 +326,13 @@ describe('HorseManagerForm', () => {
       fireEvent.submit(checkbox.closest('form')!)
     })
 
-    expect(checkbox.checked).toBe(false)
+    // Re-queried rather than reusing `checkbox`, same as the submitted-thresholds test below.
+    // The saveCount remount that defeats the auto-reset now runs from an effect keyed on the
+    // action's returned state (#1396) rather than inside the action, so it lands one commit
+    // later — after the reset instead of before it. The user-visible outcome is identical, but
+    // the node captured above is detached by then, and a detached node cannot show the desync
+    // this test exists to catch.
+    expect((screen.getByRole('checkbox', { name: /use barn defaults/i }) as HTMLInputElement).checked).toBe(false)
   })
 
   it('should_display_submitted_custom_thresholds_after_save_instead_of_stale_horse_prop_values', async () => {
