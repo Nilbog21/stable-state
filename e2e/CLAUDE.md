@@ -8,7 +8,8 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 Thirteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
-12 and 13 from the 2026-08-04 backlog run. Every one is measured, not inferred. The spec named
+12 and 13 from the 2026-08-04 backlog run; fact 10 was later sharpened by #1385, which found its
+original unconditional form too broad. Every one is measured, not inferred. The spec named
 after each fact carries the worked example, with fact 12 the exception by construction: it exists
 to say why no spec does the thing it describes.
 
@@ -75,14 +76,15 @@ hydration.** On a page that hasn't hydrated, `fill()` moves the DOM value and no
 passes or fails for reasons unrelated to what it claims. Suite-wide risk; put a barrier from
 `support/hydration.ts` in front of the fill. *(#1205)*
 
-**10. A click dispatched before React is listening is simply lost, and nothing replays it.**
-This is why a hydration barrier on an interaction-only page has to *retry* rather than drive once
-and wait — a single drive that lands early can only run out the budget. Both shapes now live in
-`support/hydration.ts` (#1280): `waitForHydrated` for a page with markup that cannot exist before
-hydration, `hydrateByDriving` for a page that renders identically until it is driven. Full
-statement, including what makes a signal trustworthy, is that module's comment. *(#1199)*
+**10. A click dispatched before React is listening is lost unless the served markup can carry it
+on its own, and nothing replays it.** This is why a hydration barrier on an interaction-only page
+has to *retry* rather than drive once and wait — a single drive that lands early can only run out
+the budget. Both shapes now live in `support/hydration.ts` (#1280): `waitForHydrated` for a page
+with markup that cannot exist before hydration, `hydrateByDriving` for a page that renders
+identically until it is driven. Full statement, including what makes a signal trustworthy, is that
+module's comment. *(#1199)*
 
-**The discriminator is the form's own markup, not the fact that a button was clicked.** A click is
+The discriminator is the form's own markup, not the fact that a button was clicked. A click is
 lost only where the behaviour lives in JS the browser doesn't have yet — `<form onSubmit={handler}>`,
 whose server markup is a bare `<form>` the browser would GET. `<form action={serverAction}>` is
 *not* in that class: React emits the enhanced markup with the response, measured on the member

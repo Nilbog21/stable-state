@@ -317,8 +317,9 @@ test.describe.serial('a managed rider document', () => {
   // so a Documents section that failed to resolve fails here rather than passing on an empty
   // locator.
   //
-  // Safe to click without a hydration barrier, for the same reason as
-  // checklist-phase56-horses-list.spec.ts:235's anchor click: DeleteDocumentButton is
+  // Safe to click without a hydration barrier — stated here for the same reason
+  // checklist-phase56-horses-list.spec.ts:235 states it, though on a different mechanism (that
+  // one is a native anchor, fact 11). DeleteDocumentButton is
   // `<form action={formAction}>` over a bound Server Function, so the server already ships
   // `<form action="" encType="multipart/form-data" method="POST">` with the action id and the
   // bound arguments in hidden fields (measured on this page, #1385). A click landing before
