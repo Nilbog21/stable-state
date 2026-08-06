@@ -6,6 +6,7 @@ import { calendarDate, formatCalendarDate, formatMonthHeading, formatItemTime } 
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { Button } from '@/components/ui/Button'
+import { monthNavButtonClass } from '@/components/ui/month-nav'
 import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
 
 /**
@@ -14,14 +15,6 @@ import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
  * see `src/lib/month-calendar.ts` for the model. Tapping a day both selects it and opens
  * that day's schedule.
  */
-
-// Icon-only Prev/Next controls have no good structural fit with the shared Button component
-// (ARCHITECTURE.md's documented exception) -- raw Tailwind instead, reusing the finances
-// month-nav classes verbatim so every date pager in the app reads as one pattern. The glyphs
-// are part of that: &lt;/&gt; and not the guillemets, which render visibly smaller at the same
-// font size.
-const navButtonClass =
-  'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
 
@@ -79,11 +72,11 @@ export function MonthCalendarPicker({
 
       <div ref={ref} className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <button type="button" aria-label="Previous month" onClick={() => onMonthChange(shiftMonth(month, -1))} className={navButtonClass}>
+          <button type="button" aria-label="Previous month" onClick={() => onMonthChange(shiftMonth(month, -1))} className={monthNavButtonClass}>
             &lt;
           </button>
           <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{formatMonthHeading(month)}</span>
-          <button type="button" aria-label="Next month" onClick={() => onMonthChange(shiftMonth(month, 1))} className={navButtonClass}>
+          <button type="button" aria-label="Next month" onClick={() => onMonthChange(shiftMonth(month, 1))} className={monthNavButtonClass}>
             &gt;
           </button>
         </div>
