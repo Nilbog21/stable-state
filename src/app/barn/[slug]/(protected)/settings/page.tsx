@@ -262,6 +262,7 @@ export default async function SettingsPage({
               type="number"
               step="0.01"
               min="0"
+              required
               defaultValue={barn.default_board_fee}
               className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
