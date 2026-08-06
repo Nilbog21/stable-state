@@ -598,7 +598,7 @@ describe('MemberDetailPage', () => {
     render(jsx)
     const form = screen.getByRole('button', { name: /delete/i }).closest('form')!
     fireEvent.submit(form)
-    expect(deleteDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', 'doc-1', mockTrainerDoc.storage_path)
+    expect(deleteDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', 'doc-1', mockTrainerDoc.storage_path, { error: null }, expect.any(FormData))
   })
 
   describe('Contact Info section', () => {
