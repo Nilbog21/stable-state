@@ -3,9 +3,9 @@ import { RuleTester } from 'eslint'
 import rule from './no-wrapped-server-action.js'
 
 // RuleTester drives its own test runner; vitest's globals are off, so hand it the imports.
-RuleTester.afterAll = afterAll
-RuleTester.it = it
-RuleTester.describe = describe
+// Object.assign, not three assignments: `afterAll` is read at runtime but missing from ESLint's
+// published types, so a direct assignment doesn't typecheck.
+Object.assign(RuleTester, { afterAll, it, describe })
 
 const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 2022, sourceType: 'module' },

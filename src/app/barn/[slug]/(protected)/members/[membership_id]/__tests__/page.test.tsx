@@ -963,7 +963,10 @@ describe('MemberDetailPage', () => {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }))
-      expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn')
+      // The trailing two are useActionState's calling convention, arriving because the bound
+      // Server Function now reaches the hook unwrapped (#1396) — same shape as the
+      // deleteDocumentAction assertion above.
+      expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', null, expect.any(FormData))
     })
   })
 
