@@ -7,6 +7,8 @@
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { barnDay } from '@/lib/barn-timezone'
+import { firstOfMonth } from '@/lib/local-day'
 import { getTransactionRows } from './transactions'
 import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, PaymentType } from './types'
 import { CHARGE_TRANSACTION_KINDS } from './agreement-finances'
@@ -183,16 +185,18 @@ export async function updateChargePaymentType(
   return data as AgreementCharge
 }
 
+// #1361: `at` is a real instant, so the month it falls in is the *barn's* month, not the
+// server host's. UTC-truncating it filed any charge generated in the last 4-10 hours of the
+// barn's month under the next one — every zone the barn picker offers is behind UTC.
 export async function generateChargeForMonth(
   agreementId: string,
   barnId: string,
-  period: Date,
+  timezone: string,
+  at: Date,
   client?: SupabaseClient
 ): Promise<AgreementCharge> {
   const supabase = client ?? await createClient()
-  const periodDate = new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10)
+  const periodDate = firstOfMonth(barnDay(at, timezone))
 
   const { data, error } = await supabase.rpc('generate_agreement_charge', {
     p_agreement_id: agreementId,
