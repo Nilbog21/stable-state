@@ -6,30 +6,15 @@ You are driving one pass of `PRE_RELEASE_TEST_CHECKLIST.md` with the user: deriv
 
 ---
 
-## Step 0 — Context, dev server, run file
+## Step 0 — Context, run file, dev server
 
 ```
 bash scripts/workflow-context.sh
 ```
 
-Record `worktree_path` and `port`. If `worktree` came back empty, ask which worktree to use and re-run the script from there. All commands below run from `{worktree_path}` with absolute paths.
+Record `worktree`, `worktree_path` and `port`. If `worktree` came back empty, ask which worktree to use and re-run the script from there. All commands below run from `{worktree_path}` with absolute paths.
 
-The manual checks target the shared dev barn `dev-barn` in a browser, so a server has to be up:
-
-```
-curl -sf http://localhost:{port} -o /dev/null
-```
-
-If it doesn't respond, start one and wait for it in one blocking call:
-
-```
-cd {worktree_path} && npm run dev -- -p {port} > /tmp/runchecklist-{worktree}.log 2>&1 &
-timeout 60 bash -c 'until curl -sf http://localhost:{port} -o /dev/null; do sleep 2; done'
-```
-
-If that times out, print the tail of the log and stop.
-
-**Run file:** `specs/checklist-run-$(date +%F).md`. `specs/` is gitignored scratch, so the record never enters git.
+**Run file:** `specs/checklist-run-$(date +%F).md`. `specs/` is gitignored scratch, so the record never enters git. Settle it *before* starting a server or the suite — a run that's already finished has nothing left to serve or re-run.
 
 If it does not exist, create it:
 
@@ -41,11 +26,16 @@ If it does not exist, create it:
 Server: http://localhost:{port} · worktree {worktree}
 ```
 
-**If it already exists**, read its `last-completed-section` marker and offer to resume — never silently restart:
+**If it already exists**, read its `last-completed-section` marker and branch on it:
 
-> A run file for today already exists, last completed section **{marker}**. Type `resume` to pick up at the next section, or `restart` to start over (the existing file is overwritten):
+- **The marker names Phase 7's last section** — this run is already complete. Reprint the file's Step 4 summary and **stop cold**: no server, no suite, no prompting. Re-walking a finished run is how a day's answers get overwritten with a second set.
+- **Otherwise** — offer to resume, never silently restart:
 
-On `resume`, skip Step 0.5 if the file already carries a `Suite:` line, and begin Step 1 at the section after the marker. On `restart`, overwrite the file with a fresh header. An empty marker means no section has been flushed yet — resume starts at the first section either way.
+  > A run file for today already exists, last completed section **{marker}**. Type `resume` to pick up at the next section, or `restart` to start over (the existing file is overwritten):
+
+  On `resume`, skip Step 0.5 if the file already carries a `Suite:` line, and begin Step 1 at the section after the marker. On `restart`, overwrite the file with a fresh header. An empty marker means no section has been flushed yet — resume starts at the first section either way.
+
+**Dev server.** The manual checks target the shared dev barn `dev-barn` in a browser, so a server has to be up. Bring one up exactly as `/testIssue` Step 3 prescribes — that step owns the sequence (reuse whatever answers `curl -sf http://localhost:{port}`, otherwise background `npm run dev -- -p {port}`, wait in one blocking `timeout 60` call rather than polling, and print the log's tail and stop if it never comes up). Use `/tmp/runchecklist-{worktree}.log` as the log path so a `/testIssue` session on the same worktree isn't clobbered.
 
 ---
 
@@ -53,22 +43,17 @@ On `resume`, skip Step 0.5 if the file already carries a `Suite:` line, and begi
 
 The `(e2e: <name>)` tag string *is* the Playwright test name, so this mapping is exact — no heuristics beyond reading failed test names out of the log.
 
-Launch with the Bash tool's **`run_in_background`**:
+The command is the whole suite — no `--spec` flags, since every phase's `(e2e:)` lines are in scope:
 
 ```
 cd {worktree_path} && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port}
 ```
 
-Never pass `--interactive` or `--hold-open` — the suite's barns are prefix-isolated and torn down by its `EXIT` trap, so it does not disturb `dev-barn`, and a headed run wants a human watching it.
+**Launch it and read its result exactly as `/testIssue` Step 4 prescribes** — that step owns this protocol and is the only place it's written down: background launch, the `cd {worktree_path} &&` prefix, results read from `checklist-suite.log` rather than the tool result, the freshness header and the exit terminator both checked before the log is trusted, and per-test detail read only when the run failed.
 
-**Read the result from `{worktree_path}/checklist-suite.log`, not from the tool result** — a full run can outrun the Bash tool's 600s foreground ceiling, and since #1356 the background tool result no longer carries the per-test lines. The harness re-invokes you when the process exits; there is nothing to poll. Keep the `cd {worktree_path} &&` prefix: the script writes its log next to whatever repo root it starts in, and every worktree holds a copy.
+One thing that step doesn't cover, because it never runs the suite this way: never pass `--interactive` or `--hold-open`. The suite's barns are prefix-isolated and torn down by its `EXIT` trap, so it doesn't disturb `dev-barn`, and a headed run wants a human watching it.
 
-Two checks before trusting the log, both from `/testIssue` Step 4:
-
-- **Freshness** — the `=== run-checklist-suite.sh — barn prefix … — started {date} ===` header is written with `>` before anything else; confirm the timestamp is this run's.
-- **Completion** — the run is done when the log ends with the `=== run-checklist-suite.sh exited {code} — full log: … ===` terminator, which the `EXIT` trap writes on every path. Don't infer completion from Playwright's summary; an early bail (bad flag, failed seed, unreadable `.env.local`) kills the script before Playwright writes a line, and the terminator is the only thing present there.
-
-Then:
+Then map the verdict onto the checkboxes:
 
 - **`exited 0`** — every `(e2e:)` checkbox in every phase passed. That is the whole verdict; do not read the per-test `✓` lines, which say the same thing at ~10× the token cost.
 - **Non-zero, Playwright ran** — collect the failing test names:
@@ -86,13 +71,15 @@ Write the verdict line into the run file under the header, e.g. `Suite: exited 0
 
 Work the phases in order — the Prerequisites in `PRE_RELEASE_TEST_CHECKLIST.md` first, then `checklists/pre-release/phase-1-setup.md` through `phase-7-multi-barn.md`. Later phases depend on data earlier ones create.
 
-**A section is the prose sub-group within a phase, not the phase.** A section starts at a non-indented, non-checkbox, non-heading, non-blockquote line ending in a colon that is immediately followed by a checkbox — Phase 2's `Lesson tiers (…):`, `Horses (…):`, `Agreements (…):`, `Managed rider stubs (…):`:
+**A section is the prose sub-group within a phase, not the phase.** A section starts at a non-indented, non-checkbox, non-heading, non-blockquote line ending in a colon that has at least one checkbox under it before the next such line — Phase 2's `Lesson tiers (…):`, `Horses (…):`, `Agreements (…):`, `Managed rider stubs (…):`:
 
 ```
 grep -nE '^[^-#>| ].*:$' checklists/pre-release/phase-{n}-*.md
 ```
 
-That gives a flush point every 5–15 checks rather than every 40, so an interrupted session loses little. **A phase with no such lead-in is one section — the whole phase**, which today is Phases 1, 3 and 7's opening run plus the Prerequisites. Those flush once at the end, and an interrupt inside one loses its answered checks; that is the accepted cost of not inventing an arbitrary sub-grouping the file doesn't have.
+That grep lists **candidates** — it matches the colon line but can't express the "has checkboxes under it" half of the rule, and a lead-in doesn't have to be followed *immediately* by one (Phase 2's `Managed rider stubs (…):` has a blockquote in between). So check each hit for a checkbox before the next hit and drop the ones with none, or an empty section gets announced; today that drops exactly `Cleanup (optional):` at the end of Phase 7, which introduces a teardown command and nothing else.
+
+The rest give a flush point every 5–15 checks rather than every 40, so an interrupted session loses little. **A phase with no such lead-in is one section — the whole phase**, which today is Phases 1, 3 and 7's opening run plus the Prerequisites. Those flush once at the end, and an interrupt inside one loses its answered checks; that is the accepted cost of not inventing an arbitrary sub-grouping the file doesn't have.
 
 Count the section's checkboxes before starting it — total, and how many the suite already covered:
 
@@ -116,7 +103,7 @@ If the difference is zero, say so, write the section's e2e rollup straight to th
 
 A checkbox needs a human eye if it is **not** tagged `(e2e: …)` — that covers `(manual)`, `(e2e-candidate)`, and the untagged lines in the un-audited phases.
 
-Prompt as **plain text, never `AskUserQuestion`** — the selection UI doesn't let the user click the URL. One check per turn, in file order, with the section's route expanded against the local server:
+Prompt as **plain text, never `AskUserQuestion`** — same reason `/testIssue` Step 4 gives for its own prompts: the selection UI doesn't let the user click the URL. One check per turn, in file order, with the section's route expanded against the local server:
 
 ```
 Phase 2 — Horses (2 of 17)
@@ -169,6 +156,17 @@ Repeat Steps 1–2 for each remaining section, in file order, through the end of
 ## Step 4 — Summarize and hand off
 
 Print the totals — manual passed / failed / skipped, plus the e2e failures — and list every failure and skip in one block, each with its detail line.
+
+Then write those same failures into the run file under a `## Follow-ups (needs own issue)` heading, one `- ` entry each, carrying the check's text and its detail line:
+
+```markdown
+## Follow-ups (needs own issue)
+
+- Barn timezone dropdown resets on save — Phase 4, Manage Barn. Reverts to UTC after every save.
+- (e2e: the_default_tier_pill_moves) The default pill doesn't move to the newly-defaulted tier — Phase 4, failed in the suite.
+```
+
+That heading is what `/grillMe`'s work-log mode reads, and it's the whole reason the hand-off below files anything: a run file without it falls through to grillMe's generic "describe your initial thoughts" interview and the failures never reach an issue.
 
 Then hand off, and stop:
 
