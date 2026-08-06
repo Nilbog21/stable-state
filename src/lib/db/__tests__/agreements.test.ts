@@ -508,7 +508,7 @@ describe('generateChargeForMonth', () => {
   })
 
   // #1361: the two boundary cases the UTC truncation got wrong — an instant that has already
-  // rolled into the next month in UTC but is still last month at the barn. Two zones, four
+  // rolled into the next month in UTC but is still last month at the barn. Two zones, six
   // hours apart, so the fix can't be a constant offset.
   it('should_truncate_to_the_barn_month_when_utc_has_already_rolled_into_the_next_month', async () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })

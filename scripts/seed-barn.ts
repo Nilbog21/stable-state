@@ -28,6 +28,7 @@ import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from 
 import { createExpense } from '@/lib/db/expenses'
 import type { PaymentType } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { barnDay } from '@/lib/barn-timezone'
 import { mustSucceed, findOrCreateAuthUser } from './script-utils'
 
 export const DEV_TRAINERS = [
@@ -684,10 +685,15 @@ export async function seedBarn(
     'select barn timezone'
   )
   // #1361: generateChargeForMonth resolves the month in the barn's frame, so these anchors
-  // have to be instants that fall inside the intended month *there* — midnight UTC on the
-  // 1st is the previous month in every zone the barn picker offers. Noon UTC on the 15th
-  // is the 15th in all of them.
-  const monthsAgo = (n: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - n, 15, 12))
+  // have to be instants that fall inside the intended month *there* — both the month counted
+  // back from and the day within it. The month comes from the barn's own calendar, since in
+  // the last hours of the barn's month the host's UTC clock has already rolled into the next
+  // one, and `monthsAgo(1)` would then land on the barn's *current* month — colliding with
+  // the charge `createAgreement` just made, which `generate_agreement_charge` silently
+  // no-ops on. The day is the 15th at noon UTC, which is the 15th in every zone the barn
+  // picker offers (midnight UTC on the 1st is the previous month in all of them).
+  const [barnYear, barnMonth] = barnDay(now, timezone).split('-').map(Number)
+  const monthsAgo = (n: number) => new Date(Date.UTC(barnYear, barnMonth - 1 - n, 15, 12))
   const lastMonth = monthsAgo(1)
 
   const boardAgreement = await createAgreement(
