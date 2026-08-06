@@ -98,7 +98,7 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
   const birch = await addHorse(supabase, barn.id, 'Birch')
   const comet = await addHorse(supabase, barn.id, 'Comet')
 
-  const thisMonth = monthAnchor(0, barn.timezone)
+  const thisMonth = thisMonthAnchor(barn.timezone)
 
   // Apple's lesson is instructed by the *manager*, not the trainer — the trainer's only
   // lesson is Birch's below, so the removal block's Unattributed delta has exactly one
@@ -148,10 +148,19 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
  * hasn't, only for resolveFinancesMonth's upper bound to clamp it back down.
  *
  * A function rather than a module constant: `barn.data` throws on a module-scope read (see
- * support/test.ts), so anything derived from the barn is evaluated at test time.
+ * support/test.ts), so anything derived from the barn is evaluated at test time. Memoized so
+ * that deferral doesn't cost the one-anchor property — the seed and every later navigation
+ * still resolve the same instant, not one `new Date()` per call.
  */
+let anchor: Date | undefined
+
+function thisMonthAnchor(timezone: string): Date {
+  anchor ??= monthAnchor(0, timezone)
+  return anchor
+}
+
 function month(): string {
-  return formatMonthParam(monthAnchor(0, barn.data.barn.timezone))
+  return formatMonthParam(thisMonthAnchor(barn.data.barn.timezone))
 }
 
 type Tab = (typeof NET_TABS)[number]

@@ -43,13 +43,18 @@ const ORPHAN_EXPENSE = 35
  * resolves "now" in, so the param can be read straight off it.
  *
  * Functions rather than module constants: `barn.data` throws on a module-scope read (see
- * support/test.ts), so anything derived from the barn is evaluated at test time.
+ * support/test.ts), so anything derived from the barn is evaluated at test time. Memoized so
+ * that deferral doesn't cost the one-anchor property — the seed and every later navigation
+ * still resolve the same instant, not one `new Date()` per call.
  *
  * A past month rather than the current one, per the same anchor's doc: day 15 of a finished
  * month is unambiguously inside it however the barn's timezone decodes the instant.
  */
+let workingAnchor: Date | undefined
+
 function workingMonthAnchor(timezone: string): Date {
-  return monthAnchor(1, timezone)
+  workingAnchor ??= monthAnchor(1, timezone)
+  return workingAnchor
 }
 
 function workingMonth(): string {
@@ -218,7 +223,7 @@ async function requireLedgerRow(state: 'attached' | 'orphaned'): Promise<void> {
 // Page helpers
 // ---------------------------------------------------------------------------
 
-/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+/** finances/page.tsx defaults its month to the barn's today (#1360), so every URL names one. */
 function financesUrl(tab: Tab): string {
   return `/barn/${barn.slug}/finances?month=${workingMonth()}&tab=${tab}`
 }

@@ -157,7 +157,7 @@ function previousMonth(): string {
   return formatMonthParam(monthAnchor(1, barn.data.barn.timezone))
 }
 
-/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+/** finances/page.tsx defaults its month to the barn's today (#1360), so every URL names one. */
 function byRiderUrl(month = currentMonth()): string {
   return `/barn/${barn.slug}/finances?month=${month}&tab=rider`
 }
