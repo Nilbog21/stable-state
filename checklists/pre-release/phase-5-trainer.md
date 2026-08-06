@@ -68,6 +68,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e: trainer_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e: trainer_owned_horse_note_edits_persist_across_a_reload) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
+- [ ] (e2e: trainer_available_horse_cards_show_an_exhaustion_bar) The Horses list's **Available** cards each show an exhaustion bar
 - [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
