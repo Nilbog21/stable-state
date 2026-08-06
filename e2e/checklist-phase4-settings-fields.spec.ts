@@ -7,6 +7,11 @@
 // covers: src/app/barn/[slug]/(protected)/horses/[id]/**
 // covers: src/components/calendar/**
 // covers: src/components/documents/**
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
+//
+// NavigationBlocker.tsx is declared because the two nav-guard tests at the bottom assert its
+// dialog and BlockingLink behavior from a guarded settings form (#1362) — reached by import
+// from the (protected) layout, so no route glob above covers it.
 //
 // The last two are shared components, not routes, and they are declared because this spec
 // asserts on their markup directly: `MonthCalendarPicker` supplies the `aria-label`ed day
@@ -52,6 +57,7 @@ import {
   addTier,
   updateBarnSettings,
 } from './support/fixtures'
+import { hydrateByDriving } from './support/hydration'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type { Agreement, Horse } from '@/lib/db/types'
 
@@ -1006,5 +1012,82 @@ test.describe('Manage Barn — barn day versus device day', () => {
       lease: BARN_TODAY,
       board: BARN_TODAY,
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Unsaved-changes nav guard on a guarded settings form (#1362)
+// ---------------------------------------------------------------------------
+//
+// The representative-form half of the phase-4 nav-guard lines: the dialog's own mechanics
+// (Stay focus, Escape, back-nav) are asserted on the lesson edit form in
+// checklist-phase4-lessons-detail.spec.ts; these two prove the guard arms and clears on a form
+// wired through GuardedForm rather than LessonForm's bespoke state. Last in the file, so the
+// buffer value they write is never read by an earlier suite, retries included.
+
+test.describe.serial('Manage Barn — unsaved-changes nav guard', () => {
+  const FIELD = '#schedule_buffer_minutes'
+  const GUARD_BUFFER = '50'
+
+  /**
+   * Hydration barrier. openSection's visible-Save wait proves only that the native `<details>`
+   * toggled — which works pre-hydration — while the guard's arming is pure React (bubbled
+   * `onChange` → context), so a fill landing before hydration would arm nothing and the nav
+   * click would silently navigate (e2e/CLAUDE.md facts 9/10). The UserMenu dropdown is
+   * `useState`-gated markup, a signal that strictly post-dates hydration; drive it open, then
+   * toggle it shut to leave the page as found (pattern:
+   * checklist-phase56-nav-profile.spec.ts's openAvatarMenu).
+   */
+  async function ensureNavHydrated(page: Page) {
+    const avatar = page.getByRole('button', { name: 'User menu', exact: true })
+    const profileLink = page.getByRole('link', { name: 'Profile', exact: true })
+    await hydrateByDriving(
+      () => avatar.click(),
+      async () => (await profileLink.count()) > 0
+    )
+    await avatar.click()
+    await expect(profileLink).toHaveCount(0)
+  }
+
+  /** Only DesktopNavLinks renders at the @manager project's desktop width, so exactly one link. */
+  function lessonsNavLink(page: Page): Locator {
+    return page.locator('nav').getByRole('link', { name: 'Lessons', exact: true })
+  }
+
+  test('unsaved_guarded_settings_field_raises_the_unsaved_changes_dialog_on_nav @manager', async ({
+    page,
+  }) => {
+    const sec = await openSection(page, 'Schedule Buffer')
+    await ensureNavHydrated(page)
+    await sec.locator(FIELD).fill(GUARD_BUFFER)
+    await lessonsNavLink(page).click()
+
+    await expect(page.getByRole('dialog').locator('p').first()).toHaveText(
+      'You have unsaved changes. Leave without saving?'
+    )
+    // Stay leaves you where you were — both halves in one poll, so a dialog that closed by
+    // navigating away can't pass on the count alone.
+    await page.getByRole('dialog').getByRole('button', { name: 'Stay', exact: true }).click()
+    await expect
+      .poll(async () => ({
+        dialogs: await page.getByRole('dialog').count(),
+        path: new URL(page.url()).pathname,
+      }))
+      .toEqual({ dialogs: 0, path: settingsUrl() })
+  })
+
+  test('saving_a_guarded_settings_field_then_navigating_shows_no_dialog @manager', async ({
+    page,
+  }) => {
+    const sec = await openSection(page, 'Schedule Buffer')
+    await ensureNavHydrated(page)
+    await sec.locator(FIELD).fill(GUARD_BUFFER)
+    await saveSection(page, sec)
+    await lessonsNavLink(page).click()
+
+    // The URL changing is the claim: the guard disarmed, so the click navigated. Not a no-op
+    // wait (fact 3) — /lessons differs from the /settings URL the click happens on.
+    await page.waitForURL(`**/barn/${barn.slug}/lessons`)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 })

@@ -85,7 +85,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: the_nav_guard_dialog_opens_with_stay_focused) That dialog opens with **Stay** focused, so Enter takes the safe choice
 - [ ] (e2e: pressing_escape_dismisses_the_nav_guard_dialog_as_stay) Pressing **Escape** in that dialog dismisses it as **Stay**, without navigating away
 - [ ] (e2e: swapping_the_inactive_horse_for_an_active_one_stops_the_navigation_prompt) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
-- [ ] (manual — arm/clear wiring is unit-tested per form (#1362's `*.dirty.test.tsx` files); the dialog's own mechanics are e2e-covered by the lines above) With unsaved edits in any other guarded form (horse manager, expense, agreement, document upload, event, tier, settings fields), clicking a nav link raises the same unsaved-changes dialog, and a successful save does not
+- [ ] (e2e: unsaved_guarded_settings_field_raises_the_unsaved_changes_dialog_on_nav) With unsaved edits in another guarded form (representative: Manage Barn's Schedule Buffer field — per-form arm/clear wiring is unit-tested by #1362's `*.dirty.test.tsx` files), clicking a nav link raises the same unsaved-changes dialog
+- [ ] (e2e: saving_a_guarded_settings_field_then_navigating_shows_no_dialog) After saving that form's edit, navigating away raises no dialog
 - [ ] (e2e: horse_notes_render_read_only_on_the_lesson_detail_page) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
 - [ ] (e2e: rider_notes_render_read_only_on_the_lesson_detail_page) On that same page, rider notes render read-only
 - [ ] (e2e: the_edit_link_is_visible_on_the_lesson_detail_page) On that same page, the Edit link is visible
