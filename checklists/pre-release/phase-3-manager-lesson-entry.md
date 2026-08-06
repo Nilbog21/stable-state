@@ -1,6 +1,6 @@
 # Phase 3 — Manager lesson entry
 
-<!-- Asserting role: manager only. -->
+<!-- Asserting role: manager -->
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 

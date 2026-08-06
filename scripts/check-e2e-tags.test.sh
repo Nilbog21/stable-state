@@ -48,8 +48,10 @@ DEFAULT_PROJECTS="  projects: [
 # the fixtures that predate the role check keep their verdicts, and the ones that exercise it
 # pass their own declaration in.
 make_repo() {
+  # `${4-…}` and not `${4:-…}`: an explicitly empty 4th argument is the fixture for a phase file
+  # carrying no declaration at all, which `:-` would silently hand the default back.
   local checklist="$1" spec="$2" projects="${3:-$DEFAULT_PROJECTS}" \
-    role_comment="${4:-<!-- Asserting role: role-agnostic -->}"
+    role_comment="${4-<!-- Asserting role: role-agnostic -->}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
