@@ -7,10 +7,17 @@
 All via `/barn/dev-barn/lessons/new`. Times entered here should display later in 12-hour AM/PM format. `reset-db.ts` seeds ~43 varied lessons across past/current/future dates, tiers, jumping, and exertion — only create the purpose-built lessons below; verify everything else against seeded data (including the seeded Custom-tier lesson).
 
 - [ ] Create a **past lesson** (dated ~5 weeks ago, previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
-- [ ] Try saving a lesson with a blank fee (Custom tier, no tier selected) — rejected with "fee is required"; in edit mode, blank fee is rejected too
-- [ ] Select a named tier (e.g. Beginner) — fee field stays visible and editable, pre-filled with the tier's price; change the fee and save — lesson saves with the edited fee and keeps the tier's name (not "Custom")
+- [ ] Try saving a lesson with a blank fee (Custom tier, no tier selected) — rejected with "fee is required"
+- [ ] In edit mode, a blank fee is rejected too
+- [ ] Select a named tier (e.g. Beginner) — the fee field stays visible and editable, pre-filled with the tier's price
+- [ ] Change the fee and save — the lesson saves with the edited fee
+- [ ] That lesson keeps the tier's name (not "Custom")
 - [ ] Create a **current-month paid lesson** (dated a few days ago, before today): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
-- [ ] While creating it, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, unchecked horses stay solid; change the date and confirm bars refresh
+- [ ] While creating it, before a date is picked no exhaustion bars render
+- [ ] Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar
+- [ ] Adjust a checked horse's exertion level — its ghost segment moves live
+- [ ] Unchecked horses' bars stay solid while that exertion level changes
+- [ ] Change the date — the bars refresh
 - [ ] Open this lesson's edit page afterward and confirm Clover's bar still renders (excluding the lesson itself from its own window)
 
 **#1019 — month conflict calendar on the Date field.** All on `/barn/dev-barn/lessons/new` unless stated.
@@ -48,13 +55,26 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
 - [ ] (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
 - [ ] Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
-- [ ] On any lesson form, set the fee to `0` — Payment Type field disappears; raise it back above `0` — field reappears
+- [ ] On any lesson form, set the fee to `0` — the Payment Type field disappears
+- [ ] Raise the fee back above `0` — the Payment Type field reappears
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker
-- [ ] Check one horse and confirm it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked), Daisy sorted last; set the date/start time to the past — no bars render; set it back — bars reappear
-- [ ] Check **Recurring (weekly)** — Date field label changes to "Starting Date" (reverts when unchecked); checkbox sits directly above the date field
-- [ ] Create a **recurring lesson** (dated 7 days out): check **Recurring (weekly)**, Beginner tier, trainer Alex, horse Apple, rider Dana — saves; the checkbox doesn't appear when editing
-- [ ] The recurring lesson shows a **Recurring** badge on the Lessons list row and its detail page
-- [ ] Open its edit page — "part of a recurring series" indicator + **Stop Recurring Lessons** button appear; confirm, click Stop — both disappear on reload, the lesson itself keeps its Recurring badge
-- [ ] Open Willow's seeded upcoming lesson's edit page — Willow (inactive) still appears checked, sorted first, still shows its bar; uncheck it — moves to the bottom (grouped with Unavailable), bar disappears
+- [ ] Check one horse — it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked)
+- [ ] Daisy is sorted last in that list
+- [ ] Set the date/start time to the past — no bars render
+- [ ] Set the date/start time back to the future — the bars reappear
+- [ ] Check **Recurring (weekly)** — the Date field label changes to "Starting Date"
+- [ ] Uncheck **Recurring (weekly)** — the Date field label reverts
+- [ ] The **Recurring (weekly)** checkbox sits directly above the date field
+- [ ] Create a **recurring lesson** (dated 7 days out): check **Recurring (weekly)**, Beginner tier, trainer Alex, horse Apple, rider Dana — it saves
+- [ ] The **Recurring (weekly)** checkbox doesn't appear when editing that lesson
+- [ ] The recurring lesson shows a **Recurring** badge on its Lessons list row
+- [ ] The recurring lesson shows a **Recurring** badge on its detail page
+- [ ] Open its edit page — a "part of a recurring series" indicator and a **Stop Recurring Lessons** button appear
+- [ ] Confirm and click **Stop Recurring Lessons** — both disappear on reload
+- [ ] The lesson itself keeps its **Recurring** badge after stopping
+- [ ] Open Willow's seeded upcoming lesson's edit page — Willow (inactive) still appears checked and sorted first
+- [ ] Willow still shows its exhaustion bar there
+- [ ] Uncheck Willow — it moves to the bottom of the list (grouped with Unavailable)
+- [ ] Willow's bar disappears once unchecked
 
 *(Dropped the manual "create a Custom-tier lesson" step from the original goals — that's now covered by #950's seed addition instead.)*
