@@ -19,7 +19,7 @@ vi.mock('next/link', () => ({
 }))
 
 vi.mock('../NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+  useNavigationBlocker: vi.fn(() => ({ dirty: false, markDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
 }))
 
 import { useNavigationBlocker } from '../NavigationBlocker'
@@ -28,7 +28,7 @@ import { UserMenu } from '../UserMenu'
 beforeEach(() => {
   vi.mocked(useNavigationBlocker).mockReturnValue({
     dirty: false,
-    setDirty: vi.fn(),
+    markDirty: vi.fn(),
     pendingNav: null,
     setPendingNav: vi.fn(),
     message: '',
@@ -238,7 +238,7 @@ describe('UserMenu - dirty navigation blocking', () => {
   beforeEach(() => {
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: true,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
     } as any)
@@ -248,7 +248,7 @@ describe('UserMenu - dirty navigation blocking', () => {
     mockSetPendingNav.mockReset()
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: false,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: vi.fn(),
     } as any)

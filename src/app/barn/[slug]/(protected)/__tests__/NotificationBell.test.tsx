@@ -27,7 +27,7 @@ vi.mock('@/app/actions/notifications', () => ({
 }))
 
 vi.mock('../NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+  useNavigationBlocker: vi.fn(() => ({ dirty: false, markDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
 }))
 
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
@@ -73,7 +73,7 @@ describe('NotificationBell', () => {
     mockRefresh.mockReset()
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: false,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: vi.fn(),
       message: '',
@@ -222,7 +222,7 @@ describe('NotificationBell', () => {
     const mockSetPendingNav = vi.fn()
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: true,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
       message: '',
