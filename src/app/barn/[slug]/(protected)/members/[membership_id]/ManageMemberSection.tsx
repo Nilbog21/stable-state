@@ -6,7 +6,13 @@ import { Button } from '@/components/ui/Button'
 interface Props {
   barnSlug: string
   inviteToken: string
-  revokeAction: () => Promise<{ error: string | null }>
+  // Must be the bound Server Function itself, not a closure wrapping it (#1385/#1396): React only
+  // emits the pre-hydration `method="POST"` form markup for the former, so a closure here would
+  // make Revoke a silent no-op for any click landing before hydration.
+  revokeAction: (
+    prevState: { error: string | null } | null,
+    formData: FormData
+  ) => Promise<{ error: string | null }>
 }
 
 export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Props) {
@@ -28,31 +34,24 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // Invite re-enables the moment the *first* revoke's token lands even though a second
   // revoke is still in flight and about to supersede it.
   const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
-  const [, formAction, pending] = useActionState(async () => {
-    // Revoke supersedes whatever the last copy attempt was for, so neither a stale
-    // failure nor a stale "Copied!" should ride along into the new token's state.
-    // `copied` does self-clear on its 2s timer, but until it fires the disabled button
-    // reads "Copied!" about a token being revoked. Same pair CalendarFeedSection's
-    // handleRegenerate clears.
-    setError(null)
-    setCopied(false)
-    copyGenerationRef.current += 1
-    setTokenBeforeRevoke(inviteToken)
-    const { error: revokeError } = await revokeAction()
-    if (revokeError) {
-      // Nothing was rotated, so undo both things the optimistic path set up: the
-      // fresh-token gate has no fresh token coming and would leave both buttons disabled
-      // until a reload, and the generation bump would discard an in-flight copy whose
-      // token is in fact still current. Same rollback CalendarFeedSection.handleRegenerate
-      // performs when regenerateAction rejects.
-      setTokenBeforeRevoke(null)
-      copyGenerationRef.current -= 1
-      setError(revokeError)
-    }
-    return null
-  }, null)
-  const awaitingFreshToken = tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke
+  // `revokeAction` goes to the hook unwrapped, so the pre-submit setup below lives in the form's
+  // onSubmit and the error path is derived from the returned state (#1396).
+  const [state, formAction, pending] = useActionState(revokeAction, null)
+
+  // Nothing was rotated, so the fresh-token gate has no fresh token coming — without the
+  // `!state.error` term it would leave both buttons disabled until a reload. Same rollback
+  // CalendarFeedSection.handleRegenerate performs when regenerateAction rejects.
+  const awaitingFreshToken =
+    tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke && !state?.error
   const busy = pending || awaitingFreshToken
+
+  useEffect(() => {
+    if (!state?.error) return
+    // The other half of that rollback: the generation bump would otherwise discard an in-flight
+    // copy whose token is in fact still current. A ref, so this is a plain mutation rather than a
+    // state update — it must not itself provoke a render.
+    copyGenerationRef.current -= 1
+  }, [state])
 
   useEffect(() => {
     return () => {
@@ -92,13 +91,31 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
         <Button type="button" variant="ghost" onClick={handleCopy} disabled={busy}>
           {copied ? 'Copied!' : 'Copy Invite'}
         </Button>
-        <form action={formAction}>
+        <form
+          action={formAction}
+          onSubmit={() => {
+            // Revoke supersedes whatever the last copy attempt was for, so neither a stale
+            // failure nor a stale "Copied!" should ride along into the new token's state.
+            // `copied` does self-clear on its 2s timer, but until it fires the disabled button
+            // reads "Copied!" about a token being revoked. Same pair CalendarFeedSection's
+            // handleRegenerate clears.
+            setError(null)
+            setCopied(false)
+            copyGenerationRef.current += 1
+            setTokenBeforeRevoke(inviteToken)
+          }}
+        >
           <Button type="submit" variant="danger" loading={busy}>
             Revoke
           </Button>
         </form>
       </div>
-      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {/* One slot, two sources: a failed revoke arrives as the action's returned state, a failed
+          clipboard write as local state. Only one of the two can be current — onSubmit clears the
+          clipboard error before every revoke. */}
+      {(state?.error ?? error) && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{state?.error ?? error}</p>
+      )}
     </section>
   )
 }
