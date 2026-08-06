@@ -1,7 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/settings/**
 //
 // Manage Barn → Data Backup: both exports (checklists/pre-release/phase-4-manager-verification.md
-// lines 532-545), and the exported workbook's formatting and shape (lines 546-572).
+// lines 535-548), and the exported workbook's formatting and shape (lines 549-575).
 //
 // Deliberately no `covers:` line for src/lib/db/backup.ts or document-backup.ts, the two
 // modules that actually build these files: select-specs.sh lists the whole of src/lib/** in
