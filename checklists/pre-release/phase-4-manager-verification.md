@@ -185,7 +185,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (#1020) Tapping a day selects it as the expense's date (the tapped day gains a selection ring)
 - [ ] (#1020) Save after picking a day that way — the expense stores the day you tapped
 - [ ] (#1020) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
-- [ ] (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page
+- [ ] (manual) (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page — a cross-page look-and-feel judgment, not a property of any one page; a spec can only assert three separate renderings, never that they *match*
 - [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
 - [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
 - [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient
