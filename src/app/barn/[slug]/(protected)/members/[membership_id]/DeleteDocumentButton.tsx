@@ -1,36 +1,24 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useActionState } from 'react'
 import { Button } from '@/components/ui/Button'
 
 interface Props {
-  docId: string
-  storagePath: string
-  action: (docId: string, storagePath: string) => Promise<{ error: string | null }>
+  // Must be the bound Server Function itself, not a closure wrapping it (#1385): React only emits
+  // the pre-hydration `method="POST"` form markup for the former, so a closure here would restore
+  // the silent no-op this component was fixed for.
+  action: (prevState: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }
 
-export function DeleteDocumentButton({ docId, storagePath, action }: Props) {
-  const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setError(null)
-    const result = await action(docId, storagePath)
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-    router.refresh()
-  }
+export function DeleteDocumentButton({ action }: Props) {
+  const [state, formAction] = useActionState(action, { error: null })
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form action={formAction}>
       <Button type="submit" variant="danger" size="sm">
         Delete
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {state.error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{state.error}</p>}
     </form>
   )
 }

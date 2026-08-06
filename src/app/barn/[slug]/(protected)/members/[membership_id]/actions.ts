@@ -32,7 +32,11 @@ export async function deleteDocumentAction(
   barnSlug: string,
   membershipId: string,
   docId: string,
-  storagePath: string
+  storagePath: string,
+  // The `useActionState` calling convention, both ignored — they exist so `page.tsx` can bind the
+  // leading four and hand the Server Function straight to the hook (#1385).
+  _prevState?: { error: string | null },
+  _formData?: FormData
 ): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 

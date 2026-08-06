@@ -316,6 +316,16 @@ test.describe.serial('a managed rider document', () => {
   // The Delete click is also this assertion's vacuity guard: clicking auto-waits on the button,
   // so a Documents section that failed to resolve fails here rather than passing on an empty
   // locator.
+  //
+  // Safe to click without a hydration barrier — stated here for the same reason
+  // checklist-phase56-horses-list.spec.ts:235 states it, though on a different mechanism (that
+  // one is a native anchor, fact 11). DeleteDocumentButton is
+  // `<form action={formAction}>` over a bound Server Function, so the server already ships
+  // `<form action="" encType="multipart/form-data" method="POST">` with the action id and the
+  // bound arguments in hidden fields (measured on this page, #1385). A click landing before
+  // React is listening submits that form natively rather than being lost — unlike the
+  // `<form onSubmit={handler}>` this replaced, which is what used to flake this test
+  // (e2e/CLAUDE.md fact 10).
   test('deleting_a_member_document_removes_its_row @manager', async ({ page }) => {
     await page.goto(memberUrl(managedRiderId))
     await section(page, 'Documents').getByRole('button', { name: 'Delete' }).click()
