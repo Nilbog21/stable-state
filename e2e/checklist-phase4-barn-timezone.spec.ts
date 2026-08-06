@@ -1,6 +1,8 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/settings/**
+// covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/app/barn/[slug]/(protected)/agreements/**
 // covers: src/app/barn/[slug]/(protected)/page.tsx
 // covers: src/app/actions/lessons.ts
 // covers: src/app/actions/lesson-form-parsing.ts
@@ -36,14 +38,18 @@
 //
 // `EmptyState` and `ExhaustionBar` render on these pages and are deliberately NOT declared: no
 // assertion here touches either, and over-declaring makes the selector run specs that cannot
-// detect the change. `src/lib/**` IS in ALWAYS_FULL, so `format-date.ts` and `barn-timezone.ts`
-// need no glob of their own.
+// detect the change. `src/lib/**` IS in ALWAYS_FULL, so `format-date.ts`, `barn-timezone.ts` and
+// `finances-month.ts` need no glob of their own.
 //
-// checklists/pre-release/phase-4-manager-verification.md lines 513-523: barn-local *instant*
-// rendering and entry — the display half of the viewer timezone frame #1222 deleted. Adjacent
-// slices: #1204 owns 507-512 (the barn-*day* cutoff half of the same "Under that setup" run)
-// and #1205 owns 524-531.
-// Nothing outside 513-523 is touched.
+// `finances/**` and `agreements/**` arrived with #1395's three month-resolution items (524-526).
+// They are route globs like the three above and select this spec on their own; `finances-month.ts`
+// itself, the module those three items are really about, is reached through ALWAYS_FULL.
+//
+// checklists/pre-release/phase-4-manager-verification.md lines 513-526: barn-local *instant*
+// rendering and entry — the display half of the viewer timezone frame #1222 deleted — plus, since
+// #1395, the *month* the barn's frame then resolves to (524-526). Adjacent slices: #1204 owns
+// 507-512 (the barn-*day* cutoff half of the same "Under that setup" run) and #1205 owns 527-534.
+// Nothing outside 513-526 is touched.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
@@ -181,6 +187,39 @@ const EXPENSE_WALL_CLOCK = `${BARN_TODAY}T${EXPENSE_TIME}:00`
 const EXPENSE_RECIPIENT = 'Valley Farrier'
 const EXPENSE_TYPE = 'Farrier'
 const EXPENSE_AMOUNT = '145'
+
+/**
+ * The last calendar day of the barn's own current month, and the 11:30 PM entry placed on it.
+ *
+ * This is what makes item 524 falsifiable on **every** day of the year rather than only across a
+ * real month rollover, which is the limit framework fact 12 describes and which items 525 and 526
+ * below run into. The fixture is *chosen* rather than observed: barn-local 23:30 on the last of
+ * the month is 03:30 UTC on the **1st of the next month**, so a Finances that bucketed on the raw
+ * UTC instant would file this expense under next month and drop it out of this month's page
+ * entirely. Nothing about the clock the suite happens to run at is involved.
+ *
+ * `Date.UTC(y, m, 0)` — day zero of month `m` (1-based here, since `BARN_TODAY`'s digits are) is
+ * the last day of the month before it. The same `Date.UTC`-on-the-digits idiom as `shiftDay`, and
+ * deliberately not `local-day.ts`'s arithmetic, for the same reason: an expectation computed by
+ * the code under test agrees with any bug in it.
+ */
+const MONTH_END = new Date(
+  Date.UTC(Number(BARN_TODAY.slice(0, 4)), Number(BARN_TODAY.slice(5, 7)), 0)
+).toISOString().slice(0, 10)
+const MONTH_END_WALL_CLOCK = `${MONTH_END}T${EXPENSE_TIME}:00`
+// Distinct from EXPENSE_RECIPIENT above, and neither contains the other: this expense and line
+// 523's coexist in the same barn, and every Playwright text matcher is substring-based.
+const MONTH_END_RECIPIENT = 'Summit Feed'
+const MONTH_END_TYPE = 'Feed'
+const MONTH_END_AMOUNT = '210'
+
+/** `?month=` for the barn's own month, and the heading `formatMonthHeading` renders it as. */
+const BARN_MONTH = BARN_TODAY.slice(0, 7)
+const BARN_MONTH_HEADING = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+}).format(new Date(`${BARN_MONTH}-01T00:00:00Z`))
 
 const EVENT_TITLE = 'Barn Open House'
 
@@ -354,12 +393,33 @@ async function seededLessonWallClock(): Promise<string> {
   return barnWallClock(new Date(data.lesson_at as string), EASTERN)
 }
 
-async function expenseTransactionWallClocks(): Promise<string[]> {
+/**
+ * Every expense transaction written for one named recipient, as a barn-local wall clock.
+ *
+ * Scoped by recipient rather than sweeping the barn's expense transactions, because since #1395
+ * two different tests here each enter one: line 523's at BARN_TODAY and line 524's at MONTH_END.
+ * A barn-wide read would hand line 523's exact-array assertion both of them and make it fail on
+ * an unrelated test's fixture. The scope keeps that assertion an exact array — the property its
+ * own comment defends — now over a named expense rather than over "whatever exists".
+ *
+ * Two queries because `recipient` lives on `appointments` and `occurred_at` on `transactions`.
+ */
+async function expenseTransactionWallClocks(recipient: string): Promise<string[]> {
+  const { data: expenses, error: expensesError } = await barn.data.supabase
+    .from('appointments')
+    .select('id')
+    .eq('barn_id', barn.data.barn.id)
+    .eq('recipient', recipient)
+  if (expensesError) throw expensesError
+  const expenseIds = (expenses ?? []).map((row) => row.id as string)
+  if (!expenseIds.length) return []
+
   const { data, error } = await barn.data.supabase
     .from('transactions')
     .select('occurred_at')
     .eq('barn_id', barn.data.barn.id)
     .eq('kind', 'expense')
+    .in('expense_id', expenseIds)
   if (error) throw error
   return (data ?? []).map((row) => barnWallClock(new Date(row.occurred_at as string), EASTERN))
 }
@@ -786,7 +846,155 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
     await page.locator('#expense-amount').fill(EXPENSE_AMOUNT)
     await submitForm(page, 'Add Expense', new RegExp(`/barn/${barn.slug}/expenses$`))
 
-    expect(await expenseTransactionWallClocks()).toEqual([EXPENSE_WALL_CLOCK])
+    expect(await expenseTransactionWallClocks(EXPENSE_RECIPIENT)).toEqual([EXPENSE_WALL_CLOCK])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The month the barn's frame resolves to — checklist lines 524-526
+// ---------------------------------------------------------------------------
+//
+// The three fixes these cover — #1309's bucketing, #1360's `resolveFinancesMonth`, #1361's
+// `create_agreement_with_first_charge` — all shipped with unit tests and no checklist line, which
+// is what #1395 filed. The block above stops at storage; this one carries the same instant one
+// step further, into the month Finances files it under.
+//
+// **What each of the three can actually prove, because they differ and the difference matters.**
+//
+// 524 is falsifiable every day of the year, and deliberately so: `MONTH_END` picks the fixture
+// rather than waiting for the clock to supply one, so the entered instant always straddles a
+// month boundary and a UTC-framed bucket always drops it. That is the one way out of framework
+// fact 12's dead end, and it is available here only because the *datum's* frame, not the *run's*,
+// is what the assertion turns on.
+//
+// 525 and 526 have no such escape, and their comments say where the floor is rather than implying
+// there isn't one. `resolveFinancesMonth` runs in a Server Component and
+// `create_agreement_with_first_charge` runs inside Postgres; `test.use({ timezoneId })` and
+// `page.clock` reach neither, and the DB's `now()` is not reachable from a browser context at
+// all. So both pin the barn-framed value against an expectation computed independently here, and
+// separate that frame from UTC only across a real month rollover. #1360's and #1361's unit tests
+// are what carry the frame separation; these two carry the value.
+
+/** Recipient / Gross / **Expenses** / Net — `ByPaidToTable`'s column order. */
+const EXPENSES_COLUMN = 3
+
+/**
+ * One row of the By Paid To breakdown, scoped by the table's own leading header rather than by
+ * "the only table on the page": this page also renders Outstanding Expenses, and a later fixture
+ * change could give that section a table too. Same shape as
+ * `checklist-phase4-finances-by-paid-to.spec.ts`'s, which owns this tab's own checklist slice.
+ */
+function paidToRow(page: Page, recipient: string): Locator {
+  return page
+    .locator('table')
+    .filter({ has: page.getByRole('columnheader', { name: /^recipient/i }) })
+    .locator('tbody tr')
+    .filter({ has: page.getByRole('link', { name: recipient, exact: true }) })
+}
+
+/** Every charge period the barn holds, as the plain "YYYY-MM-DD" DATE the column stores. */
+async function chargePeriods(): Promise<string[]> {
+  const { data, error } = await barn.data.supabase
+    .from('agreement_charges')
+    .select('period')
+    .eq('barn_id', barn.data.barn.id)
+  if (error) throw error
+  return (data ?? []).map((row) => row.period as string)
+}
+
+// A plain `describe`, not `.serial`: 524 and 526 each arrange their own state through a form, and
+// 525 reads neither of them.
+test.describe("Finances resolves the month in the barn's zone", () => {
+  test('a_month_end_eleven_thirty_pm_expense_buckets_into_that_month_on_finances @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}/expenses/new`)
+    // Entry goes through the form and NOT through `addExpense`, and this is load-bearing rather
+    // than a preference for realism. Given no `p_occurred_at`, `create_expense_with_horses` casts
+    // `expense_date + expense_time` in the DB SESSION's zone — UTC — which would store
+    // `MONTH_END T23:30Z`, i.e. barn-local 7:30 PM. That instant sits comfortably inside the
+    // barn's month and would bucket correctly however broken the code under test was. Only
+    // `ExpenseForm`'s hidden `occurred_at` (`computeOccurredAt`, #1363) encodes 23:30 in the
+    // *barn's* zone and produces the 03:30-UTC-next-month instant this item is about.
+    //
+    // Time first, as the hydration barrier, for the reasons line 523's test states in full.
+    await hydrateByDriving(
+      () => page.locator('#expense-time').fill(EXPENSE_TIME),
+      () => pickerFieldIs(page, 'occurred_at', 11, 16, EXPENSE_TIME)
+    )
+    // Unlike line 523's test, the Date field IS moved here — off the server's `todayStr` and onto
+    // the month's last day. Safe in the one way that matters: `MONTH_END` is never in the past
+    // (it is the end of the month `BARN_TODAY` is in), so `ExpenseForm` keeps the Time field
+    // rendered rather than swapping it for the hidden input it uses on a past date.
+    //
+    // Through the month grid, not an `#expense-date` fill: `/expenses/new` passes
+    // `getScheduleRange`, and that branch of `ExpenseForm` renders a `MonthCalendarPicker` plus a
+    // hidden `expense_date` instead of the native date input the no-schedule branch renders.
+    // The trailing Close is `checklist-phase4-settings-fields.spec.ts`'s idiom — unlike the
+    // lesson form, this picker's day panel is not `dayPanelAlwaysOpen`, so tapping a day opens a
+    // panel over the fields filled below.
+    await pickCalendarDay(page, MONTH_END)
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    // Both fields at once, since `occurred_at` carries date and time together and the claim is
+    // about their combination. A precondition, not the assertion — it proves the browser encoded
+    // the straddling instant, which is what the Finances read below is then a test *of*.
+    await expect
+      .poll(() => pickerFieldIs(page, 'occurred_at', 0, 19, MONTH_END_WALL_CLOCK))
+      .toBe(true)
+
+    await page.locator('#expense-recipient').fill(MONTH_END_RECIPIENT)
+    await page.locator('#expense-type').fill(MONTH_END_TYPE)
+    await page.locator('#expense-amount').fill(MONTH_END_AMOUNT)
+    await submitForm(page, 'Add Expense', new RegExp(`/barn/${barn.slug}/expenses$`))
+
+    await page.goto(`/barn/${barn.slug}/finances?month=${BARN_MONTH}&tab=recipient`)
+    // Presence, and presence is the whole claim — the "not the next month" half cannot be read
+    // off a page, because there is no next-month page to read. `resolveFinancesMonth` clamps any
+    // `?month=` above the barn's current month back down to it and renders `nextMonthUrl` as
+    // null, so asking for next month returns *this* month's table. Absence from this table is
+    // exactly what a UTC-framed bucket produces, so this assertion fails in the frame the item
+    // names and passes in no other.
+    await expect(paidToRow(page, MONTH_END_RECIPIENT).locator('td').nth(EXPENSES_COLUMN - 1))
+      .toHaveText(`(${Number(MONTH_END_AMOUNT).toLocaleString('en-US', { style: 'currency', currency: 'USD' })})`)
+  })
+
+  test('finances_with_no_month_param_opens_on_the_barns_month @manager', async ({ page }) => {
+    // No `?month=`, which is the entire subject: `resolveFinancesMonth` falls back to
+    // `barnToday(barn.timezone)`, never to the host's UTC month and never to anything the device
+    // could contribute.
+    await page.goto(`/barn/${barn.slug}/finances`)
+
+    // `BARN_MONTH_HEADING` is built with `Intl` up top rather than by calling `formatMonthHeading`,
+    // the function that renders this label — an expectation computed by the code under test agrees
+    // with any bug in it.
+    await expect(page.getByText(BARN_MONTH_HEADING, { exact: true })).toHaveText(BARN_MONTH_HEADING)
+  })
+
+  test('a_new_agreements_first_charge_period_is_the_barns_month @manager', async ({ page }) => {
+    // **Boarding, not a lease**, and that is the whole reason this item can test anything.
+    // `create_agreement_with_first_charge` takes the charge period from `date_trunc('month',
+    // v_today)` for a `monthly` cadence — `v_today` being the barn-framed `now() AT TIME ZONE
+    // timezone` #1361 introduced — and from `start_date` for a `one_time` one. Board agreements
+    // are always monthly (`CHECK(kind <> 'board' OR cadence = 'monthly')`, and the form posts a
+    // hidden `cadence=monthly`), so this route reaches the barn's frame; a one-time lease would
+    // read back the date the form was given and never touch it.
+    await page.goto(`/barn/${barn.slug}/agreements/new?kind=board`)
+    // No hydration barrier, unlike every other form in this file. Both selects are UNCONTROLLED
+    // (`defaultValue`, no `value`/`onChange`), so their DOM value is what FormData reads and no
+    // re-render can discard it; the Fee field is controlled but server-rendered with the barn's
+    // default board fee and is left alone. The submit is `<form action={formAction}>` from
+    // `useActionState`, which is framework fact 10's enhanced shape — an early click submits the
+    // served markup rather than being lost.
+    await page.locator('#agreement-rider').selectOption({ label: RIDER_NAME })
+    await page.locator('#agreement-horse').selectOption({ label: HORSE_NAME })
+    // `\?kind=board$`, not a bare `/agreements` — that prefix also matches `/agreements/new`, the
+    // URL the form is already on, which would make `waitForURL` the no-op framework fact 3
+    // describes and hand the read below a race instead of a redirect. Measured, not guessed: the
+    // bare form returned instantly and the assertion read an empty charge set.
+    await submitForm(page, 'Add Boarding', new RegExp(`/barn/${barn.slug}/agreements\\?kind=board$`))
+
+    // An exact array over the barn's whole charge set, not a `toContain`: nothing else in this
+    // file creates an agreement, so a form that created no charge at all reads `[]` and fails
+    // rather than passing on an empty set.
+    expect(await chargePeriods()).toEqual([`${BARN_MONTH}-01`])
   })
 })
 
