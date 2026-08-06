@@ -50,8 +50,8 @@ function renderDrawer() {
 }
 
 function DirtyFlag() {
-  const { setDirty } = useNavigationBlocker()
-  useEffect(() => setDirty(true), [setDirty])
+  const { markDirty } = useNavigationBlocker()
+  useEffect(() => markDirty('drawer-test-form', true), [markDirty])
   return null
 }
 

@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import type { Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 export function HorseNotesForm({
   horse,
@@ -15,15 +16,20 @@ export function HorseNotesForm({
   const [feedNotes, setFeedNotes] = useState(horse.feed_notes ?? '')
   const [medicationNotes, setMedicationNotes] = useState(horse.medication_notes ?? '')
   const { show, flash } = useSaveFlash()
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
-    if (!result.error) flash()
+    if (!result.error) {
+      flash()
+      setDirty(false)
+    }
     return result
   }
   const [state, formAction] = useActionState(wrappedAction, { error: null })
 
   return (
-    <form action={formAction} className="flex w-full flex-col gap-5">
+    <form action={formAction} className="flex w-full flex-col gap-5" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { Agreement, AgreementKind } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { AgreementFormState } from './actions'
 
 type AgreementFormProps = {
@@ -46,9 +47,11 @@ export function AgreementForm({
     const bAvail = b.is_available === false ? 1 : 0
     return aAvail - bAvail
   })
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   return (
-    <form action={formAction} className="w-full max-w-md space-y-4">
+    <form action={formAction} className="w-full max-w-md space-y-4" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

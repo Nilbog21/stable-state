@@ -6,6 +6,7 @@ import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, 
 import type { HorseExertionSummary } from '@/lib/db/types'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
+import { GuardedForm } from '../NavigationBlocker'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/Button'
 
@@ -78,7 +79,7 @@ export default async function HorsesPage({
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
       {isManager && (
-        <form action={addHorseAction.bind(null, slug)} className="mb-8 flex gap-2">
+        <GuardedForm action={addHorseAction.bind(null, slug)} className="mb-8 flex gap-2">
           <input
             type="text"
             name="name"
@@ -87,7 +88,7 @@ export default async function HorsesPage({
             className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />
           <Button type="submit">Add</Button>
-        </form>
+        </GuardedForm>
       )}
 
       {ownedHorses.length > 0 && (

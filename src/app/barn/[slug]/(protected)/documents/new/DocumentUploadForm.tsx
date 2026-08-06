@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { RECORD_TYPE_OPTIONS, type DocumentEntity } from '@/lib/document-record-types'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 // Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
 const MAX_FILE_SIZE = 4500000
@@ -22,9 +23,11 @@ export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Pr
   const [fileName, setFileName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
+    <form ref={formRef} action={formAction} className="space-y-4" onChange={() => setDirty(true)} onSubmit={() => setFileName(null)}>
       {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       {!photoMode && <input type="hidden" name="record_type" value={selectedType} />}
 

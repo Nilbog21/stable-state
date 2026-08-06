@@ -7,6 +7,7 @@ import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays } from '@/lib/local-day'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { CalendarDate, PaymentType, ScheduleItem } from '@/lib/db/types'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
@@ -96,6 +97,8 @@ export function ExpenseForm({
   const [typeFlashing, setTypeFlashing] = useState(false)
   const [calendarMonth, setCalendarMonth] = useState((defaultDate ?? todayStr).slice(0, 7))
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   // One fetch per displayed month, over the grid exactly. LessonForm widens this by 3 days at
   // each end to feed the ±3-day exertion window; there is no heatmap here, so the plain grid is
@@ -148,7 +151,7 @@ export function ExpenseForm({
   }
 
   return (
-    <form action={formAction} className="w-full max-w-md space-y-4">
+    <form action={formAction} className="w-full max-w-md space-y-4" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
@@ -242,7 +245,7 @@ export function ExpenseForm({
         <>
           <MonthCalendarPicker
             value={expenseDate}
-            onChange={setExpenseDate}
+            onChange={(date) => { setExpenseDate(date); setDirty(true) }}
             month={calendarMonth}
             onMonthChange={setCalendarMonth}
             decorations={dayDecorations}

@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { Barn } from '@/lib/db/types'
 
 type ExhaustionThresholdsFormProps = {
@@ -10,10 +11,17 @@ type ExhaustionThresholdsFormProps = {
 }
 
 export function ExhaustionThresholdsForm({ barn, action }: ExhaustionThresholdsFormProps) {
-  const [state, formAction] = useActionState(action, { error: null })
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
+  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
+    const result = await action(prevState, formData)
+    if (!result.error) setDirty(false)
+    return result
+  }
+  const [state, formAction] = useActionState(wrappedAction, { error: null })
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

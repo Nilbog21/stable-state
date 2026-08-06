@@ -7,6 +7,7 @@ import { cancelLessonAction } from '@/app/actions/lesson-cancellation'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
 import { CancelLessonFields } from './CancelLessonFields'
+import { GuardedForm } from '../../../NavigationBlocker'
 
 export default async function CancelLessonPage({
   params,
@@ -55,7 +56,7 @@ export default async function CancelLessonPage({
             This will mark the lesson as cancelled. This cannot be undone.
           </p>
         )}
-        <form action={cancel} className="flex flex-col gap-4">
+        <GuardedForm action={cancel} className="flex flex-col gap-4">
           <CancelLessonFields
             lessonType={lesson.lesson_type}
             cancelledByInstructorDefault={cancelledByInstructorDefault}
@@ -75,7 +76,7 @@ export default async function CancelLessonPage({
             />
           </div>
           <Button type="submit" variant="danger">Confirm Cancellation</Button>
-        </form>
+        </GuardedForm>
       </div>
     </main>
   )
