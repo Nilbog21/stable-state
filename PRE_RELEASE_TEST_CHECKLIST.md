@@ -55,9 +55,13 @@ Run them in order. Each file carries its own asserting role — the partitioning
 |---|---|
 | `/` | Phase 7 |
 | `/login` | Phase 7 |
+| `/auth/callback` | Phase 1 — no check of its own, and none is warranted: it is the OAuth redirect every sign-in traverses, so Phase 1's sign-ins *are* its exercise. A check that it "works" is the sign-in that just worked. |
 | `/terms` | Phase 1 |
 | `/privacy` | Phase 1 |
+| `/about` | Phase 4 |
+| `/changelog` | Phase 4 |
 | `/demo` | Phase 1 |
+| `/api/cron/reset-demo` | Phase 1 |
 | `/barns` | Phase 7 |
 | `/barn/[slug]` (dashboard) | Phases 4, 6 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |
@@ -66,14 +70,22 @@ Run them in order. Each file carries its own asserting role — the partitioning
 | `/barn/[slug]/lessons/new` | Phases 3, 5 |
 | `/barn/[slug]/lessons/[id]` | Phases 4, 5, 6 |
 | `/barn/[slug]/lessons/[id]/edit` | Phases 4, 5 |
+| `/barn/[slug]/lessons/[id]/delete` | Phase 4 |
+| `/barn/[slug]/lessons/[id]/cancel` | Phases 4, 5, 6 |
+| `/barn/[slug]/lessons/[id]/cancel-rider/[riderId]` | Phases 4, 5, 6 |
 | `/barn/[slug]/expenses` | Phases 4, 5, 6 |
+| `/barn/[slug]/expenses/new` | Phase 4 |
+| `/barn/[slug]/expenses/[id]` | Phases 4, 5 |
+| `/barn/[slug]/expenses/[id]/delete` | Phase 4 |
 | `/barn/[slug]/horses` | Phases 2, 4 |
 | `/barn/[slug]/horses/[id]` | Phases 2, 4, 5 |
 | `/barn/[slug]/agreements` | Phase 2 |
 | `/barn/[slug]/agreements/new` | Phase 2 |
+| `/barn/[slug]/agreements/[id]` | Phase 4 |
 | `/barn/[slug]/agreements/[id]/edit` | Phase 2 |
 | `/barn/[slug]/members` | Phases 2, 4, 5, 6 |
 | `/barn/[slug]/members/[membership_id]` | Phases 4, 5 |
+| `/barn/[slug]/documents/new` | Phases 4, 6 |
 | `/barn/[slug]/finances` | Phases 4, 5, 6 |
 | `/barn/[slug]/finances/outstanding` | Phases 4, 5, 6 |
 | `/barn/[slug]/finances/horses/[id]` | Phase 4 |
@@ -89,3 +101,4 @@ Run them in order. Each file carries its own asserting role — the partitioning
 | `/barn/[slug]/guide` | Phase 4 |
 | `/profile` | Phase 4 |
 | `/profile/complete` | Phases 1, 2 |
+| `/calendar.ics` | Phases 4, 5, 6 — fetched directly at the tokenized URL copied from the Profile page's Calendar Feed section |
