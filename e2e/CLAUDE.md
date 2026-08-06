@@ -82,6 +82,21 @@ and wait — a single drive that lands early can only run out the budget. Both s
 hydration, `hydrateByDriving` for a page that renders identically until it is driven. Full
 statement, including what makes a signal trustworthy, is that module's comment. *(#1199)*
 
+**The discriminator is the form's own markup, not the fact that a button was clicked.** A click is
+lost only where the behaviour lives in JS the browser doesn't have yet — `<form onSubmit={handler}>`,
+whose server markup is a bare `<form>` the browser would GET. `<form action={serverAction}>` is
+*not* in that class: React emits the enhanced markup with the response, measured on the member
+detail page as `<form action="" encType="multipart/form-data" method="POST">` plus
+`$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_*:1`/`$ACTION_KEY` hidden fields carrying the action id and
+its bound arguments. An early click submits *that*, so the interaction survives and needs no
+barrier. Two conditions, both load-bearing: the value passed to `useActionState` (or to `action=`
+directly) must be the Server Function itself or a `.bind` of one — an inline
+`async () => …` closure wrapping it is an ordinary client function and gets no markup, which is why
+`ManageMemberSection`'s Revoke is not enhanced — and the same is true of a `<button onClick>` with
+no form around it. Reference implementation:
+`checklist-phase4-members-media.spec.ts`'s `deleting_a_member_document_removes_its_row`, whose bare
+`goto`→`click` flaked until #1385 converted the component to the enhanced shape. *(#1385)*
+
 **11. Switching a tab or filter is a click on its `Pill`, not a re-`goto` with a different
 query param.** The app's switchers are `<Pill href>` → a Next `Link`, so the user's tab change
 costs no document load and a spec that re-navigates is paying for one the UI never asks for —

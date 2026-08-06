@@ -188,7 +188,6 @@ export default async function MemberDetailPage({
     }
   }
 
-  const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
   const boundReminderDate = updateDocumentReminderDateAction.bind(null, slug, membership_id)
   const canEditReminderDate = callerRole === 'manager'
   const docEntity = targetRole === 'rider' ? 'rider' : 'trainer'
@@ -312,7 +311,7 @@ export default async function MemberDetailPage({
                     </Td>
                     <TableActions>
                       {canManageDocuments && (
-                        <DeleteDocumentButton docId={doc.id} storagePath={doc.storage_path} action={boundDelete} />
+                        <DeleteDocumentButton action={deleteDocumentAction.bind(null, slug, membership_id, doc.id, doc.storage_path)} />
                       )}
                     </TableActions>
                   </tr>
