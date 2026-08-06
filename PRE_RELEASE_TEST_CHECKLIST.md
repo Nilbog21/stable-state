@@ -4,6 +4,8 @@ Manual smoke test of all barn workflows against the dev environment. Run the pha
 
 Paths in the phase files are relative — prepend your app origin (local `npm run dev` or Vercel preview URL).
 
+To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` line from one `scripts/run-checklist-suite.sh` run, walks the rest with you one checkbox at a time, and records the result in `specs/checklist-run-{YYYY-MM-DD}.md` rather than in this file.
+
 > **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with one exception:
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
