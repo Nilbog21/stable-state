@@ -90,6 +90,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: horse_notes_render_read_only_on_the_lesson_detail_page) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
 - [ ] (e2e: rider_notes_render_read_only_on_the_lesson_detail_page) On that same page, rider notes render read-only
 - [ ] (e2e: the_edit_link_is_visible_on_the_lesson_detail_page) On that same page, the Edit link is visible
+- [ ] (manual) (#1301) On that same page, each horse-note and rider-note block is indented under the row it belongs to, so it reads as that horse's or rider's note rather than as a sibling of the row — a visual judgment about whether the grouping reads correctly, which is the whole point of the change
 - [ ] (e2e: every_note_label_is_hidden_on_a_lesson_with_no_notes) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
 - [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
 - [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) The fee change appears on the detail page
@@ -188,6 +189,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (manual) (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page — a cross-page look-and-feel judgment, not a property of any one page; a spec can only assert three separate renderings, never that they *match*
 - [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
 - [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
+- [ ] (e2e: manager_appointment_page_shows_the_amount) (#1148) That form shows the **Amount** the appointment was entered with — the manager half of the role split whose trainer half (Phase 5) asserts the amount appears nowhere; without this, "the trainer sees no amount" would pass against a build that lost the amount for everyone
 - [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient
 - [ ] (e2e: changing_the_amount_and_saving_updates_the_card) Change the amount and save → the card shows the new amount
 - [ ] (e2e: a_payment_type_set_on_the_new_expense_form_persists) On the new-expense form, set a **Payment Type**, save → it persists on reload
@@ -265,6 +267,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: a_past_reminder_date_shows_a_reminder_due_badge) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
 - [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for it shows up under the Dashboard's Reminders section
 - [ ] (e2e: the_dashboard_reminder_card_links_back_to_the_horse) That card links back to this horse
+- [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) (#1283) A document whose Reminder Date is **today** shows the **Reminder Due** badge — the cutoff includes today rather than starting the day after
+- [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) (#1283) A document whose Reminder Date is **tomorrow** shows no badge
+- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) (#1283) The Dashboard's Reminders section carries a card for that today-dated document, and none for the tomorrow-dated one — the same cutoff, applied by the fetch rather than the badge
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
