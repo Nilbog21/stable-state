@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect } from 'react'
 import type { CalendarDate, Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
 import { LessonStartTime } from './LessonStartTime'
-import { useNavigationBlocker } from '../NavigationBlocker'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
@@ -162,7 +162,6 @@ export function LessonForm({
   )
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
 
-  const { setDirty, setMessage } = useNavigationBlocker()
   const feeIsZero = fee !== '' && Number(fee) === 0
   const unpaidPastDue =
     mode === 'edit' &&
@@ -179,21 +178,14 @@ export function LessonForm({
   const horseIssueWarn = mode === 'edit' && hasHorseIssue
   const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || horseIssueWarn
 
-  useEffect(() => {
-    setDirty(shouldWarn)
-    if (horseIssueWarn) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
-    else if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
-    else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
-    else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
-    return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, horseIssueWarn, setDirty, setMessage])
-
-  useEffect(() => {
-    if (!shouldWarn) return
-    function handler(e: BeforeUnloadEvent) { e.preventDefault() }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [shouldWarn])
+  const guardMessage = horseIssueWarn
+    ? 'This lesson has an unresolved horse issue. Leave without addressing it?'
+    : unpaidWarn
+      ? 'This lesson has an unpaid balance. Are you sure you want to leave without recording payment?'
+      : notesDirty
+        ? 'You have unsaved notes. Leave without saving?'
+        : 'You have unsaved changes. Leave without saving?'
+  useUnsavedChangesGuard(shouldWarn, guardMessage)
 
   useEffect(() => {
     if (!lessonAt || !getProjectedExhaustion) return

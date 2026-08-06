@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
@@ -9,7 +9,8 @@ export type PendingNav = { type: 'push'; href: string } | { type: 'back' } | nul
 
 type Ctx = {
   dirty: boolean
-  setDirty: (v: boolean) => void
+  markDirty: (id: string, v: boolean) => void
+  clearAllDirty: () => void
   pendingNav: PendingNav
   setPendingNav: (nav: PendingNav) => void
   message: string
@@ -20,7 +21,8 @@ type Ctx = {
 
 const NavigationBlockerContext = createContext<Ctx>({
   dirty: false,
-  setDirty: () => {},
+  markDirty: () => {},
+  clearAllDirty: () => {},
   pendingNav: null,
   setPendingNav: () => {},
   message: '',
@@ -34,7 +36,19 @@ export function useNavigationBlocker() {
 }
 
 export function NavigationBlockerProvider({ children }: { children: React.ReactNode }) {
-  const [dirty, setDirty] = useState(false)
+  // Dirty state is a set of per-form ids, not one boolean: /settings mounts five guarded forms
+  // at once and /members two, so one form clearing must not disarm a still-dirty sibling.
+  const [dirtyIds, setDirtyIds] = useState<ReadonlySet<string>>(new Set())
+  const markDirty = useCallback((id: string, v: boolean) => {
+    setDirtyIds((prev) => {
+      if (prev.has(id) === v) return prev
+      const next = new Set(prev)
+      if (v) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }, [])
+  const clearAllDirty = useCallback(() => setDirtyIds(new Set()), [])
   const [pendingNav, setPendingNav] = useState<PendingNav>(null)
   const [message, setMessage] = useState('')
   const [onLeaveState, setOnLeaveState] = useState<(() => void) | null>(null)
@@ -42,24 +56,26 @@ export function NavigationBlockerProvider({ children }: { children: React.ReactN
     setOnLeaveState(fn === null ? null : () => fn)
   }, [])
   return (
-    <NavigationBlockerContext.Provider value={{ dirty, setDirty, pendingNav, setPendingNav, message, setMessage, onLeave: onLeaveState, setOnLeave }}>
+    <NavigationBlockerContext.Provider value={{ dirty: dirtyIds.size > 0, markDirty, clearAllDirty, pendingNav, setPendingNav, message, setMessage, onLeave: onLeaveState, setOnLeave }}>
       {children}
     </NavigationBlockerContext.Provider>
   )
 }
 
 /**
- * Arms the nav guard while `dirty` is true: sets the context flag and dialog message, and
- * warns on tab close via beforeunload. Cleans up on disarm and on unmount, so forms whose
- * successful save redirects away clear the guard for free.
+ * Arms the nav guard while `dirty` is true: registers this form in the context's dirty set,
+ * sets the dialog message, and warns on tab close via beforeunload. Cleans up on disarm and on
+ * unmount, so forms whose successful save redirects away clear the guard for free. Each caller
+ * arms only its own entry, so sibling guarded forms on the same page stay independent.
  */
-export function useUnsavedChangesGuard(dirty: boolean) {
-  const { setDirty, setMessage } = useNavigationBlocker()
+export function useUnsavedChangesGuard(dirty: boolean, message = 'You have unsaved changes. Leave without saving?') {
+  const id = useId()
+  const { markDirty, setMessage } = useNavigationBlocker()
   useEffect(() => {
-    setDirty(dirty)
-    if (dirty) setMessage('You have unsaved changes. Leave without saving?')
-    return () => setDirty(false)
-  }, [dirty, setDirty, setMessage])
+    markDirty(id, dirty)
+    if (dirty) setMessage(message)
+    return () => markDirty(id, false)
+  }, [dirty, id, markDirty, message, setMessage])
 
   useEffect(() => {
     if (!dirty) return
@@ -93,7 +109,7 @@ export function GuardedForm({
 }
 
 export function NavigationConfirmDialog() {
-  const { pendingNav, setPendingNav, setDirty, message, onLeave, setOnLeave } = useNavigationBlocker()
+  const { pendingNav, setPendingNav, clearAllDirty, message, onLeave, setOnLeave } = useNavigationBlocker()
   const router = useRouter()
 
   // Escape resolves as Stay — the non-destructive choice, exactly what the Stay button does.
@@ -113,7 +129,7 @@ export function NavigationConfirmDialog() {
 
   function handleLeave() {
     const nav = pendingNav
-    setDirty(false)
+    clearAllDirty()
     setPendingNav(null)
     setOnLeave(null)
     if (onLeave) {
