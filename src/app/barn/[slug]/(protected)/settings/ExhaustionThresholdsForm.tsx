@@ -11,17 +11,22 @@ type ExhaustionThresholdsFormProps = {
 }
 
 export function ExhaustionThresholdsForm({ barn, action }: ExhaustionThresholdsFormProps) {
+  // `action` goes to the hook unwrapped, or the form loses its progressive enhancement (#1396) —
+  // so the dirty flag is derived from the returned state instead of cleared on the action's
+  // return path. Submit clears it optimistically (as GuardedForm does) and a returned error
+  // re-arms it, because a failed save leaves the fields holding exactly the edits that didn't
+  // land.
+  const [state, formAction] = useActionState(action, { error: null })
   const [dirty, setDirty] = useState(false)
-  useUnsavedChangesGuard(dirty)
-  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
-    const result = await action(prevState, formData)
-    if (!result.error) setDirty(false)
-    return result
-  }
-  const [state, formAction] = useActionState(wrappedAction, { error: null })
+  useUnsavedChangesGuard(dirty || state.error !== null)
 
   return (
-    <form action={formAction} className="space-y-4" onChange={() => setDirty(true)}>
+    <form
+      action={formAction}
+      className="space-y-4"
+      onChange={() => setDirty(true)}
+      onSubmit={() => setDirty(false)}
+    >
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
