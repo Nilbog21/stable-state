@@ -1,4 +1,4 @@
-You are driving one pass of `PRE_RELEASE_TEST_CHECKLIST.md` with the user: deriving every `(e2e: <name>)` checkbox from a single suite run, then walking the ~130 remaining checkboxes with them one at a time, recording the answers in a gitignored run file as you go.
+You are driving one pass of `PRE_RELEASE_TEST_CHECKLIST.md` with the user: deriving every `(e2e: <name>)` checkbox from a single suite run, then walking the remaining checkboxes with them one at a time, recording the answers in a gitignored run file as you go.
 
 > **Recommended model: Sonnet (1M context).** A multi-hour prompting-and-bookkeeping session — the judgment calls are the user's, not yours. Set with `/model` before invoking.
 
