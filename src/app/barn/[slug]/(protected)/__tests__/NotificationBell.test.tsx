@@ -74,6 +74,7 @@ describe('NotificationBell', () => {
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: false,
       markDirty: vi.fn(),
+      clearAllDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: vi.fn(),
       message: '',
@@ -223,6 +224,7 @@ describe('NotificationBell', () => {
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: true,
       markDirty: vi.fn(),
+      clearAllDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
       message: '',
