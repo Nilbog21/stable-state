@@ -16,6 +16,20 @@ assert_fail() {
   FAIL=$((FAIL + 1))
 }
 
+# A failing run, asserted on the message it prints rather than only on its exit code. Checking
+# the status alone can't tell the failure a test claims to guard from an unrelated crash on the
+# same fixture — `runs_under_a_project` inverted, or a `set -u` trip, would keep such a test
+# green. Herestring rather than a pipe into `grep -q`, per scripts/CLAUDE.md's pipefail hazard.
+assert_fails_with() {
+  local label="$1" dir="$2" needle="$3" out exit_code
+  out="$(cd "$dir" && bash "$SCRIPT" 2>&1)" && exit_code=0 || exit_code=$?
+  if [ "$exit_code" -ne 0 ] && grep -qF "$needle" <<<"$out"; then
+    assert_pass "$label"
+  else
+    assert_fail "$label" "exit=$exit_code output=$out"
+  fi
+}
+
 # The projects block every fixture repo gets unless it overrides it — the same four the real
 # playwright.config.ts declares, in the same `grep: /@name/` shape the script parses.
 DEFAULT_PROJECTS="  projects: [
@@ -72,11 +86,8 @@ rm -rf "$REPO"
 # second silent-green path, and invisible to any amount of green-suite evidence.
 REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
   "test('a_thing_happens', async ({ page }) => {});")"
-if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
-  assert_fail "tag naming a test with no project tag: exits non-zero" "script exited 0 (expected non-zero)"
-else
-  assert_pass "tag naming a test with no project tag: exits non-zero"
-fi
+assert_fails_with "tag naming a test with no project tag: exits non-zero" \
+  "$REPO" "no project tag, so it never runs"
 rm -rf "$REPO"
 
 # Test 4: the mirror of test 3 — the same project-less test, claimed by no checklist line. Both
@@ -123,11 +134,8 @@ rm -rf "$REPO"
 # it is what proves the projects are being read from the config rather than hardcoded.
 REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
   "test('a_thing_happens @nosuchproject', async ({ page }) => {});")"
-if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
-  assert_fail "tag naming a test tagged for no configured project: exits non-zero" "script exited 0 (expected non-zero)"
-else
-  assert_pass "tag naming a test tagged for no configured project: exits non-zero"
-fi
+assert_fails_with "tag naming a test tagged for no configured project: exits non-zero" \
+  "$REPO" "no project tag, so it never runs"
 rm -rf "$REPO"
 
 # Test 8: a config the script can't read projects out of aborts rather than passing. A run that
@@ -136,11 +144,8 @@ rm -rf "$REPO"
 REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
   "test('a_thing_happens @manager', async ({ page }) => {});" \
   "  projects: [],")"
-if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
-  assert_fail "playwright.config.ts declaring no projects: exits non-zero" "script exited 0 (expected non-zero)"
-else
-  assert_pass "playwright.config.ts declaring no projects: exits non-zero"
-fi
+assert_fails_with "playwright.config.ts declaring no projects: exits non-zero" \
+  "$REPO" "no projects parsed out of playwright.config.ts"
 rm -rf "$REPO"
 
 # Test 9: a repo with no checklist files at all. Nothing to check is not a failure — the glob
@@ -159,8 +164,39 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 10: the real tree. This is the gate's own acceptance criterion — it was written against a
-# tree measured clean (711 tags, 720 static titles, 0 orphans), so a non-zero here on the first
+# Test 10: a tag whose closing paren is missing. The outer substring guard still matches, but the
+# extraction regex needs the `)`, so an unguarded scanner drops the line entirely — no count, no
+# orphan report, exit 0. That is this gate's own failure class arriving through a typo: the
+# malformed tag names a nonexistent test and nothing says so.
+REPO="$(make_repo '- [ ] Preamble
+- [ ] Missing its paren (e2e: a_renamed_test' \
+  "test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "tag missing its closing paren: exits non-zero, names the file:line" \
+  "$REPO" "checklists/pre-release/phase-1-setup.md:2"
+rm -rf "$REPO"
+
+# Test 11: the other malformed shape — no space after the colon. Same reasoning as test 10; the
+# tag is unparseable, so it must be reported rather than skipped for not looking like a tag.
+REPO="$(make_repo '- [ ] Missing its space (e2e:a_renamed_test)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "tag missing the space after the colon: exits non-zero" \
+  "$REPO" "malformed"
+rm -rf "$REPO"
+
+# Test 12: two tests whose titles strip to the same key. Keyed by the stripped title, the second
+# declaration overwrites the first, so which of the two the never-executes check sees — and
+# therefore the verdict — depends on declaration order. Bare-first is the fail-open direction:
+# the project-tagged declaration masks a sibling that never runs. The tag can't say which test
+# it meant, so the ambiguity itself is the finding.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens', async ({ page }) => {});
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "colliding titles, project-less one declared first: exits non-zero" \
+  "$REPO" "no project tag, so it never runs"
+rm -rf "$REPO"
+
+# Test 13: the real tree. This is the gate's own acceptance criterion — it was written against a
+# tree measured clean (713 tags, 722 static titles, 0 orphans), so a non-zero here on the first
 # commit means the scanner is wrong, not the repo.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "this repository: exits 0"
