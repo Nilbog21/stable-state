@@ -19,7 +19,7 @@ To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` 
 
 > **Automation tags:** in an audited section, every checkbox carries exactly one of — including a standalone setup step, which a spec automates alongside the assertions it sets up
 >
-> - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`
+> - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`. **Machine-checked** (#1386): `scripts/check-e2e-tags.sh`, wired into `ci.sh`, fails the PR if the named test doesn't exist in `e2e/*.spec.ts`, carries no `@project` tag, or the tag itself doesn't parse — each one silently launders an unverified checkbox into a green run. The tag is the test's title with its trailing `@project` suffixes dropped
 > - `(e2e-candidate)` — automatable, spec not written yet
 > - `(manual)` — not automatable; always hand-verified
 >
