@@ -44,14 +44,13 @@ function DirtyToggle() {
 }
 
 function SetPendingNavButton({ href }: { href: string }) {
-  const { markDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  const { markDirty, setPendingNav } = useNavigationBlocker()
   return (
     <button
       data-testid="set-pending"
       onClick={() => {
-        markDirty('form-a', true)
-        markDirty('form-b', true)
-        setMessage('Test message')
+        markDirty('form-a', true, 'Test message')
+        markDirty('form-b', true, 'Test message')
         setPendingNav({ type: 'push', href })
       }}
     >
@@ -61,13 +60,12 @@ function SetPendingNavButton({ href }: { href: string }) {
 }
 
 function SetBackNavButton() {
-  const { markDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  const { markDirty, setPendingNav } = useNavigationBlocker()
   return (
     <button
       data-testid="set-back"
       onClick={() => {
-        markDirty('form-a', true)
-        setMessage('Test message')
+        markDirty('form-a', true, 'Test message')
         setPendingNav({ type: 'back' })
       }}
     >

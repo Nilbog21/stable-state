@@ -7,14 +7,15 @@ import { Button } from '@/components/ui/Button'
 
 export type PendingNav = { type: 'push'; href: string } | { type: 'back' } | null
 
+const DEFAULT_MESSAGE = 'You have unsaved changes. Leave without saving?'
+
 type Ctx = {
   dirty: boolean
-  markDirty: (id: string, v: boolean) => void
+  markDirty: (id: string, v: boolean, message?: string) => void
   clearAllDirty: () => void
   pendingNav: PendingNav
   setPendingNav: (nav: PendingNav) => void
   message: string
-  setMessage: (m: string) => void
   onLeave: (() => void) | null
   setOnLeave: (fn: (() => void) | null) => void
 }
@@ -26,7 +27,6 @@ const NavigationBlockerContext = createContext<Ctx>({
   pendingNav: null,
   setPendingNav: () => {},
   message: '',
-  setMessage: () => {},
   onLeave: null,
   setOnLeave: () => {},
 })
@@ -36,46 +36,50 @@ export function useNavigationBlocker() {
 }
 
 export function NavigationBlockerProvider({ children }: { children: React.ReactNode }) {
-  // Dirty state is a set of per-form ids, not one boolean: /settings mounts five guarded forms
-  // at once and /members two, so one form clearing must not disarm a still-dirty sibling.
-  const [dirtyIds, setDirtyIds] = useState<ReadonlySet<string>>(new Set())
-  const markDirty = useCallback((id: string, v: boolean) => {
-    setDirtyIds((prev) => {
-      if (prev.has(id) === v) return prev
-      const next = new Set(prev)
-      if (v) next.add(id)
+  // Dirty state is a map of per-form id → dialog message, not one boolean: /settings mounts five
+  // guarded forms at once and /members two, so one form clearing must not disarm a still-dirty
+  // sibling. Storing each form's message here (instead of a shared last-write-wins slot) lets the
+  // dialog message follow the dirty set — when the forms disagree no single custom message is
+  // truthful, so the generic default shows; when the collision resolves the survivor's returns.
+  const [dirtyForms, setDirtyForms] = useState<ReadonlyMap<string, string>>(new Map())
+  const markDirty = useCallback((id: string, v: boolean, message?: string) => {
+    setDirtyForms((prev) => {
+      const msg = message ?? DEFAULT_MESSAGE
+      if (v ? prev.get(id) === msg : !prev.has(id)) return prev
+      const next = new Map(prev)
+      if (v) next.set(id, msg)
       else next.delete(id)
       return next
     })
   }, [])
-  const clearAllDirty = useCallback(() => setDirtyIds(new Set()), [])
+  const clearAllDirty = useCallback(() => setDirtyForms(new Map()), [])
   const [pendingNav, setPendingNav] = useState<PendingNav>(null)
-  const [message, setMessage] = useState('')
+  const distinctMessages = new Set(dirtyForms.values())
+  const message = distinctMessages.size === 1 ? [...distinctMessages][0] : DEFAULT_MESSAGE
   const [onLeaveState, setOnLeaveState] = useState<(() => void) | null>(null)
   const setOnLeave = useCallback((fn: (() => void) | null) => {
     setOnLeaveState(fn === null ? null : () => fn)
   }, [])
   return (
-    <NavigationBlockerContext.Provider value={{ dirty: dirtyIds.size > 0, markDirty, clearAllDirty, pendingNav, setPendingNav, message, setMessage, onLeave: onLeaveState, setOnLeave }}>
+    <NavigationBlockerContext.Provider value={{ dirty: dirtyForms.size > 0, markDirty, clearAllDirty, pendingNav, setPendingNav, message, onLeave: onLeaveState, setOnLeave }}>
       {children}
     </NavigationBlockerContext.Provider>
   )
 }
 
 /**
- * Arms the nav guard while `dirty` is true: registers this form in the context's dirty set,
- * sets the dialog message, and warns on tab close via beforeunload. Cleans up on disarm and on
+ * Arms the nav guard while `dirty` is true: registers this form and its dialog message in the
+ * context's dirty store, and warns on tab close via beforeunload. Cleans up on disarm and on
  * unmount, so forms whose successful save redirects away clear the guard for free. Each caller
  * arms only its own entry, so sibling guarded forms on the same page stay independent.
  */
-export function useUnsavedChangesGuard(dirty: boolean, message = 'You have unsaved changes. Leave without saving?') {
+export function useUnsavedChangesGuard(dirty: boolean, message = DEFAULT_MESSAGE) {
   const id = useId()
-  const { markDirty, setMessage } = useNavigationBlocker()
+  const { markDirty } = useNavigationBlocker()
   useEffect(() => {
-    markDirty(id, dirty)
-    if (dirty) setMessage(message)
+    markDirty(id, dirty, message)
     return () => markDirty(id, false)
-  }, [dirty, id, markDirty, message, setMessage])
+  }, [dirty, id, markDirty, message])
 
   useEffect(() => {
     if (!dirty) return

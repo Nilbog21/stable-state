@@ -78,7 +78,6 @@ describe('NotificationBell', () => {
       pendingNav: null,
       setPendingNav: vi.fn(),
       message: '',
-      setMessage: vi.fn(),
       onLeave: null,
       setOnLeave: vi.fn(),
     })
@@ -228,7 +227,6 @@ describe('NotificationBell', () => {
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
       message: '',
-      setMessage: vi.fn(),
       onLeave: null,
       setOnLeave: vi.fn(),
     })
