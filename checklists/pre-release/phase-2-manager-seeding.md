@@ -44,13 +44,11 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] **Leases** in the nav opens the lease-kind list
 - [ ] **Leases** stays highlighted in the nav on that list
 - [ ] The URL shows `?kind=lease`
-- [ ] **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form
-- [ ] Select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save succeeds
+- [ ] **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
 - [ ] **Boarding** in the nav opens the board-kind list
 - [ ] **Boarding** stays highlighted in the nav on that list
 - [ ] The URL shows `?kind=board`
-- [ ] **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee
-- [ ] Save that boarding agreement — it succeeds
+- [ ] **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
 - [ ] Both agreements appear in their respective kind-scoped lists, each showing rider, horse, fee, and **Active** status
 - [ ] The whole card is the link — no separate View/Edit buttons on it
 - [ ] On the monthly lease's detail page, leave a past month's charge unpaid (Payment Type blank) → back on the Leases list, that agreement's card shows an amber **Unpaid** pill next to its status
@@ -69,7 +67,8 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] The same "✓ Saved" confirmation appears next to the Fee field
 - [ ] Click the boarding agreement's card → its detail page shows the nav still highlighting **Boarding** (not Leases)
 - [ ] **End Agreement** (confirm the browser prompt) → it now shows **Ended** in the Boarding list
-- [ ] On a rider's member detail page with an active boarding agreement, click the **Boarding: $X/month** link → lands on the agreement detail page with **Boarding** still highlighted in the nav
+- [ ] On a rider's member detail page with an active boarding agreement, click the **Boarding: $X/month** link → lands on the agreement detail page
+- [ ] **Boarding** is still highlighted in the nav on that page
 
 Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Riders section):
 
