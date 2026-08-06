@@ -31,23 +31,30 @@ assert_fails_with() {
 }
 
 # The projects block every fixture repo gets unless it overrides it — the same four the real
-# playwright.config.ts declares, in the same `grep: /@name/` shape the script parses.
+# playwright.config.ts declares, in the same `grep: /@name/` + `storageState:` shape the script
+# parses. `mobile` points at manager.json exactly as the real config does: it is a viewport
+# project, not an identity, which is the whole reason the role mapping goes through storageState
+# rather than through the project's name.
 DEFAULT_PROJECTS="  projects: [
-    { name: 'manager', grep: /@manager/ },
-    { name: 'trainer', grep: /@trainer/ },
-    { name: 'rider',   grep: /@rider/   },
-    { name: 'mobile',  grep: /@mobile/  },
+    { name: 'manager', grep: /@manager/, use: { storageState: 'e2e/.auth/manager.json' } },
+    { name: 'trainer', grep: /@trainer/, use: { storageState: 'e2e/.auth/trainer.json' } },
+    { name: 'rider',   grep: /@rider/,   use: { storageState: 'e2e/.auth/rider.json'   } },
+    { name: 'mobile',  grep: /@mobile/,  use: { storageState: 'e2e/.auth/manager.json' } },
   ],"
 
 # Creates a temp git repo holding one checklist phase file, one spec file, and a
-# playwright.config.ts — the three inputs the script reads.
+# playwright.config.ts — the three inputs the script reads. The phase file's asserting-role
+# declaration is prepended rather than left to each caller: `role-agnostic` is unconstrained, so
+# the fixtures that predate the role check keep their verdicts, and the ones that exercise it
+# pass their own declaration in.
 make_repo() {
-  local checklist="$1" spec="$2" projects="${3:-$DEFAULT_PROJECTS}"
+  local checklist="$1" spec="$2" projects="${3:-$DEFAULT_PROJECTS}" \
+    role_comment="${4:-<!-- Asserting role: role-agnostic -->}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
   mkdir -p "$dir/checklists/pre-release" "$dir/e2e"
-  printf '%s\n' "$checklist" > "$dir/checklists/pre-release/phase-1-setup.md"
+  printf '%s\n%s\n' "$role_comment" "$checklist" > "$dir/checklists/pre-release/phase-1-setup.md"
   printf '%s\n' "$spec" > "$dir/e2e/fixture.spec.ts"
   printf '%s\n' "export default defineConfig({
 $projects
@@ -73,7 +80,7 @@ REPO="$(make_repo '- [ ] Preamble
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] &&
   printf '%s' "$err_output" | grep -c "a_renamed_test" >/dev/null &&
-  printf '%s' "$err_output" | grep -c "checklists/pre-release/phase-1-setup.md:2" >/dev/null; then
+  printf '%s' "$err_output" | grep -c "checklists/pre-release/phase-1-setup.md:3" >/dev/null; then
   assert_pass "orphan tag: exits non-zero, names the tag and its checklist file:line"
 else
   assert_fail "orphan tag: exits non-zero, names the tag and its checklist file:line" \
@@ -172,7 +179,7 @@ REPO="$(make_repo '- [ ] Preamble
 - [ ] Missing its paren (e2e: a_renamed_test' \
   "test('a_thing_happens @manager', async ({ page }) => {});")"
 assert_fails_with "tag missing its closing paren: exits non-zero, names the file:line" \
-  "$REPO" "checklists/pre-release/phase-1-setup.md:2"
+  "$REPO" "checklists/pre-release/phase-1-setup.md:3"
 rm -rf "$REPO"
 
 # Test 11: the other malformed shape — no space after the colon. Same reasoning as test 10; the
@@ -195,9 +202,119 @@ assert_fails_with "colliding titles, project-less one declared first: exits non-
   "$REPO" "no project tag, so it never runs"
 rm -rf "$REPO"
 
-# Test 13: the real tree. This is the gate's own acceptance criterion — it was written against a
-# tree measured clean (713 tags, 722 static titles, 0 orphans), so a non-zero here on the first
-# commit means the scanner is wrong, not the repo.
+# Test 13: the tag resolves and runs, but under a project whose identity is not the one the phase
+# declares it asserts as. `PRE_RELEASE_TEST_CHECKLIST.md`'s header has called this tag a lie since
+# #1292 — a rider-phase line can only ever be covered by a rider-eye test — and the gate accepted
+# it until #1392. Third silent-green path: the named test genuinely passes, against a page nobody
+# walking this phase ever sees.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: rider -->')"
+assert_fails_with "tag whose test asserts as a role this phase does not: exits non-zero" \
+  "$REPO" "runs as manager, but this phase asserts as rider"
+rm -rf "$REPO"
+
+# Test 14: a `@mobile` tag under a manager phase. `mobile` is a viewport project running
+# manager.json, and phase-4 carries exactly one such tag — so a phase-name-to-project-name rule
+# would false-positive on the real tree immediately. This is what proves the mapping goes through
+# storageState rather than through the project's name.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @mobile', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: manager -->')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "@mobile tag under a manager phase: exits 0"
+else
+  assert_fail "@mobile tag under a manager phase: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
+# Tests 15 and 16: one test carrying two project tags, claimed from each of the two phases whose
+# role it runs as. 6 tags are this shape today (3 in phase 5, 3 in phase 6), so a rule demanding a
+# single role would fail the tree it was written against. One matching role is enough.
+for role in trainer rider; do
+  REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+    "test('a_thing_happens @rider @trainer', async ({ page }) => {});" \
+    "$DEFAULT_PROJECTS" "<!-- Asserting role: $role -->")"
+  if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+    assert_pass "dual-project tag under a $role phase: exits 0"
+  else
+    assert_fail "dual-project tag under a $role phase: exits 0" "script exited non-zero"
+  fi
+  rm -rf "$REPO"
+done
+
+# Test 17: `role-agnostic` is the escape hatch — a phase with no single walker (phase 1 is the only
+# one) constrains nothing, and any project-tagged test satisfies it. Deliberately NOT admitted for
+# phase 4, whose comment also says "role-agnostic": there it describes the assertion's nature
+# rather than the identity walking the phase, and reading it as a token would exempt 560 tags.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: role-agnostic -->')"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "role-agnostic phase admits any project-tagged test: exits 0"
+else
+  assert_fail "role-agnostic phase admits any project-tagged test: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 18: a phase file carrying tags but no declaration at all. Falling back to unconstrained is
+# this gate's own failure class — a phase file added by a future split would be silently exempt
+# from the role check while reporting the same OK, which is the `CHECKLIST_GLOBS` argument again
+# one level down.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '')"
+assert_fails_with "tagged phase file with no asserting-role declaration: exits non-zero" \
+  "$REPO" "no \`Asserting role:\` comment"
+rm -rf "$REPO"
+
+# Test 19: a head that isn't a role. Only the text before the first ` — ` is parsed, so the prose
+# tail is free to say anything — but the head has to resolve, and `role-agnostic setup` (phase 1's
+# wording before #1392) is not a token. Unknown means FAIL, never unconstrained.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: role-agnostic setup — an unauthenticated visitor. -->')"
+assert_fails_with "unknown role token: exits non-zero" \
+  "$REPO" "unknown asserting-role token"
+rm -rf "$REPO"
+
+# Test 20: an empty head, in a file carrying NO tags. The declaration is only *required* where
+# there are tags, but one that exists is parsed wherever it sits: otherwise a typo in an untagged
+# phase file lies dormant and surfaces years later, in the unrelated PR that adds that phase's
+# first tag.
+REPO="$(make_repo '- [ ] Something happens, asserted by nothing' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: -->')"
+assert_fails_with "empty asserting-role head in an untagged phase file: exits non-zero" \
+  "$REPO" "unparseable"
+rm -rf "$REPO"
+
+# Test 21: two declarations in one file. Neither last-wins nor union is defensible — the file is
+# ambiguous about what walks it, and picking either silently answers a question only a human can.
+REPO="$(make_repo '<!-- Asserting role: rider -->
+- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: manager -->')"
+assert_fails_with "two asserting-role declarations in one file: exits non-zero" \
+  "$REPO" "2 \`Asserting role:\` comments"
+rm -rf "$REPO"
+
+# Test 22: a configured project whose storageState the script can't read. Same fail-closed rule as
+# test 8's empty projects list, one level in: a project silently mapped to no role would make every
+# tag naming it fail the role check for a reason the config, not the checklist, is responsible for.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "  projects: [
+    { name: 'manager', grep: /@manager/ },
+  ],")"
+assert_fails_with "project with no parseable storageState: exits non-zero" \
+  "$REPO" "no parseable storageState"
+rm -rf "$REPO"
+
+# Test 23: the real tree. This is the gate's own acceptance criterion — it was written against a
+# tree measured clean (733 tags, 0 orphans, and 0 role violations: phase 4 is 559 @manager plus 1
+# @mobile, phase 5 is 82 @trainer plus 3 dual, phase 6 is 85 @rider plus 3 dual), so a non-zero
+# here on the first commit means the scanner is wrong, not the repo.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "this repository: exits 0"
 else
