@@ -17,8 +17,9 @@ const GRANT = 'Grant Instructor Access'
 const SETTLE_AFTER_WRITE = 15_000
 
 // The confirm text, likewise written out. Split into the two halves the checklist asks about
-// separately — line 501 claims the prompt names the trainer, line 502 claims it warns about
-// future lessons — plus the whole string, which line 511 asserts intact for the manager's own row.
+// separately — one line claims the prompt is "naming the trainer", the next that it "warns
+// they'll no longer be assignable to future lessons" — plus the whole string, which the manager's
+// own "does raise a confirm prompt" line asserts intact.
 const FUTURE_LESSONS_WARNING = 'They will no longer be assignable to future lessons.'
 const revokePrompt = (name: string) => `Revoke instructor access for ${name}? ${FUTURE_LESSONS_WARNING}`
 
@@ -30,13 +31,15 @@ const MANAGER_NAME = fullName(E2E_USERS.manager)
 const TRAINER_LOGIN_NAME = fullName(E2E_USERS.trainer)
 
 // Four managed stubs, one per state the checklist names. Gale, Indigo and Morgan are the names
-// lines 512, 513 and 517 use and are kept verbatim; the trainer the Instructor Access lines act on
+// the "Rider Gale Test", "Indigo Test" and "Second manager Morgan Manager" lines use and are kept
+// verbatim; the trainer the Instructor Access lines act on
 // is unnamed by the checklist, so it gets a name of its own that collides with nothing.
 //
 // A stub rather than the shared trainer login for that role, because the chain flips can_instruct
 // several times and a stub keeps the whole exercise inside this barn's own rows. (The stub is not
 // strictly required for that — barn_memberships is per-barn either way — but it also leaves
-// TRAINER_LOGIN_NAME as a second, untouched instructor, which is what gives line 505's assertion a
+// TRAINER_LOGIN_NAME as a second, untouched instructor, which is what gives the "no longer
+// appears in the instructor select" assertion a
 // non-empty expected list to compare against instead of an empty one.)
 const TRAINER_STUB = { firstName: 'Sage', lastName: 'Test' }
 const RIDER_STUB = { firstName: 'Gale', lastName: 'Test' }
@@ -49,7 +52,7 @@ const SECOND_MANAGER_NAME = fullName(SECOND_MANAGER)
 
 /**
  * Every h2 a manager sees on a managed rider's detail page, in document order — the assertion
- * line 512 ("shows no Instructor Access section") is made with.
+ * the "shows no **Instructor Access** section" line is made with.
  *
  * A `toHaveCount(0)` over an Instructor Access locator would be satisfied by a page that rendered
  * nothing at all, which is the vacuity shape the batch keeps hitting: the locator resolves to
@@ -66,7 +69,8 @@ let removableProfileId = ''
 let secondManagerId = ''
 
 const barn = withBarn('phase4-members-access', async ({ supabase, barn, members }) => {
-  // addMemberships gives every non-rider can_instruct = true, but line 508 requires your own
+  // addMemberships gives every non-rider can_instruct = true, but the "reading **Grant Instructor
+  // Access**" line requires your own
   // manager page to read "Grant Instructor Access" — i.e. a manager who has *not* been granted
   // instructor access, which is the app's own default for a manager created through the UI.
   //
@@ -83,7 +87,8 @@ const barn = withBarn('phase4-members-access', async ({ supabase, barn, members 
   )
 
   // can_instruct defaults to true for a trainer stub, matching create_managed_member — which is
-  // exactly the "trainers default to can_instruct=true" line 500 asserts.
+  // exactly the trainers-default-to-can_instruct=true state asserted by the line reading "an
+  // **Instructor Access** section reading **Revoke Instructor Access**".
   const trainerStub = await addManagedMember(supabase, barn.id, { ...TRAINER_STUB, role: 'trainer' })
   trainerStubId = trainerStub.membershipId
 
@@ -94,7 +99,8 @@ const barn = withBarn('phase4-members-access', async ({ supabase, barn, members 
   removableId = removable.membershipId
   removableProfileId = removable.profileId
 
-  // A second manager, for line 517's #969 rule. Unclaimed, so its user_id is null and the
+  // A second manager, for the #969 rule in "Second manager Morgan Manager's member detail page
+  // shows no **Remove** button either". Unclaimed, so its user_id is null and the
   // `target.user_id !== user.id` half of canRemoveMember *passes* — leaving the role check as the
   // only thing that can suppress the button, which is the rule the line is actually about.
   const secondManager = await addManagedMember(supabase, barn.id, { ...SECOND_MANAGER, role: 'manager' })
@@ -129,7 +135,8 @@ function instructorAccessButton(page: Page) {
  * The member detail page's header row — the h1's parent, which is the
  * `flex items-center justify-between` div holding the name and (when permitted) Remove.
  *
- * Shared deliberately between line 513 (Remove present) and lines 516/517 (Remove absent). Those
+ * Shared deliberately between "Indigo Test's member detail page shows a **Remove** button"
+ * (present) and the two "shows no **Remove** button" lines (absent). Those
  * two are therefore the positive control for this one: the same locator constant resolves to a
  * real header on all three pages, so a header that stopped rendering could not make the absence
  * assertions pass.

@@ -32,7 +32,8 @@
 // select this spec when the form components themselves change, which is the case that matters.
 //
 // Manage Barn's accordion shell and the settings fields themselves
-// (checklists/pre-release/phase-4-manager-verification.md lines 476-486, 495-506 and 507-512): the eight collapsible
+// (checklists/pre-release/phase-4-manager-verification.md — the accordions-and-Instructor-Cut
+// block, the Board Fee through Barn Timezone block, and the #1149 barn-day block): the eight collapsible
 // sections; Default Instructor Cut; Default Board Fee and its non-retroactive promise;
 // Horse Exhaustion Thresholds; Schedule Buffer; Barn Timezone — including the proof that the
 // stored zone actually drives the past-due check rather than only the display — and the six
@@ -67,7 +68,8 @@ import type { Agreement, Horse } from '@/lib/db/types'
 
 /**
  * The barn's own zone — `barns.timezone`'s schema default, so a freshly seeded barn already
- * carries it and line 693's "(default Eastern)" is asserted against the real default rather
+ * carries it and the "**Barn Timezone** select shows the current value (default Eastern)" line
+ * is asserted against the real default rather
  * than against something this file arranged.
  */
 const EASTERN = 'America/New_York'
@@ -78,7 +80,8 @@ const EASTERN = 'America/New_York'
  * As a *barn* zone it is the westernmost `BARN_TIMEZONES` offers, which is what makes line
  * 695 work at all — see BARN_TIMEZONE_CHANGE below.
  *
- * As the *device* zone it is line 696's "set your machine's timezone to Hawaii", expressed as
+ * As the *device* zone it is the #1149 setup line's "set your *machine's* timezone to Hawaii",
+ * expressed as
  * `test.use({ timezoneId })` on the barn-day describe. Never a `playwright.config.ts` edit:
  * #1221 owns the runner's `TZ`, and the browser context zone is a per-file override.
  */
@@ -153,7 +156,8 @@ const DEVICE_DAY = shiftDay(BARN_TODAY, -1)
  * green and worthless for most of the day — which is the exact failure mode #1222 existed to
  * remove.
  *
- * **1pm and not the 8pm line 696 names, and the difference is load-bearing.** Hawaii is UTC−10
+ * **1pm and not the 8pm the #1149 setup line names, and the difference is load-bearing.**
+ * Hawaii is UTC−10
  * with no DST, so any Hawaii evening is already the *next* UTC day: 8pm on DEVICE_DAY is 06:00
  * UTC on BARN_TODAY, and the browser's UTC calendar day would then equal the very value all six
  * tests assert. A `new Date().toISOString().slice(0, 10)` implementation would render the right
@@ -168,7 +172,8 @@ const DEVICE_INSTANT = wallClockToInstant(`${DEVICE_DAY}T13:00:00`, HAWAII)
 
 /**
  * `local-day.ts:formatCalendarDate`'s output, rebuilt here rather than imported — the
- * dashboard heading is what line 696 asserts, and that helper is half of what produces it.
+ * dashboard heading is what the #1149 setup line asserts, and that helper is half of what
+ * produces it.
  * Same in-spec `Intl` mirror `checklist-timezone.spec.ts` already uses for the same reason.
  * UTC-forced because a "YYYY-MM-DD" names a day, not an instant.
  */
@@ -198,7 +203,7 @@ function shortDateLabel(date: string): string {
 /**
  * Every `AccordionSection` the settings page renders, in render order.
  *
- * Line 669's claim is a *negative* one — there is no "Active Members" section — and an
+ * The "There is no \"Active Members\" section" claim is a *negative* one, and an
  * absence assertion is satisfied just as well by a page that rendered no sections at all. So
  * the expectation is this exact list rather than a `not.toContain`: the absence and the seven
  * presences are one equality, and a page rendering nothing reads `[]` and fails.
@@ -231,7 +236,8 @@ const SAVED_THRESHOLDS = { moderate: '3', high: '9' }
 const SAVED_SCHEDULE_BUFFER = '45'
 
 /**
- * Line 689's rejected pair, and **neither number matches either stored value** — that property
+ * The "Try setting Moderate ≥ High → rejected with a field error" pair, and **neither number
+ * matches either stored value** — that property
  * is what the paired "stored values unchanged" item below rests on. The first draft used
  * `9`/`9`, which shares its High with SAVED_THRESHOLDS: a server action that wrote High before
  * validating would have left `{3, 9}` behind and the unchanged-check would have agreed with it
@@ -249,7 +255,8 @@ const THRESHOLD_ERROR = 'Moderate threshold must be less than high threshold'
 
 /**
  * Board fees. Three distinct numbers, none of them `barns.default_board_fee`'s schema default
- * of 1000: the pre-existing agreement's own fee, and the new barn default. Line 686's
+ * of 1000: the pre-existing agreement's own fee, and the new barn default. The "newly created
+ * boarding agreement pre-fills the new fee" line's
  * pre-fill can therefore only read as correct by having actually picked up the save in line
  * 685's test — 1450 is reachable from nowhere else.
  */
@@ -261,14 +268,15 @@ const INSTRUCTOR_CUT_HELPER =
 const BOARD_FEE_HELPER = 'Applies to new boarding agreements only — existing boarders are unchanged.'
 
 /**
- * Line 694 parks the barn in Hawaii and line 695 brings it back to Eastern, and that order is
+ * The "Change it and Save → it persists on reload" line parks the barn in Hawaii and the
+ * "With the timezone changed above" line brings it back to Eastern, and that order is
  * forced rather than chosen.
  *
  * `getOutstandingExpenses` decides past-due by comparing an expense's wall clock against
  * `instantToLocalWallClock(now, barns.timezone)` — a wall-clock compare *in the barn's zone*.
  * Moving the barn west makes the barn's own clock read earlier, so an expense can only ever
  * *gain* past-due status when the barn moves **east**. Eastern is the easternmost zone the
- * picker offers, so line 695's "it now surfaces" is reachable only by changing the zone *to*
+ * picker offers, so that line's "it now surfaces" is reachable only by changing the zone *to*
  * Eastern — which means the preceding change has to have gone the other way.
  *
  * It also leaves the barn Eastern for the barn-day block below, which needs exactly that.
@@ -276,7 +284,8 @@ const BOARD_FEE_HELPER = 'Applies to new boarding agreements only — existing b
 const BARN_TIMEZONE_CHANGE = HAWAII
 
 /**
- * Line 695's three planned expenses. Recipients are mutually non-substring, so a `hasText`
+ * The "add a planned expense" line's three planned expenses. Recipients are mutually
+ * non-substring, so a `hasText`
  * or `getByText` read can never match two of them.
  *
  * - CONTROL is past-due in both zones: the same-document positive half, present before *and*
@@ -293,7 +302,8 @@ const DISCRIMINATOR_EXPENSE = { recipient: 'Beacon Vet', expenseType: 'Vaccinati
 const FUTURE_EXPENSE = { recipient: 'Cedar Dentist', expenseType: 'Float' }
 
 /**
- * Line 698's two horse documents. `ReminderDueBadge` renders only when
+ * The "horse document whose Reminder Date is *tomorrow*" line's two horse documents.
+ * `ReminderDueBadge` renders only when
  * `reminder_date <= today`, so a reminder on the barn's own day is due and one on the barn's
  * *next* day is not — and the device, pinned a day behind, calls the first of those
  * "tomorrow", which is precisely the wording of the line.
@@ -321,13 +331,15 @@ let controlExpenseDate: string
 let discriminatorExpenseDate: string
 
 const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, members }) => {
-  // The barn's settings are deliberately left at their schema defaults: lines 670, 687, 691
+  // The barn's settings are deliberately left at their schema defaults: the Instructor Cut,
+  // Exhaustion Thresholds and Schedule Buffer "shows the current value" lines
   // and 693 all assert those defaults, so seeding over them would make the checklist's own
   // parenthetical unverifiable.
 
   horse = await addHorse(supabase, seededBarn.id, 'Juniper')
 
-  // /lessons/new is read once (line 697); a tier keeps the form in its populated shape rather
+  // /lessons/new is read once (for the "month calendar greys out your machine's own current
+  // date" line); a tier keeps the form in its populated shape rather
   // than whatever a tierless barn renders.
   await addTier(supabase, seededBarn.id, { name: 'Standard', price: 80, isDefault: true })
 
@@ -339,7 +351,8 @@ const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, me
     fee: EXISTING_BOARD_FEE,
   })
 
-  // Line 695's three expenses. `addExpense` derives `expense_date` from `at` in the seeded
+  // The "add a planned expense" line's three expenses. `addExpense` derives `expense_date`
+  // from `at` in the seeded
   // barn's own zone — Eastern, the value captured at createBarn — which is the frame these
   // wall clocks are reasoned in above.
   const halfAnHourAgo = new Date(Date.now() - 30 * 60 * 1000)
@@ -429,7 +442,7 @@ async function openSection(page: Page, title: string): Promise<Locator> {
 }
 
 /**
- * The `<h2>` inside a section's `<summary>` — the thing lines 666/667 name ("clicking a
+ * The `<h2>` inside a section's `<summary>` — the thing the open/close lines name ("clicking a
  * section's *heading*"). Clicking the heading rather than its `<summary>` parent is what the
  * lines actually describe; the click bubbles and activates the `<details>` identically.
  */
@@ -479,14 +492,15 @@ async function openField(page: Page, title: string, selector: string): Promise<L
 }
 
 // ---------------------------------------------------------------------------
-// Accordions — checklist lines 665-669
+// Accordions — the checklist block from "Sections render as collapsible accordions" through
+// "There is no \"Active Members\" section"
 // ---------------------------------------------------------------------------
 
 test.describe('Manage Barn — accordions', () => {
   test('settings_sections_all_render_collapsed_on_page_load @manager', async ({ page }) => {
     await page.goto(settingsUrl())
 
-    // Titles and flags together, as an exact array: both halves of line 665's claim ("render
+    // Titles and flags together, as an exact array: both halves of the collapsed-on-load claim ("render
     // as collapsible accordions" and "all collapsed") in one equality.
     expect(await sectionStates(page)).toEqual(SECTION_TITLES.map((title) => [title, false]))
   })
@@ -515,7 +529,8 @@ test.describe('Manage Barn — accordions', () => {
     await sectionHeading(page, second, 'Barn Timezone').click()
     await second.getByRole('button', { name: 'Save', exact: true }).waitFor()
 
-    // The whole eight-section state, not just the first one: line 668 claims the *other*
+    // The whole eight-section state, not just the first one: "Opening one section leaves the
+    // other sections' open/closed state unchanged" claims the *other*
     // sections are unchanged, and asserting only that Schedule Buffer stayed open would pass
     // on a page that had opened all eight.
     expect(await sectionStates(page)).toEqual(
@@ -533,7 +548,8 @@ test.describe('Manage Barn — accordions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Default Instructor Cut — checklist lines 670-675
+// Default Instructor Cut — the checklist block from "**Default Instructor Cut** field shows the
+// current value" through "After that rejection the field's stored value is unchanged"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Default Instructor Cut', () => {
@@ -558,7 +574,7 @@ test.describe.serial('Manage Barn — Default Instructor Cut', () => {
   test('instructor_cut_helper_text_says_past_lessons_are_unaffected @manager', async ({ page }) => {
     const sec = await openSection(page, 'Default Instructor Cut')
 
-    // Exact text, which is the whole of line 672's claim: it is not "some helper text exists"
+    // Exact text, which is the whole of the helper-text line's claim: it is not "some helper text exists"
     // but "it says the change doesn't affect past lessons, *not* that it recalculates
     // historical income". Equality is what rules the second reading out.
     await expect(sec.locator('p')).toHaveText(INSTRUCTOR_CUT_HELPER)
@@ -627,7 +643,8 @@ test.describe.serial('Manage Barn — Default Instructor Cut', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Default Board Fee — checklist lines 684-686
+// Default Board Fee — the checklist block from "The **Default Board Fee** field's
+// non-retroactive helper text is visible" through "pre-fills the new fee"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Default Board Fee', () => {
@@ -669,7 +686,8 @@ test.describe.serial('Manage Barn — Default Board Fee', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Horse Exhaustion Thresholds — checklist lines 687-690
+// Horse Exhaustion Thresholds — the checklist block from "**Horse Exhaustion Thresholds**
+// fields show the current Moderate/High values" through "the stored threshold values are unchanged"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Horse Exhaustion Thresholds', () => {
@@ -685,7 +703,8 @@ test.describe.serial('Manage Barn — Horse Exhaustion Thresholds', () => {
   }
 
   test('exhaustion_threshold_fields_show_the_barns_current_values @manager', async ({ page }) => {
-    // Both fields in one equality — line 687 names them as a pair, and reading only one would
+    // Both fields in one equality — the checklist names them as a "Moderate/High" pair, and
+    // reading only one would
     // pass on a form that rendered the same value into both.
     expect(await thresholdValues(page)).toEqual(DEFAULT_THRESHOLDS)
   })
@@ -722,7 +741,8 @@ test.describe.serial('Manage Barn — Horse Exhaustion Thresholds', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Schedule Buffer — checklist lines 691-692
+// Schedule Buffer — the "**Schedule Buffer** field shows the current value" and "Change it and
+// **Save** → value persists on reload" lines
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Schedule Buffer', () => {
@@ -746,7 +766,8 @@ test.describe.serial('Manage Barn — Schedule Buffer', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Barn Timezone — checklist lines 693-695
+// Barn Timezone — the checklist block from "**Barn Timezone** select shows the current value"
+// through "add a planned expense due a day that is already past in the barn's zone"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Barn Timezone', () => {
@@ -785,7 +806,8 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
   test('saving_a_new_barn_timezone_persists_it_across_a_reload @manager', async ({ page }) => {
     const sec = await openSection(page, 'Barn Timezone')
 
-    // Throwing precondition: line 694 is a *change* claim, and a change claim tested against a
+    // Throwing precondition: "Change it and Save → it persists on reload" is a *change* claim, and
+    // a change claim tested against a
     // select that already reads the target value asserts nothing — the save could be a no-op
     // and the reload would still show the expected zone. Unlike the numeric settings above,
     // whose saved values are visibly distinct constants, this one is an enum that shares its
@@ -836,11 +858,12 @@ test.describe.serial('Manage Barn — Barn Timezone', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The barn's day versus the device's — checklist lines 696-701 (#1149)
+// The barn's day versus the device's — the #1149 checklist block, from its setup line through
+// "**Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date"
 // ---------------------------------------------------------------------------
 
 test.describe('Manage Barn — barn day versus device day', () => {
-  // Line 696's "set your *machine's* timezone to Hawaii". A describe-scoped override, so the
+  // The #1149 setup line's "set your *machine's* timezone to Hawaii". A describe-scoped override, so the
   // other 23 items stay in the runner's pinned zone (#1221), and never a
   // `playwright.config.ts` edit.
   test.use({ timezoneId: HAWAII })
@@ -868,7 +891,7 @@ test.describe('Manage Barn — barn day versus device day', () => {
   // `assertPinArithmetic`: no *date* assertion separates all three frames at once, and only an
   // *hour* does.
 
-  // Line 696's "set Barn Timezone to Eastern", done as a write to this file's own barn rather
+  // The #1149 setup line's "set **Barn Timezone** to Eastern", done as a write to this file's own barn rather
   // than through the UI: the settings-page path is already covered by the timezone items
   // above, and doing it here makes the block independent of whether they ran — a worker
   // restart mid-chain up there would otherwise leave the barn in Hawaii and quietly invert
@@ -894,7 +917,7 @@ test.describe('Manage Barn — barn day versus device day', () => {
    */
   /**
    * A day cell's past-ness, as both the seam and the appearance: `data-past` drives the
-   * `text-zinc-300` tint that line 697's "greys out" actually names, and asserting only the
+   * `text-zinc-300` tint that the calendar line's "greys out" actually names, and asserting only the
    * attribute would leave the visible half unchecked (#1205 set the precedent of asserting the
    * class where a line names one).
    */
@@ -1005,7 +1028,8 @@ test.describe('Manage Barn — barn day versus device day', () => {
       return field.inputValue()
     }
 
-    // Line 701 names both forms, and they are one component reached by two `kind` values — so
+    // The "**Add Lease** / **Add Boarding**" line names both forms, and they are one component
+    // reached by two `kind` values — so
     // one test, and one equality covering both rather than an assertion that only one of the
     // two entry points was checked.
     expect({ lease: await startDateFor('lease'), board: await startDateFor('board') }).toEqual({

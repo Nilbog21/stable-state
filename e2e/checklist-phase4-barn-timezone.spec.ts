@@ -12,10 +12,12 @@
 //
 // The three `src/app/actions/` files are the SERVER ACTIONS behind the three forms this spec
 // submits, and they are reached by import rather than by path, so no route glob covers them:
-// `submitLesson`/`updateLessonAction` back items 706 and 709, `parseLessonFormData` is the code
-// that turns the hidden `lesson_at` input item 707 asserts into the instant item 709 asserts,
-// and `createExpenseAction` writes the row whose `transactions.occurred_at` item 710 reads.
-// A regression in `lesson-form-parsing.ts` is the single most likely way 707 and 709 break.
+// `submitLesson`/`updateLessonAction` back the "leaves the stored time untouched" and "creating a
+// lesson at 4:00 PM stores 4:00 PM *barn-local*" items, `parseLessonFormData` is the code that
+// turns the hidden `lesson_at` input the "**New Lesson**'s date pre-fills" item asserts into the
+// instant the stores-4:00-PM item asserts, and `createExpenseAction` writes the row whose
+// `transactions.occurred_at` the "**Add Expense** with a Time of 11:30 PM" item reads.
+// A regression in `lesson-form-parsing.ts` is the single most likely way those two break.
 // (`checklist-phase4-lessons-cancel-group.spec.ts` sets the per-file precedent.)
 //
 // The subtree globs are deliberately whole subtrees rather than `new/**`. A `/**` glob is a
@@ -33,7 +35,7 @@
 // that membership is provisional, which #1357 measured and it is not. `calendar/**` supplies markup asserted on
 // directly (`CalendarLessonCard`, `CalendarEventCard`, `MonthCalendarPicker`);
 // `useOutsideDismiss.ts` is reached through `MonthCalendarPicker` and owns the open/close state
-// of the day popup that item 709's day selection drives, which is exactly the kind of module
+// of the day popup that item's day selection drives, which is exactly the kind of module
 // you forget you drive because you reach it through a helper.
 //
 // `EmptyState` and `ExhaustionBar` render on these pages and are deliberately NOT declared: no
@@ -41,15 +43,20 @@
 // detect the change. `src/lib/**` IS in ALWAYS_FULL, so `format-date.ts`, `barn-timezone.ts` and
 // `finances-month.ts` need no glob of their own.
 //
-// `finances/**` and `agreements/**` arrived with #1395's three month-resolution items (524-526).
-// They are route globs like the three above and select this spec on their own; `finances-month.ts`
-// itself, the module those three items are really about, is reached through ALWAYS_FULL.
+// `finances/**` and `agreements/**` arrived with #1395's three month-resolution items ("an expense
+// entered at 11:30 PM barn-local on the last day of a month" through "a newly created boarding
+// agreement's first charge is for the barn's current month"). They are route globs like the three
+// above and select this spec on their own; `finances-month.ts` itself, the module those three
+// items are really about, is reached through ALWAYS_FULL.
 //
-// checklists/pre-release/phase-4-manager-verification.md lines 513-526: barn-local *instant*
+// checklists/pre-release/phase-4-manager-verification.md, the block from "a lesson you created
+// for 4:00 PM still reads 4:00 PM on the Lessons list" through "that same barn event's time on the
+// dashboard calendar is the barn's": barn-local *instant*
 // rendering and entry — the display half of the viewer timezone frame #1222 deleted — plus, since
-// #1395, the *month* the barn's frame then resolves to (524-526). Adjacent slices: #1204 owns
-// 507-512 (the barn-*day* cutoff half of the same "Under that setup" run) and #1205 owns 527-534.
-// Nothing outside 513-526 is touched.
+// #1395, the *month* the barn's frame then resolves to. Adjacent
+// slices: #1204 owns the barn-*day* cutoff half of the same "Under that setup" run (the #1149
+// setup line through "**Add Lease** / **Add Boarding**'s Start Date pre-fills"), and #1205 owns
+// the Barn Events block that follows. Nothing outside that block is touched.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
@@ -64,13 +71,15 @@ import type { Lesson } from '@/lib/db/types'
 
 /**
  * The barn's own zone — `barns.timezone`'s schema default, so a freshly seeded barn already
- * carries it and line 696's "set Barn Timezone to Eastern" (the setup all eleven of these
+ * carries it and the #1149 setup line's "set **Barn Timezone** to Eastern" (the setup all eleven
+ * of these
  * lines say "under that setup" about) holds without this file arranging anything.
  */
 const EASTERN = 'America/New_York'
 
 /**
- * Line 696's "set your *machine's* timezone to Hawaii", expressed as the browser context's
+ * The #1149 setup line's "set your *machine's* timezone to Hawaii", expressed as the browser
+ * context's
  * zone. Never a `playwright.config.ts` edit: #1221 owns the *runner's* `TZ` (and pins the
  * default browser zone to Asia/Kolkata); the per-file override below is what these lines are
  * actually about.
@@ -149,17 +158,19 @@ const BARN_TODAY = barnDay(new Date(), EASTERN)
  *
  * LESSON_DAY is `+1` rather than today specifically so the seeded lesson is always in the
  * future whatever hour the suite runs at — a past lesson falls behind `OlderLessonsToggle` on
- * the Lessons list, which would make item 702's card conditionally unreachable.
+ * the Lessons list, which would make the Lessons-list item's card conditionally unreachable.
  */
 const LESSON_DAY = shiftDay(BARN_TODAY, 1)
 const EVENT_DAY = shiftDay(BARN_TODAY, 2)
 const NEW_LESSON_DAY = shiftDay(BARN_TODAY, 3)
 
 /**
- * 4:00 PM, the wall clock lines 702-706, 709, 711 and 712 all name.
+ * 4:00 PM, the wall clock every one of the "still reads 4:00 PM" / "stores 4:00 PM" / barn-event
+ * items names.
  *
  * Its counter-value is the reason it was chosen: 4:00 PM Eastern is 20:00 UTC, which is
- * **10:00 AM in Honolulu** — the exact string line 702 says must NOT appear. So an app that
+ * **10:00 AM in Honolulu** — the exact string "not 10:00 AM Hawaii" says must NOT appear. So an
+ * app that
  * reverted to the viewer-local frame #1222 deleted renders "10:00 AM" into every one of these
  * assertions and fails it, and an app rendering in UTC produces "8:00 PM" and fails it too.
  */
@@ -176,10 +187,11 @@ const LESSON_DISPLAY = `${displayDate(LESSON_DAY)}, ${BARN_HOUR_DISPLAY}`
 const EVENT_DISPLAY = `${displayDate(EVENT_DAY)}, ${BARN_HOUR_DISPLAY}`
 
 /**
- * Line 710's 11:30 PM. Barn-local 23:30 Eastern is 03:30 UTC *the next day*, and 23:30 in
+ * The "**Add Expense** with a Time of 11:30 PM" item's 11:30 PM. Barn-local 23:30 Eastern is
+ * 03:30 UTC *the next day*, and 23:30 in
  * Honolulu is 09:30 UTC the next day — so this single stored value separates the barn's frame
  * from the device's AND from UTC, which no *date* assertion in this file can do (see
- * PIN_INSTANT). That is also exactly the bug line 710 names: a late-evening entry near a month
+ * PIN_INSTANT). That is also exactly the bug that item names: a late-evening entry near a month
  * boundary bucketing into the wrong month in Finances.
  */
 const EXPENSE_TIME = '23:30'
@@ -236,18 +248,20 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 // ---------------------------------------------------------------------------
 
 /**
- * The instant the browser's clock is pinned to for items 707 and 708: **01:00 Eastern on the
+ * The instant the browser's clock is pinned to for the **New Lesson** date and **Start Time**
+ * pre-fill items: **01:00 Eastern on the
  * barn's own day**, i.e. 05:00 UTC, which Honolulu reads as 19:00 on the day *before*.
  *
  * `page.clock.setFixedTime`, never `page.clock.install()`: `install` also fakes the timers
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
  * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically — the one page
  * whose `LessonStartTime` computes its defaults from the browser clock in a `useState`
- * initialiser, which is exactly the surface items 707/708 read.
+ * initialiser, which is exactly the surface those two items read.
  *
  * **Why this pin and not #1204's 1pm-Hawaii one.** Its six items all assert values the SERVER
  * rendered, so its pin put the browser's barn-zone day one day BEHIND the server's and every
- * assertion still named the server's answer. Items 707 and 708 are the opposite: their answers
+ * assertion still named the server's answer. The two **New Lesson** pre-fill items are the
+ * opposite: their answers
  * are computed in the BROWSER, off this frozen clock, and read against a month grid whose
  * past-day cutoff comes from the server's `todayStr`. So the browser's barn-zone day has to
  * EQUAL the server's, while its *local* (Honolulu) day differs. Same frame, opposite
@@ -276,8 +290,9 @@ const PIN_BARN_TIME = '01:00'
  * like a bug and is not. `HNL ≤ EDT ≤ UTC` at every instant, and that span is 10h < 24h — so
  * the Eastern calendar day always equals either the Honolulu day or the UTC day, and can never
  * differ from both. No date assertion in this file can separate the barn's day from the
- * device's AND from UTC. Item 707 therefore takes the axis its own line names (the device),
- * and the UTC axis is closed by item 708's HOUR, where all three frames are distinct by
+ * device's AND from UTC. The date item therefore takes the axis its own line names (the
+ * device), and the UTC axis is closed by the **Start Time** item's HOUR, where all three frames
+ * are distinct by
  * construction — same form, same page load. Asserting the equality here means a future edit
  * that "fixes" the pin thinking it has separated all three is told the truth immediately.
  */
@@ -302,7 +317,7 @@ function assertPinArithmetic(): void {
     problems.push(
       `UTC day of the pin is ${utcSideDay} and its barn day is ${barnSideDay}. ` +
         'These are expected to be EQUAL — see the derivation above; if they now differ, the ' +
-        'pin has moved and item 707 is asserting a different axis than its comment claims.'
+        'pin has moved and the date pre-fill item is asserting a different axis than its comment claims.'
     )
   }
   if (new Set(hours).size !== 3) {
@@ -320,7 +335,8 @@ assertPinArithmetic()
 
 /**
  * One tier, one horse, one lesson. Nothing else, and that is load-bearing rather than minimal
- * for its own sake: it is what lets items 709 and 710 assert an EXACT ARRAY of stored values
+ * for its own sake: it is what lets the two "stores it barn-local" items assert an EXACT ARRAY
+ * of stored values
  * ("one named recipient's `kind='expense'` transactions are exactly [this]" — barn-wide until
  * #1395 added a second expense-writing test and scoped the read by recipient) instead of hunting
  * for the right row, which makes "no row was created at all" a failure rather than a silent pass.
@@ -332,23 +348,25 @@ let seededLesson: Lesson
 const barn = withBarn('phase4-barn-timezone', async ({ supabase, barn, members }) => {
   // The one precondition the whole file rests on, and it is not decoration.
   //
-  // Items 702-705 read a value the app both ENCODES and DECODES through `barns.timezone`: the
+  // The four display items read a value the app both ENCODES and DECODES through
+  // `barns.timezone`: the
   // seed writes an instant, and `formatBarnDateTime`/`formatBarnTime`/`LessonForm`'s pre-fill
   // all render it back through `instant.tz`, which the DAL fills from that same column. Encode
   // and decode therefore share one zone Z, and "4:00 PM" comes back unchanged for ANY Z — so
   // if the barn's zone were ever Honolulu, those four items would go green in precisely the
   // configuration under which they prove nothing at all. Nothing else in this file would catch
-  // it: `EASTERN` only enters through the direct-DB helpers, which items 706 and 709-712 use
-  // and 702-705 do not.
+  // it: `EASTERN` only enters through the direct-DB helpers, which the resave, storage and
+  // barn-event items use and the four display items do not.
   //
   // Asserting the barn's zone once here closes it for all four, and the seed below then frames
   // its instant in `EASTERN` rather than in whatever the row happens to say, so the expected
   // value stops agreeing with the app on the one axis this file is about.
   if (barn.timezone !== EASTERN) {
     throw new Error(
-      `precondition: this barn's timezone is ${barn.timezone}, expected ${EASTERN}. Lines 702-712 ` +
-        'all say "under that setup", and that setup pins Barn Timezone to Eastern (line 696). With ' +
-        'any other zone, items 702-705 become a round trip through one shared zone and assert nothing.'
+      `precondition: this barn's timezone is ${barn.timezone}, expected ${EASTERN}. The #1222 items ` +
+      'all say "Under that setup", and that setup pins Barn Timezone to Eastern (the #1149 setup ' +
+      'line). With any other zone, the four display items become a round trip through one shared ' +
+      'zone and assert nothing.'
     )
   }
 
@@ -373,7 +391,8 @@ const barn = withBarn('phase4-barn-timezone', async ({ supabase, barn, members }
  * Every lesson in this barn except the seeded one, as barn-local wall clocks.
  *
  * The batch's rule is that a direct service-role read verifies preconditions, never the
- * expected answer. Items 709 and 710 are the sanctioned exception, and their own issue body
+ * expected answer. The two "check the DB value" items are the sanctioned exception, and their
+ * own issue body
  * ratifies it: they are *about storage*. The expected value is the wall clock the test typed
  * into the form, and the assertion is that the barn's zone — not the device's — is what turned
  * it into an instant. Reading the column and rendering it back in the barn's zone IS that
@@ -434,7 +453,7 @@ async function expenseTransactionWallClocks(recipient: string): Promise<string[]
  * Throws unless the barn holds exactly one event and its stored instant is barn-local 4:00 PM.
  *
  * **This is a precondition guard, not the assertion, and the distinction is the whole reason
- * it exists.** Lines 711 and 712 are round-trip claims — "the time shown matches what the Add
+ * it exists.** The two barn-event items are round-trip claims — "the time shown matches what the Add
  * Event form was given" — and a *consistently* viewer-framed app satisfies a round trip
  * exactly: it would encode 4:00 PM as 4:00 PM Honolulu and then render that same instant back
  * in Honolulu as 4:00 PM. The display assertion would be true, falsifiable, and about a
@@ -664,7 +683,8 @@ function pressedDayLabels(page: Page): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// A lesson at 4:00 PM — checklist lines 702-706
+// A lesson at 4:00 PM — the checklist items from "still reads 4:00 PM on the Lessons list"
+// through "leaves the stored time untouched"
 // ---------------------------------------------------------------------------
 //
 // Every assertion in this block is full-string (`toHaveText`, or an object/array equality),
@@ -705,7 +725,8 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
     await page.goto(`${lessonHref(seededLesson.id)}/edit`)
     await page.locator('#lesson-start-time').waitFor()
 
-    // Both halves of line 705 in one equality. The time is the discriminating half: a
+    // Both halves of "shows 4:00 PM and the barn's date in the date/start-time picker" in one
+    // equality. The time is the discriminating half: a
     // viewer-framed decode of this instant yields 10:00, and a UTC one yields 20:00 (measured —
     // a probe pointing the decode at the runtime's own zone produced exactly `time: "20:00"`).
     //
@@ -749,7 +770,8 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
 })
 
 // ---------------------------------------------------------------------------
-// New Lesson's date and hour defaults — checklist lines 707-708
+// New Lesson's date and start-time defaults — the "**New Lesson**'s date pre-fills with the
+// barn's date" and "**Start Time** field opens on the barn's current hour" items
 // ---------------------------------------------------------------------------
 //
 // A plain describe: both tests are read-only and independent. The clock pin is per-test rather
@@ -775,7 +797,8 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     //
     // The cell was then dropped from the assertion rather than kept alongside: past the barrier
     // it provably still carries the server's answer, so asserting it adds a claim that cannot
-    // fail for the reason line 707 is about — #1204's F1 shape, an assertion whose expected
+    // fail for the reason the date pre-fill item is about — #1204's F1 shape, an assertion whose
+    // expected
     // value the component produces whether or not it read its input. `input[name="lesson_at"]`
     // is a React-controlled PROPERTY, so it carries the browser's computation, and it is also
     // the value the form submits — the pre-fill that actually decides anything. With the clock
@@ -792,7 +815,7 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     // The item this file leans on hardest. At the pinned instant the barn reads hour 1, the
     // device reads 19 and UTC reads 5 — three distinct values — so this is the one assertion
     // here that separates the barn's frame from the device's AND from UTC at once, which is
-    // what closes the axis item 707 provably cannot (see assertPinArithmetic).
+    // what closes the axis the date pre-fill item provably cannot (see assertPinArithmetic).
     //
     // One residue, stated rather than hidden: the SERVER renders this field from the real
     // clock, not the pinned one, so during the 01:00-01:59 barn-local hour the server's own
@@ -803,7 +826,8 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Entry is barn-anchored, not just display — checklist lines 709-710
+// Entry is barn-anchored, not just display — the "creating a lesson at 4:00 PM stores 4:00 PM
+// *barn-local*" and "**Add Expense** with a Time of 11:30 PM" items
 // ---------------------------------------------------------------------------
 
 test.describe('Entered wall clocks are stored in the barn s zone', () => {
@@ -838,7 +862,7 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
     //
     // The Date field is left on its own pre-fill, which is the server's `todayStr`. That is
     // deliberate on two counts: it is BARN_TODAY, and `ExpenseForm` hides the Time field
-    // entirely for a past date — so touching the date is what would put line 710's own subject
+    // entirely for a past date — so touching the date is what would put that item's own subject
     // out of reach. The [0, 19] slice pins that date alongside the time, since `occurred_at`
     // carries both.
     await hydrateByDriving(
@@ -848,7 +872,7 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
     await page.locator('#expense-recipient').fill(EXPENSE_RECIPIENT)
     await page.locator('#expense-type').fill(EXPENSE_TYPE)
     // Without an amount `sync_expense_transaction` writes no `transactions` row at all, and
-    // line 710's assertion is about that row's `occurred_at`.
+    // the item's assertion is about that row's `occurred_at`.
     await page.locator('#expense-amount').fill(EXPENSE_AMOUNT)
     await submitForm(page, 'Add Expense', new RegExp(`/barn/${barn.slug}/expenses$`))
 
@@ -1014,7 +1038,7 @@ test.describe("Finances resolves the month in the barn's zone", () => {
 })
 
 // ---------------------------------------------------------------------------
-// A barn event's time — checklist lines 711-712
+// A barn event's time — the two "matching what the Add Event form was given" items
 // ---------------------------------------------------------------------------
 //
 // Serial, and the event is created through the Add Event form rather than by `addBarnEvent`,

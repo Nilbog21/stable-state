@@ -350,7 +350,8 @@ test('selecting_cancelled_by_rider_more_than_24h_out_shows_no_late_fee_warning @
 // ---------------------------------------------------------------------------
 // Confirming a cancellation — the four fee outcomes across the 24-hour boundary
 //
-// The rule, and it is the opposite of what checklist lines 294/295 said before this PR: a rider
+// The rule, and it is the opposite of what the two **Cancelled by Rider** confirm lines — ">24h
+// out zeroes its fee" and "<24h away leaves its fee unaffected" — said before this PR: a rider
 // who cancels *inside* the 24-hour window still owes the fee, and one who cancels earlier has it
 // waived. `cancel_lesson_with_transactions` is `fee = CASE WHEN p_is_late THEN fee ELSE 0 END`,
 // and `isLateCancellation` returns true for rider + <24h — so "late" means "the fee stands".
@@ -358,9 +359,10 @@ test('selecting_cancelled_by_rider_more_than_24h_out_shows_no_late_fee_warning @
 // short-circuits on that branch before it ever consults the window.
 //
 // The two lines were swapped in place under the user's ruling; see the PR body for the four
-// sources, the sharpest of which is line 300 four lines below — the amber "the rider will be due
-// a late cancellation fee" warning, which fires on exactly the rider + <24h case that line 295
-// used to claim zeroed the fee.
+// sources, the sharpest of which is the "select **Cancelled by Rider** → an amber" line a few
+// below — the "The rider will be due a late cancellation fee." warning, which fires on exactly
+// the rider + <24h case the "<24h away leaves its fee unaffected" line used to claim zeroed the
+// fee.
 // ---------------------------------------------------------------------------
 
 // `$0` against a lesson seeded at $141. The zero is the *waiver*: this rider cancelled with more

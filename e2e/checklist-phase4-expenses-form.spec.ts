@@ -9,7 +9,8 @@
 // month conflict calendar the Date field renders as, the edit form's pre-filled values and
 // checkbox state, recipient/amount/payment-type round-trips, and the two delete confirmation
 // pages with and without the collected-record checkbox
-// (checklists/pre-release/phase-4-manager-verification.md 160-201).
+// (checklists/pre-release/phase-4-manager-verification.md, the block from "Tapping anywhere on
+// an expense card opens its edit page" through "its record is also gone from Finances").
 //
 // #1394 took over the 16 (#1020) lines that used to sit unclaimed between those halves. Fifteen
 // are the calendar block below. The sixteenth — "the < / > month arrows match the ones on the
@@ -150,7 +151,8 @@ const PAY_EDIT_AMOUNT = 95
  * decoration: sync_expense_transaction sets `collected = (payment_type IS NOT NULL)`, and
  * delete_expense_with_transactions *always* deletes uncollected expense rows. An amounted but
  * unpaid expense therefore loses its ledger row whichever way the checkbox goes, which would
- * make checklist line 389 false rather than merely untested. The line's own wording — "the
+ * make the "Its record still shows up in Finances for that month" line false rather than merely
+ * untested. The line's own wording — "the
  * collected record" — says the same thing.
  *
  * 210 and 340 are chosen so the three figures in play (210 alone, 340 alone, 550 together) are
@@ -477,7 +479,8 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }
   // horses filtered by `created_at <= expense_date` at midnight UTC — and these horses are
   // created *now*, so a barn-wide expense dated today resolves to zero horses and lands in the
   // Unattributed bucket. That is the exact cell the delete chain reads, so a barn-wide amounted
-  // fixture would quietly poison it. The one barn-wide expense this file creates (line 355)
+  // fixture would quietly poison it. The one barn-wide expense this file creates (for the
+  // "shows \"Entire Barn\" on its card" line)
   // carries no amount and so never reaches the ledger at all.
   // EDITABLE_DAY_OFFSET, not 0, and that is load-bearing rather than arbitrary — see the constant.
   editable = await addExpense(supabase, barn, {

@@ -4,7 +4,8 @@
 // The #1018 calendar feed end to end, as a manager: the Calendar Feed section on the
 // barn-scoped profile page, minting a link, copying it, what the resulting `/calendar.ics`
 // URL serves to an unauthenticated subscriber, and rotation invalidating the old URL
-// (checklists/pre-release/phase-4-manager-verification.md 607-615).
+// (checklists/pre-release/phase-4-manager-verification.md, the block from "a **Calendar Feed**
+// section appears" through "Open the pre-regenerate URL — it now 404s").
 //
 // `src/lib/ics.ts` and `src/lib/db/calendar-feed.ts` are deliberately NOT declared above:
 // `select-specs.sh`'s ALWAYS_FULL already carries the whole of `src/lib/**` (and, since #1281,
@@ -36,7 +37,7 @@
 //    sorted set; nothing indexes into the payload.
 //
 // 3. THE FETCHES ARE GENUINELY UNAUTHENTICATED, AND GETTING THERE TAKES MORE THAN IT LOOKS.
-//    Checklist line 799 is "open that URL directly (or `curl` it)", and `/calendar.ics` has
+//    The checklist says "Open that URL directly (or `curl` it)", and `/calendar.ics` has
 //    no auth check at all — the token IS the credential — so "a subscriber with no session
 //    can read this" is the item's whole claim rather than a detail of how it is fetched.
 //
@@ -85,8 +86,8 @@ let managerLesson: Lesson
 /**
  * Instructed by the trainer, on the other horse. The calling manager is neither its instructor
  * nor one of its riders, so `get_calendar_feed`'s `r.role = 'manager'` branch is the ONLY term
- * that admits it — which is what makes line 801's "not just your own" a real claim rather than
- * a restatement of line 800.
+ * that admits it — which is what makes the "not just your own" line a real claim rather than
+ * a restatement of the "Its body includes VEVENT entries" one.
  */
 let trainerLesson: Lesson
 
@@ -219,7 +220,8 @@ async function unauthenticatedRequest(playwright: PlaywrightFixture): Promise<AP
   const context = await playwright.request.newContext({ storageState: { cookies: [], origins: [] } })
   // A precondition on the test's validity, not one of this file's nine assertions: if this
   // context ever started carrying a session, every 404/200 below would be measuring something
-  // other than what line 799 claims. Throws rather than asserts, for that reason.
+  // other than what the "returns `Content-Type: text/calendar`" line claims. Throws rather
+  // than asserts, for that reason.
   const cookies = (await context.storageState()).cookies
   if (cookies.length > 0) {
     throw new Error(
@@ -439,7 +441,8 @@ test.describe.serial('the calendar feed link', () => {
 // had not reached their assertions at all (#1203's confounding, from the fixture side). Three
 // mutations were reported as unproven and re-run against this shape instead.
 //
-// Copying per test is also closer to what lines 799-801 say: "that URL" is the one you get by
+// Copying per test is also closer to what the three feed-URL lines say: "that URL" is the one
+// you get by
 // tapping Copy Link, which is exactly what `copyFreshCalendarLink` does.
 // ---------------------------------------------------------------------------
 
@@ -458,7 +461,7 @@ test.describe('the calendar feed payload', () => {
   test('the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson @manager', async ({ page, context, playwright }) => {
     const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
 
-    // BOTH entries, because line 800 says "entries" — asserting one lesson would have been a
+    // BOTH entries, because the line says "VEVENT entries" — asserting one lesson would have been a
     // silent narrowing of the line rather than a ratified one. Each block is located by UID and
     // then placed in this array by the test, so the comparison order is the test's own and does
     // not depend on the payload's (see note 2).

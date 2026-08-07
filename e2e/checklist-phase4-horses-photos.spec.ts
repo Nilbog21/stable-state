@@ -6,7 +6,9 @@
 // photo-locked upload screen and its three absent fields, upload-on-choose, aspect-ratio-preserving
 // display, replace with a different file *and* format, the post-reload check that the old photo is
 // gone, remove restoring the placeholder, a non-image rejection, and #1003's owner lock
-// (checklists/pre-release/phase-4-manager-verification.md 211-228).
+// (checklists/pre-release/phase-4-manager-verification.md, the block from "Clover's detail page
+// (no photo seeded) shows a placeholder icon" through "no **Replace Photo**/**Remove** control is
+// shown to you").
 //
 // Four horses, because each flow needs a different starting state and two of them must *stay* in
 // theirs: Clover with no photo (the set/replace/remove chain), Apple owned by a rider but with no
@@ -33,18 +35,21 @@ const BUTTER = 'Butter'
 const DAISY = 'Daisy'
 
 // Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
-// harper-photo.png and emery-photo.jpg to *member* photo flows, but lines 416/417 name both files
-// explicitly for Apple the horse; the line text wins, on the precedent #1201 set when its line 480
-// named clover-photo.png for a member. These files are read-only sources — reuse across entities
-// costs nothing.
+// harper-photo.png and emery-photo.jpg to *member* photo flows, but two lines name both files
+// explicitly for Apple the horse — "As manager, set `scripts/data/harper-photo.png` on Apple"
+// and "Replace Apple's photo with `scripts/data/emery-photo.jpg`". The line text wins, on the
+// precedent #1201 set when its "tap **Set Photo** and upload `scripts/data/clover-photo.png`"
+// line named clover-photo.png for a member. These files are read-only sources — reuse across
+// entities costs nothing.
 const CLOVER_PHOTO = 'clover-photo.png'
 const BUTTER_PHOTO = 'butter-photo.jpg'
 const HARPER_PHOTO = 'harper-photo.png'
 const EMERY_PHOTO = 'emery-photo.jpg'
 const TEST_PDF = 'test_1_kb.pdf'
 
-// All four images are 900x260 — deliberately non-square, which is the whole point of line 409's
-// "not cropped off to make a square". Written as literals rather than measured from the file: the
+// All four images are 900x260 — deliberately non-square, which is the whole point of the
+// "aspect ratio preserved" line's "not cropped off to make a square". Written as literals
+// rather than measured from the file: the
 // assertion has to disagree with a wrong render, and a value read from the same bytes the browser
 // decoded would agree with any bug in between.
 const PHOTO_NATURAL_SIZE = '900x260'
@@ -60,7 +65,7 @@ const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').up
 /**
  * Every asset this spec can legitimately be displaying, keyed by the SHA-256 of its real bytes.
  *
- * This is what lets line 411 ("the displayed word changes from clover to butter") be asserted
+ * This is what lets the "The displayed word changes from `clover` to `butter`" line be asserted
  * without reading pixels: the rendered <img src> is a signed URL over the stored object, so
  * fetching it and hashing the response identifies *which file* is on screen, exactly. That is
  * strictly stronger than the extension check #1201 narrowed the identical line shape to, and it
@@ -87,9 +92,10 @@ const barn = withBarn('phase4-horses-photos', async ({ supabase, barn, members }
   cloverId = (await addHorse(supabase, barn.id, CLOVER)).id
   appleId = (await addHorse(supabase, barn.id, APPLE, { owningMemberId: members.rider.membershipId })).id
 
-  // The owner lock's positive case. setHorsePhoto goes through replaceHorsePhoto, which only ever
-  // *clears* photo_uploaded_by (src/lib/db/horses.ts:176-180) — a service-role write has no acting
-  // membership to attribute — so the attribution is stamped here instead. Inline in this barn's own
+  // The owner lock's positive case. setHorsePhoto goes through replaceHorsePhoto, whose
+  // updateHorsePhotoPath writes photo_uploaded_by only on *delete* — a service-role write has no
+  // acting membership to attribute, so a *set* leaves whatever attribution was already there
+  // untouched, and here there is none. Hence the stamp below. Inline in this barn's own
   // callback rather than as a new fixtures.ts option: twenty slices share that file (ruling 4).
   butterId = (await addHorse(supabase, barn.id, BUTTER, { owningMemberId: members.rider2.membershipId })).id
   await setHorsePhoto(supabase, barn, butterId, BUTTER_PHOTO)
@@ -494,7 +500,7 @@ test.describe.serial('an owned horse whose owner never set a photo', () => {
   // The photo is re-attributed to a *third* membership before the replace, and that is the whole
   // point of the test rather than setup noise.
   //
-  // Line 417's claim is that manager-set photos never lock out **other** managers. E2E_USERS carries
+  // The "manager-set photos never lock out other managers" line's claim. E2E_USERS carries
   // only one manager login, so without this stamp the manager would be replacing a photo it uploaded
   // itself two tests ago — an assertion with full force, about a weaker claim. The lock predicate
   // (`update_horse_photo`) compares photo_uploaded_by to the *owner*, not to the caller, so a
