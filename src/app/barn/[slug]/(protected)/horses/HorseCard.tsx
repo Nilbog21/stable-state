@@ -4,7 +4,9 @@ import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 
-function ownedStatusBadge(horse: Pick<HorseExertionSummary, 'is_active' | 'is_available'>) {
+// Exported since #1390: the horse detail page's identity header shows the same three-state
+// badge, and a second copy of the status-to-tone map is the kind that drifts by one tone.
+export function horseStatusBadge(horse: Pick<HorseExertionSummary, 'is_active' | 'is_available'>) {
   if (!horse.is_active) return <Badge tone="gray">Inactive</Badge>
   if (!horse.is_available) return <Badge tone="amber">Unavailable</Badge>
   return <Badge tone="green">Active</Badge>
@@ -36,7 +38,7 @@ export function HorseCard({
       )}
       {variant === 'owned' && (
         <>
-          <span className="ml-2">{ownedStatusBadge(horse)}</span>
+          <span className="ml-2">{horseStatusBadge(horse)}</span>
           {horse.is_active && !horse.is_available && (
             <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
               {horse.unavailability_reason ?? 'No reason given'}

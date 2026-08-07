@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getHorseById, getHorseProjectedExhaustion, resolveExhaustionThresholds, getUpcomingLessonsForHorse } from '@/lib/db/horses'
+import { getHorseById, getUpcomingLessonsForHorse } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { resolveMemberNames } from '@/lib/db/member-names'
@@ -9,13 +9,14 @@ import { getHorsePrivileges, getMyHorseDocumentPrivilege, getMyHorseLessonReadPr
 import { HorseManagerForm } from './HorseManagerForm'
 import { HorseNotesForm } from './HorseNotesForm'
 import { HorseAccessSection } from './HorseAccessSection'
+import { horseStatusBadge } from '../HorseCard'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
-import { Card, cardBaseClass } from '@/components/ui/Card'
+import { Card } from '@/components/ui/Card'
+import { AccordionSection } from '@/components/ui/AccordionSection'
 import { EmptyState } from '@/components/EmptyState'
-import { ExhaustionBar } from '@/components/ExhaustionBar'
 import { formatBarnDateTime } from '@/lib/format-date'
 import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 import { barnToday } from '@/lib/barn-timezone'
@@ -31,6 +32,33 @@ import {
   setHorseOwnerAction,
   updateHorseNotesAction,
 } from './actions'
+
+/**
+ * Stands in for the photo at the same footprint the real one occupies (#1390). The shared
+ * `EmptyState` is the wrong shape here — its centred `py-12` column is taller than the header
+ * row it would sit in — but the `aria-hidden` svg is the same placeholder affordance.
+ */
+function PhotoPlaceholder() {
+  return (
+    <div className="flex h-32 w-32 shrink-0 items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-10 w-10 text-zinc-300 dark:text-zinc-600"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 9.75h.008v.008H18V9.75ZM3 19.5h18a1.5 1.5 0 0 0 1.5-1.5V6A1.5 1.5 0 0 0 21 4.5H3A1.5 1.5 0 0 0 1.5 6v12A1.5 1.5 0 0 0 3 19.5Z"
+        />
+      </svg>
+    </div>
+  )
+}
 
 export default async function HorseDetailPage({
   params,
@@ -50,16 +78,17 @@ export default async function HorseDetailPage({
 
   const canSeeDocuments = role === 'manager' || role === 'trainer' || myDocumentPrivilege !== 'none'
   const canWriteDocuments = role === 'manager' || role === 'trainer' || myDocumentPrivilege === 'write'
-  const canSeeExhaustion = role === 'manager' || role === 'trainer' || myLessonReadPrivilege
+  // Renamed from canSeeExhaustion in #1390: with the bar gone from this page, the lesson-read
+  // privilege now gates Upcoming Lessons alone.
+  const canSeeSchedule = role === 'manager' || role === 'trainer' || myLessonReadPrivilege
   const isManager = role === 'manager'
   const isOwner = horse.owning_member_id === membership.id
   const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
   const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
+  const canWriteNotes = isManager || isOwner
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
-  const exhaustionThresholds = canSeeExhaustion ? resolveExhaustionThresholds(horse, barn) : null
-  const exhaustionRows = canSeeExhaustion ? await getHorseProjectedExhaustion(horse.id, barn.id, new Date(), barn.timezone) : []
-  const upcomingLessons = canSeeExhaustion ? await getUpcomingLessonsForHorse(horse.id, barn.id, barn.timezone) : []
+  const upcomingLessons = canSeeSchedule ? await getUpcomingLessonsForHorse(horse.id, barn.id, barn.timezone) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
 
   const ownerName = horse.owning_member_id
@@ -107,137 +136,129 @@ export default async function HorseDetailPage({
   const boundUpdateHorseNotesAction = updateHorseNotesAction.bind(null, slug, horse.id)
   const photoHref = `/barn/${slug}/documents/new?entity=horse&id=${horse.id}&type=photo`
 
+  const hasNotes = horse.feed_notes !== null || horse.medication_notes !== null
+  const usesBarnDefaults =
+    horse.exhaustion_threshold_moderate === null && horse.exhaustion_threshold_high === null
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-6 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {horse.name}
-      </h1>
-
-      {ownerName && (
-        <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
-          Owner:{' '}
-          <a
-            href={`/barn/${slug}/members/${horse.owning_member_id}`}
-            className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-          >
-            {ownerName}
-          </a>
-        </p>
-      )}
-
-      <section className="mb-10">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Photo
-          </h2>
-          {canWritePhoto && (
-            photoUrl ? (
-              <div className="flex items-center gap-3">
-                <Button href={photoHref} size="sm">Replace Photo</Button>
-                <form action={boundDeletePhotoAction!}>
-                  <Button type="submit" variant="danger" size="sm">
-                    Remove
-                  </Button>
-                </form>
-              </div>
-            ) : (
-              <Button href={photoHref} size="sm">Set Photo</Button>
-            )
-          )}
-        </div>
+      {/* Identity header (#1390) — always visible, above the accordions. It carries everything a
+          visitor needs to know they're on the right horse's page: photo, name, status, owner. */}
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset
-          <img src={photoUrl} alt={horse.name} className="h-48 w-auto rounded-md" />
+          <img src={photoUrl} alt={horse.name} className="h-32 w-auto shrink-0 rounded-md" />
         ) : (
-          <EmptyState heading="No photo yet" subtext="A photo helps riders identify this horse at a glance." />
+          <PhotoPlaceholder />
         )}
-      </section>
 
-      {role !== 'manager' && (
-        <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
-          <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</dt>
-            <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-              {horse.is_available ? 'Available' : 'Unavailable'}
-            </dd>
+        <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+              {horse.name}
+            </h1>
+            {horseStatusBadge(horse)}
           </div>
 
           {horse.registered_name && (
-            <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Registered Name</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.registered_name}</dd>
-            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{horse.registered_name}</p>
           )}
 
           {!horse.is_available && horse.unavailability_reason && (
-            <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Reason</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
-            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{horse.unavailability_reason}</p>
           )}
 
-          {!isOwner && horse.feed_notes && (
-            <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Feed Notes</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.feed_notes}</dd>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {ownerName ? (
+              <a
+                href={`/barn/${slug}/members/${horse.owning_member_id}`}
+                className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+              >
+                {ownerName}
+              </a>
+            ) : (
+              'No owner set'
+            )}
+          </p>
+
+          {canWritePhoto && (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {photoUrl ? (
+                <>
+                  <Button href={photoHref} size="sm">Replace Photo</Button>
+                  <form action={boundDeletePhotoAction!}>
+                    <Button type="submit" variant="danger" size="sm">
+                      Remove
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <Button href={photoHref} size="sm">Set Photo</Button>
+              )}
             </div>
           )}
+        </div>
+      </header>
 
-          {!isOwner && horse.medication_notes && (
-            <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Medication Notes</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.medication_notes}</dd>
-            </div>
-          )}
-        </dl>
-      )}
-
-      {role !== 'manager' && isOwner && (
-        <section className="mt-6">
+      <AccordionSection
+        title="Feed & Medication"
+        hint={hasNotes ? undefined : 'not set'}
+        defaultOpen
+      >
+        {canWriteNotes ? (
           <HorseNotesForm horse={horse} action={boundUpdateHorseNotesAction} />
-        </section>
-      )}
+        ) : hasNotes ? (
+          <dl className="flex flex-col gap-4">
+            {horse.feed_notes && (
+              <div className="flex flex-col gap-1">
+                <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Feed Notes</dt>
+                <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.feed_notes}</dd>
+              </div>
+            )}
+            {horse.medication_notes && (
+              <div className="flex flex-col gap-1">
+                <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Medication Notes</dt>
+                <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.medication_notes}</dd>
+              </div>
+            )}
+          </dl>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            No feed or medication notes have been recorded for this horse.
+          </p>
+        )}
+      </AccordionSection>
 
-      {role === 'manager' && (
-        <section className="mt-6">
-          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
-        </section>
-      )}
-
-      {role === 'manager' && (
-        <section className="mt-10">
-          <HorseAccessSection
-            grants={grants}
-            availableMembers={availableMembers}
-            ownerMemberId={horse.owning_member_id}
-            onGrant={boundGrantAccessAction}
-            onUpdateDocument={boundUpdateAccessDocumentAction}
-            onUpdateLesson={boundUpdateAccessLessonAction}
-            onRevoke={boundRevokeAccessAction}
-            onSetOwner={boundSetHorseOwnerAction}
-          />
-        </section>
-      )}
-
-      {canSeeExhaustion && exhaustionThresholds && (
-        <section className="mt-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Exhaustion
-          </h2>
-          <ExhaustionBar existingRows={exhaustionRows} thresholds={exhaustionThresholds} />
-        </section>
+      {canSeeSchedule && (
+        <AccordionSection title="Upcoming Lessons" hint={String(upcomingLessons.length)}>
+          {upcomingLessons.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {upcomingLessons.map((l) => (
+                <li key={l.id}>
+                  <Card href={`/barn/${slug}/lessons/${l.id}`} className="p-4">
+                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                      {formatBarnDateTime(l.lessonAt)}
+                    </span>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState heading="No upcoming lessons" subtext="Scheduled lessons for this horse will appear here." />
+          )}
+        </AccordionSection>
       )}
 
       {canSeeDocuments && (
-        <section className="mt-10">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Documents
-            </h2>
-            {canWriteDocuments && (
-              <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`}>Add Document</Button>
-            )}
-          </div>
+        <AccordionSection
+          title="Documents"
+          hint={String(docsWithUrls.length)}
+          headerExtra={
+            canWriteDocuments
+              ? <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`} size="sm">Add Document</Button>
+              : undefined
+          }
+        >
           {docsWithUrls.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -292,36 +313,31 @@ export default async function HorseDetailPage({
           ) : (
             <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
           )}
-        </section>
+        </AccordionSection>
       )}
 
-      {canSeeExhaustion && (
-        <section className="mt-10">
-          <details className={`relative ${cardBaseClass}`}>
-            <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Upcoming Lessons
-              </h2>
-            </summary>
-            <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
-              {upcomingLessons.length > 0 ? (
-                <ul className="flex flex-col gap-2">
-                  {upcomingLessons.map((l) => (
-                    <li key={l.id}>
-                      <Card href={`/barn/${slug}/lessons/${l.id}`} className="p-4">
-                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                          {formatBarnDateTime(l.lessonAt)}
-                        </span>
-                      </Card>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyState heading="No upcoming lessons" subtext="Scheduled lessons for this horse will appear here." />
-              )}
-            </div>
-          </details>
-        </section>
+      {isManager && (
+        <AccordionSection
+          title="Access"
+          hint={`${grants.length} member${grants.length === 1 ? '' : 's'}`}
+        >
+          <HorseAccessSection
+            grants={grants}
+            availableMembers={availableMembers}
+            ownerMemberId={horse.owning_member_id}
+            onGrant={boundGrantAccessAction}
+            onUpdateDocument={boundUpdateAccessDocumentAction}
+            onUpdateLesson={boundUpdateAccessLessonAction}
+            onRevoke={boundRevokeAccessAction}
+            onSetOwner={boundSetHorseOwnerAction}
+          />
+        </AccordionSection>
+      )}
+
+      {isManager && (
+        <AccordionSection title="Horse Settings" hint={usesBarnDefaults ? 'barn defaults' : 'custom'}>
+          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
+        </AccordionSection>
       )}
     </main>
   )
