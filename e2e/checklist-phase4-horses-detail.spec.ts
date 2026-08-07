@@ -197,6 +197,37 @@ async function saveAndSettleRejected(page: Page) {
 // The shared Save, the rename, and the threshold override
 // ---------------------------------------------------------------------------
 
+// #1390 — the page's shape, asserted before anything below drives it.
+//
+// Titles and open state only, deliberately: the collapsed rows also carry a count or state hint,
+// but every one of those figures is something a later test in this chained file changes (Apple
+// gains a registered name, loses her threshold overrides, gains notes), so an assertion on them
+// would really be an assertion about declaration order. `page.test.tsx` owns the hints, where the
+// page's inputs are fixed. What only an e2e run can show is that the real page renders these five
+// sections, in this order, with exactly one of them open.
+const MANAGER_SECTIONS = ['Feed & Medication', 'Upcoming Lessons', 'Documents', 'Access', 'Horse Settings']
+
+test('the_horse_page_renders_its_five_sections_in_read_often_to_touched_rarely_order @manager', async ({ page }) => {
+  await page.goto(horseHref(appleId))
+  await expect(page.locator('details summary h2')).toHaveText(MANAGER_SECTIONS)
+})
+
+// The whole open/closed vector rather than "Feed & Medication is open": a page that shipped every
+// section expanded satisfies that narrower claim, and is exactly the flat stack this issue exists
+// to undo.
+test('the_horse_page_opens_with_feed_and_medication_alone_expanded @manager', async ({ page }) => {
+  await page.goto(horseHref(appleId))
+  // A precondition, not the claim — `evaluateAll` is one-shot, and on an unrendered page it
+  // answers `[]`, which no `toEqual` against a five-element array would catch as *why*.
+  await expect(page.locator('details')).toHaveCount(MANAGER_SECTIONS.length)
+
+  const open = await page
+    .locator('details')
+    .evaluateAll((els) => els.map((el) => (el as HTMLDetailsElement).open))
+
+  expect(open).toEqual([true, false, false, false, false])
+})
+
 test('manager_form_and_exhaustion_thresholds_share_one_save_button @manager', async ({ page }) => {
   await gotoHorseSettings(page, appleId)
   await expect(saveButton(page)).toHaveCount(1)
@@ -342,6 +373,63 @@ test('owned_horse_no_longer_appears_under_available @manager', async ({ page }) 
 test('owned_horse_card_shows_an_exhaustion_bar @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
   await expect(section(page, 'My Horses').locator(SOLID_BAR)).toHaveCount(1)
+})
+
+// ---------------------------------------------------------------------------
+// #1390 — the Access table's controls are progressively enhanced
+// ---------------------------------------------------------------------------
+
+/**
+ * The served HTML between the Access accordion's summary and the Horse Settings one — the Access
+ * table and nothing else.
+ *
+ * Read off the **server's** response rather than off the DOM, because that is the whole claim:
+ * the question is what a browser could submit before React has hydrated, and the DOM is what
+ * exists after. `page.request` inherits the context's cookies, so this is the manager's own HTML
+ * (e2e/CLAUDE.md fact 4's inheritance, wanted here rather than avoided).
+ *
+ * Both boundary markers are asserted before the slice is taken, so a page that renamed or
+ * dropped either section fails here rather than silently measuring an empty string.
+ */
+async function servedAccessMarkup(page: Page, horseId: string): Promise<string> {
+  const response = await page.request.get(horseHref(horseId))
+  expect(response.status()).toBe(200)
+  const html = await response.text()
+
+  const start = html.indexOf('Access</h2>')
+  const end = html.indexOf('Horse Settings</h2>')
+  expect({ hasAccess: start !== -1, hasSettings: end !== -1, ordered: start < end })
+    .toEqual({ hasAccess: true, hasSettings: true, ordered: true })
+
+  return html.slice(start, end)
+}
+
+// Five controls, five forms: Grant Access, and then Set as Owner / the document-access select /
+// the Can View toggle / Revoke on the single seeded grant row. Before #1390 every one was a
+// `<button type="button" onClick>` with no form at all, so each was a silent no-op inside the
+// hydration window — the defect #1385 fixed for member documents, on a page a manager lands on
+// and immediately clicks.
+//
+// A count rather than four presence checks, and taken on the *served* markup: React emits the
+// enhanced `method="POST"` form only for a Server Function or a `.bind` of one, so a control
+// that regressed to an inline closure — the shape e2e/CLAUDE.md fact 10 warns about — drops out
+// of this count while still looking correct in the browser and still passing every other test in
+// this file.
+const EXPECTED_ACCESS_FORMS = 5
+
+test('the_access_tables_controls_all_submit_through_enhanced_forms @manager', async ({ page }) => {
+  const markup = await servedAccessMarkup(page, cloverId)
+
+  expect((markup.match(/<form[^>]*method="POST"/gi) ?? []).length).toBe(EXPECTED_ACCESS_FORMS)
+})
+
+// The companion half: `method="POST"` alone would be satisfied by a plain form the browser GETs
+// nowhere useful. React carries the action's identity and its bound arguments in `$ACTION_*`
+// hidden fields, which is what makes a pre-hydration submit reach the right Server Function.
+test('the_access_tables_forms_carry_their_action_reference_in_hidden_fields @manager', async ({ page }) => {
+  const markup = await servedAccessMarkup(page, cloverId)
+
+  expect((markup.match(/name="\$ACTION_[^"]*"/g) ?? []).length).toBeGreaterThanOrEqual(EXPECTED_ACCESS_FORMS)
 })
 
 // ---------------------------------------------------------------------------

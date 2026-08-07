@@ -210,8 +210,8 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: tapping_the_bar_again_dismisses_the_breakdown) Tapping the bar again dismisses the breakdown
 - [ ] (e2e: tapping_elsewhere_dismisses_the_breakdown) Tapping elsewhere dismisses the breakdown
 - [ ] (e2e: tapping_the_bar_does_not_navigate_to_the_horse_detail_page) Tapping the bar does not navigate to the horse detail page
-- [ ] (e2e: clovers_photo_section_shows_a_placeholder_icon_when_no_photo_is_set) Clover's detail page (no photo seeded) shows a placeholder icon
-- [ ] (e2e: clovers_photo_section_shows_a_set_photo_button_when_no_photo_is_set) It also shows a **Set Photo** button
+- [ ] (e2e: clovers_photo_section_shows_a_placeholder_icon_when_no_photo_is_set) (#1390) Clover's detail page (no photo seeded) shows a placeholder icon in the page header, where the photo would be — the standalone **Photo** section is gone, and the header carries the photo, name, status badge, registered name and owner instead
+- [ ] (e2e: clovers_photo_section_shows_a_set_photo_button_when_no_photo_is_set) It also shows a **Set Photo** button in that header
 - [ ] (e2e: tapping_set_photo_opens_the_horse_document_upload_screen) Tapping **Set Photo** navigates to the same upload screen used for horse documents
 - [ ] (e2e: the_photo_upload_screen_locks_document_type_to_photo_with_no_dropdown) On that screen Document Type is locked to "Photo" with no dropdown
 - [ ] (e2e: the_photo_upload_screen_has_no_notes_field) That screen has no Notes field
@@ -222,13 +222,18 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: replacing_the_horse_photo_uploads_the_new_file_immediately) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
 - [ ] (e2e: the_replaced_horse_photo_displays_the_new_image) The displayed word changes from `clover` to `butter`
 - [ ] (e2e: the_replaced_horse_photo_survives_a_reload_and_the_old_one_is_gone) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
-- [ ] (e2e: removing_the_horse_photo_restores_the_placeholder_icon) With a photo set, tap **Remove** → the placeholder icon returns
+- [ ] (e2e: removing_the_horse_photo_restores_the_placeholder_icon) With a photo set, tap **Remove Photo** (#1390 renamed it from the bare "Remove", which read as ambiguous once it sat beside the owner and status rather than under a Photo heading) → the placeholder icon returns
 - [ ] (e2e: removing_the_horse_photo_restores_the_set_photo_button) The **Set Photo** button returns with it
 - [ ] (e2e: selecting_a_pdf_on_the_photo_upload_screen_is_rejected_inline) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
 - [ ] (e2e: a_manager_can_set_a_photo_on_an_owned_horse_whose_owner_never_set_one) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
 - [ ] (e2e: a_manager_can_replace_a_manager_set_photo_on_an_owned_horse) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
-- [ ] (e2e: an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
-- [ ] (e2e: manager_form_and_exhaustion_thresholds_share_one_save_button) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
+- [ ] (e2e: an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove Photo** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
+- [ ] (e2e: the_horse_page_renders_its_five_sections_in_read_often_to_touched_rarely_order) (#1390) Apple's detail page shows five collapsible sections under the header, in this order: **Feed & Medication**, **Upcoming Lessons**, **Documents**, **Access**, **Horse Settings**
+- [ ] (e2e: the_horse_page_opens_with_feed_and_medication_alone_expanded) (#1390) Only **Feed & Medication** is expanded on load — the other four are shut, each showing its count or state on the closed row (`Documents · 2`, `Access · 1 member`, `Horse Settings · barn defaults`)
+- [ ] (e2e: the_access_tables_controls_all_submit_through_enhanced_forms) (#1390) On Apple's detail page, expand **Access** — every control there (Grant Access, Set as Owner, the Documents dropdown, Can View, Revoke) is a real form button rather than a script-only one, so none is a dead click in the moment before the page finishes loading. Verified against the HTML the server sends, not by clicking
+- [ ] (e2e: the_access_tables_forms_carry_their_action_reference_in_hidden_fields) (#1390) Those forms each carry their action's identity in hidden fields — the half that makes an early submit reach the right place rather than merely submit
+- [ ] (e2e: a_manager_saving_notes_on_an_unowned_horse_is_not_rejected) (#1390) Saving **Feed & Medication** on a horse with **no owning member** succeeds as manager, with no error above the form — this path now goes through `update_horse_notes`, which admitted the owning member alone until this issue
+- [ ] (e2e: manager_form_and_exhaustion_thresholds_share_one_save_button) (#1390) On Apple's detail page, expand **Horse Settings** — the manager form and Exhaustion Thresholds live there now, and share a single **Save** button. Feed & Medication is not among them; it has its own section and its own Save
 - [ ] (e2e: renaming_apple_with_threshold_overrides_updates_the_heading) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
 - [ ] (e2e: threshold_overrides_update_from_the_same_save) The thresholds update from that same Save
 - [ ] (e2e: saved_confirmation_appears_next_to_the_save_button) A brief "✓ Saved" confirmation appears next to the Save button
@@ -236,9 +241,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: use_barn_defaults_toggle_is_still_unchecked_on_reload) The "Use barn defaults" toggle is still unchecked on reload
 - [ ] (e2e: manager_form_name_field_is_labeled_barn_name) The manager form's name field is labeled **Barn Name**
 - [ ] (e2e: a_second_save_keeps_the_first_saves_name) (#1277) Rename Apple and Save, then Save a second time without retyping anything → the name is still your new one on reload (a second save must not write back a stale value)
-- [ ] (e2e: registered_name_persists_on_reload) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
+- [ ] (e2e: registered_name_persists_on_reload) In Horse Settings, fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload, and shows under Apple's name in the page header
 - [ ] (e2e: horses_list_card_shows_registered_name_in_parentheses) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
-- [ ] (e2e: setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
+- [ ] (e2e: setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list) (#1000) Make yourself the owning member of Clover (expand **Access**) → a **My Horses** section appears at the top of the Horses list
 - [ ] (e2e: owned_horse_appears_under_my_horses) (#1000) Clover appears under **My Horses**
 - [ ] (e2e: owned_horse_shows_a_green_active_badge_under_my_horses) (#1000) Clover shows a green **Active** badge there
 - [ ] (e2e: owned_horse_no_longer_appears_under_available) (#1000) Clover no longer appears under Available
@@ -249,10 +254,10 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: no_saved_confirmation_appears_for_a_rejected_save) No "✓ Saved" confirmation appears for that rejected save
 - [ ] (e2e: a_rejected_save_leaves_the_name_and_status_unchanged) The horse's name and status are unchanged by it
 - [ ] (e2e: a_rejected_save_leaves_the_thresholds_unchanged) The thresholds are unchanged by it
-- [ ] (e2e: feed_notes_persist_on_reload) Fill in **Feed Notes** → Save → it persists on reload
-- [ ] (e2e: medication_notes_persist_on_reload) Fill in **Medication Notes** → Save → it persists on reload
+- [ ] (e2e: feed_notes_persist_on_reload) (#1390) In **Feed & Medication** — open when the page loads, and its own form with its own Save — fill in **Feed Notes** → Save → it persists on reload
+- [ ] (e2e: medication_notes_persist_on_reload) Fill in **Medication Notes** in that same section → Save → it persists on reload
 - [ ] (e2e: clearing_feed_notes_leaves_the_field_empty_on_reload) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] (e2e: uploading_a_horse_document_redirects_back_to_the_horse_page) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
+- [ ] (e2e: uploading_a_horse_document_redirects_back_to_the_horse_page) Expand **Documents** (its row shows the document count) and tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
 - [ ] (e2e: the_uploaded_horse_document_is_listed_in_the_documents_section) That document is listed in the horse's Documents section
 - [ ] (e2e: the_horse_document_link_is_a_signed_url_for_its_stored_object) The document's link is a signed URL over that document's own stored object
 - [ ] (e2e: the_horse_document_signed_url_serves_the_stored_pdf) That signed URL returns 200 with `application/pdf` and the uploaded file's bytes
