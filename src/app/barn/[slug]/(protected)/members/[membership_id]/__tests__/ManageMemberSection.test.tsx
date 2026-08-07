@@ -436,6 +436,7 @@ describe('ManageMemberSection', () => {
       await Promise.resolve()
     })
     expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
   })
 
   it('should_show_copied_when_copy_settles_after_failed_revoke', async () => {
@@ -454,5 +455,29 @@ describe('ManageMemberSection', () => {
       await Promise.resolve()
     })
     expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+  })
+
+  it('should_restore_revoke_error_when_the_copied_badge_expires', async () => {
+    // The deliberate consequence of letting a settled copy own the error slot outright: the copy
+    // hides the revoke error for exactly as long as "Copied!" is on screen, not for good. The
+    // revoke did fail and the token was never rotated, so the error is still true once the badge
+    // decays — it is not a stale message that a later copy earned the right to bury.
+    vi.useFakeTimers()
+    render(<ManageMemberSection {...defaultProps} revokeAction={failingRevoke()} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(screen.getByText(/permission denied/i)).toBeDefined()
+    vi.useRealTimers()
   })
 })
