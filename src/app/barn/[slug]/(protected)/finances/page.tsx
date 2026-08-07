@@ -17,7 +17,7 @@ import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
-import { monthNavButtonClass } from '@/components/ui/month-nav'
+import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { EmptyState } from '@/components/EmptyState'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
@@ -174,27 +174,28 @@ export default async function FinancesPage({
         </section>
       )}
 
-      {/* monthNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant this
-          pager and the month calendar picker's arrows both render from (#1394). Its own comment
-          holds why an unpadded circular icon-arrow is a documented Button exception, and why the
-          two copies this replaced could not be left to stay in step by hand. The placeholders take
-          it too — they are `invisible`, so the extra colour tokens change nothing, and a second
-          near-copy of the string is exactly what went stale last time. */}
+      {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant this
+          pager, the month calendar picker's arrows and the dashboard's day/week ones all render
+          from (#1394). Its own comment holds why an unpadded circular icon-arrow is a documented
+          Button exception, and why the three copies this replaced could not be left to stay in
+          step by hand. The placeholders take it too — they are `invisible`, so the extra colour
+          tokens change nothing, and a second near-copy of the string is exactly what went stale
+          last time. */}
       <div className="mb-8 flex items-center gap-4">
         {prevUrl ? (
-          <Link href={prevUrl} className={monthNavButtonClass}>
+          <Link href={prevUrl} className={dateNavButtonClass}>
             &lt;
           </Link>
         ) : (
-          <span aria-hidden="true" className={`invisible ${monthNavButtonClass}`}>&lt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&lt;</span>
         )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
         {nextUrl ? (
-          <Link href={nextUrl} className={monthNavButtonClass}>
+          <Link href={nextUrl} className={dateNavButtonClass}>
             &gt;
           </Link>
         ) : (
-          <span aria-hidden="true" className={`invisible ${monthNavButtonClass}`}>&gt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&gt;</span>
         )}
       </div>
 

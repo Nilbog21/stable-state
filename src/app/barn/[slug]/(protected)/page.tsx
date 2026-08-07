@@ -19,16 +19,8 @@ import type { CalendarDate, DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/Pill'
+import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { formatBarnTime } from '@/lib/format-date'
-
-// Icon-only Prev/Next controls have no good structural fit with the shared Button
-// component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
-// Normal/Group switch) -- raw Tailwind instead. Both are plain SSR links (?date=...), no
-// client JS, and sized to a 44px minimum tap target per the project's mobile conventions.
-// Styled to match the Finances page's month-nav Prev/Next controls (#1015 review finding)
-// so the two date-paging affordances read as the same pattern app-wide.
-const dayNavLinkClass =
-  'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
 
 export default async function BarnDashboardPage({
   params,
@@ -173,11 +165,16 @@ export default async function BarnDashboardPage({
               Week
             </Pill>
           </div>
+          {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant
+              every date pager renders from (#1394). Its own comment holds why an unpadded circular
+              icon-arrow is a documented Button exception. These two are plain SSR links
+              (?date=...) with no client JS; the class is the only thing they share with the
+              picker's <button>s, and #1015 already asked for that much by hand. */}
           <div className="mb-4 flex items-center justify-between gap-2">
             <Link
               href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, -stepDays)}`}
               aria-label={`Previous ${navLabel}`}
-              className={dayNavLinkClass}
+              className={dateNavButtonClass}
             >
               &lt;
             </Link>
@@ -188,7 +185,7 @@ export default async function BarnDashboardPage({
             <Link
               href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, stepDays)}`}
               aria-label={`Next ${navLabel}`}
-              className={dayNavLinkClass}
+              className={dateNavButtonClass}
             >
               &gt;
             </Link>

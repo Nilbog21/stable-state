@@ -1,7 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
 // covers: src/components/calendar/**
-// covers: src/components/ui/month-nav.ts
+// covers: src/components/ui/date-nav.ts
 //
 // The manager's expense form and both delete confirmations: recipient-driven expense-type
 // autofill and its flash, a planned expense saved with no amount and priced later, the "All"
@@ -16,7 +16,7 @@
 // lesson form and Finances page" — was deleted rather than tested: two of its three surfaces
 // render the same MonthCalendarPicker, and the third's hand-rolled copy of that class string is
 // now the same import, so the claim holds by construction. That import is why this file covers
-// src/components/ui/month-nav.ts — a change to the constant is a change to a claim this file
+// src/components/ui/date-nav.ts — a change to the constant is a change to a claim this file
 // stands in for, and nothing else asserts it. #1019's sibling line in phase-3 ("the arrows are
 // the same size as the ones on the Finances page") went the same way, for the same reason.
 //
@@ -975,7 +975,8 @@ test('setting_the_date_back_to_today_brings_the_time_field_back @manager', async
 //
 // Every check below reads the fixture month rather than the barn's current one, so a zero means
 // "the rule suppressed it" rather than "there was nothing there to suppress" — the four bookings
-// seeded on days 10/12/14/16 are all in view for every one of them.
+// seeded on days 10/12/14/18, and the barn event on 16 that is deliberately not one, are all in
+// view for every one of them.
 //
 // The dots and the day panel both depend on the schedule fetch `ExpenseForm`'s effect fires per
 // displayed month, which is a Server Action round trip: nothing here is server-rendered, so every
@@ -1011,20 +1012,28 @@ test('the_date_field_renders_as_a_month_calendar_grid @manager', async ({ page }
  * different. Today's cell is the paired negative — without it a grid that greyed every day would
  * pass.
  *
+ * Matched as the whole light/dark pair rather than the `text-zinc-300` token alone, and that is
+ * not tidiness: `text-zinc-300` is also the *dark* half of the neighbouring-month tint
+ * (`text-zinc-600 dark:text-zinc-300`, `MonthCalendarPicker.tsx`). On the 1st of a month today is
+ * an outside cell of yesterday's grid, so the loose token would read the paired negative as grey
+ * and fail this test on that one calendar date. The two pairs share no substring.
+ *
  * `showMonth` to *yesterday's* month rather than trusting the default, which is today's: on the
  * 1st of a month whose 1st is a Sunday, `getMonthGrid` spills no leading cells and yesterday is
  * simply not on the grid (`assertDayPinArithmetic` says why containment isn't assumed anywhere in
  * this file). Yesterday's month always holds today too — the grid's 42 cells cover at least day
  * 36 of any month, whatever weekday its 1st falls on.
  */
+const PAST_DAY_TINT = 'text-zinc-300 dark:text-zinc-600'
+
 test('days_before_today_are_greyed_out @manager', async ({ page }) => {
   await page.goto(newExpensePath())
   await showMonth(page, yesterdayStr.slice(0, 7))
 
   await expect
     .poll(async () => ({
-      yesterday: ((await dayCell(page, yesterdayStr).getAttribute('class')) ?? '').includes('text-zinc-300'),
-      today: ((await dayCell(page, todayStr).getAttribute('class')) ?? '').includes('text-zinc-300'),
+      yesterday: ((await dayCell(page, yesterdayStr).getAttribute('class')) ?? '').includes(PAST_DAY_TINT),
+      today: ((await dayCell(page, todayStr).getAttribute('class')) ?? '').includes(PAST_DAY_TINT),
     }))
     .toEqual({ yesterday: true, today: false })
 })
