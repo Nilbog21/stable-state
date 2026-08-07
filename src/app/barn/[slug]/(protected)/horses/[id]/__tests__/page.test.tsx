@@ -1077,4 +1077,220 @@ describe('HorseDetailPage', () => {
     fireEvent.click(screen.getByText('test-set-owner'))
     expect(setHorseOwnerAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'mem-test')
   })
+
+  // #1390 — the page is now an always-visible identity header plus a role-filtered list of
+  // AccordionSections, the same shape for every role. These assert the parts of that shape the
+  // per-feature blocks above don't already cover.
+  describe('identity header', () => {
+    const ROLES = [
+      ['manager', managerMembership],
+      ['trainer', trainerMembership],
+      ['rider', riderMembership],
+    ] as const
+
+    for (const [roleName, membership] of ROLES) {
+      it(`should_render_the_status_badge_in_the_header_for_${roleName}`, async () => {
+        mockRequireMembershipAs(membership)
+        render(await HorseDetailPage({ params: pageParams }))
+        expect(screen.getByText('Active')).toBeDefined()
+      })
+
+      it(`should_render_the_registered_name_in_the_header_for_${roleName}`, async () => {
+        mockRequireMembershipAs(membership)
+        vi.mocked(getHorseById).mockResolvedValue(horseWithRegisteredName)
+        render(await HorseDetailPage({ params: pageParams }))
+        expect(screen.getByText('Four-Leaf Clover')).toBeDefined()
+      })
+
+      it(`should_render_the_unavailability_reason_in_the_header_for_${roleName}`, async () => {
+        mockRequireMembershipAs(membership)
+        vi.mocked(getHorseById).mockResolvedValue(unavailableHorse)
+        render(await HorseDetailPage({ params: pageParams }))
+        expect(screen.getByText('on stall rest')).toBeDefined()
+      })
+
+      it(`should_render_the_owner_link_in_the_header_for_${roleName}`, async () => {
+        mockRequireMembershipAs(membership)
+        vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+        render(await HorseDetailPage({ params: pageParams }))
+        expect(screen.getByRole('link', { name: 'Emery Rider' }).getAttribute('href'))
+          .toBe('/barn/green-acres/members/mem-owner')
+      })
+    }
+
+    it('should_render_the_unavailable_status_badge', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(unavailableHorse)
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByText('Unavailable')).toBeDefined()
+    })
+
+    it('should_render_the_inactive_status_badge', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(
+        createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: false, is_available: false })
+      )
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByText('Inactive')).toBeDefined()
+    })
+
+    // The owner line used to be hidden entirely when unset, which left a manager no signal that
+    // ownership was the thing missing.
+    it('should_render_no_owner_set_when_the_horse_has_no_owner', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByText('No owner set')).toBeDefined()
+    })
+
+    it('should_render_no_owner_set_when_the_owner_name_fails_to_resolve', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByText('No owner set')).toBeDefined()
+    })
+
+    it('should_render_the_photo_at_header_height', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByRole('img', { name: 'Thunderbolt' }).className).toContain('h-32')
+    })
+  })
+
+  describe('accordion sections', () => {
+    // #1390 removed the bar from this page entirely -- it is the horses list's signal, and
+    // this page's Upcoming Lessons section carries the same schedule in a readable form.
+    const ROLES = [
+      ['manager', managerMembership, false],
+      ['trainer', trainerMembership, false],
+      ['rider', riderMembership, true],
+    ] as const
+
+    for (const [roleName, membership, privileged] of ROLES) {
+      it(`should_not_render_an_exhaustion_bar_for_${roleName}`, async () => {
+        mockRequireMembershipAs(membership)
+        vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(privileged)
+        render(await HorseDetailPage({ params: pageParams }))
+        expect(screen.queryByTestId('exhaustion-bar')).toBeNull()
+      })
+    }
+
+    it('should_not_fetch_projected_exhaustion', async () => {
+      await HorseDetailPage({ params: pageParams })
+      expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+    })
+
+    it('should_not_resolve_exhaustion_thresholds', async () => {
+      await HorseDetailPage({ params: pageParams })
+      expect(resolveExhaustionThresholds).not.toHaveBeenCalled()
+    })
+
+    it('should_render_feed_and_medication_open_by_default', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      const details = screen.getByRole('heading', { name: 'Feed & Medication' }).closest('details')
+      expect(details?.open).toBe(true)
+    })
+
+    it('should_render_every_other_section_collapsed', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      const collapsed = ['Upcoming Lessons', 'Documents', 'Access', 'Horse Settings']
+        .map((name) => screen.getByRole('heading', { name }).closest('details')?.open)
+      expect(collapsed).toEqual([false, false, false, false])
+    })
+
+    it('should_render_the_sections_in_read_often_to_touched_rarely_order', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      const titles = Array.from(document.querySelectorAll('details summary h2')).map((h) => h.textContent)
+      expect(titles).toEqual([
+        'Feed & Medication',
+        'Upcoming Lessons',
+        'Documents',
+        'Access',
+        'Horse Settings',
+      ])
+    })
+
+    function hintFor(title: string): string | undefined {
+      return screen
+        .getByRole('heading', { name: title })
+        .closest('summary')
+        ?.querySelector('h2 + span')?.textContent ?? undefined
+    }
+
+    it('should_show_the_document_count_on_the_collapsed_documents_row', async () => {
+      vi.mocked(getDocumentsWithUrls).mockResolvedValue([
+        { doc: mockDoc as any, signedUrl: 'https://example.com/a' },
+        { doc: { ...mockDoc, id: 'doc-2' } as any, signedUrl: 'https://example.com/b' },
+      ])
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Documents')).toBe('2')
+    })
+
+    it('should_show_the_upcoming_lesson_count_on_the_collapsed_row', async () => {
+      vi.mocked(getUpcomingLessonsForHorse).mockResolvedValue([
+        { id: 'lesson-1', lessonAt: instant('2026-02-01T15:00:00Z') },
+      ])
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Upcoming Lessons')).toBe('1')
+    })
+
+    it('should_show_the_singular_grant_count_on_the_collapsed_access_row', async () => {
+      vi.mocked(getHorsePrivileges).mockResolvedValue([
+        { id: 'privilege-1', member_id: 'mem-1', document_privileges: 'read', lesson_read_privileges: false } as any,
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Dana Rider']]))
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Access')).toBe('1 member')
+    })
+
+    it('should_pluralise_the_grant_count_on_the_collapsed_access_row', async () => {
+      vi.mocked(getHorsePrivileges).mockResolvedValue([
+        { id: 'privilege-1', member_id: 'mem-1', document_privileges: 'read', lesson_read_privileges: false } as any,
+        { id: 'privilege-2', member_id: 'mem-2', document_privileges: 'read', lesson_read_privileges: false } as any,
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Dana Rider'], ['mem-2', 'Emery Rider']]))
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Access')).toBe('2 members')
+    })
+
+    it('should_say_barn_defaults_on_the_collapsed_horse_settings_row', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Horse Settings')).toBe('barn defaults')
+    })
+
+    it('should_say_custom_on_the_collapsed_horse_settings_row_when_thresholds_are_overridden', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(
+        createMockHorse({ id: 'horse-1', exhaustion_threshold_moderate: 3, exhaustion_threshold_high: 8 })
+      )
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Horse Settings')).toBe('custom')
+    })
+
+    it('should_say_not_set_on_the_collapsed_feed_and_medication_row_when_both_notes_are_null', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Feed & Medication')).toBe('not set')
+    })
+
+    it('should_show_no_hint_on_the_feed_and_medication_row_when_notes_are_set', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(horseWithNotes)
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Feed & Medication')).toBeUndefined()
+    })
+
+    // The section is the same for every role; only its contents differ.
+    it('should_render_the_notes_form_in_feed_and_medication_for_a_manager', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByTestId('horse-notes-form')).toBeDefined()
+    })
+
+    it('should_render_only_the_header_and_feed_and_medication_for_an_unprivileged_rider', async () => {
+      mockRequireMembershipAs(riderMembership)
+      render(await HorseDetailPage({ params: pageParams }))
+      const titles = Array.from(document.querySelectorAll('details summary h2')).map((h) => h.textContent)
+      expect(titles).toEqual(['Feed & Medication'])
+    })
+
+    it('should_render_feed_and_medication_upcoming_lessons_and_documents_for_a_trainer', async () => {
+      mockRequireMembershipAs(trainerMembership)
+      render(await HorseDetailPage({ params: pageParams }))
+      const titles = Array.from(document.querySelectorAll('details summary h2')).map((h) => h.textContent)
+      expect(titles).toEqual(['Feed & Medication', 'Upcoming Lessons', 'Documents'])
+    })
+  })
 })
