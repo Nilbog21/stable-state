@@ -187,6 +187,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: an_expenses_own_day_shows_no_dot_on_its_edit_form) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
 - [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
 - [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
+- [ ] (e2e: manager_appointment_page_shows_the_amount) That edit form's **Amount** field shows the stored amount (the manager half of `phase-5-trainer.md`'s `trainer_appointment_page_never_shows_the_amount` check)
 - [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient
 - [ ] (e2e: changing_the_amount_and_saving_updates_the_card) Change the amount and save → the card shows the new amount
 - [ ] (e2e: a_payment_type_set_on_the_new_expense_form_persists) On the new-expense form, set a **Payment Type**, save → it persists on reload
@@ -262,8 +263,12 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: editing_the_reminder_date_inline_saves_the_new_date) Edit that date inline (tap the field, change the date, tap away) → the new date saves
 - [ ] (e2e: the_inline_reminder_date_edit_saves_without_a_page_reload) That inline edit saves without a page reload
 - [ ] (e2e: a_past_reminder_date_shows_a_reminder_due_badge) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
-- [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for it shows up under the Dashboard's Reminders section
+- [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) Set a document's Reminder Date to today's date → the **Reminder Due** badge appears on it
+- [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) Set another document's Reminder Date to tomorrow → no **Reminder Due** badge appears on that one
+- [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for the past-dated document shows up under the Dashboard's Reminders section
 - [ ] (e2e: the_dashboard_reminder_card_links_back_to_the_horse) That card links back to this horse
+- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) The Dashboard's Reminders section shows a card for the today-dated document
+- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) That section shows no card for the tomorrow-dated document
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 

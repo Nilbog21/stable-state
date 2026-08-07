@@ -15,7 +15,7 @@ cd "$(git rev-parse --show-toplevel)"
 #   malformed     — the tag doesn't parse, so neither check above can be run on it
 #
 # The reverse direction is deliberately not linted: a test claimed by no checklist line is
-# legitimate (9 today), so flagging it would buy busywork. See docs/scripts.md.
+# legitimate (5 today), so flagging it would buy busywork. See docs/scripts.md.
 
 # The files whose (e2e:) tags are data rather than prose. PRE_RELEASE_TEST_CHECKLIST.md is
 # excluded: all 4 of its `(e2e:` hits are convention prose (`<test name>`, `…`).
