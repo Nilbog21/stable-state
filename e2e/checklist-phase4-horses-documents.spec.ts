@@ -322,6 +322,20 @@ async function gotoHorseDocuments(page: Page, horseId: string) {
   await openSection(page, 'Documents')
 }
 
+/**
+ * Reload and re-expand Documents.
+ *
+ * A reload is a fresh server render, so the accordion comes back shut however it was left
+ * (#1390) — and a read of the table through a shut `<details>` times out rather than failing,
+ * because nothing inside one can become visible (e2e/CLAUDE.md fact 2). Every reload in this file
+ * exists precisely to prove a value survived the round trip, so every one is followed by such a
+ * read.
+ */
+async function reloadHorseDocuments(page: Page) {
+  await page.reload()
+  await openSection(page, 'Documents')
+}
+
 /** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
 const uploadForm = (page: Page) => page.locator('main form')
 
@@ -671,7 +685,7 @@ test.describe.serial('a horse document reminder date', () => {
   test('editing_the_reminder_date_inline_saves_the_new_date @manager', async ({ page }) => {
     await gotoHorseDocuments(page, juniperId)
     await setReminderDate(page, TEST_PDF, juniperId, editedReminderDate)
-    await page.reload()
+    await reloadHorseDocuments(page)
 
     await expect(reminderDateInput(page, TEST_PDF)).toHaveValue(editedReminderDate)
   })
@@ -714,7 +728,7 @@ test.describe.serial('a horse document reminder date', () => {
     }
     page.off('load', recordLoad)
 
-    await page.reload()
+    await reloadHorseDocuments(page)
     await reminderDateInput(page, TEST_PDF).waitFor()
 
     expect({ ...observed, persisted: await reminderDateInput(page, TEST_PDF).inputValue() }).toEqual({

@@ -30,6 +30,13 @@ export function accordionSection(page: Page, title: string): Locator {
  * revisit a section they already opened. Clicking a `<summary>` toggles, so a blind click would
  * *close* those — hence the `open` read first.
  *
+ * **A fresh render re-shuts it, and that is the part fact 2 does not say.** `<details open>` is
+ * server-rendered markup, not client state, so every `page.reload()` and every action that
+ * redirects back to the page — a document upload's return trip, say — hands back a shut section
+ * however the test left it. Both cost this issue a debugging round, and both failed as a *timeout*
+ * on the assertion rather than as anything naming the section, which is why the fix belongs in a
+ * helper each such landing calls rather than in a rule anyone has to remember.
+ *
  * The click target is the `<summary>` rather than the heading inside it: the hint span
  * (`Documents · 2`) is a sibling of the `<h2>`, so the heading is not the whole hit area a user
  * taps.
