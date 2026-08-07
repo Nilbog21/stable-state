@@ -44,7 +44,6 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) Tap a day with nothing on it — the day panel reads "Nothing scheduled for this day."
 - [ ] (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
 - [ ] (#1019) Tap **&gt;** — the grid advances one month
-- [ ] (#1019) The **&lt;** / **&gt;** month arrows are the same size as the ones on the Finances page
 - [ ] (#1019) After advancing a month, the new grid's shading reflects that month's lessons
 - [ ] (#1019) A day carried in from the neighbouring month renders dimmed
 - [ ] (#1019) That dimmed neighbouring-month day is still selectable

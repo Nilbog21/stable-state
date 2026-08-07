@@ -170,22 +170,21 @@ Expenses (`/barn/dev-barn/expenses`):
 
 **#1020 — month conflict calendar on the expense form's Date field.** All on `/barn/dev-barn/expenses/new` unless stated. Assumes the Phase 3 seeding (`phase-3-manager-lesson-entry.md`), which put lessons and a vet/farrier expense on known future days.
 
-- [ ] (#1020) The Date field renders as a month calendar grid, not a native date box
-- [ ] (#1020) Days before today are greyed out
-- [ ] (#1020) With no horse checked and **All** unchecked, no day shows a dot
-- [ ] (#1020) No day is exertion-shaded at any point on this form — an appointment carries no workload, so the grid stays untinted even on a horse's heaviest day
-- [ ] (#1020) Check horse Apple — a day where Apple already has a lesson shows a small red dot
-- [ ] (#1020) Still with Apple checked, the day holding Apple's seeded vet/farrier expense also shows a dot (the vet+farrier same-day case)
-- [ ] (#1020) A day whose only booking belongs to a different horse shows no dot
-- [ ] (#1020) Uncheck Apple and check **All** — every day holding any lesson or expense shows a dot
-- [ ] (#1020) With **All** checked, a day holding only a barn event (Manage Barn → Events) shows no dot
-- [ ] (#1020) Tap a dotted day — a popup lists that day's items
-- [ ] (#1020) That popup names an expense by its recipient and type
-- [ ] (#1020) That popup names a lesson by its horses
-- [ ] (#1020) Tapping a day selects it as the expense's date (the tapped day gains a selection ring)
-- [ ] (#1020) Save after picking a day that way — the expense stores the day you tapped
-- [ ] (#1020) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
-- [ ] (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page
+- [ ] (e2e: the_date_field_renders_as_a_month_calendar_grid) The Date field renders as a month calendar grid, not a native date box
+- [ ] (e2e: days_before_today_are_greyed_out) Days before today are greyed out
+- [ ] (e2e: no_day_shows_a_dot_with_nothing_selected) With no horse checked and **All** unchecked, no day shows a dot
+- [ ] (e2e: no_day_is_exertion_shaded_on_the_expense_form) No day is exertion-shaded at any point on this form — an appointment carries no workload, so the grid stays untinted even on a horse's heaviest day
+- [ ] (e2e: checking_a_horse_dots_a_day_it_already_has_a_lesson_on) Check horse Apple — a day where Apple already has a lesson shows a small red dot
+- [ ] (e2e: checking_a_horse_dots_a_day_it_already_has_an_expense_on) Still with Apple checked, the day holding Apple's seeded vet/farrier expense also shows a dot (the vet+farrier same-day case)
+- [ ] (e2e: a_day_booked_only_for_another_horse_shows_no_dot) A day whose only booking belongs to a different horse shows no dot
+- [ ] (e2e: checking_all_dots_every_day_holding_a_lesson_or_expense) Uncheck Apple and check **All** — every day holding any lesson or expense shows a dot
+- [ ] (e2e: a_day_holding_only_a_barn_event_shows_no_dot) With **All** checked, a day holding only a barn event (Manage Barn → Events) shows no dot
+- [ ] (e2e: tapping_a_dotted_day_opens_a_popup_listing_that_days_items) Tap a dotted day — a popup lists that day's items
+- [ ] (e2e: the_day_popup_names_an_expense_by_its_recipient_and_type) That popup names an expense by its recipient and type
+- [ ] (e2e: the_day_popup_names_a_lesson_by_its_horses) That popup names a lesson by its horses
+- [ ] (e2e: tapping_a_day_gives_it_the_selection_ring) Tapping a day selects it as the expense's date (the tapped day gains a selection ring)
+- [ ] (e2e: saving_after_tapping_a_day_stores_the_day_that_was_tapped) Save after picking a day that way — the expense stores the day you tapped
+- [ ] (e2e: an_expenses_own_day_shows_no_dot_on_its_edit_form) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
 - [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
 - [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
 - [ ] (e2e: manager_appointment_page_shows_the_amount) That edit form's **Amount** field shows the stored amount (the manager half of `phase-5-trainer.md`'s `trainer_appointment_page_never_shows_the_amount` check)

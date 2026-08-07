@@ -1,14 +1,24 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
 // covers: src/components/calendar/**
+// covers: src/components/ui/date-nav.ts
 //
 // The manager's expense form and both delete confirmations: recipient-driven expense-type
 // autofill and its flash, a planned expense saved with no amount and priced later, the "All"
-// checkbox disabling the horse checkboxes, the Time field hiding for a past date, the edit
-// form's pre-filled values and checkbox state, recipient/amount/payment-type round-trips, and
-// the two delete confirmation pages with and without the collected-record checkbox
-// (checklists/pre-release/phase-4-manager-verification.md 160-167 and 187-200 — the 16 (#1020)
-// manual lines at 171-186 sit between those halves and belong to no slice in this batch).
+// checkbox disabling the horse checkboxes, the Time field hiding for a past date, the #1020
+// month conflict calendar the Date field renders as, the edit form's pre-filled values and
+// checkbox state, recipient/amount/payment-type round-trips, and the two delete confirmation
+// pages with and without the collected-record checkbox
+// (checklists/pre-release/phase-4-manager-verification.md 160-201).
+//
+// #1394 took over the 16 (#1020) lines that used to sit unclaimed between those halves. Fifteen
+// are the calendar block below. The sixteenth — "the < / > month arrows match the ones on the
+// lesson form and Finances page" — was deleted rather than tested: two of its three surfaces
+// render the same MonthCalendarPicker, and the third's hand-rolled copy of that class string is
+// now the same import, so the claim holds by construction. That import is why this file covers
+// src/components/ui/date-nav.ts — a change to the constant is a change to a claim this file
+// stands in for, and nothing else asserts it. #1019's sibling line in phase-3 ("the arrows are
+// the same size as the ones on the Finances page") went the same way, for the same reason.
 //
 // Only the last five tests are a chain. Everything else does its own goto and either reads a
 // fixture nobody mutates or creates/edits a row of its own, so no test can be running against
@@ -16,11 +26,19 @@
 // then reads what each deletion left behind in Finances — and is the one test.describe.serial
 // block here.
 import { test, expect, withBarn, type Page } from './support/test'
-import { addExpense, addHorse, daysFromNow, monthAnchor, type SeededAppointment } from './support/fixtures'
+import {
+  addBarnEvent,
+  addExpense,
+  addHorse,
+  addUnpaidLesson,
+  daysFromNow,
+  monthAnchor,
+  type SeededAppointment,
+} from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
 import { updateExpense } from '@/lib/db/expenses'
 import { formatMonthParam } from '@/lib/finances-month'
-import { instantToLocalWallClock } from '@/lib/barn-timezone'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type { PaymentType } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -74,6 +92,26 @@ const NEW_BARNWIDE_TYPE = 'Straw'
 const NEW_PAID_RECIPIENT = 'Ridgeline Supply Co'
 const NEW_PAID_TYPE = 'Supplies'
 const RENAMED_RECIPIENT = 'Vesper Tack Repair'
+const TAP_SAVE_RECIPIENT = 'Alderfen Tack Co'
+const TAP_SAVE_TYPE = 'Saddle Fitting'
+
+/**
+ * The two expenses the #1020 calendar block reads, and the barn event it reads beside them.
+ *
+ * Both carry a `time`, and that is load-bearing rather than tidiness: `getScheduleRange` filters
+ * `.not('expense_time', 'is', null)` (`schedule.ts`), so an untimed expense is invisible to this
+ * calendar entirely — which is also why none of the untimed fixtures above can dot a day.
+ *
+ * The event title is the popup's whole rendering of an event (`ScheduleEventRow.label` is
+ * `barn_events.title`), so it doubles as the positive control proving the event reached the
+ * calendar and was merely not dotted.
+ */
+const CALENDAR_EXPENSE_RECIPIENT = 'Windrow Mobile Veterinary'
+const CALENDAR_EXPENSE_TYPE = 'Vet Visit'
+const SELF_DOT_RECIPIENT = 'Kestrel Hoof Works'
+const SELF_DOT_TYPE = 'Shoe Reset'
+const CALENDAR_EVENT_TITLE = 'Grimsby Open Barn Day'
+const CALENDAR_FIXTURE_TIME = '12:00'
 
 const EDITABLE_AMOUNT = 415
 /**
@@ -158,6 +196,7 @@ let amountEdit: SeededAppointment
 let payEdit: SeededAppointment
 let keeper: SeededAppointment
 let sweeper: SeededAppointment
+let selfDot: SeededAppointment
 
 /** Barn-local calendar days, resolved at seed time — the frame ExpenseForm's own todayStr uses. */
 let todayStr = ''
@@ -185,6 +224,20 @@ let yesterdayStr = ''
 let plannedDayStr = ''
 
 /**
+ * "YYYY-MM" of the month after the barn's today — `plannedDayStr`'s month, and the month every
+ * #1020 calendar fixture below sits in. Resolved in the seed, because the barn's timezone is what
+ * puts `todayStr` in the barn's own frame and the barn row doesn't exist until then.
+ *
+ * The whole calendar block is pinned here for the three reasons `plannedDayStr`'s note already
+ * gives — always future, so `computeDayDecorations`' `past` branch never suppresses a dot; always
+ * inside its own month's 42-cell grid, so `tapDay`/`showMonth` reach it on every run date rather
+ * than 999 in 1000 — plus a fourth of its own: it is a different *ledger* month from the
+ * `monthsAgo: 0` fixtures the delete chain's Unattributed figures are taken from, so a lesson or
+ * expense added here cannot reach them.
+ */
+let fixtureMonth = ''
+
+/**
  * How the three days above are built, lifted to constants so the guard below can assert them
  * rather than restate them. See each day's own note for why its value is what it is; neither
  * `plannedDayStr`'s next-month framing nor its five-day floor is free.
@@ -192,6 +245,34 @@ let plannedDayStr = ''
 const YESTERDAY_OFFSET = -1
 const PLANNED_DAY_OF_MONTH = '05'
 const MIN_PLANNED_LEAD_DAYS = 5
+
+/**
+ * The days of `fixtureMonth` the calendar fixtures sit on. Spaced two apart rather than packed,
+ * so a grid that rendered one cell off would land on an empty day and fail rather than on the
+ * neighbouring fixture and pass.
+ *
+ * Day 20 holds nothing: it is the day `saving_after_tapping_a_day_stores_the_day_that_was_tapped`
+ * taps, and that test is the only one here that writes. What it writes is untimed, so it cannot
+ * become an item on this calendar however many times the file is run.
+ */
+const CALENDAR_DAYS_OF_MONTH = {
+  /** Apple's lesson — the "already has a lesson" dot, and the lesson the popup names by horse. */
+  lesson: '10',
+  /** Apple's timed vet expense — the "vet/farrier expense" dot, and the popup's expense. */
+  expense: '12',
+  /** Butter's lesson — the booking that belongs to a *different* horse. */
+  otherHorse: '14',
+  /** A barn event and nothing else. */
+  event: '16',
+  /** The expense whose own edit page must not dot its own day. */
+  selfDot: '18',
+  /** Untouched — the day the save round-trip taps. */
+  tapSave: '20',
+} as const
+
+function calendarDay(key: keyof typeof CALENDAR_DAYS_OF_MONTH): string {
+  return `${fixtureMonth}-${CALENDAR_DAYS_OF_MONTH[key]}`
+}
 
 /**
  * The day pins' arithmetic, executable rather than written in a comment (#1283, the shape
@@ -260,6 +341,16 @@ function assertDayPinArithmetic(): void {
         'discriminate, and an unordered triple leaves at least one of them vacuous.'
     )
   }
+  // The calendar days ride on plannedDayStr's month check above rather than repeating it: they
+  // are all built from the same `fixtureMonth`, so one month assertion covers the set. What is
+  // left to check is that they are distinct, which is the edit that would go wrong silently —
+  // two fixtures sharing a day makes an "and this day shows no dot" check fail for a reason that
+  // has nothing to do with the rule it names, and merging the tap-save day into a booked one
+  // makes it pass on the wrong evidence.
+  const days = [...Object.values(CALENDAR_DAYS_OF_MONTH), PLANNED_DAY_OF_MONTH]
+  if (new Set(days).size !== days.length) {
+    problems.push(`the calendar fixture days collide: ${days.join(', ')} — each has to be its own day`)
+  }
   if (problems.length > 0) {
     throw new Error(`the expense-form day pins are misaimed:\n  ${problems.join('\n  ')}`)
   }
@@ -296,15 +387,52 @@ async function markPaid(
   )
 }
 
-const barn = withBarn('phase4-expenses-form', async ({ supabase, barn }) => {
+const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }) => {
   const apple = await addHorse(supabase, barn.id, APPLE)
-  await addHorse(supabase, barn.id, BUTTER)
+  const butter = await addHorse(supabase, barn.id, BUTTER)
 
   todayStr = instantToLocalWallClock(daysFromNow(0, barn.timezone), barn.timezone).slice(0, 10)
   yesterdayStr = instantToLocalWallClock(daysFromNow(YESTERDAY_OFFSET, barn.timezone), barn.timezone).slice(0, 10)
   // Built from `todayStr`'s month rather than from a day offset — see plannedDayStr's own note.
-  plannedDayStr = `${monthFromIndex(monthIndex(todayStr.slice(0, 7)) + 1)}-${PLANNED_DAY_OF_MONTH}`
+  fixtureMonth = monthFromIndex(monthIndex(todayStr.slice(0, 7)) + 1)
+  plannedDayStr = `${fixtureMonth}-${PLANNED_DAY_OF_MONTH}`
   assertDayPinArithmetic()
+
+  /** A calendar day at a fixed barn-local hour, as the real instant every fixture builder takes. */
+  const calendarInstant = (key: keyof typeof CALENDAR_DAYS_OF_MONTH, time = CALENDAR_FIXTURE_TIME) =>
+    wallClockToInstant(`${calendarDay(key)}T${time}:00`, barn.timezone)
+
+  // fee 0, and no exertion levels beyond addUnpaidLesson's default: neither figure is read here.
+  // A fee would land a lesson_fee transaction in fixtureMonth's ledger, which no test reads —
+  // zero keeps it out of one entirely rather than relying on that.
+  const calendarLessonDefaults = { instructorId: members.trainer.membershipId, fee: 0 }
+  await addUnpaidLesson(supabase, barn, {
+    ...calendarLessonDefaults,
+    at: calendarInstant('lesson', '09:00'),
+    horseIds: [apple.id],
+    riderIds: [members.rider.membershipId],
+  })
+  await addUnpaidLesson(supabase, barn, {
+    ...calendarLessonDefaults,
+    at: calendarInstant('otherHorse', '09:00'),
+    horseIds: [butter.id],
+    riderIds: [members.rider.membershipId],
+  })
+  await addExpense(supabase, barn, {
+    at: calendarInstant('expense'),
+    time: CALENDAR_FIXTURE_TIME,
+    recipient: CALENDAR_EXPENSE_RECIPIENT,
+    expenseType: CALENDAR_EXPENSE_TYPE,
+    horseIds: [apple.id],
+  })
+  selfDot = await addExpense(supabase, barn, {
+    at: calendarInstant('selfDot'),
+    time: CALENDAR_FIXTURE_TIME,
+    recipient: SELF_DOT_RECIPIENT,
+    expenseType: SELF_DOT_TYPE,
+    horseIds: [apple.id],
+  })
+  await addBarnEvent(supabase, barn, { at: calendarInstant('event'), title: CALENDAR_EVENT_TITLE })
 
   // Insertion order deliberately differs from date order — see HISTORY_RECIPIENT above.
   for (const [day, expenseType] of [
@@ -470,6 +598,41 @@ function financesCheckbox(page: Page) {
   return page.getByRole('checkbox', { name: FINANCES_CHECKBOX_LABEL, exact: true })
 }
 
+/** One day cell of the month calendar, addressed by the "YYYY-MM-DD" it carries as its label. */
+function dayCell(page: Page, day: string) {
+  return page.getByRole('button', { name: day, exact: true })
+}
+
+/** Every day cell currently on the grid — fixed at 6 rows x 7 days, spill-over included. */
+function dayCells(page: Page) {
+  return page.locator('button[data-outside]')
+}
+
+function conflictDot(page: Page, day: string) {
+  return page.getByTestId(`conflict-dot-${day}`)
+}
+
+/**
+ * The day panel's schedule lines. Scoped to the form because the panel is rendered inside it and
+ * is the only list there — anchoring on the panel itself would mean matching a wrapper `div` by
+ * its Close button, which is a locator that breaks on any layout change.
+ */
+function dayPanelItems(page: Page) {
+  return page.locator('main form ul li')
+}
+
+/**
+ * How long a read that depends on the calendar's schedule fetch may wait, borrowed verbatim from
+ * `checklist-phase5-lessons-new.spec.ts` (#1372), which measured the need for it on the same
+ * `getScheduleRange` round trip from the lesson form.
+ *
+ * A number here *loosens* rather than tightens (e2e/CLAUDE.md fact 1): `expect.poll` and the
+ * web-first matchers run on expect's own 5s default and `test.slow()` does not raise it. Every
+ * consumer below waits on a Server Action round trip behind a `next dev` compile the run may be
+ * paying for the first time, and 5s is not reliably enough for that under full-suite load.
+ */
+const SCHEDULE_FETCH_BUDGET = 20_000
+
 /** Every cell of the reconciliation footer's Unattributed row — see UNATTRIBUTED_ROW_WITH_KEEPER. */
 function unattributedRowCells(page: Page) {
   return page.locator('main table tfoot tr').filter({ hasText: 'Unattributed' }).locator('td')
@@ -621,7 +784,7 @@ async function showMonth(page: Page, month: string): Promise<void> {
  */
 async function tapDay(page: Page, day: string): Promise<void> {
   await showMonth(page, day.slice(0, 7))
-  const cell = page.getByRole('button', { name: day, exact: true })
+  const cell = dayCell(page, day)
   await cell.focus()
   await cell.press('Enter')
 }
@@ -804,6 +967,287 @@ test('setting_the_date_back_to_today_brings_the_time_field_back @manager', async
   await tapDay(page, todayStr)
 
   await expect(page.locator('#expense-time')).toBeVisible()
+})
+
+// ---------------------------------------------------------------------------
+// #1020 — the month conflict calendar the Date field renders as
+// ---------------------------------------------------------------------------
+//
+// Every check below reads the fixture month rather than the barn's current one, so a zero means
+// "the rule suppressed it" rather than "there was nothing there to suppress" — the four bookings
+// seeded on days 10/12/14/18, and the barn event on 16 that is deliberately not one, are all in
+// view for every one of them.
+//
+// The dots and the day panel both depend on the schedule fetch `ExpenseForm`'s effect fires per
+// displayed month, which is a Server Action round trip: nothing here is server-rendered, so every
+// read that names one is an auto-retrying matcher carrying SCHEDULE_FETCH_BUDGET.
+
+/** Opens the new-expense form, hydrated and paged to the fixture month, with `horses` ticked. */
+async function openCalendarOnFixtureMonth(page: Page, horses: 'none' | 'apple' | 'all'): Promise<void> {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+  if (horses === 'apple') await horseCheckbox(page, APPLE).check()
+  if (horses === 'all') await allCheckbox(page).check()
+  await showMonth(page, fixtureMonth)
+}
+
+// Both halves in one equality, the shape checklist-phase5-lessons-new.spec.ts already uses for the
+// lesson form's version of this line: either half alone is satisfiable by the wrong page — a form
+// with both controls, or a form with neither. `#expense-date` is the id of the native input
+// ExpenseForm falls back to when no schedule reader is passed.
+test('the_date_field_renders_as_a_month_calendar_grid @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+
+  await expect
+    .poll(async () => ({
+      dayCells: await dayCells(page).count(),
+      nativeDateInputs: await page.locator('#expense-date').count(),
+    }))
+    .toEqual({ dayCells: 42, nativeDateInputs: 0 })
+})
+
+/**
+ * The rendered grey, not `data-past`: the attribute is the model's own word for the state, so
+ * asserting it restates `computeDayDecorations` rather than checking that the cell looks any
+ * different. Today's cell is the paired negative — without it a grid that greyed every day would
+ * pass.
+ *
+ * Matched as the whole light/dark pair rather than the `text-zinc-300` token alone, and that is
+ * not tidiness: `text-zinc-300` is also the *dark* half of the neighbouring-month tint
+ * (`text-zinc-600 dark:text-zinc-300`, `MonthCalendarPicker.tsx`). On the 1st of a month today is
+ * an outside cell of yesterday's grid, so the loose token would read the paired negative as grey
+ * and fail this test on that one calendar date. The two pairs share no substring.
+ *
+ * `showMonth` to *yesterday's* month rather than trusting the default, which is today's: on the
+ * 1st of a month whose 1st is a Sunday, `getMonthGrid` spills no leading cells and yesterday is
+ * simply not on the grid (`assertDayPinArithmetic` says why containment isn't assumed anywhere in
+ * this file). Yesterday's month always holds today too — the grid's 42 cells cover at least day
+ * 36 of any month, whatever weekday its 1st falls on.
+ */
+const PAST_DAY_TINT = 'text-zinc-300 dark:text-zinc-600'
+
+test('days_before_today_are_greyed_out @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await showMonth(page, yesterdayStr.slice(0, 7))
+
+  await expect
+    .poll(async () => ({
+      yesterday: ((await dayCell(page, yesterdayStr).getAttribute('class')) ?? '').includes(PAST_DAY_TINT),
+      today: ((await dayCell(page, todayStr).getAttribute('class')) ?? '').includes(PAST_DAY_TINT),
+    }))
+    .toEqual({ yesterday: true, today: false })
+})
+
+// The 42 is what makes the zero mean something: this month holds four bookings, so a grid that
+// rendered them all and dotted none is the claim, and a grid that rendered nothing is a failure.
+test('no_day_shows_a_dot_with_nothing_selected @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'none')
+
+  await expect
+    .poll(
+      async () => ({
+        dayCells: await dayCells(page).count(),
+        dots: await page.locator('[data-testid^="conflict-dot-"]').count(),
+      }),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toEqual({ dayCells: 42, dots: 0 })
+})
+
+/**
+ * Taken with Apple checked and on the month holding Apple's lesson — the state that *would* shade
+ * if this form ever grew a heatmap, rather than the empty default where the absence is trivial.
+ *
+ * `data-band` is absent rather than `"null"` when there is no band (React drops a null attribute),
+ * so the count of cells carrying it at all is the whole reading. The dot on Apple's lesson day is
+ * the positive control: it can only be there once the schedule fetch has landed *and* the horse
+ * selection has reached React, which is exactly what would otherwise leave the grid unshaded for
+ * reasons unrelated to the claim.
+ */
+test('no_day_is_exertion_shaded_on_the_expense_form @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+
+  await expect
+    .poll(
+      async () => ({
+        dayCells: await dayCells(page).count(),
+        banded: await page.locator('button[data-band]').count(),
+        appleLessonDot: await conflictDot(page, calendarDay('lesson')).count(),
+      }),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toEqual({ dayCells: 42, banded: 0, appleLessonDot: 1 })
+})
+
+test('checking_a_horse_dots_a_day_it_already_has_a_lesson_on @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+
+  await expect(conflictDot(page, calendarDay('lesson'))).toBeVisible({ timeout: SCHEDULE_FETCH_BUDGET })
+})
+
+// The vet expense is the only thing on its day, so this dot cannot have come from a lesson —
+// which is the line's point, that an appointment conflicts as readily as a lesson does.
+test('checking_a_horse_dots_a_day_it_already_has_an_expense_on @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+
+  await expect(conflictDot(page, calendarDay('expense'))).toBeVisible({ timeout: SCHEDULE_FETCH_BUDGET })
+})
+
+// Butter's lesson day paired with Apple's, in the same render: the 1 is what proves the fetch
+// landed and Apple is selected, so the 0 beside it is the horse filter doing its job rather than
+// a calendar that had not caught up.
+test('a_day_booked_only_for_another_horse_shows_no_dot @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+
+  await expect
+    .poll(
+      async () => ({
+        butter: await conflictDot(page, calendarDay('otherHorse')).count(),
+        apple: await conflictDot(page, calendarDay('lesson')).count(),
+      }),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toEqual({ butter: 0, apple: 1 })
+})
+
+// All four bookings at once, which is what "every day holding any lesson or expense" says: two
+// lessons (one of them Butter's, unreachable from the horse branch) and two expenses. Checking
+// them individually would let a barn-wide rule that only reached lessons pass three times.
+test('checking_all_dots_every_day_holding_a_lesson_or_expense @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'all')
+
+  await expect
+    .poll(
+      async () => ({
+        lesson: await conflictDot(page, calendarDay('lesson')).count(),
+        expense: await conflictDot(page, calendarDay('expense')).count(),
+        otherHorse: await conflictDot(page, calendarDay('otherHorse')).count(),
+        selfDot: await conflictDot(page, calendarDay('selfDot')).count(),
+      }),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toEqual({ lesson: 1, expense: 1, otherHorse: 1, selfDot: 1 })
+})
+
+// The popup listing the event is the positive control, and it is a strong one: an event that
+// never reached the calendar would produce an undotted day too, and this separates the two —
+// the item is there, and it still doesn't dot.
+test('a_day_holding_only_a_barn_event_shows_no_dot @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'all')
+  await tapDay(page, calendarDay('event'))
+
+  await expect(dayPanelItems(page)).toHaveText([new RegExp(`${CALENDAR_EVENT_TITLE}$`)], {
+    timeout: SCHEDULE_FETCH_BUDGET,
+  })
+  await expect(conflictDot(page, calendarDay('event'))).toHaveCount(0)
+})
+
+// The count is the claim: the panel's other branch renders a "Nothing scheduled for this day."
+// <p> and no <li> at all, so one item is the difference between a popup that listed the day's
+// schedule and one that opened empty.
+test('tapping_a_dotted_day_opens_a_popup_listing_that_days_items @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+  await tapDay(page, calendarDay('expense'))
+
+  await expect(dayPanelItems(page)).toHaveCount(1, { timeout: SCHEDULE_FETCH_BUDGET })
+})
+
+// Both halves of the name in one regex, anchored at the end so a line that carried only one of
+// them fails. The leading `.*` absorbs the time cell the same <li> opens with.
+test('the_day_popup_names_an_expense_by_its_recipient_and_type @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+  await tapDay(page, calendarDay('expense'))
+
+  await expect(dayPanelItems(page)).toHaveText(
+    [new RegExp(`${CALENDAR_EXPENSE_TYPE} — ${CALENDAR_EXPENSE_RECIPIENT}$`)],
+    { timeout: SCHEDULE_FETCH_BUDGET }
+  )
+})
+
+// A lesson carries no server-built label, so this line is composed by the form itself from the
+// horse names it holds (`describeScheduleItem`) — the one item in the popup where the *form* is
+// what names it. Butter is not on this lesson, so the name is Apple's alone.
+test('the_day_popup_names_a_lesson_by_its_horses @manager', async ({ page }) => {
+  await openCalendarOnFixtureMonth(page, 'apple')
+  await tapDay(page, calendarDay('lesson'))
+
+  await expect(dayPanelItems(page)).toHaveText([new RegExp(`Lesson — ${APPLE}$`)], {
+    timeout: SCHEDULE_FETCH_BUDGET,
+  })
+})
+
+/**
+ * The ring class, not `aria-pressed`: React 19 does not reconcile a mismatched attribute, and
+ * #1252 measured exactly that on these cells — the grid's `aria-pressed` can keep the server's
+ * value through hydration and through later re-renders alike, which is why
+ * `checklist-phase5-lessons-new.spec.ts`'s `pickDay` settles on the panel heading instead. The
+ * `ring-2` class is on `className`, which React tracks and updates normally.
+ *
+ * The count beside it is what makes this "selects it" rather than "adds a ring": exactly one cell
+ * carries the ring afterwards, so the selection moved off the form's default day rather than
+ * accumulating a second one.
+ */
+test('tapping_a_day_gives_it_the_selection_ring @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+  await tapDay(page, calendarDay('tapSave'))
+
+  await expect
+    .poll(async () => ({
+      tapped: ((await dayCell(page, calendarDay('tapSave')).getAttribute('class')) ?? '').includes('ring-2'),
+      ringed: await page.locator('button.ring-2').count(),
+    }))
+    .toEqual({ tapped: true, ringed: 1 })
+})
+
+/**
+ * The stored day, read back off a fresh server render of the saved expense's own edit page —
+ * `aria-pressed` is trustworthy there for the reason it isn't in the test above: on a page the
+ * form has only just been handed, the server's answer *is* the stored value, and it is the same
+ * read `the_edit_form_opens_prefilled_with_the_expenses_stored_values` takes.
+ *
+ * The tapped day is next month's, so a form that ignored the tap and posted its own default would
+ * store the barn's today and fail — the two are never the same day.
+ */
+test('saving_after_tapping_a_day_stores_the_day_that_was_tapped @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+  await page.locator('#expense-recipient').fill(TAP_SAVE_RECIPIENT)
+  await page.locator('#expense-type').fill(TAP_SAVE_TYPE)
+  await horseCheckbox(page, APPLE).check()
+  await tapDay(page, calendarDay('tapSave'))
+  await submitForm(page, 'Add Expense')
+
+  const card = createdCard(page, TAP_SAVE_RECIPIENT)
+  await card.waitFor()
+  const href = await card.getAttribute('href')
+  if (!href) throw new Error(`no href on the card just created for ${TAP_SAVE_RECIPIENT}`)
+  await page.goto(href)
+
+  await expect(page.locator('button[aria-pressed="true"]')).toHaveAttribute('aria-label', calendarDay('tapSave'))
+})
+
+/**
+ * The absence and its control are the same render: this expense's own day carries no dot while
+ * Apple's *other* expense day, two cells away on the same grid, carries one. An `excludeItemId`
+ * that excluded everything — or a schedule fetch that had not landed — fails on the second half.
+ *
+ * No paging and no barrier: the edit page seeds `calendarMonth` from the record's own
+ * `expense_date`, so the grid opens on the fixture month already, and Apple is pre-checked from
+ * the stored horse.
+ */
+test('an_expenses_own_day_shows_no_dot_on_its_edit_form @manager', async ({ page }) => {
+  await page.goto(expenseHref(selfDot))
+
+  await expect
+    .poll(
+      async () => ({
+        ownDay: await conflictDot(page, calendarDay('selfDot')).count(),
+        otherDay: await conflictDot(page, calendarDay('expense')).count(),
+      }),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toEqual({ ownDay: 0, otherDay: 1 })
 })
 
 // ---------------------------------------------------------------------------
