@@ -53,12 +53,13 @@ const TEST_PDF = 'test_1_kb.pdf'
 // assertion has to disagree with a wrong render, and a value read from the same bytes the browser
 // decoded would agree with any bug in between.
 const PHOTO_NATURAL_SIZE = '900x260'
-// Tailwind h-48 on the <img> (horses/[id]/page.tsx). w-auto then makes the width follow the
-// intrinsic ratio: 192 * 900 / 260 = 664.615..., which rounds to 665. A square crop would render
-// 192x192, so the pair fails on width while still passing on height — which is what makes the
-// triple a real test of "aspect ratio preserved" rather than of "an image is present".
-const PHOTO_RENDERED_HEIGHT = 192
-const PHOTO_RENDERED_WIDTH = 665
+// Tailwind h-32 on the <img> (horses/[id]/page.tsx — h-48 until #1390 moved the photo into the
+// identity header). w-auto then makes the width follow the intrinsic ratio:
+// 128 * 900 / 260 = 443.077..., which rounds to 443. A square crop would render 128x128, so the
+// pair fails on width while still passing on height — which is what makes the triple a real test
+// of "aspect ratio preserved" rather than of "an image is present".
+const PHOTO_RENDERED_HEIGHT = 128
+const PHOTO_RENDERED_WIDTH = 443
 
 const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
@@ -133,9 +134,25 @@ const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atPhotoUpload = (horseId: string) =>
   new RegExp(`/documents/new\\?entity=horse&id=${horseId}&type=photo`)
 
-/** The <section> owning the Photo h2 — the horse detail page is h2-partitioned. */
+/**
+ * The identity header, which is where the photo and its controls live since #1390 — the
+ * standalone **Photo** section that used to own them, and the h2 this locator used to filter on,
+ * are both gone. Nothing else on the page renders an `<img>` or a Set/Replace/Remove control, so
+ * `<header>` is as tight a scope as the old section was.
+ */
 function photoSection(page: Page) {
-  return page.locator('section').filter({ has: page.getByRole('heading', { name: 'Photo', exact: true }) })
+  return page.locator('main header')
+}
+
+/**
+ * The photo write controls as a group: Set Photo / Replace Photo links and the Remove button.
+ * Named by role rather than counted structurally, because #1390's header also carries the owner
+ * link and the two would otherwise be indistinguishable to a bare `a` count.
+ */
+function photoControls(page: Page) {
+  return photoSection(page)
+    .getByRole('link', { name: /Photo$/ })
+    .or(photoSection(page).getByRole('button', { name: 'Remove Photo', exact: true }))
 }
 
 /** The horse's photo, addressed by its accessible name — the <img>'s alt is the horse's name. */
@@ -426,7 +443,7 @@ test.describe.serial('the horse photo lifecycle', () => {
   // and the placeholder's own auto-waiting is the whole wait.
   test('removing_the_horse_photo_restores_the_placeholder_icon @manager', async ({ page }) => {
     await page.goto(horseUrl(cloverId))
-    await photoSection(page).getByRole('button', { name: 'Remove' }).click()
+    await photoSection(page).getByRole('button', { name: 'Remove Photo' }).click()
 
     await expect(photoSection(page).locator('svg[aria-hidden="true"]')).toBeVisible()
   })
@@ -535,12 +552,14 @@ test.describe.serial('an owned horse whose owner never set a photo', () => {
 
 // Counted rather than asserted absent, and counted on *both* horses through the same locator.
 //
-// A bare toHaveCount(1) on Butter would be defended by reasoning alone: nothing would ever have
-// executed this locator against a section that does render the controls, so a locator gone wrong
+// A bare toHaveCount(0) on Butter would be defended by reasoning alone: nothing would ever have
+// executed this locator against a header that does render the controls, so a locator gone wrong
 // would report "locked" for every horse in the barn and pass. Daisy is that positive control, read
-// through the literally shared locator: an editable section with a photo renders three (the img,
-// the Replace link, the Remove button), a locked one renders only the img, and a section that
-// failed to resolve renders none.
+// through the literally shared locator: an editable header renders two (the Replace link and the
+// Remove button), a locked one renders neither, and a locator that failed to resolve also renders
+// neither — which is why the img is waited for separately above each read rather than counted
+// alongside them (#1390: the header carries the owner link too, so a bare `a` count can no longer
+// separate a photo control from an unrelated one).
 //
 // Daisy rather than Apple, though Apple is also unlocked by now: Apple's photo is produced by the
 // *previous* describe block, so using her would make this test pass only in declaration order and
@@ -551,12 +570,12 @@ test.describe('a horse whose photo was set by its owning member', () => {
   test('an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager @manager', async ({ page }) => {
     await page.goto(horseUrl(butterId))
     await photoImage(page, BUTTER).waitFor()
-    const locked = await photoSection(page).locator('img, a, button').count()
+    const locked = await photoControls(page).count()
 
     await page.goto(horseUrl(daisyId))
     await photoImage(page, DAISY).waitFor()
-    const unlocked = await photoSection(page).locator('img, a, button').count()
+    const unlocked = await photoControls(page).count()
 
-    expect({ locked, unlocked }).toEqual({ locked: 1, unlocked: 3 })
+    expect({ locked, unlocked }).toEqual({ locked: 0, unlocked: 2 })
   })
 })

@@ -12,6 +12,7 @@
 // not twenty regressions. Fix the top one and re-run before reading any of the rest.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, updateBarnSettings } from './support/fixtures'
+import { openSection } from './support/accordion'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs. The two horse names and the registered name are what this
@@ -87,6 +88,16 @@ const barn = withBarn('phase4-horses-detail', async ({ supabase, barn, members }
 
 function horseHref(horseId: string): string {
   return `/barn/${barn.slug}/horses/${horseId}`
+}
+
+/**
+ * Land on a horse's page with Horse Settings expanded (#1390). Almost every test below drives
+ * the manager form, and since that form now lives in a collapsed accordion, a bare `goto` leaves
+ * every one of its fields permanently unreachable — see `support/accordion.ts`.
+ */
+async function gotoHorseSettings(page: Page, horseId: string) {
+  await page.goto(horseHref(horseId))
+  await openSection(page, 'Horse Settings')
 }
 
 /** The <section> owning a given h2 — the Horses list is h2-partitioned. */
@@ -187,12 +198,12 @@ async function saveAndSettleRejected(page: Page) {
 // ---------------------------------------------------------------------------
 
 test('manager_form_and_exhaustion_thresholds_share_one_save_button @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await expect(saveButton(page)).toHaveCount(1)
 })
 
 test('renaming_apple_with_threshold_overrides_updates_the_heading @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED)
   await overrideThresholds(page, FIRST_OVERRIDE.moderate, FIRST_OVERRIDE.high)
   await saveAndSettle(page)
@@ -207,7 +218,7 @@ test('renaming_apple_with_threshold_overrides_updates_the_heading @manager', asy
 // writes both thresholds, so splitting this would re-run the save and leave the checklist line
 // naming two tests. The form loads showing FIRST_OVERRIDE, so neither value can pass unchanged.
 test('threshold_overrides_update_from_the_same_save @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED)
   await overrideThresholds(page, SECOND_OVERRIDE.moderate, SECOND_OVERRIDE.high)
   await saveAndSettle(page)
@@ -219,7 +230,7 @@ test('threshold_overrides_update_from_the_same_save @manager', async ({ page }) 
 // Deliberately not routed through saveAndSettle: that helper's own waitFor would absorb the
 // thing this checkbox is about, leaving the test asserting nothing that can fail.
 test('saved_confirmation_appears_next_to_the_save_button @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await saveButton(page).click()
 
   await expect(savedIndicator(page)).toBeVisible()
@@ -227,11 +238,12 @@ test('saved_confirmation_appears_next_to_the_save_button @manager', async ({ pag
 
 // Three assertions, same ratified exception as threshold_overrides_update_from_the_same_save.
 test('renamed_name_and_thresholds_persist_on_reload @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED)
   await overrideThresholds(page, THIRD_OVERRIDE.moderate, THIRD_OVERRIDE.high)
   await saveAndSettle(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByLabel('Barn Name', { exact: true })).toHaveValue(APPLE_RENAMED)
   await expect(page.getByLabel('Moderate threshold')).toHaveValue(String(THIRD_OVERRIDE.moderate))
@@ -241,7 +253,7 @@ test('renamed_name_and_thresholds_persist_on_reload @manager', async ({ page }) 
 // The seeded horse has no per-horse overrides, so this box starts *checked*; every save above
 // submitted it unchecked. A fresh goto is the reload.
 test('use_barn_defaults_toggle_is_still_unchecked_on_reload @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await expect(page.getByLabel('Use barn defaults')).not.toBeChecked()
 })
 
@@ -252,15 +264,16 @@ test('use_barn_defaults_toggle_is_still_unchecked_on_reload @manager', async ({ 
 // The label-to-control binding is the claim: if "Barn Name" labelled the registered-name field
 // instead, this reads the still-blank registered name rather than the horse's barn name.
 test('manager_form_name_field_is_labeled_barn_name @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await expect(page.getByLabel('Barn Name', { exact: true })).toHaveValue(APPLE_RENAMED)
 })
 
 test('registered_name_persists_on_reload @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Registered Name', { exact: true }).fill(REGISTERED_NAME)
   await saveAndSettle(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByLabel('Registered Name', { exact: true })).toHaveValue(REGISTERED_NAME)
 })
@@ -281,9 +294,11 @@ test('horses_list_card_shows_registered_name_in_parentheses @manager', async ({ 
 // halves of the checkbox — the section appears, and it appears at the top.
 test('setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
+  await openSection(page, 'Access')
   await page.getByRole('button', { name: 'Set as Owner', exact: true }).click()
-  // A wait, not an assertion: the section refreshes via router.refresh() with no navigation to
-  // wait on, and the button relabelling is the signal the action resolved.
+  // A wait, not an assertion: the row refreshes through the action's own revalidatePath with no
+  // navigation to wait on (#1390 dropped the router.refresh() that used to do this alongside it),
+  // and the button relabelling is the signal the action resolved.
   await page.getByRole('button', { name: 'Owner', exact: true }).waitFor()
 
   await page.goto(`/barn/${barn.slug}/horses`)
@@ -334,7 +349,7 @@ test('owned_horse_card_shows_an_exhaustion_bar @manager', async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test('clearing_registered_name_removes_the_card_parenthetical @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await clear(page.getByLabel('Registered Name', { exact: true }))
   await saveAndSettle(page)
 
@@ -353,10 +368,11 @@ test('clearing_registered_name_removes_the_card_parenthetical @manager', async (
 // Two assertions, same ratified exception; the form held THIRD_OVERRIDE going in, so neither value
 // can pass unchanged.
 test('re_checking_use_barn_defaults_reverts_thresholds_on_reload @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Use barn defaults').check()
   await saveAndSettle(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByLabel('Moderate threshold')).toHaveValue(String(barnDefaults.moderate))
   await expect(page.getByLabel('High threshold')).toHaveValue(String(barnDefaults.high))
@@ -370,7 +386,7 @@ test('re_checking_use_barn_defaults_reverts_thresholds_on_reload @manager', asyn
 // what "rejected with a field error" is asserted as. Matching the exact message rather than
 // mere presence is what distinguishes this rejection from any other error the action can return.
 test('moderate_not_below_high_is_rejected_with_an_error @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await overrideThresholds(page, REJECTED_THRESHOLD, REJECTED_THRESHOLD)
   await saveButton(page).click()
 
@@ -378,7 +394,7 @@ test('moderate_not_below_high_is_rejected_with_an_error @manager', async ({ page
 })
 
 test('no_saved_confirmation_appears_for_a_rejected_save @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await overrideThresholds(page, REJECTED_THRESHOLD, REJECTED_THRESHOLD)
   // saveAndSettleRejected's waitFor is what stops this asserting an absence that is merely the
   // save not having resolved yet: the error alert and the flash that isn't there land in the same
@@ -401,12 +417,13 @@ test('no_saved_confirmation_appears_for_a_rejected_save @manager', async ({ page
 // claim about what the server refused to write rather than about a form nobody touched. Two
 // assertions, same ratified exception — one rejected save, two values read back.
 test('a_rejected_save_leaves_the_name_and_status_unchanged @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_REJECTED)
   await page.getByRole('button', { name: 'Inactive', exact: true }).click()
   await overrideThresholds(page, REJECTED_THRESHOLD, REJECTED_THRESHOLD)
   await saveAndSettleRejected(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByLabel('Barn Name', { exact: true })).toHaveValue(APPLE_RENAMED)
   await expect(page.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -415,10 +432,11 @@ test('a_rejected_save_leaves_the_name_and_status_unchanged @manager', async ({ p
 // Two assertions, same ratified exception. The horse is back on barn defaults from the revert
 // above, so a rejected save that had gone through would show REJECTED_THRESHOLD in both fields.
 test('a_rejected_save_leaves_the_thresholds_unchanged @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await overrideThresholds(page, REJECTED_THRESHOLD, REJECTED_THRESHOLD)
   await saveAndSettleRejected(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByLabel('Moderate threshold')).toHaveValue(String(barnDefaults.moderate))
   await expect(page.getByLabel('High threshold')).toHaveValue(String(barnDefaults.high))
@@ -427,11 +445,30 @@ test('a_rejected_save_leaves_the_thresholds_unchanged @manager', async ({ page }
 // ---------------------------------------------------------------------------
 // Feed and medication notes
 // ---------------------------------------------------------------------------
+//
+// #1390 moved these two fields out of the manager form into their own Feed & Medication section,
+// which saves through update_horse_notes rather than update_horse_details. So they no longer
+// share the Save button the block above drives — hence the separate form scope and helpers below.
+// The section renders defaultOpen, which is why these tests need no openSection call.
+
+/** The Feed & Medication form — the only form on the page carrying the two notes fields. */
+function notesForm(page: Page) {
+  return page
+    .locator('form')
+    .filter({ has: page.getByLabel('Feed Notes', { exact: true }) })
+    .filter({ has: page.getByLabel('Medication Notes', { exact: true }) })
+}
+
+/** Same shape as saveAndSettle, scoped to the notes form's own Save. A wait, not an assertion. */
+async function saveNotesAndSettle(page: Page) {
+  await notesForm(page).getByRole('button', { name: 'Save', exact: true }).click()
+  await notesForm(page).getByText(SAVED_TEXT, { exact: true }).waitFor()
+}
 
 test('feed_notes_persist_on_reload @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await page.getByLabel('Feed Notes', { exact: true }).fill(FEED_NOTES)
-  await saveAndSettle(page)
+  await saveNotesAndSettle(page)
   await page.reload()
 
   await expect(page.getByLabel('Feed Notes', { exact: true })).toHaveValue(FEED_NOTES)
@@ -440,7 +477,7 @@ test('feed_notes_persist_on_reload @manager', async ({ page }) => {
 test('medication_notes_persist_on_reload @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await page.getByLabel('Medication Notes', { exact: true }).fill(MEDICATION_NOTES)
-  await saveAndSettle(page)
+  await saveNotesAndSettle(page)
   await page.reload()
 
   await expect(page.getByLabel('Medication Notes', { exact: true })).toHaveValue(MEDICATION_NOTES)
@@ -452,10 +489,22 @@ test('medication_notes_persist_on_reload @manager', async ({ page }) => {
 test('clearing_feed_notes_leaves_the_field_empty_on_reload @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await clear(page.getByLabel('Feed Notes', { exact: true }))
-  await saveAndSettle(page)
+  await saveNotesAndSettle(page)
   await page.reload()
 
   await expect(page.getByLabel('Feed Notes', { exact: true })).toHaveValue('')
+})
+
+// #1390 — the manager's notes save must go through update_horse_notes, which until this issue
+// admitted the owning member alone. Apple has no owner, so a manager who was not admitted by the
+// new auth_is_barn_manager branch would get 'not_authorized' and no confirmation at all. The
+// three tests above would then fail on the value; this one names the reason.
+test('a_manager_saving_notes_on_an_unowned_horse_is_not_rejected @manager', async ({ page }) => {
+  await page.goto(horseHref(appleId))
+  await page.getByLabel('Feed Notes', { exact: true }).fill(FEED_NOTES)
+  await saveNotesAndSettle(page)
+
+  await expect(notesForm(page).getByRole('alert')).toHaveCount(0)
 })
 
 // ---------------------------------------------------------------------------
@@ -474,7 +523,7 @@ test('clearing_feed_notes_leaves_the_field_empty_on_reload @manager', async ({ p
 // by construction. What this test is still worth is the case where that ordering changes — a
 // framework upgrade, or a server slow enough to lose the race the way #759 once did.
 test('a_second_save_keeps_the_first_saves_name @manager', async ({ page }) => {
-  await page.goto(horseHref(appleId))
+  await gotoHorseSettings(page, appleId)
   await page.getByLabel('Barn Name', { exact: true }).fill(APPLE_RENAMED_TWICE)
   await saveAndSettle(page)
   // SavedIndicator self-hides after 2s. Waiting it out is what stops the second saveAndSettle
@@ -482,6 +531,7 @@ test('a_second_save_keeps_the_first_saves_name @manager', async ({ page }) => {
   await savedIndicator(page).waitFor({ state: 'detached' })
   await saveAndSettle(page)
   await page.reload()
+  await openSection(page, 'Horse Settings')
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(APPLE_RENAMED_TWICE)
 })

@@ -4,8 +4,6 @@
 // covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
 // covers: src/components/documents/**
 // covers: src/components/EmptyState.tsx
-// covers: src/components/ExhaustionBar.tsx
-// covers: src/components/useOutsideDismiss.ts
 //
 // The horse Documents section end to end: upload and redirect, the row appearing, the signed
 // link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
@@ -31,7 +29,8 @@ import { readFileSync } from 'fs'
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addHorseDocument, assetPath, updateBarnSettings } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { waitForBarnPageHydrated } from './support/hydration'
+import { accordionSection, openSection } from './support/accordion'
 import { mustSucceed } from '@/lib/db/service-role'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
@@ -304,13 +303,24 @@ const horseUrl = (horseId: string) => `/barn/${barn.slug}/horses/${horseId}`
 const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entity=horse&id=${horseId}$`)
 
-/** The <section> owning a given h2 — the horse detail page and the dashboard are both h2-partitioned. */
+/** The <section> owning a given h2 — the dashboard is h2-partitioned. */
 function section(page: Page, heading: string) {
   return page.locator('section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
 }
 
-const documentsSection = (page: Page) => section(page, 'Documents')
+/**
+ * The horse detail page's Documents section, which is an `AccordionSection` since #1390 rather
+ * than a `<section>` — see `support/accordion.ts`. Reaching it always means opening it first:
+ * every read below goes through `gotoHorseDocuments`.
+ */
+const documentsSection = (page: Page) => accordionSection(page, 'Documents')
 const remindersSection = (page: Page) => section(page, 'Reminders')
+
+/** Land on a horse's page with Documents expanded. */
+async function gotoHorseDocuments(page: Page, horseId: string) {
+  await page.goto(horseUrl(horseId))
+  await openSection(page, 'Documents')
+}
 
 /** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
 const uploadForm = (page: Page) => page.locator('main form')
@@ -365,7 +375,10 @@ const reminderDateInput = (page: Page, fileName: string) =>
  * strict-mode violation rather than a guard (#1197, measured).
  */
 async function openAddDocument(page: Page, horseId: string): Promise<void> {
-  await page.goto(horseUrl(horseId))
+  // Add Document is the accordion's headerExtra, which sits inside the `<details>` and so is
+  // genuinely hidden until it opens (#1390) — the same measured behaviour
+  // checklist-phase4-barn-timezone.spec.ts's openBarnEventsSection relies on.
+  await gotoHorseDocuments(page, horseId)
   await documentsSection(page).getByRole('link', { name: 'Add Document', exact: true }).click()
   await page.waitForURL(atDocumentUpload(horseId), { waitUntil: 'commit' })
   await submitButton(page).waitFor()
@@ -401,51 +414,6 @@ async function uploadDocument(
 }
 
 /**
- * Block until this page's React root has hydrated.
- *
- * Measured, not assumed, and it cost this slice a debugging round: immediately after
- * `page.goto` the reminder cell's `<input>` is present and fully actionable, yet the element
- * carries no React props at all — its `onBlur` appears only about three seconds later. Inside
- * that window `fill()` moves the DOM value and `blur()` reaches no handler, so
- * ReminderDateCell's save never runs and no request is ever made. That is the *quiet* failure
- * direction: every read the test can take is identical to a correct pass, and the only trace is
- * the POST that never arrives — which is why the symptom was `waitForResponse` timing out rather
- * than anything pointing at hydration. Not a cold-compile artifact: the route is already warm
- * from the upload test above. This is the hazard `openAddDocument` documents, on the page this
- * file reaches by `goto` rather than by a click.
- *
- * The ExhaustionBar's popover is the signal, because it is `useState`-gated and therefore
- * *cannot* be open before hydration — an open popover strictly post-dates hydration rather than
- * merely correlating with it (#1190's rationale for the same problem one page over). Nothing on
- * this page renders differently on hydration unless it is driven, so an interaction-based signal
- * is the only kind available here, and it has to be *retried*. That retry, the re-read that keeps
- * a toggle from oscillating, and why no timeout is written anywhere are all `hydrateByDriving`'s,
- * in `support/hydration.ts` — this file's version was the one it was extracted from (#1280).
- *
- * Driven through the ExhaustionBar rather than through the reminder input itself so that the
- * retry writes nothing — a retried blur would issue duplicate saves. Toggled shut again so the
- * page is left as it was found.
- */
-async function waitForHorseDetailHydrated(page: Page): Promise<void> {
-  const bar = page.getByRole('button', { name: /^Exhaustion: / })
-  const openPopover = page.locator('[aria-label^="Exhaustion: "][aria-expanded="true"]')
-
-  // Names the cause before the retry loop can bury it. Verified by removing the Exhaustion
-  // section from the page: without this the whole gate degrades to a bare test timeout inside
-  // `toPass`, with nothing saying the bar was missing rather than merely unhydrated. Still
-  // unbounded, so it tightens nothing.
-  await bar.waitFor()
-
-  await hydrateByDriving(
-    () => bar.click(),
-    async () => (await openPopover.count()) === 1
-  )
-
-  await bar.click()
-  await openPopover.waitFor({ state: 'detached' })
-}
-
-/**
  * Type a new reminder date into the inline cell and blur it, waiting for the save to land.
  *
  * The wait is on the server action's own POST rather than on anything rendered, because
@@ -458,7 +426,20 @@ async function waitForHorseDetailHydrated(page: Page): Promise<void> {
  * It lives here rather than at each `goto` so no caller can forget it.
  */
 async function setReminderDate(page: Page, fileName: string, horseId: string, day: string): Promise<void> {
-  await waitForHorseDetailHydrated(page)
+  // Measured, and it cost this slice a debugging round: immediately after `page.goto` the
+  // reminder cell's `<input>` is present and fully actionable, yet the element carries no React
+  // props at all — its `onBlur` appears about three seconds later. Inside that window `fill()`
+  // moves the DOM value and `blur()` reaches no handler, so the save never runs and no request
+  // is ever made. That is the quiet direction: every read the test can take is identical to a
+  // correct pass, and the only trace is the POST that never arrives.
+  //
+  // The signal used to be this page's own ExhaustionBar, until #1390 removed it — and what
+  // replaced it offers none: the accordions are native `<details>` (open before hydration), and
+  // every field inside them is `useState`-seeded from a server prop, which is e2e/CLAUDE.md fact
+  // 13's byte-identical case. `waitForBarnPageHydrated` drives the nav bar's avatar popover
+  // instead: same React root, so the same proof one level out, and a control this file never
+  // asserts on, so the retry writes nothing.
+  await waitForBarnPageHydrated(page)
   const input = reminderDateInput(page, fileName)
   await input.fill(day)
   const saved = page.waitForResponse(
@@ -523,7 +504,7 @@ test.describe.serial('a horse document', () => {
   })
 
   test('the_uploaded_horse_document_is_listed_in_the_documents_section @manager', async ({ page }) => {
-    await page.goto(horseUrl(willowId))
+    await gotoHorseDocuments(page, willowId)
     await expect(documentsSection(page).getByRole('link', { name: TEST_PDF, exact: true })).toBeVisible()
   })
 
@@ -539,7 +520,7 @@ test.describe.serial('a horse document', () => {
   test('the_horse_document_link_is_a_signed_url_for_its_stored_object @manager', async ({ page }) => {
     const storagePath = await storedDocumentPath(willowId)
 
-    await page.goto(horseUrl(willowId))
+    await gotoHorseDocuments(page, willowId)
     const href = await documentsSection(page)
       .getByRole('link', { name: TEST_PDF, exact: true })
       .getAttribute('href')
@@ -559,7 +540,7 @@ test.describe.serial('a horse document', () => {
   // carries its own negative half, since matching this asset's digest excludes every other.
   // The expected digest comes from the committed file, never from the app.
   test('the_horse_document_signed_url_serves_the_stored_pdf @manager', async ({ page }) => {
-    await page.goto(horseUrl(willowId))
+    await gotoHorseDocuments(page, willowId)
     const href = await documentsSection(page)
       .getByRole('link', { name: TEST_PDF, exact: true })
       .getAttribute('href')
@@ -587,7 +568,7 @@ test.describe.serial('a horse document', () => {
   // never reach (2), never to 1 — 1 is transiently true between the click and the revalidate,
   // which is exactly the mutation that survived on #1201.
   test('deleting_a_horse_document_removes_its_row @manager', async ({ page }) => {
-    await page.goto(horseUrl(willowId))
+    await gotoHorseDocuments(page, willowId)
     await documentsSection(page).getByRole('button', { name: 'Delete', exact: true }).click()
     await documentsSection(page).getByText('No documents yet', { exact: true }).waitFor()
 
@@ -680,7 +661,7 @@ test.describe.serial('a horse document reminder date', () => {
   // so the cell displays whatever was typed whether or not the action ever ran; only a fresh
   // server render can distinguish "saved" from "typed".
   test('editing_the_reminder_date_inline_saves_the_new_date @manager', async ({ page }) => {
-    await page.goto(horseUrl(juniperId))
+    await gotoHorseDocuments(page, juniperId)
     await setReminderDate(page, TEST_PDF, juniperId, editedReminderDate)
     await page.reload()
 
@@ -706,7 +687,7 @@ test.describe.serial('a horse document reminder date', () => {
   // marker intact and the load count at zero just as happily. All three are compared in one
   // expectation because the claim is their conjunction — no reload *and* it still saved.
   test('the_inline_reminder_date_edit_saves_without_a_page_reload @manager', async ({ page }) => {
-    await page.goto(horseUrl(juniperId))
+    await gotoHorseDocuments(page, juniperId)
     await reminderDateInput(page, TEST_PDF).waitFor()
 
     const documentLoads: string[] = []
@@ -759,7 +740,7 @@ test.describe.serial('a horse document reminder date', () => {
   // is #1252's ratified idiom rather than this slice's to invent (#1187 accepted the same
   // trade-off). Logged as a follow-up instead.
   test('a_past_reminder_date_shows_a_reminder_due_badge @manager', async ({ page }) => {
-    await page.goto(horseUrl(juniperId))
+    await gotoHorseDocuments(page, juniperId)
     const cell = reminderDateCell(page, TEST_PDF)
     const badge = cell.getByText('Reminder Due', { exact: true })
     await cell.locator('input[type="date"]').waitFor()
@@ -839,7 +820,7 @@ test.describe('the reminder-due boundary', () => {
   // throws rather than returning a falsy default if a cell fails to resolve, so a mislocated row
   // fails here instead of quietly contributing a zero to the absence half.
   test('a_reminder_date_of_today_is_due_and_the_next_day_is_not @manager', async ({ page }) => {
-    await page.goto(horseUrl(marigoldId))
+    await gotoHorseDocuments(page, marigoldId)
     const dueCell = reminderDateCell(page, BOUNDARY_DUE_PDF)
     const notDueCell = reminderDateCell(page, BOUNDARY_NOT_DUE_PDF)
     const badge = (cell: Locator) => cell.getByText('Reminder Due', { exact: true })

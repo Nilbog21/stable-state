@@ -1,7 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/lessons/[id]/**
 // covers: src/app/barn/[slug]/(protected)/documents/new/**
-// covers: src/components/ExhaustionBar.tsx
 //
 // #999's `member_horse_privileges` through a rider's eye, end to end — the only automated coverage
 // that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md`'s document-
@@ -51,7 +50,7 @@
 // nothing else. Every other test is an independent read of a barn this file owns outright.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addHorseDocument, addUnpaidLesson, assetPath, daysFromNow, E2E_STUB_RIDER } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { accordionSection, openSection } from './support/accordion'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs. No name contains another (every Playwright text matcher is
@@ -60,10 +59,11 @@ const APPLE = 'Apple' // lesson-read privileged
 const BUTTER = 'Butter' // document privileged, read then write; no lesson-read
 const PEPPER = 'Pepper' // no privileges row at all
 
-// Apple's two lessons, and the exhaustion arithmetic every Apple assertion is derived from rather
-// than hardcoded: the bar's label and its popover heading both read totals off these.
+// Apple's two lessons. The `_TOTAL` that sat here went with #1390's removal of the ExhaustionBar
+// from the horse detail page — the bar's label and popover heading were the only readers of a
+// summed figure. The per-lesson value survives: the lesson detail page still shows an exertion
+// rating for a privileged horse, and that assertion derives from this rather than hardcoding.
 const APPLE_EXERTIONS = [4, 5]
-const APPLE_EXERTION_TOTAL = APPLE_EXERTIONS[0] + APPLE_EXERTIONS[1]
 
 // Butter's lesson exists only so the two "no lesson-read privilege" lines assert a withholding
 // rather than an absence.
@@ -250,17 +250,15 @@ function uploadSubmitButton(page: Page) {
   return page.locator('main form').locator('button[type="submit"]')
 }
 
-/** Any exhaustion bar, for the absence assertions — its label carries live figures. */
+/**
+ * Any exhaustion bar, for the absence assertions — its label carries live figures.
+ *
+ * Absence is all this locator is for since #1390: the bar no longer renders on this page for any
+ * role. It stays a `/^Exhaustion: /` name match rather than a narrower one so that a bar
+ * reintroduced under *any* figures fails the assertion.
+ */
 function anyExhaustionBar(page: Page) {
   return page.getByRole('button', { name: /^Exhaustion: / })
-}
-
-function openExhaustionPopover(page: Page) {
-  return page.locator('[aria-label^="Exhaustion: "][aria-expanded="true"]')
-}
-
-function exhaustionPopoverRows(page: Page) {
-  return page.getByTestId('exhaustion-bar-row')
 }
 
 function upcomingLessonsHeading(page: Page) {
@@ -268,18 +266,21 @@ function upcomingLessonsHeading(page: Page) {
 }
 
 /**
- * The Upcoming Lessons section, resolved **as the last child of `main`** rather than by its own
- * heading — which is how the collapsed **Upcoming Lessons** line's "at the bottom" is asserted
- * (the same structural shape #1320
- * used for "My Horses at the top"). The page's sections are a flat list of `main`'s children and
- * this one is declared last in the JSX, so the position claim survives every combination of the
- * conditional sections above it appearing or not.
+ * The Upcoming Lessons section, as its own `AccordionSection` (#1390 — it was the page's last
+ * `<section>`, resolved as the last child of `main`, which is how the collapsed **Upcoming
+ * Lessons** line's "at the bottom" used to be asserted; the section-order assertion in that test
+ * replaced the structural claim).
  *
  * Everything the collapsed/expanded assertions read is scoped through this, so a page that moved
- * the section fails those too rather than passing on a section found elsewhere.
+ * the section's contents elsewhere fails those too rather than passing on markup found elsewhere.
  */
-function lastSection(page: Page) {
-  return page.locator('main > *').last()
+function upcomingLessonsSection(page: Page) {
+  return accordionSection(page, 'Upcoming Lessons')
+}
+
+/** Every accordion section title on the page, in DOM order. */
+function sectionTitles(page: Page) {
+  return page.locator('details summary h2')
 }
 
 /**
@@ -295,34 +296,9 @@ function horseHeading(page: Page, name: string) {
 // Interactions
 // ---------------------------------------------------------------------------
 
-/**
- * Taps the Exhaustion bar and leaves its popover open — the "Tapping that Exhaustion bar
- * expands it" interaction, and a hydration
- * barrier in the same act.
- *
- * The popover is `useState`-gated, so it cannot exist before hydration; a click dispatched before
- * React is listening is simply lost and nothing replays it (e2e/CLAUDE.md fact 10 — fact 9 is the
- * `fill()` half of the same hazard and doesn't reach this page). That is why this retries through
- * `hydrateByDriving` rather than clicking once and waiting — a single drive that lands early can
- * only run out the test's budget. The toggle is safe to re-dispatch because `hydrateByDriving`
- * re-drives only while the popover is still shut.
- *
- * The bare `waitFor` first names the cause before the retry loop can bury it: without it, a missing
- * bar degrades into an anonymous timeout inside `toPass`. Unbounded, so it tightens nothing (#1211).
- */
-async function tapExhaustionBar(page: Page): Promise<void> {
-  const bar = anyExhaustionBar(page)
-  await bar.waitFor()
-
-  await hydrateByDriving(
-    () => bar.click(),
-    async () => (await openExhaustionPopover(page).count()) === 1
-  )
-}
-
 /** Opens the collapsed `<details>`, which is native markup and needs no hydration barrier. */
 async function expandUpcomingLessons(page: Page): Promise<void> {
-  await lastSection(page).locator('summary').click()
+  await openSection(page, 'Upcoming Lessons')
 }
 
 /**
@@ -333,7 +309,7 @@ async function expandUpcomingLessons(page: Page): Promise<void> {
  * an array comparison against `[]` passes on nothing.
  */
 async function upcomingLessonHrefs(page: Page): Promise<string[]> {
-  const links = lastSection(page).locator('a[href]')
+  const links = upcomingLessonsSection(page).locator('a[href]')
   await links.first().waitFor()
   return links.evaluateAll((els) => els.map((el) => (el as HTMLAnchorElement).getAttribute('href') ?? ''))
 }
@@ -362,6 +338,10 @@ test.describe.serial('document privileges on Butter', () => {
   test('rider_read_document_privilege_hides_the_add_document_button @rider', async ({ page }) => {
     await page.goto(horseHref(butterId))
 
+    // Opened first, and that is the load-bearing half: Add Document is the accordion's
+    // headerExtra, which is hidden while the `<details>` is shut, so a collapsed read would
+    // report "no button" for a rider who has one (#1390).
+    await openSection(page, 'Documents')
     await expect(documentsHeading(page)).toBeVisible()
     await expect(addDocumentLink(page)).toHaveCount(0)
   })
@@ -372,6 +352,10 @@ test.describe.serial('document privileges on Butter', () => {
   // bytes", which carries its own negative half.
   test('rider_read_document_privilege_opens_a_seeded_document @rider', async ({ page }) => {
     await page.goto(horseHref(butterId))
+    // The row is inside the collapsed Documents accordion (#1390), and nothing inside a closed
+    // `<details>` can become visible — the waitFor below would run out the budget rather than fail
+    // (e2e/CLAUDE.md fact 2).
+    await openSection(page, 'Documents')
 
     const link = documentLink(page, BUTTER_DOC)
     await link.waitFor()
@@ -404,6 +388,9 @@ test.describe.serial('document privileges on Butter', () => {
     )
 
     await page.goto(horseHref(butterId))
+    // Add Document is the accordion's headerExtra, which lives inside the `<details>` and is
+    // hidden until it opens.
+    await openSection(page, 'Documents')
     await expect(addDocumentLink(page)).toBeVisible()
   })
 
@@ -415,6 +402,7 @@ test.describe.serial('document privileges on Butter', () => {
   test('rider_write_document_privilege_upload_succeeds @rider', async ({ page }) => {
     test.slow()
     await page.goto(horseHref(butterId))
+    await openSection(page, 'Documents')
     await addDocumentLink(page).click()
     await page.waitForURL(atDocumentUpload(butterId), { waitUntil: 'commit' })
 
@@ -425,6 +413,7 @@ test.describe.serial('document privileges on Butter', () => {
     await submit.click()
 
     await page.waitForURL(atHorseDetail(butterId), { waitUntil: 'commit' })
+    await openSection(page, 'Documents')
     await expect(documentLink(page, UPLOAD_PDF)).toBeVisible()
   })
 })
@@ -452,37 +441,37 @@ test('rider_without_a_document_privilege_sees_no_documents_section @rider', asyn
 // document-privilege Setup lines follow.
 // ---------------------------------------------------------------------------
 
-// The bar's accessible name is derived from the seeded exertions, not written out: a fixture change
-// that altered either lesson would fail this rather than silently keep passing against a stale
-// literal.
-test('rider_lesson_read_privilege_shows_the_exhaustion_bar @rider', async ({ page }) => {
+// #1390 removed the ExhaustionBar from this page for every role, so what was three checkboxes
+// (the privileged bar, its tap-to-expand breakdown, and the unprivileged absence) is now one
+// claim: the bar is not here, privilege or no privilege.
+//
+// Read on **both** horses through the same locator, for the reason the three tests it replaces
+// had between them. Apple carries the lesson-read grant and two in-window lessons, so she is the
+// case that used to render a bar and is the only one where its absence is a real removal rather
+// than the pre-existing gate still working; Butter is the gated case and keeps the original
+// assertion's meaning. A locator that silently stopped resolving reports both as absent, which is
+// why `rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section` below is the
+// positive control on the same page — the section that replaced the bar as the schedule's home.
+//
+// The heading assertions are preconditions, not the claim: `toHaveCount(0)` is satisfied just as
+// happily by a 404 or a document that never rendered.
+test('rider_sees_no_exhaustion_bar_on_a_horse_detail_page @rider', async ({ page }) => {
   await page.goto(horseHref(appleId))
+  await expect(horseHeading(page, APPLE)).toBeVisible()
+  const privileged = await anyExhaustionBar(page).count()
 
-  await expect(
-    page.getByRole('button', {
-      name: `Exhaustion: ${APPLE_EXERTION_TOTAL} points from ${APPLE_EXERTIONS.length} lessons`,
-      exact: true,
-    })
-  ).toBeVisible()
+  await page.goto(horseHref(butterId))
+  await expect(horseHeading(page, BUTTER)).toBeVisible()
+  const unprivileged = await anyExhaustionBar(page).count()
+
+  expect({ privileged, unprivileged }).toEqual({ privileged: 0, unprivileged: 0 })
 })
 
-// Two assertions, by the ratified indivisible-line exception: one tap, one popover, and the line
-// names both halves of what it opens — the ±3-day framing and the per-lesson breakdown under it.
-// Both figures are derived from the seeded exertions.
-test('rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown @rider', async ({ page }) => {
-  await page.goto(horseHref(appleId))
-  await tapExhaustionBar(page)
-
-  await expect(
-    page.getByText(`${APPLE_EXERTION_TOTAL} points from ${APPLE_EXERTIONS.length} lessons (±3-day window)`)
-  ).toBeVisible()
-  await expect(exhaustionPopoverRows(page)).toHaveCount(APPLE_EXERTIONS.length)
-})
-
-// Three assertions, for one checkbox that makes three claims about one page state — the section is
-// at the bottom, it is collapsed, and it lists this horse's lessons. The position claim is
-// structural (see `lastSection`) and the other two are scoped through it, so all three fail
-// together if the section moved.
+// Three assertions, for one checkbox that makes three claims about one page state — where the
+// section sits, that it is collapsed, and that it lists this horse's lessons. Until #1390 the
+// position claim was "at the bottom" and was asserted structurally, as `main`'s last child; the
+// section now sits second in a fixed order, so the claim is asserted as that order instead. The
+// other two are scoped through the section, so all three fail together if it moved.
 //
 // Neither way of splitting this is available, which is why they are bundled rather than merely
 // convenient to bundle. Splitting the *test* three ways would leave the collapsed **Upcoming
@@ -500,8 +489,10 @@ test('rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown @rider', 
 test('rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section @rider', async ({ page }) => {
   await page.goto(horseHref(appleId))
 
-  await expect(lastSection(page).getByRole('heading', { name: 'Upcoming Lessons', exact: true })).toBeVisible()
-  await expect(lastSection(page).locator('ul')).toBeHidden()
+  // The whole list rather than an index into it: a page that dropped Feed & Medication entirely
+  // would still put Upcoming Lessons "second from the top" of what remained.
+  await expect(sectionTitles(page)).toHaveText(['Feed & Medication', 'Upcoming Lessons'])
+  await expect(upcomingLessonsSection(page).locator('ul')).toBeHidden()
 
   await expandUpcomingLessons(page)
   expect((await upcomingLessonHrefs(page)).sort()).toEqual(appleLessonIds.map(lessonHref).sort())
@@ -518,7 +509,7 @@ test('rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page @rider',
   await page.goto(horseHref(appleId))
   await expandUpcomingLessons(page)
 
-  await lastSection(page).locator(`a[href="${lessonHref(appleLessonIds[0])}"]`).click()
+  await upcomingLessonsSection(page).locator(`a[href="${lessonHref(appleLessonIds[0])}"]`).click()
   await page.waitForURL(new RegExp(`${appleLessonIds[0]}$`), { waitUntil: 'commit' })
 
   await expect(page.getByRole('heading', { name: 'Lesson Detail', exact: true })).toBeVisible()
@@ -528,17 +519,14 @@ test('rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page @rider',
 // Lesson-read privileges — the two "Dana has no lesson-read privilege" lines, the absent state
 // ---------------------------------------------------------------------------
 
-// Butter's row grants documents and leaves `lesson_read_privileges` false, so these two isolate the
-// flag rather than the row's existence — and she carries a real upcoming lesson, so what is missing
-// is being withheld rather than absent for want of data. The Apple tests above drive both locators
-// non-zero against that same data shape.
-test('rider_without_a_lesson_read_privilege_sees_no_exhaustion_bar @rider', async ({ page }) => {
-  await page.goto(horseHref(butterId))
-
-  await expect(horseHeading(page, BUTTER)).toBeVisible()
-  await expect(anyExhaustionBar(page)).toHaveCount(0)
-})
-
+// Butter's row grants documents and leaves `lesson_read_privileges` false, so this isolates the
+// flag rather than the row's existence — and she carries a real upcoming lesson, so what is
+// missing is being withheld rather than absent for want of data. The Apple test above drives the
+// same locator non-zero against that same data shape.
+//
+// Its exhaustion-bar sibling is gone: #1390 removed the bar from this page for every role, so a
+// per-privilege absence assertion had nothing left to isolate. What replaced it is
+// `rider_sees_no_exhaustion_bar_on_a_horse_detail_page`, which reads both horses at once.
 test('rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section @rider', async ({ page }) => {
   await page.goto(horseHref(butterId))
 

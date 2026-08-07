@@ -187,8 +187,11 @@ export default async function HorseDetailPage({
                 <>
                   <Button href={photoHref} size="sm">Replace Photo</Button>
                   <form action={boundDeletePhotoAction!}>
+                    {/* "Remove Photo", not the bare "Remove" this used to read (#1390): standing
+                        alone under a Photo heading the noun was implied, but in the identity
+                        header it sits beside the owner and status, where it was not. */}
                     <Button type="submit" variant="danger" size="sm">
-                      Remove
+                      Remove Photo
                     </Button>
                   </form>
                 </>
