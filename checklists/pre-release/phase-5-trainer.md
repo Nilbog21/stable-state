@@ -1,6 +1,6 @@
 # Phase 5 — Trainer
 
-<!-- Asserting role: trainer only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation gets its own tagged `Setup —` checkbox above the assertions it serves, so every asserting checkbox here is a single trainer-eye assertion. -->
+<!-- Asserting role: trainer — a manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation gets its own tagged `Setup —` checkbox above the assertions it serves, so every asserting checkbox here is a single trainer-eye assertion. -->
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 

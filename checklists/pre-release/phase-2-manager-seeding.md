@@ -1,6 +1,6 @@
 # Phase 2 — Manager seeding
 
-<!-- Asserting role: manager only. Data other phases depend on is created here. -->
+<!-- Asserting role: manager — data other phases depend on is created here. -->
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 
