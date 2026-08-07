@@ -18,6 +18,9 @@ vi.mock('@/lib/db/horses', async () => {
     getOwnedHorses: vi.fn(),
   }
 })
+vi.mock('@/lib/db/member-horse-privileges', () => ({
+  getMyHorseLessonReadPrivilege: vi.fn(),
+}))
 vi.mock('../actions', () => ({
   addHorseAction: vi.fn(),
 }))
@@ -51,6 +54,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, getOwnedHorses } from '@/lib/db/horses'
+import { getMyHorseLessonReadPrivilege } from '@/lib/db/member-horse-privileges'
 import HorsesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -71,6 +75,7 @@ describe('HorsesPage', () => {
     vi.mocked(getHorseProjectedExhaustion).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getOwnedHorses).mockReset()
+    vi.mocked(getMyHorseLessonReadPrivilege).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
@@ -78,6 +83,11 @@ describe('HorsesPage', () => {
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
     vi.mocked(getHorsesByBarn).mockResolvedValue([])
     vi.mocked(getOwnedHorses).mockResolvedValue([])
+    // Defaults to true because that is the invariant the real UI maintains: set_horse_owner
+    // elevates lesson_read_privileges as part of making a member the owner, and
+    // revoke_horse_privilege clears owning_member_id when it deletes that row. The false case
+    // is a manager toggling the grant off without clearing ownership, and it gets its own tests.
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(true)
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -319,7 +329,9 @@ describe('HorsesPage', () => {
       expect(getHorseExertionSummary).not.toHaveBeenCalled()
     })
 
-    it('should_not_call_getHorseProjectedExhaustion_for_rider', async () => {
+    // Scoped to horses the rider doesn't own — getOwnedHorses defaults to [] here. The owned
+    // case is the 'rider-owned horse' describe below, where the grant decides (#1391).
+    it('should_not_call_getHorseProjectedExhaustion_for_unowned_horses_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt' })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
@@ -459,12 +471,94 @@ describe('HorsesPage', () => {
       expect(screen.getAllByText('Thunderbolt')).toHaveLength(1)
     })
 
-    it('should_not_fetch_projected_exhaustion_for_owned_horse', async () => {
+    // #1391 inverted this: #1000 skipped the fan-out for owned horses because the owned card had
+    // no bar to feed. It has one now, so the horse is excluded from Available/Unavailable (the
+    // test above) and still fetched — exactly once, as the owned card's subject.
+    it('should_fetch_projected_exhaustion_for_owned_horse', async () => {
       vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
       vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
-      expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+      expect(getHorseProjectedExhaustion).toHaveBeenCalledTimes(1)
+    })
+
+    it('should_pass_exhaustion_thresholds_to_the_owned_horse_card_for_manager', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([
+        createMockHorse({ id: 'horse-9', name: 'Clover', exhaustion_threshold_high: 20, exhaustion_threshold_moderate: 8 }),
+      ])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(JSON.parse(screen.getByText('Clover').getAttribute('data-thresholds')!)).toEqual({ high: 20, moderate: 8 })
+    })
+
+    it('should_pass_exhaustion_thresholds_to_the_owned_horse_card_for_trainer', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(JSON.parse(screen.getByText('Clover').getAttribute('data-thresholds')!)).toEqual({ high: 11, moderate: 5 })
+    })
+
+    it('should_pass_projected_exhaustion_rows_to_the_owned_horse_card', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
+        { lessonAt: instant('2026-07-01T00:00:00Z'), exertionLevel: 3 },
+      ])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Clover').getAttribute('data-row-count')).toBe('1')
+    })
+
+    // The rider half. get_horse_projected_exhaustion admits a rider only through
+    // auth_has_horse_lesson_read_privilege and raises for one holding no grant, so the page
+    // checks the grant rather than inferring it from ownership.
+    describe('rider-owned horse', () => {
+      beforeEach(() => {
+        vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+        vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      })
+
+      it('should_check_the_lesson_read_grant_scoped_to_the_horse_and_barn', async () => {
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(getMyHorseLessonReadPrivilege).toHaveBeenCalledWith('horse-9', mockBarn.id)
+      })
+
+      it('should_pass_exhaustion_thresholds_to_the_owned_card_when_the_rider_holds_the_grant', async () => {
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(JSON.parse(screen.getByText('Clover').getAttribute('data-thresholds')!)).toEqual({ high: 11, moderate: 5 })
+      })
+
+      it('should_pass_projected_exhaustion_rows_to_the_owned_card_when_the_rider_holds_the_grant', async () => {
+        vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
+          { lessonAt: instant('2026-07-01T00:00:00Z'), exertionLevel: 3 },
+        ])
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(screen.getByText('Clover').getAttribute('data-row-count')).toBe('1')
+      })
+
+      it('should_pass_no_exhaustion_to_the_owned_card_when_the_rider_holds_no_grant', async () => {
+        vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(screen.getByText('Clover').getAttribute('data-thresholds')).toBeNull()
+      })
+
+      it('should_not_call_getHorseProjectedExhaustion_when_the_rider_holds_no_grant', async () => {
+        vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+      })
+
+      it('should_not_check_the_lesson_read_grant_for_a_horse_the_rider_does_not_own', async () => {
+        vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+        const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+        render(jsx)
+        expect(getMyHorseLessonReadPrivilege).not.toHaveBeenCalledWith('horse-1', mockBarn.id)
+      })
     })
 
     it('should_exclude_owned_horse_from_unavailable_section', async () => {
