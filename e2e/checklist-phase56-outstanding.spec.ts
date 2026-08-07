@@ -29,14 +29,15 @@
 //
 // ## Why one test mutates, and why the order dependence is belt-and-braces
 //
-// The rider's "N unpaid lessons" and "N unpaid leases/boarding" card lines (#938) are
-// contradictory preconditions on one query in one barn — the first needs the rider to have unpaid
+// The rider's two "N unpaid lessons" card lines — the plain "With unpaid lessons" one and #938's
+// "card still appears (its count includes the cancellation fee)" one — are
+// contradictory preconditions on one query in one barn: the first needs the rider to have unpaid
 // lesson fees, the second needs them to have none while still holding a cancellation fee — and a
-// spec file gets exactly one barn per project. So the leases/boarding one arranges its own state:
+// spec file gets exactly one barn per project. So the #938 one arranges its own state:
 // it collects the rider's only unpaid lesson fee before asserting. It is declared last,
 // but nothing here depends on that, and that is the property worth checking rather than the
-// ordering: both tests are standalone-safe under a bare --grep. The "N unpaid lessons" one never
-// mutates, and the leases/boarding one
+// ordering: both tests are standalone-safe under a bare --grep. The plain one never
+// mutates, and the #938 one
 // performs its own arrange regardless of what ran before it — each Playwright job re-seeds its
 // own barn in beforeAll whichever tests the grep selected — so neither can pass only by virtue
 // of running in file order. Declaration order is belt-and-braces, not load-bearing.
@@ -115,8 +116,9 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
   // Two late rider cancellations. sync_rider_cancellation_fee DELETEs the uncollected lesson_fee
   // row and inserts a rider_cancellation_fee keyed on lesson_rider_id, and
   // get_outstanding_transactions resolves outstanding *lessons* off lesson_fee alone — so each of
-  // these contributes a Cancellation Fee row and no Lesson row. That is what lets 990's state
-  // exist at all, and it is why the expected row sets below are exactly four and two entries.
+  // these contributes a Cancellation Fee row and no Lesson row. That is what lets #938's
+  // "card still appears" state exist at all, and it is why the expected row sets below are
+  // exactly four and two entries.
   const trainerCancelled = await lesson(
     TRAINER_CANCELLED_FEE, -4, members.trainer.membershipId, members.rider2.membershipId
   )
@@ -139,7 +141,7 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
   })
 
   // The rider's own past-due charges, one of each kind (for "her own outstanding lease/boarding
-  // charges"), which also makes the leases card plural.
+  // charges"), which also makes the "N unpaid leases/boarding" card line plural.
   await addLeaseCharge(supabase, barn, {
     monthsAgo: 2,
     riderId: members.rider.membershipId,
@@ -362,10 +364,10 @@ test('rider_reminder_cards_link_to_the_outstanding_page @rider', async ({ page }
   expect(await reminderCardHrefs(page)).toEqual([outstandingPath(), outstandingPath()])
 })
 
-// The "N unpaid leases/boarding" card line (#938). Arranged rather than seeded, and declared
-// last, for the reason in the header:
-// 987 above needs this rider to have an unpaid lesson fee and this line needs them to have none,
-// which one barn cannot hold at once. Collecting the rider's only unpaid lesson leaves the
+// The "card still appears (its count includes the cancellation fee)" line (#938). Arranged rather
+// than seeded, and declared last, for the reason in the header: the plain "With unpaid lessons"
+// card line above needs this rider to have an unpaid lesson fee and this line needs them to have
+// none, which one barn cannot hold at once. Collecting the rider's only unpaid lesson leaves the
 // cancellation fee as the sole contributor to unpaidLessonsCount — so the card appearing at all
 // is #938's claim, and the *singular* 'lesson' is the evidence the count came from the fee
 // rather than from a lesson that lingered.

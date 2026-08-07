@@ -304,7 +304,7 @@ async function cancelOwnSpotFromHeader(page: Page, lesson: Lesson) {
 // **Cancellation Notes** row it plants for
 // ---------------------------------------------------------------------------
 
-// One test for two checkboxes: 973 is the setup line whose whole content is "an e2e run seeds the
+// One test for two checkboxes: the setup line's whole content is "An e2e run seeds the
 // cancelled lesson and its notes in the rider's own barn instead", and this is the test that seed
 // exists for. That pairing is the same shape every other converted Setup line in Phases 5 and 6
 // carries, each tagged with the name of the test its seed serves.
@@ -440,7 +440,8 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
     }).toEqual({ ownRow: 1, header: 0 })
   })
 
-  // Line 982's claim is about rows this persona's UI structurally cannot show, so the co-riders'
+  // The "other riders in a group lesson included — is unaffected" claim is about rows this
+  // persona's UI structurally cannot show, so the co-riders'
   // status is read with the spec's own service client (see the header note on that exception). The
   // actor's own `true` is the control living inside the same assertion: a read pointed at the
   // wrong barn, the wrong lesson or a stale membership map reports three falses and fails there,
@@ -488,7 +489,8 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
   //
   // A rider's own cancellation notifies the instructor *and* every active manager
   // (resolveCancellationRecipients' `rider_participation` + `actorRole === 'rider'` branch), so this
-  // barn ends up with two rows of this type. Line 983 is about the instructor's, and the query is
+  // barn ends up with two rows of this type. The "The instructor receives a \"Lesson participation
+  // cancelled\" notification" line is about the instructor's, and the query is
   // keyed on his user id — which is why the equality below can still be an exact one-row match
   // rather than a membership check over an open-ended recipient list.
   //

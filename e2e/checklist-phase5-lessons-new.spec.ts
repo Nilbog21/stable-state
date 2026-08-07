@@ -498,8 +498,9 @@ test.describe.serial('a trainer creating lessons', () => {
   // The "**\"1 new lesson scheduled nearby\"**" line. The literal is the app's own copy, quoted by
   // the checklist line itself — deriving
   // it from `formatNearbyInstructorNotification` would re-implement the thing under test. The
-  // count is 1 rather than an increment because the two lessons of 831 sit on days no other
-  // instructor teaches, so 847's submission is the only nearby one this barn ever sees.
+  // count is 1 rather than an increment because the two lessons of "Create 2 lessons via
+  // `/barn/dev-barn/lessons/new`" sit on days no other instructor teaches, so the
+  // within-30-minutes submission is the only nearby one this barn ever sees.
   test('that_nearby_notification_titles_a_single_new_lesson @trainer', async () => {
     expect((await nearbyNotification()).title).toBe('1 new lesson scheduled nearby')
   })

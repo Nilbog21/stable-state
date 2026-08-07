@@ -313,7 +313,8 @@ function plusMinutes(instant: string, minutes: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// 795 — the section itself. Independent of the token lifecycle below, so it is deliberately
+// The "a **Calendar Feed** section appears" item — the section itself. Independent of the token
+// lifecycle below, so it is deliberately
 // outside the serial chain: it needs nothing from it and can prove nothing for it.
 // ---------------------------------------------------------------------------
 
@@ -339,7 +340,8 @@ test('the_barn_scoped_profile_page_shows_a_calendar_feed_section @manager', asyn
 })
 
 // ---------------------------------------------------------------------------
-// 796-798, 802-803 — the link lifecycle. Genuinely sequential: the token has to not exist,
+// The link lifecycle, from "Tap **Get my calendar link**" through "Tap **Copy Link** — the copied
+// URL contains" plus the two **Regenerate** items. Genuinely sequential: the token has to not exist,
 // then exist, then be copied, then be rotated, and each step is the next one's precondition.
 // ---------------------------------------------------------------------------
 
@@ -432,7 +434,8 @@ test.describe.serial('the calendar feed link', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 799-801 — what the subscriber actually receives. Not serial, and each test copies its OWN
+// The three feed-body items, from "it returns `Content-Type: text/calendar`" through "not just
+// your own" — what the subscriber actually receives. Not serial, and each test copies its OWN
 // link rather than reading one the chain above left behind.
 //
 // The first draft did share that state, and the mutation sweep is what condemned it: mutating

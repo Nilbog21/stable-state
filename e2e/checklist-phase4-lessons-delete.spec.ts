@@ -222,7 +222,9 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     ids[key] = lesson.id
   }
 
-  // The Edit-form thread (321-324). Future-dated so nothing about them depends on the past-lesson
+  // The Edit-form thread — the four items from "the Notes section shows a **Cancellation Notes**
+  // textarea" through "the **Cancellation Notes** row disappears entirely". Future-dated so
+  // nothing about them depends on the past-lesson
   // machinery the delete thread needs.
   const future = daysFromNow(3, barn.timezone)
   for (const key of ['notesTextarea', 'noNotesTextarea', 'notesEdit', 'notesClear'] as const) {
@@ -252,7 +254,9 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     'clear seeded per-rider cancellation notes',
   )
 
-  // The browser-prompt delete thread (325-329) plus its two controls. Unpaid and in the past, so
+  // The browser-prompt delete thread — "click **Delete** and confirm the browser prompt" through
+  // "**Delete** is reachable the same way on an already-cancelled lesson" — plus its two controls.
+  // Unpaid and in the past, so
   // each has fee > 0 and payment_type null — the only combination that reaches DeleteLessonButton.
   for (const key of [
     'deleteFromList',
@@ -280,7 +284,9 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     await cancelLesson(supabase, barn, { lessonId: ids[key], isLate: true })
   }
 
-  // The /delete-page thread (330-335). Paid, so `payment_type !== null` is the live term of the
+  // The /delete-page thread — "**Delete** lands on `/barn/dev-barn/lessons/[id]/delete`" through
+  // "that lesson's income is also gone from Finances". Paid, so `payment_type !== null` is the live
+  // term of the
   // fork; `monthsAgo: 0` puts their income in the Finances month the last two checks read.
   for (const key of ['paidInspect', 'paidUnchecked', 'paidIncomeKept', 'paidIncomeGone'] as const) {
     await seedPaid(key)
@@ -455,7 +461,9 @@ async function notificationFingerprints(): Promise<string[]> {
  * input is itself produced by LessonStartTime's mount effect via a server-action round trip. So a
  * visible bar strictly post-dates hydration rather than merely correlating with it.
  *
- * The two tests that only *read* the edit form (321, 322) deliberately skip this: their claims are
+ * The two tests that only *read* the edit form (the "shows a **Cancellation Notes** textarea" and
+ * "does *not* appear when editing a non-cancelled lesson" items) deliberately skip this: their
+ * claims are
  * about server-rendered markup, and waiting for hydration to assert a server-rendered absence would
  * be the SSR-default confusion running the other way.
  *
@@ -529,7 +537,8 @@ async function deleteViaConfirmationPage(
 }
 
 // ---------------------------------------------------------------------------
-// The Cancellation Notes textarea on the edit form (321-324)
+// The Cancellation Notes textarea on the edit form — "the Notes section shows a **Cancellation
+// Notes** textarea" through "the **Cancellation Notes** row disappears entirely"
 //
 // The cancellation-notes textarea's two lines are one claim in two halves and neither is
 // sufficient alone. "the Notes section shows a **Cancellation Notes** textarea" on its own is
@@ -603,7 +612,8 @@ test('clearing_cancellation_notes_and_saving_removes_the_row_from_the_detail_pag
 })
 
 // ---------------------------------------------------------------------------
-// Deleting an unpaid lesson through the browser prompt (325-329)
+// Deleting an unpaid lesson through the browser prompt — "click **Delete** and confirm the browser
+// prompt" through "**Delete** is reachable the same way on an already-cancelled lesson"
 // ---------------------------------------------------------------------------
 
 // `survivor` is seeded never to be deleted and is read here in the same rendered list as the
@@ -716,7 +726,8 @@ test('delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson @mana
 })
 
 // ---------------------------------------------------------------------------
-// Deleting a paid lesson through the confirmation page (330-335)
+// Deleting a paid lesson through the confirmation page — "**Delete** lands on
+// `/barn/dev-barn/lessons/[id]/delete`" through "that lesson's income is also gone from Finances"
 // ---------------------------------------------------------------------------
 
 // Both arms run under one dialog listener, in one test, on purpose. The claim is that the paid

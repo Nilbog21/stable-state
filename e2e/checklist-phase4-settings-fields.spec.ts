@@ -259,8 +259,8 @@ const THRESHOLD_ERROR = 'Moderate threshold must be less than high threshold'
  * Board fees. Three distinct numbers, none of them `barns.default_board_fee`'s schema default
  * of 1000: the pre-existing agreement's own fee, and the new barn default. The "newly created
  * boarding agreement pre-fills the new fee" line's
- * pre-fill can therefore only read as correct by having actually picked up the save in line
- * 685's test — 1450 is reachable from nowhere else.
+ * pre-fill can therefore only read as correct by having actually picked up the save in the
+ * "Edit **Default Board Fee** and Save" test — 1450 is reachable from nowhere else.
  */
 const EXISTING_BOARD_FEE = 725
 const SAVED_BOARD_FEE = '1450'
@@ -334,8 +334,8 @@ let discriminatorExpenseDate: string
 
 const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, members }) => {
   // The barn's settings are deliberately left at their schema defaults: the Instructor Cut,
-  // Exhaustion Thresholds and Schedule Buffer "shows the current value" lines
-  // and 693 all assert those defaults, so seeding over them would make the checklist's own
+  // Exhaustion Thresholds, Schedule Buffer and **Barn Timezone** "shows the current value" lines
+  // all assert those defaults, so seeding over them would make the checklist's own
   // parenthetical unverifiable.
 
   horse = await addHorse(supabase, seededBarn.id, 'Juniper')
@@ -584,16 +584,17 @@ test.describe.serial('Manage Barn — Default Instructor Cut', () => {
 
   // DECLARATION ORDER DEPARTS FROM CHECKLIST ORDER HERE, and it has to.
   //
-  // The checklist runs 673 (try `0`) → 674 (try blank) → 675 (stored value unchanged). Follow
-  // that order and 675's pre-state is `0` — which is also exactly what a blank would store if
+  // The checklist runs "Try `0` — allowed" → "Try blank — rejected" → "After that rejection the
+  // field's stored value is unchanged". Follow
+  // that order and the third one's pre-state is `0` — which is also exactly what a blank would store if
   // the rejection leaked and an empty string were coerced to a number. The test would then be
   // green against the very bug it exists to catch, and no mutation of it could go red: with
   // `required` dropped the action's own `parseNonNegativeAmount('')` still returns null and
   // writes nothing, and with the parser coercing instead, `0` is stored and `0` is expected.
   //
-  // Running the blank pair while the stored value is still `42` makes 675 falsifiable: a
-  // coerced-blank write moves it to `0` and the assertion fails. Each line still asserts its
-  // own claim, and 675's "after that rejection" still names the test immediately above it.
+  // Running the blank pair while the stored value is still `42` makes that third line falsifiable:
+  // a coerced-blank write moves it to `0` and the assertion fails. Each line still asserts its
+  // own claim, and its "After that rejection" still names the test immediately above it.
   test('blank_instructor_cut_is_rejected_by_the_field @manager', async ({ page }) => {
     const sec = await openSection(page, 'Default Instructor Cut')
     const field = sec.locator(FIELD)

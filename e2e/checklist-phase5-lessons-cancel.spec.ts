@@ -307,10 +307,13 @@ function cancellationNotesField(page: Page): Locator {
  * `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
  *
  * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
- * (858, 862, 863) — waiting for hydration to assert one of those would be the SSR-default
+ * (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
+ * series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
+ * one of those would be the SSR-default
  * confusion running the other way.
  *
- * The fourth, 864, *writes* and still skips it, which is the one case here that needs its reason
+ * The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
+ * and still skips it, which is the one case here that needs its reason
  * stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
  * landing before React is listening is not lost the way fact 10's button is: the browser submits
  * the form natively and the action runs regardless. Hydration only decides whether the
@@ -370,7 +373,8 @@ async function instructorOnDetailPage(page: Page): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// The Cancel button in the detail header (855, 857)
+// The Cancel button in the detail header — "shows a **Cancel** button in its detail-page header"
+// and "shows no header **Cancel** button"
 // ---------------------------------------------------------------------------
 
 // The instructor half is not decoration: it is what proves this really is a lesson this persona
@@ -402,7 +406,7 @@ test('trainer_sees_no_cancel_button_on_another_instructors_lesson @trainer', asy
 })
 
 // ---------------------------------------------------------------------------
-// Cancelling from there (856)
+// Cancelling from there — "Cancelling a rider's spot (or the whole lesson) from there"
 // ---------------------------------------------------------------------------
 
 // Each rider is read as a **pair** — is the row there, and does it carry a badge — rather than as
@@ -451,7 +455,8 @@ test('trainer_cancelling_one_group_riders_spot_cancels_only_that_rider @trainer'
 })
 
 // ---------------------------------------------------------------------------
-// Cancellation notes on the edit form (858, 859)
+// Cancellation notes on the edit form — "the same **Cancellation Notes** textarea the manager
+// gets" and "the same read-only **Cancellation Notes** row the manager gets"
 // ---------------------------------------------------------------------------
 
 // Read against two lessons in one assertion, because the claim is that this textarea is the
@@ -487,7 +492,8 @@ test('cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page @tr
 })
 
 // ---------------------------------------------------------------------------
-// The recurring series (860–864)
+// The recurring series — "still shows its **Recurring** badge on its Lessons list row" through
+// "Stopping the series from there works the same as the manager flow"
 // ---------------------------------------------------------------------------
 
 // The trainer's Lessons list defaults to the `mine` filter, and this lesson is theirs, so no pill

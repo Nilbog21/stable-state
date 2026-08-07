@@ -345,7 +345,8 @@ async function upcomingLessonHrefs(page: Page): Promise<string[]> {
 //
 // Serial, because the "change that same grant to `document_privileges='write'`" Setup is a
 // mid-file change to the same grant the two tests above it read. The
-// two `Setup —` checkboxes in this range (945, 948) are tagged with the test whose seeding they
+// two `Setup —` checkboxes in this range (the `document_privileges='read'` grant and the change
+// to `'write'`) are tagged with the test whose seeding they
 // serve, per this batch's shared-name rule: the seed and the assertion it enables are one
 // indivisible step, and `(manual)` would reverse a #1251 verdict rather than record one.
 // ---------------------------------------------------------------------------

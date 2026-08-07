@@ -225,8 +225,9 @@ const MONTH_END = new Date(
   Date.UTC(Number(BARN_TODAY.slice(0, 4)), Number(BARN_TODAY.slice(5, 7)), 0)
 ).toISOString().slice(0, 10)
 const MONTH_END_WALL_CLOCK = `${MONTH_END}T${EXPENSE_TIME}:00`
-// Distinct from EXPENSE_RECIPIENT above, and neither contains the other: this expense and line
-// 523's coexist in the same barn, and every Playwright text matcher is substring-based.
+// Distinct from EXPENSE_RECIPIENT above, and neither contains the other: this expense and the
+// "**Add Expense** with a Time of 11:30 PM" item's coexist in the same barn, and every Playwright
+// text matcher is substring-based.
 const MONTH_END_RECIPIENT = 'Summit Feed'
 const MONTH_END_TYPE = 'Feed'
 const MONTH_END_AMOUNT = '210'
@@ -893,22 +894,24 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
 // line. The block above stops at storage; this one carries the same instant one step further,
 // into the month Finances files it under.
 //
-// 525 and 526 cover #1360 and #1361 directly. 524 does **not** cover #1309, and saying so is the
+// The "no month in the URL" and "first charge" items cover #1360 and #1361 directly. The "last day
+// of a month" one does **not** cover #1309, and saying so is the
 // point: #1309 fixed `firstOfMonth` bucketing in `agreement-finances.ts` and `lesson-finances.ts`,
 // while an expense reaches By Paid To through `expense-finances.ts`'s
 // `fetchExpenseTransactionsInRange`, which has been barn-framed since #955 and never imports
-// `firstOfMonth`. 524 asserts the expense path #1395's first acceptance criterion names, and a
+// `firstOfMonth`. It asserts the expense path #1395's first acceptance criterion names, and a
 // regression in #1309's own two modules would still pass it — that gap is unclosed here.
 //
 // **What each of the three can actually prove, because they differ and the difference matters.**
 //
-// 524 is falsifiable every day of the year, and deliberately so: `MONTH_END` picks the fixture
+// The "last day of a month" item is falsifiable every day of the year, and deliberately so:
+// `MONTH_END` picks the fixture
 // rather than waiting for the clock to supply one, so the entered instant always straddles a
 // month boundary and a UTC-framed bucket always drops it. That is the one way out of framework
 // fact 12's dead end, and it is available here only because the *datum's* frame, not the *run's*,
 // is what the assertion turns on.
 //
-// 525 and 526 have no such escape, and their comments say where the floor is rather than implying
+// The other two have no such escape, and their comments say where the floor is rather than implying
 // there isn't one. `resolveFinancesMonth` runs in a Server Component and
 // `create_agreement_with_first_charge` runs inside Postgres; `test.use({ timezoneId })` and
 // `page.clock` reach neither, and the DB's `now()` is not reachable from a browser context at
@@ -943,8 +946,8 @@ async function chargePeriods(): Promise<string[]> {
   return (data ?? []).map((row) => row.period as string)
 }
 
-// A plain `describe`, not `.serial`: 524 and 526 each arrange their own state through a form, and
-// 525 reads neither of them.
+// A plain `describe`, not `.serial`: the "last day of a month" and "first charge" items each
+// arrange their own state through a form, and the "no month in the URL" one reads neither of them.
 test.describe("Finances resolves the month in the barn's zone", () => {
   test('a_month_end_eleven_thirty_pm_expense_buckets_into_that_month_on_finances @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/expenses/new`)
