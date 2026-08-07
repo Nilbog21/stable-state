@@ -1,11 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
-const mockRouterRefresh = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh: mockRouterRefresh }),
-}))
-
 import { HorseAccessSection } from '../HorseAccessSection'
 
 afterEach(() => {
@@ -34,12 +29,13 @@ function makeProps(overrides: Partial<Parameters<typeof HorseAccessSection>[0]> 
   }
 }
 
-describe('HorseAccessSection', () => {
-  it('should_render_access_heading', () => {
-    render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByText(/^access$/i)).toBeDefined()
-  })
+/** The FormData a mocked action was called with, as a plain object. */
+function submittedFields(mock: ReturnType<typeof vi.fn>, argIndex: number): Record<string, string> {
+  const formData = mock.mock.calls[0][argIndex] as FormData
+  return Object.fromEntries(formData.entries()) as Record<string, string>
+}
 
+describe('HorseAccessSection', () => {
   it('should_render_a_row_for_each_grant', () => {
     render(<HorseAccessSection {...makeProps()} />)
     expect(screen.getByText('Dana Rider')).toBeDefined()
@@ -54,17 +50,7 @@ describe('HorseAccessSection', () => {
   it('should_reflect_current_document_privileges_in_select', () => {
     render(<HorseAccessSection {...makeProps()} />)
     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-    const docSelectForDana = selects.find((s) => s.value === 'read')
-    expect(docSelectForDana).toBeDefined()
-  })
-
-  it('should_call_onUpdateDocument_with_new_value_when_changed', () => {
-    const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
-    const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-    const docSelectForDana = selects.find((s) => s.value === 'read')!
-    fireEvent.change(docSelectForDana, { target: { value: 'write' } })
-    expect(onUpdateDocument).toHaveBeenCalledWith('privilege-1', 'write')
+    expect(selects.find((s) => s.value === 'read')).toBeDefined()
   })
 
   it('should_show_cannot_view_label_when_lesson_read_privileges_is_false', () => {
@@ -77,29 +63,6 @@ describe('HorseAccessSection', () => {
     expect(screen.getByRole('button', { name: /^can view$/i })).toBeDefined()
   })
 
-  it('should_call_onUpdateLesson_with_toggled_value_when_clicked', () => {
-    const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
-    fireEvent.click(screen.getByRole('button', { name: /cannot view/i }))
-    expect(onUpdateLesson).toHaveBeenCalledWith('privilege-1', true)
-  })
-
-  it('should_call_onRevoke_when_confirmed', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const onRevoke = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onRevoke })} />)
-    fireEvent.click(screen.getAllByRole('button', { name: /revoke/i })[0])
-    expect(onRevoke).toHaveBeenCalledWith('privilege-1')
-  })
-
-  it('should_not_call_onRevoke_when_confirm_is_cancelled', () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const onRevoke = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onRevoke })} />)
-    fireEvent.click(screen.getAllByRole('button', { name: /revoke/i })[0])
-    expect(onRevoke).not.toHaveBeenCalled()
-  })
-
   it('should_render_add_member_control_when_available_members_exist', () => {
     render(<HorseAccessSection {...makeProps()} />)
     expect(screen.getByRole('option', { name: 'Finley Rider' })).toBeDefined()
@@ -108,19 +71,6 @@ describe('HorseAccessSection', () => {
   it('should_not_render_add_member_control_when_no_available_members', () => {
     render(<HorseAccessSection {...makeProps({ availableMembers: [] })} />)
     expect(screen.queryByRole('button', { name: /grant access/i })).toBeNull()
-  })
-
-  it('should_disable_grant_button_until_a_member_is_selected', () => {
-    render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByRole('button', { name: /grant access/i })).toHaveProperty('disabled', true)
-  })
-
-  it('should_call_onGrant_with_selected_member_id', () => {
-    const onGrant = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onGrant })} />)
-    fireEvent.change(screen.getByRole('combobox', { name: /select member/i }), { target: { value: 'mem-3' } })
-    fireEvent.click(screen.getByRole('button', { name: /grant access/i }))
-    expect(onGrant).toHaveBeenCalledWith('mem-3')
   })
 
   it('should_show_set_as_owner_label_when_grant_is_not_the_owner', () => {
@@ -134,17 +84,139 @@ describe('HorseAccessSection', () => {
     expect(screen.getAllByRole('button', { name: /set as owner/i })).toHaveLength(1)
   })
 
-  it('should_call_onSetOwner_with_member_id_when_set_as_owner_is_clicked', () => {
-    const onSetOwner = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: null })} />)
-    fireEvent.click(screen.getAllByRole('button', { name: /set as owner/i })[0])
-    expect(onSetOwner).toHaveBeenCalledWith('mem-1')
+  // #1390 — every control here was a `<Button type="button" onClick>` with no form action, so
+  // each was a silent no-op inside the hydration window: the #1385 defect, four times over, on
+  // a page a manager lands on and immediately clicks. Each is now a real form whose action is
+  // the Server Function itself (bound, never wrapped in a closure), so the browser can submit
+  // it before React has hydrated.
+  describe('progressive enhancement', () => {
+    it('should_submit_every_control_through_a_form', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const orphans = screen
+        .getAllByRole('button')
+        .filter((b) => b.closest('form') === null)
+      expect(orphans).toEqual([])
+    })
+
+    it('should_make_every_control_a_submit_button', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const types = screen.getAllByRole('button').map((b) => b.getAttribute('type'))
+      expect(new Set(types)).toEqual(new Set(['submit']))
+    })
+
+    it('should_put_the_document_select_in_its_own_form', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
+      expect(selects.every((s) => s.closest('form') !== null)).toBe(true)
+    })
+
+    // Without a submit button the select's form has no pre-hydration way to be submitted at
+    // all — `onChange` is exactly the handler that doesn't exist yet during that window.
+    it('should_give_the_document_select_form_its_own_submit_button', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
+      expect(select.closest('form')!.querySelector('button[type="submit"]')).not.toBeNull()
+    })
   })
 
-  it('should_call_onSetOwner_with_null_when_the_current_owner_is_clicked_again', () => {
-    const onSetOwner = vi.fn().mockResolvedValue(undefined)
-    render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: 'mem-2' })} />)
-    fireEvent.click(screen.getByRole('button', { name: /^owner$/i }))
-    expect(onSetOwner).toHaveBeenCalledWith(null)
+  describe('grant access', () => {
+    it('should_call_onGrant_with_the_selected_member_id', () => {
+      const onGrant = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onGrant })} />)
+      fireEvent.change(screen.getByRole('combobox', { name: /select member/i }), { target: { value: 'mem-3' } })
+      fireEvent.click(screen.getByRole('button', { name: /grant access/i }))
+      expect(submittedFields(onGrant, 0)).toEqual({ member_id: 'mem-3' })
+    })
+
+    // The disabled-until-selected button this replaces was itself broken before hydration —
+    // it rendered disabled and nothing ever enabled it. The empty value reaches the server
+    // instead, where grantHorseAccessAction returns without granting.
+    it('should_not_disable_the_grant_button_before_a_member_is_selected', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(screen.getByRole('button', { name: /grant access/i })).toHaveProperty('disabled', false)
+    })
+
+    it('should_submit_an_empty_member_id_when_nothing_is_selected', () => {
+      const onGrant = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onGrant })} />)
+      fireEvent.click(screen.getByRole('button', { name: /grant access/i }))
+      expect(submittedFields(onGrant, 0)).toEqual({ member_id: '' })
+    })
+  })
+
+  describe('document access', () => {
+    it('should_call_onUpdateDocument_with_the_privilege_id_and_new_value_on_change', () => {
+      const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
+      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
+      fireEvent.change(select, { target: { value: 'write' } })
+      expect(onUpdateDocument.mock.calls[0][0]).toBe('privilege-1')
+      expect(submittedFields(onUpdateDocument, 1)).toEqual({ value: 'write' })
+    })
+
+    it('should_call_onUpdateDocument_when_its_submit_button_is_used_instead', () => {
+      const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
+      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
+      fireEvent.click(select.closest('form')!.querySelector('button[type="submit"]')!)
+      expect(submittedFields(onUpdateDocument, 1)).toEqual({ value: 'read' })
+    })
+  })
+
+  describe('lesson schedule toggle', () => {
+    it('should_call_onUpdateLesson_with_the_next_value_bound_at_render_time', () => {
+      const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
+      fireEvent.click(screen.getByRole('button', { name: /cannot view/i }))
+      expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-1', true])
+    })
+
+    it('should_bind_false_for_a_grant_that_already_has_the_privilege', () => {
+      const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
+      fireEvent.click(screen.getByRole('button', { name: /^can view$/i }))
+      expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-2', false])
+    })
+  })
+
+  describe('owner toggle', () => {
+    it('should_call_onSetOwner_with_the_member_id_when_set_as_owner_is_clicked', () => {
+      const onSetOwner = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: null })} />)
+      fireEvent.click(screen.getAllByRole('button', { name: /set as owner/i })[0])
+      expect(onSetOwner.mock.calls[0][0]).toBe('mem-1')
+    })
+
+    it('should_call_onSetOwner_with_null_when_the_current_owner_is_clicked_again', () => {
+      const onSetOwner = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: 'mem-2' })} />)
+      fireEvent.click(screen.getByRole('button', { name: /^owner$/i }))
+      expect(onSetOwner.mock.calls[0][0]).toBeNull()
+    })
+  })
+
+  describe('revoke', () => {
+    it('should_call_onRevoke_when_confirmed', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const onRevoke = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onRevoke })} />)
+      fireEvent.click(screen.getAllByRole('button', { name: /revoke/i })[0])
+      expect(onRevoke.mock.calls[0][0]).toBe('privilege-1')
+    })
+
+    it('should_not_call_onRevoke_when_confirm_is_cancelled', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const onRevoke = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onRevoke })} />)
+      fireEvent.click(screen.getAllByRole('button', { name: /revoke/i })[0])
+      expect(onRevoke).not.toHaveBeenCalled()
+    })
+
+    it('should_name_the_member_in_the_confirm_prompt', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+      render(<HorseAccessSection {...makeProps()} />)
+      fireEvent.click(screen.getAllByRole('button', { name: /revoke/i })[0])
+      expect(confirmSpy).toHaveBeenCalledWith("Revoke Dana Rider's access to this horse?")
+    })
   })
 })
