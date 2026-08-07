@@ -89,8 +89,8 @@ lost only where the behaviour lives in JS the browser doesn't have yet — `<for
 whose server markup is a bare `<form>` the browser would GET. `<form action={serverAction}>` is
 *not* in that class: React emits the enhanced markup with the response, measured as
 `<form action="" encType="multipart/form-data" method="POST">` plus
-`$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_KEY` hidden fields carrying the action id and its bound
-arguments. An early click submits *that*, so the interaction survives and needs no
+`$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_*:1`/`$ACTION_KEY` hidden fields carrying the action id and
+its bound arguments. An early click submits *that*, so the interaction survives and needs no
 barrier. Two conditions, both load-bearing: the value passed to `useActionState` (or to `action=`
 directly) must be the Server Function itself or a `.bind` of one — an inline
 `async () => …` closure wrapping it is an ordinary client function and gets no markup, now caught

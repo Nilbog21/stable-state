@@ -31,6 +31,18 @@ function resolveVariable(context, node) {
 function isDirectServerAction(context, node) {
   if (node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression') return false
 
+  // `wrapper as typeof action`, `wrapper!`, `wrapper satisfies T` are the same value wearing a type
+  // annotation. Everything this function doesn't recognise falls through to `true`, so without
+  // seeing through these a cast would be a one-token bypass of the whole rule — and .tsx here parses
+  // through @typescript-eslint/parser, so they are shapes it really meets.
+  if (
+    node.type === 'TSAsExpression' ||
+    node.type === 'TSNonNullExpression' ||
+    node.type === 'TSSatisfiesExpression'
+  ) {
+    return isDirectServerAction(context, node.expression)
+  }
+
   if (node.type === 'Identifier') {
     const variable = resolveVariable(context, node)
     if (!variable) return true
