@@ -17,6 +17,7 @@ import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
+import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { EmptyState } from '@/components/EmptyState'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
@@ -173,26 +174,28 @@ export default async function FinancesPage({
         </section>
       )}
 
-      {/* Raw Tailwind, not <Button>/<Pill>: unpadded circular icon-arrow nav
-          control — no Button/Pill variant fits this shape. Deliberately reuses
-          Pill's pillInactive color tokens (border-zinc-300/text-zinc-600/hover
-          states) so it stays visually consistent with Pill if that palette
-          ever changes. */}
+      {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant this
+          pager, the month calendar picker's arrows and the dashboard's day/week ones all render
+          from (#1394). Its own comment holds why an unpadded circular icon-arrow is a documented
+          Button exception, and why the three copies this replaced could not be left to stay in
+          step by hand. The placeholders take it too — they are `invisible`, so the extra colour
+          tokens change nothing, and a second near-copy of the string is exactly what went stale
+          last time. */}
       <div className="mb-8 flex items-center gap-4">
         {prevUrl ? (
-          <Link href={prevUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={prevUrl} className={dateNavButtonClass}>
             &lt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&lt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&lt;</span>
         )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
         {nextUrl ? (
-          <Link href={nextUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={nextUrl} className={dateNavButtonClass}>
             &gt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&gt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&gt;</span>
         )}
       </div>
 

@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/components/ui/date-nav.ts
 // covers: src/components/ExhaustionBar.tsx
 // covers: src/app/actions/lessons.ts
 // covers: src/lib/month-calendar.ts
@@ -17,6 +18,14 @@ import type { Horse } from '@/lib/db/types'
 
 // The trainer's New Lesson form and the notification a nearby lesson writes for the *other*
 // instructor (checklists/pre-release/phase-5-trainer.md, lines 23-27, 39 and 43-44).
+//
+// `src/components/ui/date-nav.ts` is declared for the reason #1394 declared it on
+// checklist-phase4-expenses-form.spec.ts, not because anything here reads the class: phase-3's
+// (#1019) line "the < / > month arrows are the same size as the ones on the Finances page" was
+// deleted rather than tested, on the grounds that this form's arrows and the Finances page's are
+// now one import. This is the spec that drives those arrows, so a change to the constant is a
+// change to a claim it stands in for. The three other specs that page this calendar inherited no
+// such line and assert nothing about the class, so they are left alone.
 //
 // ## The other instructor is `members.manager`
 //
