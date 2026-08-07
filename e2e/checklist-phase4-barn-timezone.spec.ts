@@ -194,9 +194,14 @@ const EXPENSE_AMOUNT = '145'
  * This is what makes item 524 falsifiable on **every** day of the year rather than only across a
  * real month rollover, which is the limit framework fact 12 describes and which items 525 and 526
  * below run into. The fixture is *chosen* rather than observed: barn-local 23:30 on the last of
- * the month is 03:30 UTC on the **1st of the next month**, so a Finances that bucketed on the raw
+ * the month lands on the **1st of the next month** in UTC, so a Finances that bucketed on the raw
  * UTC instant would file this expense under next month and drop it out of this month's page
  * entirely. Nothing about the clock the suite happens to run at is involved.
+ *
+ * The *hour* of that UTC instant is 03:30 under EDT and 04:30 under EST, and no assertion here
+ * reads it — the day rollover is what the item turns on, and Eastern is UTC-4 or UTC-5, so 23:30
+ * crosses midnight either way. Stated because `MONTH_END` derives from the live `BARN_TODAY`, so
+ * this file runs on both sides of the DST boundary over a release cycle.
  *
  * `Date.UTC(y, m, 0)` — day zero of month `m` (1-based here, since `BARN_TODAY`'s digits are) is
  * the last day of the month before it. The same `Date.UTC`-on-the-digits idiom as `shiftDay`, and
@@ -316,8 +321,9 @@ assertPinArithmetic()
 /**
  * One tier, one horse, one lesson. Nothing else, and that is load-bearing rather than minimal
  * for its own sake: it is what lets items 709 and 710 assert an EXACT ARRAY of stored values
- * ("the barn's `kind='expense'` transactions are exactly [this]") instead of hunting for the
- * right row, which makes "no row was created at all" a failure rather than a silent pass.
+ * ("one named recipient's `kind='expense'` transactions are exactly [this]" — barn-wide until
+ * #1395 added a second expense-writing test and scoped the read by recipient) instead of hunting
+ * for the right row, which makes "no row was created at all" a failure rather than a silent pass.
  *
  * Seeded inline; `e2e/support/fixtures.ts` is not modified.
  */
@@ -854,10 +860,17 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
 // The month the barn's frame resolves to — checklist lines 524-526
 // ---------------------------------------------------------------------------
 //
-// The three fixes these cover — #1309's bucketing, #1360's `resolveFinancesMonth`, #1361's
-// `create_agreement_with_first_charge` — all shipped with unit tests and no checklist line, which
-// is what #1395 filed. The block above stops at storage; this one carries the same instant one
-// step further, into the month Finances files it under.
+// The month-resolution fixes #1395 filed for — #1309's bucketing, #1360's `resolveFinancesMonth`,
+// #1361's `create_agreement_with_first_charge` — all shipped with unit tests and no checklist
+// line. The block above stops at storage; this one carries the same instant one step further,
+// into the month Finances files it under.
+//
+// 525 and 526 cover #1360 and #1361 directly. 524 does **not** cover #1309, and saying so is the
+// point: #1309 fixed `firstOfMonth` bucketing in `agreement-finances.ts` and `lesson-finances.ts`,
+// while an expense reaches By Paid To through `expense-finances.ts`'s
+// `fetchExpenseTransactionsInRange`, which has been barn-framed since #955 and never imports
+// `firstOfMonth`. 524 asserts the expense path #1395's first acceptance criterion names, and a
+// regression in #1309's own two modules would still pass it — that gap is unclosed here.
 //
 // **What each of the three can actually prove, because they differ and the difference matters.**
 //
@@ -910,10 +923,11 @@ test.describe("Finances resolves the month in the barn's zone", () => {
     // Entry goes through the form and NOT through `addExpense`, and this is load-bearing rather
     // than a preference for realism. Given no `p_occurred_at`, `create_expense_with_horses` casts
     // `expense_date + expense_time` in the DB SESSION's zone — UTC — which would store
-    // `MONTH_END T23:30Z`, i.e. barn-local 7:30 PM. That instant sits comfortably inside the
-    // barn's month and would bucket correctly however broken the code under test was. Only
-    // `ExpenseForm`'s hidden `occurred_at` (`computeOccurredAt`, #1363) encodes 23:30 in the
-    // *barn's* zone and produces the 03:30-UTC-next-month instant this item is about.
+    // `MONTH_END T23:30Z`, i.e. barn-local early evening (7:30 PM under EDT, 6:30 under EST).
+    // That instant sits comfortably inside the barn's month and would bucket correctly however
+    // broken the code under test was. Only `ExpenseForm`'s hidden `occurred_at`
+    // (`computeOccurredAt`, given the barn's zone by #1222) encodes 23:30 in the *barn's* zone
+    // and produces the next-month-in-UTC instant this item is about.
     //
     // Time first, as the hydration barrier, for the reasons line 523's test states in full.
     await hydrateByDriving(
@@ -977,7 +991,8 @@ test.describe("Finances resolves the month in the barn's zone", () => {
     // hidden `cadence=monthly`), so this route reaches the barn's frame; a one-time lease would
     // read back the date the form was given and never touch it.
     await page.goto(`/barn/${barn.slug}/agreements/new?kind=board`)
-    // No hydration barrier, unlike every other form in this file. Both selects are UNCONTROLLED
+    // No hydration barrier, and unlike this file's expense and lesson-time fills it needs none
+    // for a structural reason rather than by inspection. Both selects are UNCONTROLLED
     // (`defaultValue`, no `value`/`onChange`), so their DOM value is what FormData reads and no
     // re-render can discard it; the Fee field is controlled but server-rendered with the barn's
     // default board fee and is left alone. The submit is `<form action={formAction}>` from
