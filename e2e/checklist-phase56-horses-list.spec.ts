@@ -27,10 +27,10 @@
 // would make that assertion unfalsifiable.
 //
 // The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's horse,
-// planted by the "make Dana the owning member of **Clover**" Setup line above them, which this
-// slice must not touch. Rewording the rider's **My Horses** lines alone would contradict it. The
-// claim each test makes is the line's claim; only the fixture's name differs, which is how the
-// whole #1187-#1208 batch worked.
+// planted by the "grant Dana a horse-privileges row on **Clover**" Setup line above them, which
+// this slice must not touch. Rewording the rider's **My Horses** lines alone would contradict it.
+// The claim each test makes is the line's claim; only the fixture's name differs, which is how
+// the whole #1187-#1208 batch worked.
 //
 // Every test does its own goto and mutates nothing, so this file is a set of independent reads
 // of one seeded barn — no test.describe.serial, and no test runs against state a previous one

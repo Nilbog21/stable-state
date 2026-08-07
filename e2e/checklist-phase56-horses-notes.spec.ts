@@ -311,7 +311,7 @@ test('trainer_owned_horse_note_edits_persist_across_a_reload @trainer', async ({
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's owned horse: the "make Dana the owning member of **Clover**" Setup
+// Phase 6 — the rider's owned horse: the "grant Dana a horse-privileges row on **Clover**" Setup
 // through "That page shows a **Save** button for those fields"
 // ---------------------------------------------------------------------------
 
