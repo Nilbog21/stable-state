@@ -401,7 +401,14 @@ async function chooseFileAndSubmit(page: Page, asset: string): Promise<Locator> 
   return submit
 }
 
-/** Choose, submit, and land back on the horse. */
+/**
+ * Choose, submit, and land back on the horse with Documents expanded.
+ *
+ * The expand is part of the helper rather than each caller's business because the landing page is
+ * a *fresh* server render: the redirect resets the accordion whatever state the page was left in
+ * before the upload (#1390). A caller that then read the new row off a shut `<details>` would time
+ * out rather than fail, since nothing inside one can become visible (e2e/CLAUDE.md fact 2).
+ */
 async function uploadDocument(
   page: Page,
   horseId: string,
@@ -411,6 +418,7 @@ async function uploadDocument(
   if (opts.reminderDate) await uploadForm(page).locator('input[name="reminder_date"]').fill(opts.reminderDate)
   await chooseFileAndSubmit(page, opts.asset)
   await page.waitForURL(atHorseDetail(horseId), { waitUntil: 'commit' })
+  await openSection(page, 'Documents')
 }
 
 /**
