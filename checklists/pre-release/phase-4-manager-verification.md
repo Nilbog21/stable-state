@@ -266,9 +266,10 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: a_past_reminder_date_shows_a_reminder_due_badge) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
 - [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) Set a document's Reminder Date to today's date → the **Reminder Due** badge appears on it
 - [ ] (e2e: a_reminder_date_of_today_is_due_and_the_next_day_is_not) Set another document's Reminder Date to tomorrow → no **Reminder Due** badge appears on that one
-- [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for it shows up under the Dashboard's Reminders section
+- [ ] (e2e: a_due_horse_document_shows_a_card_in_the_dashboard_reminders_section) A card for the past-dated document shows up under the Dashboard's Reminders section
 - [ ] (e2e: the_dashboard_reminder_card_links_back_to_the_horse) That card links back to this horse
-- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) The Dashboard's Reminders section shows a card for the today-dated document and none for the tomorrow-dated one
+- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) The Dashboard's Reminders section shows a card for the today-dated document
+- [ ] (e2e: the_dashboard_reminders_section_includes_a_document_due_today_and_excludes_tomorrows) That section shows no card for the tomorrow-dated document
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
