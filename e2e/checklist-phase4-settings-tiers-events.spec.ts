@@ -2,7 +2,7 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 //
 // Manage Barn's two sub-page CRUD flows (checklists/pre-release/phase-4-manager-verification.md
-// lines 487-494 and 524-531): lesson tiers — the non-retroactive amber warnings, the new-tier instructor-cut
+// lines 487-494 and 527-534): lesson tiers — the non-retroactive amber warnings, the new-tier instructor-cut
 // pre-fill, and default/deactivate/reactivate as the New Lesson form sees them; and barn
 // events — create, the visible-to defaults, edit, and delete.
 //
@@ -11,8 +11,8 @@
 // default/active state is actually observable. A change to LessonForm's tier handling breaks
 // this file, so it declares that route.
 //
-// Adjacent slices: #1204 owns 476-486 and 495-512, #1252 owns 513-523, #1206/#1240 own
-// 532-572. Nothing outside 487-494 and 524-531 is touched here.
+// Adjacent slices: #1204 owns 476-486 and 495-512, #1252 owns 513-526, #1206/#1240 own
+// 535-575. Nothing outside 487-494 and 527-534 is touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { settledTextContents } from './support/read'

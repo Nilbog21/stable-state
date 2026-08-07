@@ -45,8 +45,8 @@
 // form and the Add Lease/Add Boarding form, and the board-fee and timezone items land on
 // Agreements and Finances. A change to any of those breaks this file, so it declares them.
 //
-// Adjacent slices: #1205 owns 487-494 and 524-531, #1252 owns 513-523, #1206/#1240 own
-// 532-572. Nothing outside 476-486, 495-506 and 507-512 is touched here.
+// Adjacent slices: #1205 owns 487-494 and 527-534, #1252 owns 513-526, #1206/#1240 own
+// 535-575. Nothing outside 476-486, 495-506 and 507-512 is touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import {

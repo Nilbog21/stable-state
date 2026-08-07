@@ -55,7 +55,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 const HORSE = 'Marigold'
 const TIER = 'Standard'
 
-// The nine manager nav labels, in the order phase-4-manager-verification.md line 583 enumerates
+// The nine manager nav labels, in the order phase-4-manager-verification.md line 586 enumerates
 // them. Written out rather than imported from `buildNavLinks`: the checklist line *is* the
 // specification, and importing the code under test would make this assertion agree with any
 // future reordering or omission in it.
