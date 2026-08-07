@@ -21,9 +21,6 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // because the thing that invalidates it — a Revoke — resolves as a state update, so any answer
   // latched in the clipboard continuation is one React commit out of date (#1396).
   const [copyOutcome, setCopyOutcome] = useState<{ token: string; error: string | null } | null>(null)
-  // The revoke result a copy has superseded. Same dismissed-by-identity trick as useSaveFlashOn:
-  // every server response deserializes fresh, so an object compare is the whole test.
-  const [dismissedRevoke, setDismissedRevoke] = useState<object | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Revoke regenerates the invite token server-side; Copy Invite must never read the
@@ -53,10 +50,18 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // so a failed revoke re-admits the copy the instant its error lands: the token was never
   // rotated, and `busy` goes false in the same render that shows the error.
   const currentCopy = copyOutcome !== null && copyOutcome.token === inviteToken && !busy ? copyOutcome : null
-  // One error slot, two sources, and now genuinely only one of them current: a revoke error is
-  // suppressed for its own retry's pending window (what setError(null) at the top of the old
-  // wrapped action did) and for good once a copy has superseded it.
-  const revokeError = pending || dismissedRevoke === state ? null : state?.error ?? null
+  // Suppressed for its own retry's pending window — what setError(null) at the top of the old
+  // wrapped action did.
+  const revokeError = pending ? null : state?.error ?? null
+  // One error slot, two sources, and a current settled copy owns it outright — including when that
+  // copy succeeded, which is why this can't be `currentCopy?.error ?? revokeError`: a successful
+  // copy's error is `null`, and `??` would fall through to the revoke error and render it beside a
+  // button reading "Copied!". Ownership rather than dismissal, because the two can genuinely
+  // overlap: a revoke that fails while the clipboard write is in flight lands after handleCopy has
+  // run and before its continuation, so nothing the handler latches can know about it. The revoke
+  // error is therefore hidden for exactly as long as "Copied!" is on screen and returns when the 2s
+  // timer clears the outcome — the revoke did fail, and the token was never rotated.
+  const shownError = currentCopy !== null ? currentCopy.error : revokeError
 
   useEffect(() => {
     return () => {
@@ -70,9 +75,6 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   async function handleCopy() {
     const token = inviteToken
     const url = `${window.location.origin}/barn/${barnSlug}/register?token=${token}`
-    // Either outcome supersedes the revoke error this attempt was rendered alongside — the same
-    // last-write-wins the single pre-split `error` state had.
-    setDismissedRevoke(state)
     if (timerRef.current) clearTimeout(timerRef.current)
     try {
       await navigator.clipboard.writeText(url)
@@ -113,13 +115,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
           </Button>
         </form>
       </div>
-      {/* One slot, two sources: a failed revoke arrives as the action's returned state, a failed
-          clipboard write as the copy outcome. Each clears the other — onSubmit drops the copy
-          outcome before every revoke, and handleCopy dismisses the revoke error before every
-          copy — so the ?? is a preference, not an overlap. */}
-      {(currentCopy?.error ?? revokeError) && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{currentCopy?.error ?? revokeError}</p>
-      )}
+      {shownError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{shownError}</p>}
     </section>
   )
 }
