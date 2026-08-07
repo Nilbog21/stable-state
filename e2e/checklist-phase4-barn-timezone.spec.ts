@@ -203,9 +203,10 @@ const EXPENSE_AMOUNT = '145'
 /**
  * The last calendar day of the barn's own current month, and the 11:30 PM entry placed on it.
  *
- * This is what makes item 524 falsifiable on **every** day of the year rather than only across a
- * real month rollover, which is the limit framework fact 12 describes and which items 525 and 526
- * below run into. The fixture is *chosen* rather than observed: barn-local 23:30 on the last of
+ * This is what makes the "on the last day of a month" item falsifiable on **every** day of the
+ * year rather than only across a real month rollover, which is the limit framework fact 12
+ * describes and which the two items after it — "opening **Finances** with no month in the URL"
+ * and "a newly created boarding agreement's first charge" — run into. The fixture is *chosen* rather than observed: barn-local 23:30 on the last of
  * the month lands on the **1st of the next month** in UTC, so a Finances that bucketed on the raw
  * UTC instant would file this expense under next month and drop it out of this month's page
  * entirely. Nothing about the clock the suite happens to run at is involved.
@@ -422,8 +423,9 @@ async function seededLessonWallClock(): Promise<string> {
  * Every expense transaction written for one named recipient, as a barn-local wall clock.
  *
  * Scoped by recipient rather than sweeping the barn's expense transactions, because since #1395
- * two different tests here each enter one: line 523's at BARN_TODAY and line 524's at MONTH_END.
- * A barn-wide read would hand line 523's exact-array assertion both of them and make it fail on
+ * two different tests here each enter one: the "**Add Expense** with a Time of 11:30 PM" item's at
+ * BARN_TODAY and the "on the last day of a month" item's at MONTH_END. A barn-wide read would hand
+ * the first one's exact-array assertion both of them and make it fail on
  * an unrelated test's fixture. The scope keeps that assertion an exact array — the property its
  * own comment defends — now over a named expense rather than over "whatever exists".
  *
@@ -881,7 +883,9 @@ test.describe('Entered wall clocks are stored in the barn s zone', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The month the barn's frame resolves to — checklist lines 524-526
+// The month the barn's frame resolves to — the checklist block from "an expense entered at
+// 11:30 PM barn-local on the last day of a month" through "a newly created boarding agreement's
+// first charge is for the barn's current month"
 // ---------------------------------------------------------------------------
 //
 // The month-resolution fixes #1395 filed for — #1309's bucketing, #1360's `resolveFinancesMonth`,
@@ -953,12 +957,13 @@ test.describe("Finances resolves the month in the barn's zone", () => {
     // (`computeOccurredAt`, given the barn's zone by #1222) encodes 23:30 in the *barn's* zone
     // and produces the next-month-in-UTC instant this item is about.
     //
-    // Time first, as the hydration barrier, for the reasons line 523's test states in full.
+    // Time first, as the hydration barrier, for the reasons the "**Add Expense** with a Time of
+    // 11:30 PM" item's test states in full.
     await hydrateByDriving(
       () => page.locator('#expense-time').fill(EXPENSE_TIME),
       () => pickerFieldIs(page, 'occurred_at', 11, 16, EXPENSE_TIME)
     )
-    // Unlike line 523's test, the Date field IS moved here — off the server's `todayStr` and onto
+    // Unlike that test, the Date field IS moved here — off the server's `todayStr` and onto
     // the month's last day. Safe in the one way that matters: `MONTH_END` is never in the past
     // (it is the end of the month `BARN_TODAY` is in), so `ExpenseForm` keeps the Time field
     // rendered rather than swapping it for the hidden input it uses on a past date.

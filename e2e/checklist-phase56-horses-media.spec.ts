@@ -111,8 +111,8 @@ let seededRegisteredName: string
  * checklist-phase4-horses-photos.spec.ts documents (a control that passes only in declaration
  * order and fails under a standalone --grep, against a perfectly healthy app).
  *
- * Neither owned horse ends up photo-locked, so its owner keeps write access — the state lines
- * 882/942 are about. That is createHorse's doing rather than setHorsePhoto's, and the difference
+ * Neither owned horse ends up photo-locked, so its owner keeps write access — the state the two
+ * "owning a horse grants photo write" items are about. That is createHorse's doing rather than setHorsePhoto's, and the difference
  * matters if this seed is ever copied: a service-role *set* goes through updateHorsePhotoPath,
  * which writes photo_uploaded_by only when the path is being cleared and otherwise leaves
  * whatever attribution was already there untouched (src/lib/db/horses.ts). The column starts

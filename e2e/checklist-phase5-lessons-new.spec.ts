@@ -452,8 +452,10 @@ test.describe("the trainer's New Lesson form", () => {
 // within-the-buffer line, and the two `notifications`-row lines
 // ---------------------------------------------------------------------------
 //
-// `.serial` because these four are one chain: the two lessons of 831 are the baseline 847's
-// count is measured against, and 851/852 read a row that only 847's submission can have written.
+// `.serial` because these four are one chain: the two lessons of "Create 2 lessons via
+// `/barn/dev-barn/lessons/new`" are the baseline "Creating one more lesson dated within 30
+// minutes of one of Blake's lessons"'s count is measured against, and the two `notifications`
+// lines read a row that only that third submission can have written.
 
 test.describe.serial('a trainer creating lessons', () => {
   // The locked-instructor line. Both halves in one equality. The barn holds two manager-instructed
