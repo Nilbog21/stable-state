@@ -39,6 +39,10 @@ const THIRD_OVERRIDE = { moderate: 6, high: 10 }
 const SAVED_TEXT = '✓ Saved'
 // moderate === high is the boundary the action rejects (`moderate >= high`).
 const REJECTED_THRESHOLD = 9
+// The ExhaustionBar's filled segment — the same testid checklist-phase56-horses-list.spec.ts
+// addresses the bar by, and the only part of the bar that is present iff HorseCard was handed an
+// `exhaustion` prop.
+const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
 
 let appleId: string
 let cloverId: string
@@ -308,6 +312,21 @@ test('owned_horse_no_longer_appears_under_available @manager', async ({ page }) 
   await expect(section(page, 'Available').getByRole('link')).toHaveText([
     cardTextWithRegisteredName(APPLE_RENAMED, REGISTERED_NAME),
   ])
+})
+
+// #1391 — the manager's half of the same claim the trainer and rider halves make in
+// checklist-phase56-horses-list.spec.ts. Nothing role-specific changed for a manager;
+// get_horse_projected_exhaustion has always admitted one. What changed is that page.tsx stopped
+// excluding owned horses from the fan-out (#1000), so the section that already renders Clover's
+// card now feeds it a bar too.
+//
+// Presence rather than toBeVisible, for the reason the phase56 halves give: Clover has no
+// lessons, so the solid segment renders at width 0% and Playwright calls a zero-width element
+// hidden. Presence is the claim anyway — HorseCard renders this div iff it was handed an
+// `exhaustion` prop.
+test('owned_horse_card_shows_an_exhaustion_bar @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/horses`)
+  await expect(section(page, 'My Horses').locator(SOLID_BAR)).toHaveCount(1)
 })
 
 // ---------------------------------------------------------------------------

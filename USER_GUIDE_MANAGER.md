@@ -18,7 +18,7 @@ Use **Horses** in the nav to see horses grouped into three sections:
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason entered when marking them unavailable, and the same exhaustion bar.
 - **Inactive** — soft-deleted horses (visible to managers only); each card shows the horse name.
 
-If any horse's owning member (set in the detail page's Access section, see below) is you, a **My Horses** section appears at the top of the page listing those horses instead — each card shows a status badge (**Active**/**Unavailable**/**Inactive**) instead of an exhaustion bar (plus the unavailability reason when the badge is Unavailable), and the horse is no longer duplicated in its usual Available/Unavailable/Inactive section.
+If any horse's owning member (set in the detail page's Access section, see below) is you, a **My Horses** section appears at the top of the page listing those horses instead — each card shows a status badge (**Active**/**Unavailable**/**Inactive**) alongside the same exhaustion bar (plus the unavailability reason when the badge is Unavailable), and the horse is no longer duplicated in its usual Available/Unavailable/Inactive section.
 
 Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)".
 
