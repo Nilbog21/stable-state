@@ -175,7 +175,7 @@ test('trainer_owned_horse_is_absent_from_available_and_unavailable @trainer', as
   )
 })
 
-// No checklist line of its own: this is the positive control for the rider's
+// The positive control for the rider's
 // rider_horse_cards_show_no_exhaustion_bar below. That test asserts a count of zero, so a
 // renamed testid or a bar that stopped rendering for *everyone* would satisfy it silently. The
 // trainer takes the exertion path through the page, so the same locator must find a bar in each
