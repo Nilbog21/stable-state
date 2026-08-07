@@ -14,7 +14,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_nav_hides_leases_boarding_and_expenses) That nav shows **no Leases, no Boarding, no Expenses**
 - [ ] (e2e: rider_expenses_route_404s_rather_than_redirecting_to_login) `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] (e2e: rider_available_and_unavailable_cards_carry_only_name_and_reason) Horses page shows Available/Unavailable cards carrying the name (and unavailability reason) only
-- [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards
+- [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards (#1391 narrowed this to Available/Unavailable — the owned card below has one)
 - [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
 - [ ] (e2e: rider_tapping_an_available_card_opens_the_horse_detail_page) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
 - [ ] (e2e: rider_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (Dana does **not** own her) displays her seeded photo
@@ -23,13 +23,14 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
 - [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
 - [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
-- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks). An e2e run seeds the ownership in the rider's own barn instead
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — grant Dana a horse-privileges row on **Clover** (Access section), then make her Clover's owning member with **Set as Owner** on that row; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks. An e2e run seeds both in the rider's own barn instead
 - [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
 - [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
+- [ ] (e2e: rider_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Horses** shows an exhaustion bar — the only exhaustion a rider sees on this page, and it appears because the Set-as-Owner setup above left her a `lesson_read_privileges` grant
 - [ ] (e2e: rider_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
 - [ ] (e2e: rider_setting_the_photo_on_their_own_horse_through_the_upload_screen_succeeds) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
 - [ ] (e2e: rider_the_photo_they_uploaded_displays_on_their_horses_detail_page) (#1003) That photo then displays on Clover's detail page

@@ -2,11 +2,11 @@
 // covers: src/components/ExhaustionBar.tsx
 //
 // The Horses list through a non-manager's eye: #1000's My Horses section (its position, its
-// status badge, and the owned horse's disappearance from Available/Unavailable), plus the
-// rider-only claims that the Available/Unavailable cards carry the name and unavailability
-// reason and nothing else, show no exhaustion bar, render no Inactive section, and are
-// tappable through to the horse detail page (#1002).
-// checklists/pre-release/phase-5-trainer.md lines 71-73, and phase-6-rider.md lines 16-19, 30-32.
+// status badge, the owned horse's disappearance from Available/Unavailable, and — since #1391 —
+// its exhaustion bar), plus the rider-only claims that the *unowned* Available/Unavailable cards
+// carry the name and unavailability reason and nothing else, show no exhaustion bar, render no
+// Inactive section, and are tappable through to the horse detail page (#1002).
+// checklists/pre-release/phase-5-trainer.md lines 71-75, and phase-6-rider.md lines 16-19, 30-33.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the
@@ -75,6 +75,25 @@ const barn = withBarn('phase56-horses-list', async ({ supabase, barn, members })
       unavailabilityReason: UNAVAILABILITY_REASON,
     })
   ).id
+
+  // The rider's grant on their own horse, seeded inline (no builder for this table; same shape
+  // as checklist-phase6-horse-privileges.spec.ts). `member_id` is a *membership* id despite the
+  // name, and `barn_id` is required — the table's FKs are composite.
+  //
+  // Ownership does not carry the grant with it here, which is the whole reason this row is
+  // explicit: addHorse writes owning_member_id straight to the table, while the app's only
+  // rider-ownership path is set_horse_owner, which elevates lesson_read_privileges in the same
+  // statement and raises without a row to elevate. #1391's owned-card bar is gated on the grant
+  // rather than on ownership, because get_horse_projected_exhaustion is, so the fixture has to
+  // reproduce what set_horse_owner would have left behind.
+  const { error: privilegeError } = await supabase.from('member_horse_privileges').insert({
+    barn_id: barn.id,
+    horse_id: willowId,
+    member_id: members.rider.membershipId,
+    document_privileges: 'none',
+    lesson_read_privileges: true,
+  })
+  if (privilegeError) throw privilegeError
 
   // Deactivated inline rather than through addHorse: HorseOptions has no isActive, and this
   // batch may not edit support/fixtures.ts. Without this horse "no Inactive section appears"
@@ -188,6 +207,19 @@ test('trainer_available_horse_cards_show_an_exhaustion_bar @trainer', async ({ p
   await expect(cardsWithABar).toHaveCount(2)
 })
 
+// #1391 put the bar on the owned variant too, and the trainer needs no privileges row for it —
+// get_horse_projected_exhaustion admits any barn trainer, so the only thing that changed for
+// this role is that page.tsx stopped excluding owned horses from the fan-out (#1000).
+//
+// Presence, not toBeVisible, and the same idiom as the Available test above for the same reason:
+// the seeded subjects have no lessons, so the solid segment renders at width 0% and Playwright
+// calls a zero-width element hidden. Presence is the exact claim anyway — HorseCard renders this
+// div if and only if page.tsx handed the card an `exhaustion` prop, which is what changed here.
+test('trainer_owned_horse_card_shows_an_exhaustion_bar @trainer', async ({ page }) => {
+  await page.goto(horsesPath())
+  await expect(cardOf(page, cloverId).locator(SOLID_BAR)).toHaveCount(1)
+})
+
 // ---------------------------------------------------------------------------
 // Phase 6 — the rider's card sections (lines 925-928)
 // ---------------------------------------------------------------------------
@@ -206,14 +238,23 @@ test('rider_available_and_unavailable_cards_carry_only_name_and_reason @rider', 
   await expect(cards).toHaveText([APPLE, `${BUTTER} ${UNAVAILABILITY_REASON}`], { useInnerText: true })
 })
 
-// Page-wide rather than section-scoped, which is strictly stronger: the owned variant never
-// renders a bar either, so a rider must see none anywhere. Falsifiable because
-// trainer_available_horse_cards_show_an_exhaustion_bar drives the same locator to a non-zero
-// count in the same file, and because the two tests either side of this one require these very
-// cards to have rendered.
+// Scoped to the three horses the rider doesn't own, which is as wide as the claim goes since
+// #1391: the owned variant renders a bar now, so the page-wide form this test used to take
+// would fail against Willow — see rider_owned_horse_card_shows_an_exhaustion_bar below. What
+// the rider still must not see is exhaustion for a barn horse, which is the get_horse_exertion_summary
+// restriction #765 put in place and #1391 left alone.
+//
+// The count assertion is the anti-vacuity precondition, same role as regionHrefs' waitFor: an
+// unrendered page has no bars either, and "0 bars among 0 cards" is true of every broken page
+// there is. Falsifiability now has a same-barn anchor as well as the trainer's — the rider's own
+// owned test drives this very locator to a visible bar in the same run.
 test('rider_horse_cards_show_no_exhaustion_bar @rider', async ({ page }) => {
   await page.goto(horsesPath())
-  await expect(page.locator('main').locator(SOLID_BAR)).toHaveCount(0)
+  const unownedCards = page.locator(
+    [appleId, butterId, cloverId].map((id) => `div:has(> a[href="${horseHref(id)}"])`).join(', ')
+  )
+  await expect(unownedCards).toHaveCount(3)
+  await expect(unownedCards.locator(SOLID_BAR)).toHaveCount(0)
 })
 
 // Asserted as the page's whole heading list rather than as "no Inactive heading". A count of
@@ -253,6 +294,16 @@ test('rider_my_horses_section_at_the_top_lists_the_owned_horse @rider', async ({
 test('rider_owned_horse_card_carries_a_status_badge @rider', async ({ page }) => {
   await page.goto(horsesPath())
   await expect(cardOf(page, willowId).getByText(ACTIVE_BADGE, { exact: true })).toBeVisible()
+})
+
+// #1391 — the one place a rider sees exhaustion on this page, and the reason
+// rider_horse_cards_show_no_exhaustion_bar above is no longer page-wide. The bar is here because
+// the seeded lesson_read_privileges row admits the rider through get_horse_projected_exhaustion,
+// not because they own the horse; the seeding comment says why those are two different things.
+// Presence rather than toBeVisible for the reason given on the trainer's half.
+test('rider_owned_horse_card_shows_an_exhaustion_bar @rider', async ({ page }) => {
+  await page.goto(horsesPath())
+  await expect(cardOf(page, willowId).locator(SOLID_BAR)).toHaveCount(1)
 })
 
 // The rider's half of the same scoped-absence claim — see the trainer's comment above.
