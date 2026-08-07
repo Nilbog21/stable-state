@@ -6,14 +6,16 @@
 // as a plain name-only card link with no Unlinked badge and no Manage Member controls, a trainer's
 // own document upload and the read-only Reminder Date column that follows it, #864's read-only
 // rider self-service, and the Active Agreements cards a rider sees on their own page.
-// checklists/pre-release/phase-5-trainer.md lines 81-87, and phase-6-rider.md lines 83-87 + 96-98.
+// checklists/pre-release/phase-5-trainer.md's roster, own-documents and managed-row block, and
+// phase-6-rider.md's counterparts plus its Active Agreements block.
 //
-// Phase-6 line 96 is a `Setup —` line rather than an assertion: the manual walkthrough switches persona
+// The rider's "switch to Emery" line is a `Setup —` line rather than an assertion: the manual
+// walkthrough switches persona
 // to reach a rider holding agreements, and an e2e run seeds them on the rider persona's own
 // membership instead. It is tagged with the name of the test its seeding serves, the precedent
 // checklist-phase56-horses-notes.spec.ts set for its own three Setup lines — which records a #1251
-// verdict rather than reversing one. Line 1008, immediately below this file's last line, stays
-// `(manual)`: it is a hover-affordance judgement, untouched here.
+// verdict rather than reversing one. The "Those cards carry no hover state" line, immediately
+// below this file's last line, stays `(manual)`: it is a hover-affordance judgement, untouched here.
 //
 // ## A paired slice
 //
@@ -46,7 +48,8 @@ import { addHorse, addLeaseCharge, addManagedMember, addStaffDocument, assetPath
 // Seed inputs
 // ---------------------------------------------------------------------------
 
-// The managed/unclaimed rider stub. `Harper Test` is the name lines 891-893 themselves use, and it
+// The managed/unclaimed rider stub. `Harper Test` is the name the "(Gale/Harper Test" managed-row
+// lines themselves use, and it
 // clears both halves of the collision constraint E2E_STUB_RIDER documents against the four names
 // addMemberships seeds into this same barn: no containment either way against `Test Manager` /
 // `Test Trainer` / `Test Rider` / `Test Sutton`, and its first-initial-derived form `Harper T.`
@@ -72,7 +75,8 @@ const UPLOADED_DOCUMENT = 'test_1_kb.pdf'
 const SEEDED_REMINDER_DATE = '2099-04-15'
 const UPLOADED_REMINDER_DATE = '2099-07-20'
 
-// The rider's two agreements — one of each kind, because line 1006 says "cards" and the two kinds
+// The rider's two agreements — one of each kind, because "renders the same Active Agreements
+// cards" says "cards" and the two kinds
 // take visibly different render branches (the '/month' suffix below).
 const LEASE_HORSE = 'Juniper'
 const BOARD_HORSE = 'Marigold'
@@ -182,7 +186,8 @@ const agreementCardText = (page: Page) => activeAgreements(page).locator('p')
  * count of 2 therefore requires both bindings to hold — either one being wrong yields 1 or 0.
  *
  * Bound by rendered text rather than by href, unlike the manager-side spec's version of this
- * helper: for a rider these cards have no href at all, which is what line 1007 below asserts.
+ * helper: for a rider these cards have no href at all, which is what "Those cards do not
+ * navigate on tap" below asserts.
  */
 function cardsMatching(page: Page, lease: RegExp, board: RegExp) {
   return agreementCardText(page).filter({ hasText: lease }).or(agreementCardText(page).filter({ hasText: board }))
@@ -224,7 +229,8 @@ const atDocumentUpload = (membershipId: string) =>
   new RegExp(`/documents/new\\?entity=trainer&id=${membershipId}$`)
 
 // ---------------------------------------------------------------------------
-// The roster, through both non-manager roles (lines 887-888, 992-993)
+// The roster, through both non-manager roles — "shows all four sections
+// (You/Managers/Trainers/Riders)" and "shows no **Add Trainer**/**Add Rider** forms"
 // ---------------------------------------------------------------------------
 
 // Order is asserted here, and it is not the #1286 hazard: these are four <section> elements in the
@@ -254,7 +260,8 @@ test('members_page_shows_no_add_member_forms_to_a_non_manager @trainer @rider', 
 })
 
 // ---------------------------------------------------------------------------
-// The managed/unclaimed rider row (lines 891-893, 994)
+// The managed/unclaimed rider row — "a managed/unclaimed row (Gale/Harper Test" through
+// "No Copy Invite/Revoke controls appear on that row for any role"
 // ---------------------------------------------------------------------------
 
 // "Renders as a normal card link": the locator is an <a> carrying that member's detail href, so
@@ -292,7 +299,8 @@ test('managed_member_page_shows_no_manage_member_controls_to_a_trainer @trainer'
 })
 
 // ---------------------------------------------------------------------------
-// A trainer's own documents (lines 889-890)
+// A trainer's own documents — "Uploading `scripts/data/test_1_kb.pdf` on your own member detail
+// page works" and "The Reminder Date column on your own documents is **read-only**"
 // ---------------------------------------------------------------------------
 
 // The member detail page renders the Reminder Date cell as an editable ReminderDateCell for a
@@ -340,7 +348,8 @@ test('trainer_can_upload_a_document_with_a_reminder_date_on_their_own_member_pag
 })
 
 // ---------------------------------------------------------------------------
-// A rider's own documents — read-only self-service (lines 995-996)
+// A rider's own documents — read-only self-service: "Documents section shows the empty state"
+// and "That section shows **no Add Document button**"
 // ---------------------------------------------------------------------------
 
 test('rider_own_documents_section_shows_the_empty_state @rider', async ({ page }) => {
@@ -359,7 +368,8 @@ test('rider_own_documents_section_has_no_add_document_button @rider', async ({ p
 })
 
 // ---------------------------------------------------------------------------
-// A rider's own Active Agreements (lines 1005-1007)
+// A rider's own Active Agreements — the "switch to Emery" Setup through "Those cards do not
+// navigate on tap"
 // ---------------------------------------------------------------------------
 
 // Set membership, not row order: getActiveAgreementsForRider orders by created_at DESC, and both

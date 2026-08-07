@@ -12,8 +12,8 @@
 // The barn chrome a non-manager sees, both roles, in one file: the four-link nav and what it
 // omits, the two manager-only routes that must 404 rather than bounce to a login page, the same
 // nav rendered on the barn-scoped Profile page, and #1018's calendar feed scoped to the caller's
-// own membership (checklists/pre-release/phase-5-trainer.md 17-19, 95, 102-104, and
-// phase-6-rider.md 13-15, 73, 100-102).
+// own membership (checklists/pre-release/phase-5-trainer.md's "**full 4-link trainer nav**" and
+// Profile/Calendar Feed lines, and phase-6-rider.md's "**full 4-link rider nav**" counterparts).
 //
 // `layout.tsx` is already in select-specs.sh's ALWAYS_FULL, and is declared above anyway per
 // #1281 — the nav bar it renders is this file's main subject, so the declaration states
@@ -48,10 +48,12 @@
 //
 // 4. THE FEED FETCHES DELIBERATELY USE THE PLAIN `request` FIXTURE, WHICH CARRIES A SESSION.
 //    e2e/CLAUDE.md fact 4 is that `request` is NOT anonymous, and that the wrong form fails
-//    silently — so this is a decision, not the oversight that fact describes. Lines 910/1011
-//    claim what the feed's PAYLOAD contains, and `/calendar.ics` has no auth check at all (the
+//    silently — so this is a decision, not the oversight that fact describes. The two "Calendar
+//    Feed link includes only lessons" lines claim what the feed's PAYLOAD contains, and
+//    `/calendar.ics` has no auth check at all (the
 //    token is the credential), so the session cannot reach the answer. That a subscriber with no
-//    session can read the feed is checklist line 799's claim, and stays asserted where it lives,
+//    session can read the feed is the "a **Calendar Feed** section appears" line's claim, and
+//    stays asserted where it lives,
 //    in checklist-phase4-calendar-feed.spec.ts's `unauthenticatedRequest`.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addUnpaidLesson, daysFromNow } from './support/fixtures'
@@ -107,7 +109,7 @@ function nav(page: Page) {
 
 /**
  * What a trainer's and a rider's nav both carry, in DOM order (see note 3). Shared by the
- * barn-page tests and the Profile-page tests, which is what makes checklist lines 909/1010's
+ * barn-page tests and the Profile-page tests, which is what makes the two profile-nav lines'
  * "same set as the regular barn pages" true by construction rather than by a cross-page read —
  * a read of both pages compared against each other would pass if BOTH navs lost their links.
  */

@@ -6,7 +6,9 @@
 // its exhaustion bar), plus the rider-only claims that the *unowned* Available/Unavailable cards
 // carry the name and unavailability reason and nothing else, show no exhaustion bar, render no
 // Inactive section, and are tappable through to the horse detail page (#1002).
-// checklists/pre-release/phase-5-trainer.md lines 71-75, and phase-6-rider.md lines 16-19, 30-33.
+// checklists/pre-release/phase-5-trainer.md's "**Available** cards each show an exhaustion bar"
+// line and its "**My Horses** section at the top" block, and phase-6-rider.md's card-sections
+// and "**My Horses** section at the top" blocks.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the
@@ -17,16 +19,18 @@
 //
 // ## Why the rider's subject horse is not called Clover
 //
-// Lines 939-941 name Clover, and this file's rider tests assert against Willow instead. That is
-// deliberate, and it is forced by the paired-slice seeding above. Both subjects live in one
-// barn, so the trainer's Clover is an ordinary unowned horse from the rider's side and sits in
-// the rider's *Available* section — which is exactly the region line 941's absence assertion
-// scopes to. A second horse called Clover would make that assertion unfalsifiable.
+// The rider's three **My Horses** lines name Clover, and this file's rider tests assert against
+// Willow instead. That is deliberate, and it is forced by the paired-slice seeding above. Both
+// subjects live in one barn, so the trainer's Clover is an ordinary unowned horse from the rider's
+// side and sits in the rider's *Available* section — which is exactly the region the "no longer
+// appears under Available/Unavailable" absence assertion scopes to. A second horse called Clover
+// would make that assertion unfalsifiable.
 //
-// The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's
-// horse, planted by the Setup line above them (line 935), which this slice must not touch.
-// Rewording 939-941 alone would contradict it. The claim each test makes is the line's claim;
-// only the fixture's name differs, which is how the whole #1187-#1208 batch worked.
+// The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's horse,
+// planted by the "grant Dana a horse-privileges row on **Clover**" Setup line above them, which
+// this slice must not touch. Rewording the rider's **My Horses** lines alone would contradict it.
+// The claim each test makes is the line's claim; only the fixture's name differs, which is how
+// the whole #1187-#1208 batch worked.
 //
 // Every test does its own goto and mutates nothing, so this file is a set of independent reads
 // of one seeded barn — no test.describe.serial, and no test runs against state a previous one
@@ -51,7 +55,8 @@ const UNAVAILABILITY_REASON = 'Out with a stone bruise'
 const ACTIVE_BADGE = 'Active'
 
 // The page is h2-partitioned, and for a non-manager these are all of them: the Inactive section
-// is isManager-gated, which is what line 927 asserts. h1 first, then the sections in DOM order.
+// is isManager-gated, which is what "No Inactive section appears on that page" asserts. h1
+// first, then the sections in DOM order.
 const NON_MANAGER_HEADINGS = ['Horses', 'My Horses', 'Available', 'Unavailable']
 
 const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
@@ -123,7 +128,8 @@ function sectionByHeading(page: Page, heading: string) {
 /**
  * The My Horses section, pinned to main's *first* section rather than found by its heading.
  *
- * That is the "at the top" half of lines 877/939, expressed structurally: if My Horses renders
+ * That is the "at the top" half of the trainer's and rider's **My Horses** lines, expressed
+ * structurally: if My Horses renders
  * anywhere but first, the filter matches nothing and the assertion fails rather than quietly
  * covering only half the line.
  */
@@ -169,7 +175,8 @@ async function availableAndUnavailableHrefs(page: Page): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's own horse (lines 877-879)
+// Phase 5 — the trainer's own horse: "The Horses list shows a **My Horses** section at the top"
+// through "Clover no longer appears under Available/Unavailable"
 // ---------------------------------------------------------------------------
 
 test('trainer_my_horses_section_at_the_top_lists_the_owned_horse @trainer', async ({ page }) => {
@@ -221,7 +228,8 @@ test('trainer_owned_horse_card_shows_an_exhaustion_bar @trainer', async ({ page 
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's card sections (lines 925-928)
+// Phase 6 — the rider's card sections: "Horses page shows Available/Unavailable cards" through
+// "Tapping an Available or Unavailable card navigates to that horse's detail page"
 // ---------------------------------------------------------------------------
 
 // "Only" is the whole claim, so it is asserted as the cards' complete text: Apple's card is its
@@ -283,7 +291,8 @@ test('rider_tapping_an_available_card_opens_the_horse_detail_page @rider', async
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's own horse (lines 939-941)
+// Phase 6 — the rider's own horse: "The Horses list shows a **My Horses** section at the top"
+// through "Clover no longer appears under Available/Unavailable"
 // ---------------------------------------------------------------------------
 
 test('rider_my_horses_section_at_the_top_lists_the_owned_horse @rider', async ({ page }) => {
@@ -309,7 +318,7 @@ test('rider_owned_horse_card_shows_an_exhaustion_bar @rider', async ({ page }) =
 // The rider's half of the same scoped-absence claim — see the trainer's comment above.
 //
 // Read the expected set carefully before concluding this test contradicts its checklist line.
-// Line 941 says "Clover no longer appears under Available/Unavailable" and CLOVER is in the
+// The checklist says "Clover no longer appears under Available/Unavailable" and CLOVER is in the
 // expected-*present* set here — but those are two different horses. The line's Clover is the
 // one the rider owns in the manual dev-barn walkthrough; this file's CLOVER is the *trainer's*
 // subject, which the rider does not own and therefore should see, exactly like any other barn

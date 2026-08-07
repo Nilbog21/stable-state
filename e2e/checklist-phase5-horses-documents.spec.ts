@@ -8,18 +8,16 @@
 // column header, no Exhaustion Thresholds section, and a Reminder Date column that is text
 // rather than an input.
 //
-// Lines 865-869 of the pre-#1358 monolithic PRE_RELEASE_TEST_CHECKLIST.md (Phase 5) — the
-// numbering #1330 filed them under, and the identifier every `P5 nnn` below uses. Deliberately
-// not the *current* number: the batch's slices are landing against that file concurrently, so a
-// live line number is stale by the next merge, and a comment nobody can re-derive is worse than
-// one naming a fixed reference. Those five lines sit at checklists/pre-release/phase-5-trainer.md
-// 59-63 as of #1358's split — the one citation to re-check before merge, since the tags
-// themselves are what pin the mapping.
+// The five Phase 5 horse-document lines in checklists/pre-release/phase-5-trainer.md, from "Horse
+// detail page lists documents with working links" through "The Reminder Date column there is
+// **read-only**". #1330 filed them under the pre-#1358 monolith's line numbers and every heading
+// below carried one; #1366 replaced those with the quoted fragments, which stay true across the
+// renumberings a line number cannot survive. The tags themselves are what pin the mapping.
 //
 // ## Why two horses
 //
-// Willow holds the seeded document and is the subject of P5 865, 867, 868 and 869 — three of
-// which read a table that must stay unambiguous. Rowan starts empty and takes the P5 866
+// Willow holds the seeded document and is the subject of every line but the upload one — three
+// of which read a table that must stay unambiguous. Rowan starts empty and takes the upload
 // upload, so the uploaded row can never join Willow's table and make "the row for this file
 // name" resolve to two things. The two names are mutually non-substring, and neither contains
 // nor is contained by the four seeded member names (Playwright's text matching is
@@ -44,13 +42,14 @@ import { addDays } from '@/lib/local-day'
 const WILLOW = 'Willow'
 const ROWAN = 'Rowan'
 
-/** The seeded document's file name, and the asset P5 866 names by path. */
+/** The seeded document's file name, and the asset the upload line names by path. */
 const SEEDED_FILE_NAME = 'coggins_record.pdf'
 const UPLOAD_ASSET = 'test_1_kb.pdf'
 
 /**
  * The seeded object's bytes, passed to `addHorseDocument` rather than left on its default, so
- * P5 865's body comparison is against what this spec put in — an expected value the builder
+ * The "documents with working links" body comparison is against what this spec put in — an
+ * expected value the builder
  * returned, never a string the app produced.
  */
 const SEEDED_CONTENT = Buffer.from('trainer horse document')
@@ -65,7 +64,8 @@ const REMINDER_DATE_HEADER = 'Reminder Date'
 // Both dates are in the *barn's* frame, which is the only frame the page compares in
 // (ReminderDueBadge takes barnToday(barn.timezone), never the runner's or the browser's clock).
 // Both are in the future by a wide margin, so no badge renders and the reminder cell's whole
-// text is the date itself — which is what lets P5 869 assert that text exactly. +30 and +45 keep
+// text is the date itself — which is what lets the read-only Reminder Date line assert that
+// text exactly. +30 and +45 keep
 // a run straddling barn-local midnight on the same side of "due" for each.
 //
 // They differ from each other on purpose: an upload that silently dropped its reminder_date
@@ -190,7 +190,7 @@ async function openAddDocument(page: Page, horseId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// P5 865 — documents listed with working links
+// "Horse detail page lists documents with working links"
 // ---------------------------------------------------------------------------
 
 // Narrowed, and pre-ratified rather than a deviation: "working links" is a target=_blank handoff
@@ -224,7 +224,7 @@ test('trainer_horse_document_link_serves_the_stored_pdf @trainer', async ({ page
 })
 
 // ---------------------------------------------------------------------------
-// P5 866 — uploading test_1_kb.pdf, including a Reminder Date
+// "Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date"
 // ---------------------------------------------------------------------------
 
 // One test for one checkbox: the line's claim is a single indivisible interaction, and its two
@@ -256,7 +256,7 @@ test('trainer_uploading_a_horse_document_with_a_reminder_date_lists_it @trainer'
 })
 
 // ---------------------------------------------------------------------------
-// P5 867 — no Actions column at all
+// "That documents table has **no Actions column at all**"
 // ---------------------------------------------------------------------------
 
 // The claim is about the column *header*, not about its buttons, so the `<th>` list is the
@@ -272,7 +272,7 @@ test('trainer_documents_table_has_no_actions_column_header @trainer', async ({ p
 })
 
 // ---------------------------------------------------------------------------
-// P5 868 — no Exhaustion Thresholds section
+// "The horse detail page shows **no Exhaustion Thresholds section**"
 // ---------------------------------------------------------------------------
 
 // The absence is paired with a presence in the same read, and the pairing is what makes it
@@ -295,7 +295,7 @@ test('trainer_horse_detail_page_shows_no_exhaustion_thresholds_section @trainer'
 })
 
 // ---------------------------------------------------------------------------
-// P5 869 — the Reminder Date column is read-only
+// "The Reminder Date column there is **read-only**"
 // ---------------------------------------------------------------------------
 
 // "Read-only" is asserted as the absence of the control a manager gets: the manager branch

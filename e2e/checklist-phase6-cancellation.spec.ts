@@ -11,21 +11,26 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // A rider cancelling her own spot, and the read-only Cancellation Notes row she gets on a lesson
-// the manager cancelled (checklists/pre-release/phase-6-rider.md, lines 62-63 and 66-72 — nine
-// checkboxes across two hunks, because slice 14's already-tagged 64/65 sit between them).
+// the manager cancelled (checklists/pre-release/phase-6-rider.md — the "record cancellation
+// notes" Setup and its read-only-row line, then the block from "An enrolled lesson's detail-page
+// header carries a **Cancel** button" onward; nine checkboxes across two hunks, because slice 14's
+// already-tagged co-rider-names and unenrolled-404 lines sit between them).
 //
 // ## Three lessons, one page state each, and no ordering between them
 //
 //   seededCancelled  normal, the rider alone. Cancelled at seed time *with notes* — the lesson
-//                    line 973 plants and line 974 reads.
-//   headerCancel     normal, the rider alone, never cancelled. Lines 977 and 978's positive
-//                    control.
+//                    the "record cancellation notes" Setup plants and the "read-only
+//                    **Cancellation Notes** row" line reads.
+//   headerCancel     normal, the rider alone, never cancelled. The positive control for the
+//                    header **Cancel** button and its two absent surfaces.
 //   liveCancel       group, the rider + two co-riders, never cancelled at seed time. The lesson
-//                    the UI cancels, for lines 979-983.
+//                    the UI cancels, for everything from "Cancelling your own spot from that
+//                    header" onward.
 //
-// The issue requires the seeded and the live-cancelled lessons to be different rows, so 974 cannot
-// be perturbed by the cancel tests' ordering. `headerCancel` is a third row for the same class of
-// reason one step further out: line 977's claim is that an *eligible* lesson offers the header
+// The issue requires the seeded and the live-cancelled lessons to be different rows, so the
+// read-only-row line cannot be perturbed by the cancel tests' ordering. `headerCancel` is a third
+// row for the same class of reason one step further out: the "detail-page header carries a
+// **Cancel** button" claim is that an *eligible* lesson offers the header
 // Cancel button, and `canCancelOwn` goes false the moment that spot is cancelled — reading it off
 // `liveCancel` would make the test order-dependent, which is the failure mode
 // checklist-phase5-lessons-cancel.spec.ts avoids by seeding extra rows rather than by sequencing.
@@ -37,11 +42,12 @@ import type { Lesson } from '@/lib/db/types'
 //   - **It must not cascade.** cancel_rider_participation flips `lessons.cancelled_at` once no
 //     active rider is left, and the detail page's own-row badge is gated on
 //     `lesson.cancelled_at === null` (OwnRiderNotesBlock's `showOwnRiderBadge`). On a normal
-//     lesson — always exactly one rider — the rider's own cancellation cascades and line 981's
-//     badge is replaced by the whole-lesson one, which is a different claim. Two co-riders leave
-//     two active rows, so the cascade branch stays unreached.
-//   - **Line 982 says "other riders", plural.** With a single co-rider, a page or an RPC that
-//     touched "the first other row" would satisfy the line by accident.
+//     lesson — always exactly one rider — the rider's own cancellation cascades and the
+//     detail-page **Cancelled** badge is replaced by the whole-lesson one, which is a different
+//     claim. Two co-riders leave two active rows, so the cascade branch stays unreached.
+//   - **"The rest of the lesson — other riders in a group lesson included" says "other riders",
+//     plural.** With a single co-rider, a page or an RPC that touched "the first other row" would
+//     satisfy the line by accident.
 //
 // ## Dates, and why the fee is assertable
 //
@@ -49,27 +55,30 @@ import type { Lesson } from '@/lib/db/types'
 // recent/older split and all three cards land in the first <ul>. `liveCancel` in particular sits
 // at least 34 hours out, which puts it clear of the 24-hour late-cancellation window: the RPC
 // recomputes lateness itself for a self-cancelling rider (it does not trust `p_is_late`), so the
-// distance is the only thing deciding it. Non-late plus non-cascading is what makes line 982's fee
+// distance is the only thing deciding it. Non-late plus non-cascading is what makes the
+// rest-of-the-lesson line's fee
 // reading meaningful — since #1278, `UPDATE lessons SET fee = 0` and the ledger PERFORM both fire
 // only when `lesson_type = 'normal' OR cascaded`, so an unchanged fee here is the gate holding,
 // and before #1278 this same reading would have found $0 on a lesson two riders still ride.
 //
 // `headerCancel` and `liveCancel` share day +2 deliberately: the dashboard renders one day at a
-// time, so putting both there gives lines 978 and 980 an un-cancelled sibling card in the same
-// frame as the cancelled one, rather than an absence asserted against an empty view.
+// time, so putting both there gives the "No Cancel button appears on the Lessons list or the
+// Dashboard" and Dashboard-badge lines an un-cancelled sibling card in the same frame as the
+// cancelled one, rather than an absence asserted against an empty view.
 //
 // ## Two service-client reads that verify the expected answer
 //
 // The suite's convention is that direct service-role reads verify preconditions and storage shape,
-// never the answer under test. Lines 982 and 983 are the sanctioned exception, and the issue's own
+// never the answer under test. The rest-of-the-lesson and instructor-notification lines are the
+// sanctioned exception, and the issue's own
 // text mandates both by name ("assert their status directly", "verify the `notifications` row
 // directly ... an e2e run reads the row with its own service client"). Neither answer is renderable
 // to this persona: a co-rider's Cancelled badge is gated on `canManageLesson` (a manager or the
 // instructing trainer, never a rider), and the notification belongs to someone else — a rider's own
 // cancellation notifies the instructor *and* every active manager
-// (`resolveCancellationRecipients`), of whom line 983 names the instructor. Each read carries its
-// own in-assertion control — the actor's own row in 982, the row count in 983 — so a query pointed
-// at the wrong barn or key fails rather than reading as a clean pass.
+// (`resolveCancellationRecipients`), of whom the notification line names the instructor. Each
+// read carries its own in-assertion control — the actor's own row for the first, the row count for
+// the second — so a query pointed at the wrong barn or key fails rather than reading as a clean pass.
 
 const COMET = 'Comet' // seededCancelled
 const JUNIPER = 'Juniper' // headerCancel
@@ -81,14 +90,15 @@ const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 const PARTICIPATION_NOTIFICATION_TITLE = 'Lesson participation cancelled'
 
-/** Planted on `seededCancelled` at seed time and read back off its detail page by line 974. */
+/** Planted on `seededCancelled` at seed time and read back off its detail page by the
+*  "read-only **Cancellation Notes** row" line. */
 const SEEDED_CANCELLATION_NOTE = 'Arena flooded — this lesson will be rescheduled next week.'
 
 /**
- * One distinct fee per lesson, none of them 0. Only `liveCancel`'s is asserted (line 982's
- * "unaffected"), but the three stay distinct because it is free at seed time and it is what makes
- * a *failure* legible: a test that landed on the wrong lesson reports a page whose fee names which
- * one it actually reached.
+ * One distinct fee per lesson, none of them 0. Only `liveCancel`'s is asserted (the
+ * rest-of-the-lesson line's "unaffected"), but the three stay distinct because it is free at seed
+ * time and it is what makes a *failure* legible: a test that landed on the wrong lesson reports a
+ * page whose fee names which one it actually reached.
  */
 const FEES = { seededCancelled: 501, headerCancel: 502, liveCancel: 503 } as const
 
@@ -111,7 +121,7 @@ let seededCancelled: Lesson
 let headerCancel: Lesson
 let liveCancel: Lesson
 
-/** The three group-lesson riders, name → membership id, for line 982's per-row read. */
+/** The three group-lesson riders, name → membership id, for the rest-of-the-lesson per-row read. */
 let groupRiderIds: Record<string, string>
 
 const barn = withBarn('phase6-cancellation', async ({ supabase, barn, members }) => {
@@ -131,7 +141,7 @@ const barn = withBarn('phase6-cancellation', async ({ supabase, barn, members })
   })
   // The manager's whole-lesson cancellation, planted rather than driven: this spec runs as the
   // rider, who cannot perform one. `isLate` is left at its default false, matching a manager
-  // cancelling a lesson still days out — line 974 reads the notes, not the fee.
+  // cancelling a lesson still days out — that line reads the notes, not the fee.
   await cancelLesson(supabase, barn, { lessonId: seededCancelled.id, notes: SEEDED_CANCELLATION_NOTE })
 
   headerCancel = await addUnpaidLesson(supabase, barn, {
@@ -179,7 +189,8 @@ function detailHeader(page: Page): Locator {
 
 /**
  * The detail page header's action group, addressed as the sibling of the block holding the `<h1>`
- * rather than by its Tailwind classes. That relationship is what makes line 977 a claim about the
+ * rather than by its Tailwind classes. That relationship is what makes the header **Cancel**
+ * button line a claim about the
  * *header* rather than about the page: a Cancel control rendered anywhere else falls outside this
  * locator entirely. Lifted from checklist-phase5-lessons-cancel.spec.ts, whose trainer-side line
  * makes the same claim about the same markup — duplicated rather than extracted, per this batch's
@@ -218,7 +229,8 @@ function cancelledBadges(scope: Locator): Locator {
 }
 
 /**
- * Every Cancel *control* on the page, whatever element it is. Line 978's claim is that the surface
+ * Every Cancel *control* on the page, whatever element it is. The "No Cancel button appears on
+ * the Lessons list or the Dashboard" claim is that the surface
  * offers no way to cancel, so both shapes the app uses for one are counted: the detail header's
  * `<Button href>` renders a link, while a `<Button>` without one renders a button.
  *
@@ -287,10 +299,11 @@ async function cancelOwnSpotFromHeader(page: Page, lesson: Lesson) {
 }
 
 // ---------------------------------------------------------------------------
-// The lesson the manager cancelled — lines 973 and 974
+// The lesson the manager cancelled — the "record cancellation notes" Setup and the read-only
+// **Cancellation Notes** row it plants for
 // ---------------------------------------------------------------------------
 
-// One test for two checkboxes: 973 is the setup line whose whole content is "an e2e run seeds the
+// One test for two checkboxes: the setup line's whole content is "An e2e run seeds the
 // cancelled lesson and its notes in the rider's own barn instead", and this is the test that seed
 // exists for. That pairing is the same shape every other converted Setup line in Phases 5 and 6
 // carries, each tagged with the name of the test its seed serves.
@@ -298,7 +311,7 @@ async function cancelOwnSpotFromHeader(page: Page, lesson: Lesson) {
 // Both readings belong to one page state and neither means anything alone: notes rendered into an
 // editable field are not read-only, and zero textboxes on a page showing no notes is vacuous.
 // Read-only is asserted as the absence of a *textbox* specifically rather than of controls
-// generally — the rider's own header carries a Cancel link on an eligible lesson (line 977), so a
+// generally — the rider's own header carries a Cancel link on an eligible lesson, so a
 // blanket no-controls assertion would be asserting something false about the app.
 test('rider_manager_cancelled_lesson_shows_read_only_cancellation_notes @rider', async ({ page }) => {
   await page.goto(lessonPath(seededCancelled))
@@ -311,7 +324,8 @@ test('rider_manager_cancelled_lesson_shows_read_only_cancellation_notes @rider',
 })
 
 // ---------------------------------------------------------------------------
-// The Cancel button, and the two surfaces that carry none — lines 977 and 978
+// The Cancel button, and the two surfaces that carry none — "An enrolled lesson's detail-page
+// header carries a **Cancel** button" and "No Cancel button appears on the Lessons list or the Dashboard"
 // ---------------------------------------------------------------------------
 
 // The instructor half is not decoration: it is what distinguishes "this eligible lesson offers a
@@ -357,7 +371,8 @@ test('rider_sees_no_cancel_button_on_the_lessons_list_or_the_dashboard @rider', 
 })
 
 // ---------------------------------------------------------------------------
-// Cancelling her own spot — lines 979-983
+// Cancelling her own spot — "Cancelling your own spot from that header" through the instructor
+// notification line
 // ---------------------------------------------------------------------------
 
 // One cancellation, read five ways. Serial because the mutation happens once and the four tests
@@ -367,7 +382,8 @@ test('rider_sees_no_cancel_button_on_the_lessons_list_or_the_dashboard @rider', 
 // restart cannot re-run beforeAll and re-seed the barn underneath a test still expecting the
 // cancelled state.
 test.describe.serial('rider cancels her own spot on a group lesson', () => {
-  // The mutation lives in this test rather than in a hook because it *is* line 979's subject:
+  // The mutation lives in this test rather than in a hook because it *is* the "Cancelling your
+  // own spot from that header" subject:
   // "cancelling your own spot from that header" names the interaction, and the list badge is what
   // the line claims follows from it.
   //
@@ -423,7 +439,8 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
     }).toEqual({ ownRow: 1, header: 0 })
   })
 
-  // Line 982's claim is about rows this persona's UI structurally cannot show, so the co-riders'
+  // The "other riders in a group lesson included — is unaffected" claim is about rows this
+  // persona's UI structurally cannot show, so the co-riders'
   // status is read with the spec's own service client (see the header note on that exception). The
   // actor's own `true` is the control living inside the same assertion: a read pointed at the
   // wrong barn, the wrong lesson or a stale membership map reports three falses and fails there,
@@ -471,7 +488,8 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
   //
   // A rider's own cancellation notifies the instructor *and* every active manager
   // (resolveCancellationRecipients' `rider_participation` + `actorRole === 'rider'` branch), so this
-  // barn ends up with two rows of this type. Line 983 is about the instructor's, and the query is
+  // barn ends up with two rows of this type. The "The instructor receives a \"Lesson participation
+  // cancelled\" notification" line is about the instructor's, and the query is
   // keyed on his user id — which is why the equality below can still be an exact one-row match
   // rather than a membership check over an open-ended recipient list.
   //

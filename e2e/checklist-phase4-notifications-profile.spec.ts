@@ -17,8 +17,10 @@
 // covers: src/app/terms/page.tsx
 // covers: src/app/privacy/page.tsx
 //
-// checklists/pre-release/phase-4-manager-verification.md 576-603: the notification bell, the profile page reached from
-// the avatar menu, the four static pages off that menu, and the ~390px mobile spot-check.
+// checklists/pre-release/phase-4-manager-verification.md, the block from "Notification bell shows
+// an unread-count badge" through "The Horses list stays readable without horizontal scrolling":
+// the notification bell, the profile page reached from the avatar menu, the four static pages off
+// that menu, and the ~390px mobile spot-check.
 //
 // The `covers:` block above was written by enumerating the modules this file actually drives,
 // not by trusting `scripts/select-specs.sh --lint`: that lint catches a *missing* header and a
@@ -55,8 +57,9 @@ import { mustSucceed } from '@/lib/db/service-role'
 const HORSE = 'Marigold'
 const TIER = 'Standard'
 
-// The nine manager nav labels, in the order phase-4-manager-verification.md line 586 enumerates
-// them. Written out rather than imported from `buildNavLinks`: the checklist line *is* the
+// The nine manager nav labels, in the order phase-4-manager-verification.md's "**full 9-link
+// manager nav**" line enumerates them. Written out rather than imported from `buildNavLinks`:
+// the checklist line *is* the
 // specification, and importing the code under test would make this assertion agree with any
 // future reordering or omission in it.
 const MANAGER_NAV_LABELS = [
@@ -78,12 +81,12 @@ const MANAGER_NAV_LABELS = [
  * one type would collapse to one and the whole "lists the notifications" claim would be asserted
  * against a single row.
  *
- * **Exactly one of them is already read**, which is the only reason line 765's badge assertion
- * says anything. `upsertNotification` hard-codes `read_at: null`, so with an all-unread fixture
- * `unreadCount` and `notifications.length` are the same number — and a bell computing
+ * **Exactly one of them is already read**, which is the only reason the "unread-count badge" line's
+ * assertion says anything. `upsertNotification` hard-codes `read_at: null`, so with an all-unread
+ * fixture `unreadCount` and `notifications.length` are the same number — and a bell computing
  * `notifications.length`, ignoring `read_at` entirely, renders an identical badge. The word the
- * checklist line turns on is *unread*, so the fixture has to be able to tell those apart: the
- * badge reads 3 while the list holds 4.
+ * checklist line turns on is *unread*, so the fixture has to be able to tell those apart: the badge
+ * reads 3 while the list holds 4.
  *
  * **`day` is a fixed past date, never today.** The bell renders `formatBarnDate(created_at)`.
  * Seeded at today's date the assertion would be vacuous in the fourth shape: a bell that ignored
@@ -343,8 +346,9 @@ function desktopNavLabels(page: Page) {
 }
 
 test('the_profile_nav_bar_carries_the_full_nine_link_manager_nav @manager', async ({ page }) => {
-  // Both pages, because line 772 makes two claims: the nine links, *and* "same set as the
-  // regular barn pages". Reading only `/profile` leaves the second clause unasserted, and it is
+  // Both pages, because the "**full 9-link manager nav**" line makes two claims: the nine
+  // links, *and* "same set as the regular barn pages". Reading only `/profile` leaves the
+  // second clause unasserted, and it is
   // the clause a divergence between ProfileLayout's own `buildNavLinks` call and the protected
   // layout's would break. Full arrays rather than a length or a containment check, so the
   // comparison pins the set, the order, and that nothing else is in either row.
@@ -580,8 +584,9 @@ test('the_back_link_on_privacy_returns_to_the_barn_list @manager', async ({ page
 // EVERY test in this block asserts the width it ran at, and that is not decoration. Measured,
 // not assumed: with the viewport swapped to 1280x800 and nothing else changed, all four of
 // these tests still passed — so before this pin the "at this width" half of each checklist line
-// was unasserted, and lines 790/791 in particular, whose entire claim is about a narrow
-// viewport, were being satisfied by a desktop-width render.
+// was unasserted, and the "Lessons list stays readable without horizontal scrolling" and
+// "Horses list stays readable without horizontal scrolling" lines in particular, whose entire
+// claim is about a narrow viewport, were being satisfied by a desktop-width render.
 //
 // A second measurement worth recording, because it bounds what the two tap tests prove:
 // deleting `useOutsideDismiss`'s `touchstart` listener does NOT fail them. Chromium's tap

@@ -3,17 +3,14 @@
 //
 // /barn/<slug>/finances/outstanding through the two roles that can reach it, plus the Dashboard
 // Reminders cards that are their only nav path to it (neither nav carries a Finances link — that
-// claim belongs to slice 1, which owns the nav link sets; the clause in lines 907/989 is the
-// rationale for why these cards matter, not a second assertion).
+// claim belongs to slice 1, which owns the nav link sets; the "Reminders" clause in the unpaid-
+// lessons-card lines is the rationale for why these cards matter, not a second assertion).
 //
-// Lines 902-903 and 906-907 (Phase 5), 983-990 (Phase 6) of the pre-#1358 monolithic
-// PRE_RELEASE_TEST_CHECKLIST.md — the numbering #1325 filed them under, and the identifier every
-// `P5 nnn`/`line nnn` below uses. It is deliberately not the *current* number: fifteen slices are
-// landing against this file concurrently, so a live line number is stale by the next merge, and a
-// comment nobody can re-derive is worse than one that names a fixed reference. Those twelve lines
-// sit at checklists/pre-release/phase-5-trainer.md 96-97 and 100-101, and phase-6-rider.md 74-81,
-// as of #1358's split — the one citation to re-check before merge, since the tags themselves are
-// what pin the mapping.
+// The trainer's Outstanding and Dashboard Reminders lines in
+// checklists/pre-release/phase-5-trainer.md, and the rider's counterparts in phase-6-rider.md.
+// #1325 filed them under the pre-#1358 monolith's line numbers and every heading below carried
+// one; #1366 replaced those with the quoted fragments, which stay true across the renumberings a
+// line number cannot survive. The tags themselves are what pin the mapping.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the
@@ -32,15 +29,17 @@
 //
 // ## Why one test mutates, and why the order dependence is belt-and-braces
 //
-// P6 987 and P6 990 (#938) are contradictory preconditions on one query in one barn — 987 needs
-// the rider to have unpaid lesson fees, 990 needs them to have none while still holding a
-// cancellation fee — and a spec file gets exactly one barn per project. So 990 arranges its own
-// state: it collects the rider's only unpaid lesson fee before asserting. It is declared last,
-// but nothing here depends on that, and that is the property worth checking rather than the
-// ordering: both tests are standalone-safe under a bare --grep. 987 never mutates, and 990
-// performs its own arrange regardless of what ran before it — each Playwright job re-seeds its
-// own barn in beforeAll whichever tests the grep selected — so neither can pass only by virtue
-// of running in file order. Declaration order is belt-and-braces, not load-bearing.
+// The rider's two "N unpaid lessons" card lines — the plain "With unpaid lessons" one and #938's
+// "card still appears (its count includes the cancellation fee)" one — are contradictory
+// preconditions on one query in one barn: the first needs the rider to have unpaid lesson fees, the
+// second needs them to have none while still holding a cancellation fee — and a spec file gets
+// exactly one barn per project. So the #938 one arranges its own state: it collects the rider's
+// only unpaid lesson fee before asserting. It is declared last, but nothing here depends on that,
+// and that is the property worth checking rather than the ordering: both tests are standalone-safe
+// under a bare --grep. The plain one never mutates, and the #938 one performs its own arrange
+// regardless of what ran before it — each Playwright job re-seeds its own barn in beforeAll
+// whichever tests the grep selected — so neither can pass only by virtue of running in file order.
+// Declaration order is belt-and-braces, not load-bearing.
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addHorse,
@@ -116,8 +115,9 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
   // Two late rider cancellations. sync_rider_cancellation_fee DELETEs the uncollected lesson_fee
   // row and inserts a rider_cancellation_fee keyed on lesson_rider_id, and
   // get_outstanding_transactions resolves outstanding *lessons* off lesson_fee alone — so each of
-  // these contributes a Cancellation Fee row and no Lesson row. That is what lets 990's state
-  // exist at all, and it is why the expected row sets below are exactly four and two entries.
+  // these contributes a Cancellation Fee row and no Lesson row. That is what lets #938's
+  // "card still appears" state exist at all, and it is why the expected row sets below are
+  // exactly four and two entries.
   const trainerCancelled = await lesson(
     TRAINER_CANCELLED_FEE, -4, members.trainer.membershipId, members.rider2.membershipId
   )
@@ -128,7 +128,8 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
   })
 
   // Instructed by the manager, so it is invisible to the trainer's own-instructor filter — the
-  // falsifier for P5 903 — while being the rider's own fee for P6 985.
+  // falsifier for "uncollected cancellation fees for lessons you instruct" — while being the
+  // rider's own fee for "her own uncollected late-cancellation fees".
   const riderCancelled = await lesson(
     RIDER_CANCELLED_FEE, -5, members.manager.membershipId, members.rider.membershipId
   )
@@ -138,8 +139,8 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
     isLate: true,
   })
 
-  // The rider's own past-due charges, one of each kind (P6 984), which also makes the leases card
-  // plural (P6 988).
+  // The rider's own past-due charges, one of each kind (for "her own outstanding lease/boarding
+  // charges"), which also makes the "N unpaid leases/boarding" card line plural.
   await addLeaseCharge(supabase, barn, {
     monthsAgo: 2,
     riderId: members.rider.membershipId,
@@ -154,8 +155,8 @@ const barn = withBarn('phase56-outstanding', async ({ supabase, barn, members })
     fee: RIDER_BOARD_FEE,
   })
 
-  // The stub rider's agreement — P6 986's falsifier. Unscoped, this adds a fifth row with a
-  // second 'Lease' entry to the Type column the line is about.
+  // The stub rider's agreement — the falsifier for "no entries for other riders' agreements".
+  // Unscoped, this adds a fifth row with a second 'Lease' entry to the Type column that line is about.
   await addLeaseCharge(supabase, barn, {
     monthsAgo: 2,
     riderId: members.rider2.membershipId,
@@ -233,10 +234,11 @@ async function reminderCardHrefs(page: Page): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's Outstanding page (lines 902-903)
+// Phase 5 — the trainer's Outstanding page: "`/barn/dev-barn/finances/outstanding` works and
+// shows **only your own** outstanding lessons" and its cancellation-fee companion
 // ---------------------------------------------------------------------------
 
-// The page loading at all is part of line 902's claim ("works"), and outstandingRows' waitFor is
+// The page loading at all is part of that line's claim ("works"), and outstandingRows' waitFor is
 // what asserts it: a 404 or an empty table fails before the comparison is reached.
 test('trainer_outstanding_lists_only_the_lessons_they_instruct @trainer', async ({ page }) => {
   await page.goto(outstandingPath())
@@ -251,7 +253,8 @@ test('trainer_outstanding_lists_uncollected_cancellation_fees_for_lessons_they_i
 })
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's Dashboard Reminders card (lines 906-907)
+// Phase 5 — the trainer's Dashboard Reminders card: "With unpaid lessons among the ones you
+// instruct, the Dashboard shows a \"Reminders\" section"
 // ---------------------------------------------------------------------------
 
 // unpaidLessonsCount is outstandingLessons.length + outstandingCancellationFees.length (see the
@@ -283,7 +286,8 @@ test('trainer_unpaid_lessons_card_navigates_to_the_outstanding_page @trainer', a
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's Outstanding page (lines 983-986)
+// Phase 6 — the rider's Outstanding page: "shows only Dana's outstanding lessons" through
+// "no entries for other riders' agreements"
 // ---------------------------------------------------------------------------
 
 test('rider_outstanding_lists_only_their_own_lessons @rider', async ({ page }) => {
@@ -312,7 +316,8 @@ test('rider_outstanding_lists_their_own_uncollected_late_cancellation_fee @rider
   ])
 })
 
-// The Type column read across *every* row, which is both halves of line 986 in one comparison:
+// The Type column read across *every* row, which is both halves of "That page has a Type column,
+// with no entries for other riders' agreements" in one comparison:
 // each row's Type cell is populated (an empty or missing cell fails), and the set is complete at
 // four (the stub rider's agreement would add a second 'Lease' and fail). Stated as the whole
 // table rather than as an absence so a page that rendered nothing cannot satisfy it.
@@ -323,7 +328,8 @@ test('rider_outstanding_type_column_carries_no_other_riders_agreements @rider', 
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's Dashboard Reminders cards (lines 987-990)
+// Phase 6 — the rider's Dashboard Reminders cards: the "N unpaid lessons" and "N unpaid
+// leases/boarding" card lines
 // ---------------------------------------------------------------------------
 
 // The same derivation as the trainer's: one outstanding lesson plus one cancellation fee, and two
@@ -357,9 +363,10 @@ test('rider_reminder_cards_link_to_the_outstanding_page @rider', async ({ page }
   expect(await reminderCardHrefs(page)).toEqual([outstandingPath(), outstandingPath()])
 })
 
-// Line 990 (#938). Arranged rather than seeded, and declared last, for the reason in the header:
-// 987 above needs this rider to have an unpaid lesson fee and this line needs them to have none,
-// which one barn cannot hold at once. Collecting the rider's only unpaid lesson leaves the
+// The "card still appears (its count includes the cancellation fee)" line (#938). Arranged rather
+// than seeded, and declared last, for the reason in the header: the plain "With unpaid lessons"
+// card line above needs this rider to have an unpaid lesson fee and this line needs them to have
+// none, which one barn cannot hold at once. Collecting the rider's only unpaid lesson leaves the
 // cancellation fee as the sole contributor to unpaidLessonsCount — so the card appearing at all
 // is #938's claim, and the *singular* 'lesson' is the evidence the count came from the fee
 // rather than from a lesson that lingered.

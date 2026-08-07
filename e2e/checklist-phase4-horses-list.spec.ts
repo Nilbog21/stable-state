@@ -3,7 +3,9 @@
 //
 // The Horses list's Available section: its exertion sort, one exhaustion bar per card, the three
 // colour bands, and the breakdown popover's open / retap-to-close / tap-outside-to-close /
-// does-not-navigate behaviours (checklists/pre-release/phase-4-manager-verification.md 204-210).
+// does-not-navigate behaviours (checklists/pre-release/phase-4-manager-verification.md, the block
+// from "The Available section is sorted by total exertion" through "Tapping the bar does not
+// navigate to the horse detail page").
 //
 // Every test does its own goto and mutates nothing, so this file is a set of independent reads of
 // one seeded barn rather than a chain — no test.describe.serial, and no test can be running

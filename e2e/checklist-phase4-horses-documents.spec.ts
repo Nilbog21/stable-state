@@ -11,7 +11,8 @@
 // link and the bytes it serves, delete, the over-limit rejection and the two pending-upload
 // affordances, and then the expiration reminder lifecycle — set on upload, edited inline,
 // edited without a reload, driven past due, and surfacing as a Dashboard Reminders card that
-// links back to the horse (checklists/pre-release/phase-4-manager-verification.md 252-265).
+// links back to the horse (checklists/pre-release/phase-4-manager-verification.md, the block from
+// "Documents section: tap **Add Document**" through "That card links back to this horse").
 //
 // Four horses, because each block needs a starting state the others would destroy. Willow
 // carries the upload → list → open → delete chain and must end empty. Rowan takes the two
@@ -318,7 +319,9 @@ const uploadForm = (page: Page) => page.locator('main form')
  * The submit button, located structurally rather than by its accessible name.
  *
  * Not decoration: the label is `{pending ? 'Uploading…' : 'Upload'}`, so a name locator stops
- * matching at exactly the moment lines 447/448 need it — and a *non-exact* name match would
+ * matching at exactly the moment the "Upload button disables while the upload is pending" and
+ * "indeterminate progress bar shows while that upload is pending" lines need it — and a
+ * *non-exact* name match would
  * match "Uploading…" as a substring of nothing and "Upload" as a prefix of it, which is the
  * containment hazard #1202 found, live in this form.
  */

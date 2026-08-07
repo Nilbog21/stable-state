@@ -3,7 +3,8 @@
 // What a **non-manager** sees on somebody else's member detail page. #863 broadened Contact Info
 // to any active barn member and #779 narrowed rider documents to manager-and-self, and neither
 // broadening had e2e coverage anywhere in this suite until now (#1251 filed exactly that gap).
-// checklists/pre-release/phase-5-trainer.md lines 88-94, and phase-6-rider.md lines 88-92.
+// checklists/pre-release/phase-5-trainer.md's other-members block, and phase-6-rider.md's
+// counterparts plus its photographed-member lines.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts).
@@ -19,23 +20,26 @@
 // The page is reachable at all because getMembershipByIdForBarn falls back from the direct
 // barn_memberships select (which RLS denies a non-manager for anyone else's row) to the
 // get_active_barn_member_summaries RPC, synthesising invite_token: null. That fallback is what
-// lines 898/999's "loads (no 404)" is actually asserting.
+// the two "opened from the roster" lines' "loads (no 404)" is actually asserting.
 //
 // ## Five fixture decisions worth stating
 //
 // 1. **The blank-contact-fields subject is a stub with NULL columns, not empty strings.**
 //    ContactInfo renders `profile?.phone ?? '—'` — `??`, not `||` — so an empty string would
-//    render as empty rather than as the em-dash line 896 names. addManagedMember never writes the
+//    render as empty rather than as the em-dash the "shows Contact Info as read-only" line
+//    names. addManagedMember never writes the
 //    contact columns at all, which is precisely the state needed.
 //
 // 2. **Blake's contact fields are populated, and that is what makes Harper's em-dashes mean
-//    something.** A locator that answered '—' unconditionally would satisfy line 896 while
-//    asserting nothing; line 901 drives the literally same locator to real seeded values in the
+//    something.** A locator that answered '—' unconditionally would satisfy that line while
+//    asserting nothing; "Blake's (a rider's) detail page likewise shows their **Contact Info**
+//    section" drives the literally same locator to real seeded values in the
 //    same file, so the two are each other's control.
 //
-// 3. **The "another member" subject is the shared Test Manager login, not a fourth stub.** Lines
-//    898 and 999 both admit a manager ("Another trainer's **or a manager's**", "(a trainer, a
-//    manager)"). A *claimed* member is also the historically-buggy case: ARCHITECTURE.md records
+// 3. **The "another member" subject is the shared Test Manager login, not a fourth stub.** The
+//    two "opened from the roster" lines both admit a manager ("Another trainer's **or a
+//    manager's**", "(a trainer, a manager)"). A *claimed* member is also the historically-buggy
+//    case: ARCHITECTURE.md records
 //    auth_can_read_barn_member_profile being added because a non-manager reading a manager's
 //    profile silently got zero rows and fell back to "Unknown Member". A managed stub would
 //    exercise the weaker `user_id IS NULL` path instead. Nothing here *writes* a shared login's
@@ -47,7 +51,8 @@
 //    document on the manager and a rider document on Blake, a *manager* viewing either page would
 //    render the section, so the absence is a claim about the gate rather than about the data.
 //
-// 5. **The photographed subject is Quinn Ashford, deliberately *not* "Emery".** Line 1002 names
+// 5. **The photographed subject is Quinn Ashford, deliberately *not* "Emery".** The "Emery's
+//    member detail page (her photo is seeded) displays that photo" line names
 //    Emery, but the checklist's Emery is a *claimed* rider seeded in Phase 1 and reached via
 //    change-user.sh (see its "Seeded baseline after reset" line), so reusing that name for an
 //    unclaimed stub would invert what the checklist means by it. That is not a fresh judgement:
@@ -60,7 +65,7 @@
 //    changes, which is how this whole batch handles a fixture whose name differs from the
 //    dev-barn walkthrough's.
 //
-// ## Line 999's parenthetical is read as exemplification (#1324, PR #1345)
+// ## The "(a trainer, a manager)" parenthetical is read as exemplification (#1324, PR #1345)
 //
 // "Another member's detail page (a trainer, a manager)" names which *kinds* of member count, not
 // two navigations to assert. The mechanism under test — auth_can_read_barn_member_profile — has no
@@ -136,7 +141,8 @@ let seededBlakeContact: string[]
 const barn = withBarn('phase56-members-others', async ({ supabase, barn, members }) => {
   managerMembershipId = members.manager.membershipId
 
-  // The falsifiability control for lines 900/1001 — see header note 4. staff_documents.trainer_id
+  // The falsifiability control for the two "no Documents section" lines — see header note 4.
+  // staff_documents.trainer_id
   // is a barn_memberships.id and docs/architecture/schema.md states it deliberately admits a
   // *manager* membership, so this is the idiomatic row rather than a contrivance.
   await addStaffDocument(supabase, barn, members.manager, {
@@ -163,7 +169,8 @@ const barn = withBarn('phase56-members-others', async ({ supabase, barn, members
     blakeProfile.emergency_contact_phone,
   ]
 
-  // The rider-document half of the same control, for line 902. Keyed on the stub's membership id
+  // The rider-document half of the same control, for "Blake's detail page shows no Documents
+  // section". Keyed on the stub's membership id
   // in both the row and the storage path, addManagedMember never having written a user_id.
   const blakeMember: SeededMember = { membershipId: blake.membershipId, profileId: blake.profileId, userId: null }
   await addRiderDocument(supabase, barn, blakeMember, {
@@ -276,10 +283,12 @@ async function openFromTheRoster(page: Page, name: string, membershipId: string)
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — a trainer on an unclaimed rider's page (lines 896-897)
+// Phase 5 — a trainer on an unclaimed rider's page: "Harper Test's member detail page shows
+// Contact Info as read-only" and "That page shows no Save button for Contact Info"
 // ---------------------------------------------------------------------------
 
-// Harper's contact columns are NULL rather than empty (header note 1), and line 901 below drives
+// Harper's contact columns are NULL rather than empty (header note 1), and the rider's
+// Contact Info test below drives
 // this same locator to real values, so neither half of this can pass by coincidence.
 test('trainer_sees_em_dashes_for_a_stub_members_blank_contact_fields @trainer', async ({ page }) => {
   await page.goto(memberUrl(harperId))
@@ -294,7 +303,8 @@ test('trainer_sees_no_save_button_in_contact_info @trainer', async ({ page }) =>
 })
 
 // ---------------------------------------------------------------------------
-// Phase 5 — a trainer on a manager's page (lines 898-900)
+// Phase 5 — a trainer on a manager's page: "Another trainer's or a manager's member detail page,
+// opened from the roster" through "That page shows **no Documents section**"
 // ---------------------------------------------------------------------------
 
 // The heading is destination-only markup: the roster carries this name as a *link*, never as a
@@ -323,7 +333,8 @@ test('trainer_sees_no_documents_section_on_a_managers_detail_page @trainer', asy
 })
 
 // ---------------------------------------------------------------------------
-// Phase 5 — a trainer on a rider's page (lines 901-902)
+// Phase 5 — a trainer on a rider's page: "Blake's (a rider's) detail page likewise shows their
+// **Contact Info** section" and "Blake's detail page shows no Documents section"
 // ---------------------------------------------------------------------------
 
 // Compared against the values the seeding UPDATE returned rather than against BLAKE_CONTACT, so
@@ -342,7 +353,8 @@ test('trainer_sees_no_documents_section_on_a_riders_detail_page @trainer', async
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — a rider on a manager's page (lines 999-1001)
+// Phase 6 — a rider on a manager's page: "Another member's detail page (a trainer, a manager),
+// opened from the roster" through "That page shows no Documents section"
 // ---------------------------------------------------------------------------
 
 // The rider half of the same three claims. This is the pairing that matters most: #863 opened
@@ -364,7 +376,8 @@ test('rider_sees_no_documents_section_on_a_managers_detail_page @rider', async (
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — a rider on a photographed member's page (lines 1002-1003)
+// Phase 6 — a rider on a photographed member's page: "Emery's member detail page (her photo is
+// seeded) displays that photo" and its no-controls companion
 // ---------------------------------------------------------------------------
 
 // #1004: any active barn member can view any other's photo. Asserted by digest so the claim is

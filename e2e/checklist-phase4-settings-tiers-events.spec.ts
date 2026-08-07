@@ -2,7 +2,8 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 //
 // Manage Barn's two sub-page CRUD flows (checklists/pre-release/phase-4-manager-verification.md
-// lines 487-494 and 527-534): lesson tiers — the non-retroactive amber warnings, the new-tier instructor-cut
+// the tier block from "change its price → an amber warning" through "**Reactivate** it", and the
+// Barn Events block): lesson tiers — the non-retroactive amber warnings, the new-tier instructor-cut
 // pre-fill, and default/deactivate/reactivate as the New Lesson form sees them; and barn
 // events — create, the visible-to defaults, edit, and delete.
 //
@@ -11,8 +12,9 @@
 // default/active state is actually observable. A change to LessonForm's tier handling breaks
 // this file, so it declares that route.
 //
-// Adjacent slices: #1204 owns 476-486 and 495-512, #1252 owns 513-526, #1206/#1240 own
-// 535-575. Nothing outside 487-494 and 527-534 is touched here.
+// Adjacent slices: #1204 owns the accordions and settings fields, #1252 the barn-local instant
+// items, #1206/#1240 the Data Backup block. Nothing outside the tier and Barn Events blocks is
+// touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { settledTextContents } from './support/read'
@@ -30,18 +32,21 @@ import { calendarDate } from '@/lib/local-day'
 /**
  * Distinct from every value the pre-fill could take by accident: 0 is TierForm's own
  * `defaultInstructorCut` prop default, 25 is both `addTier`'s default and the barn default
- * the checklist names, and 12 is what all three seeded tiers carry. So line 680 can only
+ * the checklist names, and 12 is what all three seeded tiers carry. So the "Instructor Cut field
+ * pre-fills from the barn's Default Instructor Cut" line can only
  * pass by actually reading `barns.default_instructor_cut`.
  */
 const BARN_DEFAULT_INSTRUCTOR_CUT = 37
 
 /**
  * `LessonForm` falls back to `tiers.find(t => t.is_default) ?? tiers[0]`, and
- * `getTiersByBarn` orders by name. Making WINTER the tier line 681 promotes puts the
+ * `getTiersByBarn` orders by name. Making WINTER the tier the "Set a different tier as
+ * **default**" line promotes puts the
  * expected answer clear of all four fallbacks — alphabetical-first, insertion-first,
  * `created_at`-first and the previous default — every one of which is ARENA.
  *
- * GROUP keeps the checklist's own name for the tier lines 682/683 deactivate and reactivate.
+ * GROUP keeps the checklist's own name for the tier the **Deactivate** and **Reactivate** lines act
+ * on.
  */
 const ARENA = { name: 'Arena Basics', price: 40 }
 const GROUP = { name: 'Group Special', price: 55 }
@@ -55,10 +60,10 @@ const PRICE_WARNING = 'Changing the price will not affect past lessons'
 const INSTRUCTOR_CUT_WARNING = 'Changing the instructor cut will not affect past lessons'
 
 /**
- * Line 676 claims an *amber* warning and line 678 claims "the same style amber warning", so
- * the colour is part of both claims and text equality alone leaves it unasserted. TierForm
- * gives both warnings this identical class string — asserting the same literal in both tests
- * is what makes "same style" a checked claim rather than a described one.
+ * The price line claims "an amber warning" and the Instructor Cut line claims "the same style amber
+ * warning", so the colour is part of both claims and text equality alone leaves it unasserted.
+ * TierForm gives both warnings this identical class string — asserting the same literal in both
+ * tests is what makes "same style" a checked claim rather than a described one.
  */
 const AMBER_WARNING_CLASS = 'mt-1 text-xs text-amber-600 dark:text-amber-400'
 
@@ -68,7 +73,8 @@ const GROUP_OPTION = 'Group Special - $55'
 const WINTER_OPTION = 'Winter Intensive - $80'
 const CUSTOM_OPTION = 'Custom'
 
-// The event lines 714-720 create through the UI. Fixed 2030 wall clock, entered in the
+// The event the Barn Events lines create through the UI, from "Create an event with a title,
+// date/hour, and notes" through "the event no longer appears". Fixed 2030 wall clock, entered in the
 // barn's own frame and displayed in it, so the expected string holds whatever zone the barn
 // is in (#1222).
 const NEW_EVENT = {
@@ -81,7 +87,8 @@ const NEW_EVENT_DISPLAY_DATE = 'May 14, 2030, 2:00 PM'
 const NEW_EVENT_VISIBLE_TO = 'manager, trainer, rider'
 
 /**
- * The survivor. Line 720 asserts the deleted event is gone from the list, and an assertion
+ * The survivor. "**Confirm Delete** → the event no longer appears in the Barn Events list"
+ * asserts the deleted event is gone from the list, and an assertion
  * that a list no longer holds something is satisfied just as well by a list that renders
  * nothing at all — so the expectation pairs that absence with this row's presence in a
  * single equality. Its 2031 date sorts it after NEW_EVENT under `getEventsByBarn`'s
@@ -225,7 +232,8 @@ async function save(page: Page) {
 }
 
 // ---------------------------------------------------------------------------
-// Lesson tiers — checklist lines 676-683
+// Lesson tiers — the checklist block from "change its price → an amber warning" through
+// "**Reactivate** it → it appears again when creating a lesson"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Lesson Tiers', () => {
@@ -259,7 +267,7 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
     await page.locator('#tier-instructor-cut').fill('99')
 
     // Same shape and the same expected class as the price warning above — which is exactly
-    // what line 678's "the same style amber warning" claims.
+    // what the Instructor Cut line's "the same style amber warning" claims.
     await expect(
       fieldBlock(page, 'tier-instructor-cut').getByText(INSTRUCTOR_CUT_WARNING, { exact: true })
     ).toHaveClass(AMBER_WARNING_CLASS)
@@ -339,7 +347,8 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Barn events — checklist lines 713-720
+// Barn events — the checklist block from "**Add Event** under Barn Events" through
+// "**Confirm Delete** → the event no longer appears in the Barn Events list"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Barn Events', () => {
@@ -389,7 +398,8 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     const row = eventRow(page, section, NEW_EVENT.title)
 
     // textContent, which is lowercase — the cell is `<Td className="capitalize">`, so the
-    // screen reads "Manager, Trainer, Rider" while the node text is what line 716 quotes.
+    // screen reads "Manager, Trainer, Rider" while the node text is what the checklist's
+    // "manager, trainer, rider" visible-to line quotes.
     // Asserted as the line writes it; the CSS transform is noted, not encoded.
     await expect(row.locator('td').nth(2)).toHaveText(NEW_EVENT_VISIBLE_TO)
   })
@@ -418,8 +428,9 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     const boxes = page.locator('input[name="visible_to_roles"]:not([value="rider"])')
     await boxes.first().waitFor()
 
-    // This is a companion control to the test above, not an independent observation: line 718
-    // is a "still checked" claim, so its expected state is also its pre-state and no amount of
+    // This is a companion control to the test above, not an independent observation: "Manager and
+    // Trainer are still checked there" is a "still checked" claim, so its expected state is also
+    // its pre-state and no amount of
     // structuring makes it falsifiable by a dropped write — the test above is what catches
     // that. What it does independently discriminate is *which* event's form was loaded, since
     // the other seeded event is `visibleToRoles: ['manager']` and so has Trainer unchecked.

@@ -97,19 +97,22 @@ const FAR = () => hoursFromNow(72)
  *
  * - **`notesTextarea` and `notesSave` are two separately seeded already-cancelled lessons.** The
  *   checklist says "on that same lesson", read here as *that same kind of lesson* — the reading
- *   the phase-4 cancel specs already established — because line 859 saves notes onto the lesson
- *   line 858 inspects. Both are seeded cancelled with **no** notes, so the note line 859 reads
- *   back can only have come from line 859's own save.
+ *   the phase-4 cancel specs already established — because "enter cancellation notes in that
+ *   textarea" saves notes onto the lesson the textarea line inspects. Both are seeded cancelled
+ *   with **no** notes, so the note read back can only have come from that line's own save.
  * - **`recurringRead` and `recurringStop` carry two different series.** Stopping a series unmounts
- *   the very block lines 862/863 assert on, so line 864 gets its own.
+ *   the very block the recurring-indicator and **Stop Recurring Lessons** lines assert on, so
+ *   "Stopping the series from there" gets its own.
  *
- * `members.manager` is the second instructor line 857 needs. `addMemberships` already seeds it
+ * `members.manager` is the second instructor "Blake's lesson shows no header **Cancel** button"
+ * needs. `addMemberships` already seeds it
  * `can_instruct: true`, so no extra persona is created here — and `canManageLesson` is the single
  * predicate gating both the Edit link and the header Cancel button, so a lesson instructed by
- * anyone else is exactly the state line 857 describes.
+ * anyone else is exactly the state that line describes.
  *
  * The tier is not optional decoration: `LessonForm` renders **nothing but** a "No lesson tiers
- * have been configured" notice on a tier-less barn, so lines 858/862/863 would all pass vacuously
+ * have been configured" notice on a tier-less barn, so the textarea, recurring-indicator and
+ * **Stop Recurring Lessons** lines would all pass vacuously
  * without it — an absence check against a form that never rendered.
  */
 const barn = withBarn('phase5-lessons-cancel', async ({ supabase, barn, members }) => {
@@ -144,7 +147,7 @@ const barn = withBarn('phase5-lessons-cancel', async ({ supabase, barn, members 
    * over: `EditLessonPage` renders the series block only when `series.instructor_id` matches the
    * caller (`canStopSeries`), and `lesson_series_select_trainer`/`_update_trainer` are both gated
    * on the same column — so a series belonging to anyone else would be invisible to this persona
-   * rather than merely unstoppable, and lines 862–864 would read as absences.
+   * rather than merely unstoppable, and the three recurring-series lines would read as absences.
    */
   const seedSeries = async (key: LessonKey) => {
     await seed(key)
@@ -179,7 +182,8 @@ const barn = withBarn('phase5-lessons-cancel', async ({ supabase, barn, members 
   // Two riders, because "only that rider" is not expressible on a normal lesson: it holds exactly
   // one rider, so cancelling their spot cascades the whole lesson (`cancelLessonRider`'s
   // `cascaded` branch, and `cancel_rider_participation`'s own). A group lesson with a second
-  // still-active rider is the only shape in which line 856's claim can be falsified.
+  // still-active rider is the only shape in which "Cancelling a rider's spot (or the whole lesson)
+  // from there works the same" can be falsified.
   await seed('riderSpot', {
     lessonType: 'group',
     riderIds: [members.rider.membershipId, members.rider2.membershipId],
@@ -261,7 +265,8 @@ function pickerLabels(page: Page): Locator {
 /**
  * `LessonForm`'s own `<form>`, disambiguated from `StopSeriesButton`'s by the fact that only one
  * of the two contains a `<textarea>`. Both are plain `<form>` elements under `<main>` on a
- * recurring lesson's edit page, so a bare `main form` is ambiguous exactly where lines 862/863
+ * recurring lesson's edit page, so a bare `main form` is ambiguous exactly where the
+ * recurring-indicator and **Stop Recurring Lessons** lines
  * need it not to be.
  */
 function lessonForm(page: Page): Locator {
@@ -272,8 +277,8 @@ function lessonForm(page: Page): Locator {
  * The recurring-series block — the indicator paragraph and the Stop button — addressed as the
  * `<div>` immediately preceding the lesson form.
  *
- * That adjacency is what makes line 862's "**above** the lesson form" a claim about placement
- * rather than mere presence, and it is what gives line 863's "in the same place" a subject. It is
+ * That adjacency is what makes the indicator line's "above the lesson form" a claim about
+ * placement rather than mere presence, and it is what gives "in the same place" a subject. It is
  * safe to read positionally here because `HorseStatusBanner` renders `null` for this barn (Apple
  * is active and available), so there is no other `<div>` between the `<h1>` and the form. If the
  * block ever stopped rendering, this locator resolves to nothing and every assertion under it
@@ -302,14 +307,18 @@ function cancellationNotesField(page: Page): Locator {
  * `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
  *
  * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
- * (858, 862, 863) — waiting for hydration to assert one of those would be the SSR-default
+ * (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
+ * series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
+ * one of those would be the SSR-default
  * confusion running the other way.
  *
- * The fourth, 864, *writes* and still skips it, which is the one case here that needs its reason
+ * The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
+ * and still skips it, which is the one case here that needs its reason
  * stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
  * landing before React is listening is not lost the way fact 10's button is: the browser submits
  * the form natively and the action runs regardless. Hydration only decides whether the
- * `window.confirm` is raised first, and that confirm is not what line 864 claims. Driving it
+ * `window.confirm` is raised first, and that confirm is not what "Stopping the series from
+ * there works the same as the manager flow" claims. Driving it
  * through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
  * "a control the test does not assert on, and one whose repeat is harmless", and this control is
  * both the mutation under test and one a retry would re-issue.
@@ -364,7 +373,8 @@ async function instructorOnDetailPage(page: Page): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// The Cancel button in the detail header (855, 857)
+// The Cancel button in the detail header — "shows a **Cancel** button in its detail-page header"
+// and "shows no header **Cancel** button"
 // ---------------------------------------------------------------------------
 
 // The instructor half is not decoration: it is what proves this really is a lesson this persona
@@ -396,7 +406,7 @@ test('trainer_sees_no_cancel_button_on_another_instructors_lesson @trainer', asy
 })
 
 // ---------------------------------------------------------------------------
-// Cancelling from there (856)
+// Cancelling from there — "Cancelling a rider's spot (or the whole lesson) from there"
 // ---------------------------------------------------------------------------
 
 // Each rider is read as a **pair** — is the row there, and does it carry a badge — rather than as
@@ -445,7 +455,8 @@ test('trainer_cancelling_one_group_riders_spot_cancels_only_that_rider @trainer'
 })
 
 // ---------------------------------------------------------------------------
-// Cancellation notes on the edit form (858, 859)
+// Cancellation notes on the edit form — "the same **Cancellation Notes** textarea the manager
+// gets" and "the same read-only **Cancellation Notes** row the manager gets"
 // ---------------------------------------------------------------------------
 
 // Read against two lessons in one assertion, because the claim is that this textarea is the
@@ -481,7 +492,8 @@ test('cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page @tr
 })
 
 // ---------------------------------------------------------------------------
-// The recurring series (860–864)
+// The recurring series — "still shows its **Recurring** badge on its Lessons list row" through
+// "Stopping the series from there works the same as the manager flow"
 // ---------------------------------------------------------------------------
 
 // The trainer's Lessons list defaults to the `mine` filter, and this lesson is theirs, so no pill

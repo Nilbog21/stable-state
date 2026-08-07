@@ -857,7 +857,7 @@ test('dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_
   await expect(dayHeadings(page)).toHaveText(WEEK_DAY_HEADINGS)
 })
 
-// "Each of the 7 days shows **its own** heading" — so this counts day sections that contain a
+// "each of the 7 days shows its own date heading" — so this counts day sections that contain a
 // heading, not headings in the section. A bare count of seven <h3>s is also satisfied by six
 // days where one carries two, or by seven headings stacked outside any day section.
 test('dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days @manager', async ({ page }) => {

@@ -142,9 +142,10 @@ const FAR = () => hoursFromNow(72) // outside it
  *
  * - **Reveal claims are seeded so the state under test is NOT the default**, so the `.check()` is
  *   a real transition and the test actually observes the thing its line names. `toggle`
- *   (lines 304/305, "*choosing* Cancelled by Instructor shows the count") is therefore
- *   **trainer**-instructed, and `picker` (line 308, "choosing Cancelled by Rider *reveals* a
- *   rider picker") is **manager**-instructed. #1191's hazard does not reach these: it is specific
+ *   (the "shows the count of enrolled riders who'll be affected" line, whose claim is about
+ *   *choosing* rather than confirming) is therefore **trainer**-instructed, and `picker` (the
+ *   "reveals a rider picker listing the still-active enrolled riders" line, likewise about the
+ *   *reveal*) is **manager**-instructed. #1191's hazard does not reach these: it is specific
  *   to absence assertions, where the unhydrated reading and the correct reading coincide. Here an
  *   unhydrated click leaves the *other* state on screen — the rider sentence instead of the count
  *   sentence, an empty picker instead of two labels — which every one of these assertions fails

@@ -1,7 +1,10 @@
 // covers: src/app/barn/[slug]/(protected)/settings/**
 //
-// Manage Barn → Data Backup: both exports (checklists/pre-release/phase-4-manager-verification.md
-// lines 535-548), and the exported workbook's formatting and shape (lines 549-575).
+// Manage Barn → Data Backup: both exports (checklists/pre-release/phase-4-manager-verification.md,
+// from "**Data Backup** section shows a **Download All Documents** button" through "A member
+// created earlier in this phase appears by name"), and the exported workbook's formatting and
+// shape (from "**Date/Time Added** is the first column on the Horses sheet" through "Every column
+// is wide enough to read its contents without manual resizing").
 //
 // Deliberately no `covers:` line for src/lib/db/backup.ts or document-backup.ts, the two
 // modules that actually build these files: select-specs.sh lists the whole of src/lib/** in
@@ -20,7 +23,8 @@
 // most of those assertions want. Extend the withBarn seed below rather than seeding a second
 // barn.
 //
-// #1240 took both invitations: its block (lines 735-761, the workbook's formatting and shape)
+// #1240 took both invitations: its block (the workbook's formatting and shape, from "It is also
+// the first column on the All Transactions sheet" onward)
 // sits at the bottom of this file and reads the same memoized workbook, and its extra rows are
 // appended to the one withBarn callback below.
 import { readFileSync } from 'fs'
@@ -618,7 +622,8 @@ test.describe.serial('Data Backup — data workbook', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Data workbook — formatting and shape (#1240, checklist lines 735-761)
+// Data workbook — formatting and shape (#1240, the checklist block from "It is also the first
+// column on the All Transactions sheet" through "Every column is wide enough")
 // ---------------------------------------------------------------------------
 //
 // Everything here reads the same memoized workbook the block above downloads — no second

@@ -70,7 +70,9 @@ const INSTRUCTOR_CUT = 25
  * **Every one of them being non-zero is a correctness requirement, not tidiness.** The detail
  * page's delete fork is `lesson.fee === 0 || lesson.payment_type !== null` — a *disjunction*. A
  * "paid" lesson seeded at `fee: 0` reaches the `/delete` link arm through the first term, with the
- * payment state contributing nothing, so lines 330-335 would all have been satisfiable by a page
+ * payment state contributing nothing, so the whole paid-lesson delete block — "**Delete** lands
+ * on `/barn/dev-barn/lessons/[id]/delete`" through "that lesson's income is also gone from
+ * Finances" — would all have been satisfiable by a page
  * that ignored `payment_type` entirely. That is the fourth vacuity shape in a control-flow form:
  * not a value coinciding with a default, but a *condition satisfied by an unrelated disjunct* —
  * and no mutation of any expectation could surface it, because every expectation would be right.
@@ -98,7 +100,8 @@ const FEES = {
 type LessonKey = keyof typeof FEES
 
 /**
- * The notes the four Edit-form lessons are cancelled with, and the string line 323 types over one
+ * The notes the four Edit-form lessons are cancelled with, and the string the "Edit that textarea
+ * and Save" line types over one
  * of them. Both are non-empty and different from each other, which is what makes the round-trip
  * discriminating: `LessonForm`'s textarea is `defaultValue={initialLesson.cancellation_notes ?? ''}`,
  * so a form that ignored the stored value renders `''`, and a save that ignored the submitted value
@@ -117,7 +120,8 @@ const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 const INSTRUCTOR_LABEL = 'Instructor'
 
 /**
- * Line 328's positive control, and its **type** is the whole design.
+ * The positive control for "No notification is sent to the instructor or riders for that
+ * delete", and its **type** is the whole design.
  *
  * `upsertNotification` keys on `(user_id, barn_id, type)`. A control sharing a type that an errant
  * delete might write — `lesson_cancelled`, say — would be *overwritten* rather than added, so the
@@ -173,8 +177,8 @@ function hoursAgo(hours: number): Date {
  *
  * Two of the sixteen are never deleted at all. `survivor` is the same-document positive control for
  * every "it disappeared" claim — from the Lessons list and from Outstanding Income — and
- * `cancelledControl` is what *cancelled* looks like, which is the only way line 327's "it's gone,
- * not cancelled" has two arms to compare.
+ * `cancelledControl` is what *cancelled* looks like, which is the only way the "It leaves no
+ * **Cancelled** badge behind (it's gone, not cancelled)" line has two arms to compare.
  */
 const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, {
@@ -185,8 +189,9 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
   const apple = await addHorse(supabase, barn.id, APPLE)
   appleId = apple.id
 
-  // Both are the long-lived logins rather than managed stubs, because line 328 asserts that no
-  // notification reaches the instructor *or the riders* — and a managed stub has no `user_id` for
+  // Both are the long-lived logins rather than managed stubs, because "No notification is sent to
+  // the instructor or riders" asserts that no notification reaches the instructor *or the riders*
+  // — and a managed stub has no `user_id` for
   // a notification to be addressed to, which would make that check vacuous by construction.
   const instructorId = members.trainer.membershipId
   const riderId = members.rider.membershipId
@@ -217,15 +222,18 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     ids[key] = lesson.id
   }
 
-  // The Edit-form thread (321-324). Future-dated so nothing about them depends on the past-lesson
+  // The Edit-form thread — the four items from "the Notes section shows a **Cancellation Notes**
+  // textarea" through "the **Cancellation Notes** row disappears entirely". Future-dated so
+  // nothing about them depends on the past-lesson
   // machinery the delete thread needs.
   const future = daysFromNow(3, barn.timezone)
   for (const key of ['notesTextarea', 'noNotesTextarea', 'notesEdit', 'notesClear'] as const) {
     await seedUnpaid(key, future)
   }
 
-  // Three of the four are already cancelled, which is the fixture line 321's textarea is gated on
-  // (`LessonForm.tsx:696`). `noNotesTextarea` is deliberately left active — it is line 322, and it
+  // Three of the four are already cancelled, which is the fixture the "shows a **Cancellation
+  // Notes** textarea" line is gated on (`LessonForm.tsx:696`). `noNotesTextarea` is deliberately
+  // left active — it is the "does *not* appear when editing a non-cancelled lesson" line, and it
   // is also the *only* thing that catches a form which rendered the textarea unconditionally.
   for (const key of ['notesTextarea', 'notesEdit', 'notesClear'] as const) {
     await cancelLesson(supabase, barn, { lessonId: ids[key], notes: SEEDED_NOTES, isLate: true })
@@ -234,7 +242,8 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
   // `cancelLesson` writes the note to `lesson_riders.cancellation_notes` as well as to the lesson,
   // and the detail page renders the per-rider copy under its own "Cancellation Notes" heading
   // (`[id]/page.tsx:44-49`). Cleared here so the *only* element carrying that label on these pages
-  // is the lesson-level `<dt>` — which is what lets line 324 assert the honest, whole-page reading
+  // is the lesson-level `<dt>` — which is what lets "the **Cancellation Notes** row disappears
+  // entirely from the detail page" assert the honest, whole-page reading
   // of "the row disappears entirely" rather than a `<dt>`-scoped near-miss of it.
   mustSucceed(
     await supabase
@@ -245,7 +254,9 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     'clear seeded per-rider cancellation notes',
   )
 
-  // The browser-prompt delete thread (325-329) plus its two controls. Unpaid and in the past, so
+  // The browser-prompt delete thread — "click **Delete** and confirm the browser prompt" through
+  // "**Delete** is reachable the same way on an already-cancelled lesson" — plus its two controls.
+  // Unpaid and in the past, so
   // each has fee > 0 and payment_type null — the only combination that reaches DeleteLessonButton.
   for (const key of [
     'deleteFromList',
@@ -260,7 +271,8 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     await seedUnpaid(key, hoursAgo(2))
   }
 
-  // `isLate: true` on both, and it is the entire fixture for line 329.
+  // `isLate: true` on both, and it is the entire fixture for "**Delete** is reachable the same
+  // way on an already-cancelled lesson".
   //
   // A *non*-late cancellation zeroes `lessons.fee`, and a zero fee takes the delete fork's first
   // disjunct straight to the `/delete` page — so a conventionally-cancelled lesson could not
@@ -272,8 +284,10 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
     await cancelLesson(supabase, barn, { lessonId: ids[key], isLate: true })
   }
 
-  // The /delete-page thread (330-335). Paid, so `payment_type !== null` is the live term of the
-  // fork; `monthsAgo: 0` puts their income in the Finances month the last two checks read.
+  // The /delete-page thread — "**Delete** lands on `/barn/dev-barn/lessons/[id]/delete`" through
+  // "that lesson's income is also gone from Finances". Paid, so `payment_type !== null` is the live
+  // term of the fork; `monthsAgo: 0` puts their income in the Finances month the last two checks
+  // read.
   for (const key of ['paidInspect', 'paidUnchecked', 'paidIncomeKept', 'paidIncomeGone'] as const) {
     await seedPaid(key)
   }
@@ -315,7 +329,7 @@ function detailField(page: Page, label: string): Locator {
 /**
  * Every element on the detail page whose whole text is a given label — not just the `<dl>` rows.
  *
- * Line 324 says the Cancellation Notes row disappears "entirely from the detail page", and a
+ * The checklist says the Cancellation Notes row disappears "entirely from the detail page", and a
  * `<dt>`-scoped locator would answer a narrower question than the line asks. The seed clears the
  * per-rider copies precisely so this whole-page form is the one that can be asserted.
  */
@@ -331,7 +345,8 @@ function cancellationNotesTextarea(page: Page): Locator {
 /**
  * A horse-notes textarea from the same Notes section.
  *
- * This is line 322's positive control and it has to live in the same rendered document as the
+ * This is the positive control for "does *not* appear when editing a non-cancelled lesson", and
+ * it has to live in the same rendered document as the
  * absence it guards: `LessonForm` renders the whole Notes block or none of it (`initialNotes &&`),
  * so an edit page that failed to render — or a `main` that stopped resolving — reads zero here and
  * fails, instead of reporting a clean absence of the cancellation textarea.
@@ -377,7 +392,8 @@ function round2(value: number): number {
 }
 
 /**
- * The two numbers lines 334 and 335 compare, read off the By Tier tab.
+ * The two numbers "Its income still shows up in Finances for that month" and "that lesson's
+ * income is also gone from Finances" compare, read off the By Tier tab.
  *
  * `Deleted Lesson` is the tier label `getLessonFeeRows` gives a collected transaction whose lesson
  * was deleted (its `lesson_id` is nulled by an `ON DELETE SET NULL` FK rather than removed), so it
@@ -445,9 +461,10 @@ async function notificationFingerprints(): Promise<string[]> {
  * input is itself produced by LessonStartTime's mount effect via a server-action round trip. So a
  * visible bar strictly post-dates hydration rather than merely correlating with it.
  *
- * The two tests that only *read* the edit form (321, 322) deliberately skip this: their claims are
- * about server-rendered markup, and waiting for hydration to assert a server-rendered absence would
- * be the SSR-default confusion running the other way.
+ * The two tests that only *read* the edit form (the "shows a **Cancellation Notes** textarea" and
+ * "does *not* appear when editing a non-cancelled lesson" items) deliberately skip this: their
+ * claims are about server-rendered markup, and waiting for hydration to assert a server-rendered
+ * absence would be the SSR-default confusion running the other way.
  *
  * The barrier itself lives in `support/hydration.ts` (#1280); this is only the choice of signal.
  */
@@ -519,13 +536,16 @@ async function deleteViaConfirmationPage(
 }
 
 // ---------------------------------------------------------------------------
-// The Cancellation Notes textarea on the edit form (321-324)
+// The Cancellation Notes textarea on the edit form — "the Notes section shows a **Cancellation
+// Notes** textarea" through "the **Cancellation Notes** row disappears entirely"
 //
-// Lines 321 and 322 are one claim in two halves and neither is sufficient alone. 321 on its own is
+// The cancellation-notes textarea's two lines are one claim in two halves and neither is
+// sufficient alone. "the Notes section shows a **Cancellation Notes** textarea" on its own is
 // satisfied by a form that rendered the textarea unconditionally — the fixture it is really about
-// is `cancelled_at`, and nothing in 321 discriminates on it. 322 is what catches that form. Said
-// out loud because a reader arriving at 321 has no way to see that its discriminating power lives
-// in its neighbour.
+// is `cancelled_at`, and nothing in that line discriminates on it. "That textarea does *not*
+// appear when editing a non-cancelled lesson" is what catches that form. Said out loud because a
+// reader arriving at the first line has no way to see that its discriminating power lives in its
+// neighbour.
 // ---------------------------------------------------------------------------
 
 test('edit_lesson_on_a_cancelled_lesson_shows_a_cancellation_notes_textarea @manager', async ({ page }) => {
@@ -591,7 +611,8 @@ test('clearing_cancellation_notes_and_saving_removes_the_row_from_the_detail_pag
 })
 
 // ---------------------------------------------------------------------------
-// Deleting an unpaid lesson through the browser prompt (325-329)
+// Deleting an unpaid lesson through the browser prompt — "click **Delete** and confirm the browser
+// prompt" through "**Delete** is reachable the same way on an already-cancelled lesson"
 // ---------------------------------------------------------------------------
 
 // `survivor` is seeded never to be deleted and is read here in the same rendered list as the
@@ -704,7 +725,8 @@ test('delete_raises_the_same_browser_prompt_on_an_already_cancelled_lesson @mana
 })
 
 // ---------------------------------------------------------------------------
-// Deleting a paid lesson through the confirmation page (330-335)
+// Deleting a paid lesson through the confirmation page — "**Delete** lands on
+// `/barn/dev-barn/lessons/[id]/delete`" through "that lesson's income is also gone from Finances"
 // ---------------------------------------------------------------------------
 
 // Both arms run under one dialog listener, in one test, on purpose. The claim is that the paid

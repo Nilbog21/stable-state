@@ -4,8 +4,8 @@
 // covers: src/components/ExhaustionBar.tsx
 //
 // #999's `member_horse_privileges` through a rider's eye, end to end — the only automated coverage
-// that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md` lines 36-50
-// and 61-63 (eighteen checkboxes).
+// that table's two grants have anywhere. `checklists/pre-release/phase-6-rider.md`'s document-
+// and lesson-read-privilege blocks, plus its privileged-lesson-detail block (eighteen checkboxes).
 //
 // `document_privileges` in three states and `lesson_read_privileges` in two, and every *absent*
 // state needs a horse of its own, because a horse cannot simultaneously hold a grant and not hold
@@ -22,7 +22,7 @@
 // this file reaches, it reaches through a horse privilege rather than through enrolment, which is
 // the claim `auth_lesson_has_privileged_horse` exists to make.
 //
-// ## Why Butter, and not Pepper, carries the "no lesson-read privilege" lines (956-957)
+// ## Why Butter, and not Pepper, carries the "no lesson-read privilege" lines
 //
 // Both horses satisfy the line as written. Butter is the stronger fixture because she *has* a
 // privileges row — one granting document access, with `lesson_read_privileges` explicitly false —
@@ -65,7 +65,8 @@ const PEPPER = 'Pepper' // no privileges row at all
 const APPLE_EXERTIONS = [4, 5]
 const APPLE_EXERTION_TOTAL = APPLE_EXERTIONS[0] + APPLE_EXERTIONS[1]
 
-// Butter's lesson exists only so lines 956-957 assert a withholding rather than an absence.
+// Butter's lesson exists only so the two "no lesson-read privilege" lines assert a withholding
+// rather than an absence.
 const BUTTER_EXERTION = 3
 
 // Butter's seeded document (#1359) and the exact bytes addHorseDocument stores for it — the
@@ -77,8 +78,9 @@ const BUTTER_DOC_CONTENT = 'test document'
 // The committed asset the write-privileged upload test submits through the real form.
 const UPLOAD_PDF = 'test_1_kb.pdf'
 
-// Planted on Apple's first lesson. The horse notes are line 969's claim; the two rider-note fields
-// are line 970's, and belong to the *stub* rider — the rider login is not on this lesson at all,
+// Planted on Apple's first lesson. The horse notes are the "shows its horse notes" claim; the two
+// rider-note fields belong to "other riders' rider and private notes stay hidden", and to the
+// *stub* rider — the rider login is not on this lesson at all,
 // so anything of theirs on screen is someone else's.
 const APPLE_LESSON_HORSE_NOTES = 'Wrap both front legs before this ride.'
 const SUTTON_RIDER_NOTES = 'Working on sitting trot without stirrups.'
@@ -125,12 +127,12 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
     fee: 50,
   })
 
-  // The notes lines 969 and 970 assert on. Inline service-role writes rather than builder options:
-  // create_lesson_with_participants takes neither horse notes nor rider notes, and neither of
-  // lesson-participants.ts's two write paths (update_lesson_rider_notes, and the plain
-  // lesson_horses update beside it) takes an injectable client — the same reason addLeaseCharge
-  // gives for not calling updateChargePaymentType. support/fixtures.ts, where a builder would
-  // otherwise go, is off limits to this batch's parallel slices.
+  // The notes the horse-notes and hidden-notes lines assert on. Inline service-role writes rather
+  // than builder options: create_lesson_with_participants takes neither horse notes nor rider
+  // notes, and neither of lesson-participants.ts's two write paths (update_lesson_rider_notes, and
+  // the plain lesson_horses update beside it) takes an injectable client — the same reason
+  // addLeaseCharge gives for not calling updateChargePaymentType. support/fixtures.ts, where a
+  // builder would otherwise go, is off limits to this batch's parallel slices.
   mustSucceed(
     await supabase
       .from('lesson_horses')
@@ -267,7 +269,8 @@ function upcomingLessonsHeading(page: Page) {
 
 /**
  * The Upcoming Lessons section, resolved **as the last child of `main`** rather than by its own
- * heading — which is how line 954's "at the bottom" is asserted (the same structural shape #1320
+ * heading — which is how the collapsed **Upcoming Lessons** line's "at the bottom" is asserted
+ * (the same structural shape #1320
  * used for "My Horses at the top"). The page's sections are a flat list of `main`'s children and
  * this one is declared last in the JSX, so the position claim survives every combination of the
  * conditional sections above it appearing or not.
@@ -293,7 +296,8 @@ function horseHeading(page: Page, name: string) {
 // ---------------------------------------------------------------------------
 
 /**
- * Taps the Exhaustion bar and leaves its popover open — line 953's interaction, and a hydration
+ * Taps the Exhaustion bar and leaves its popover open — the "Tapping that Exhaustion bar
+ * expands it" interaction, and a hydration
  * barrier in the same act.
  *
  * The popover is `useState`-gated, so it cannot exist before hydration; a click dispatched before
@@ -335,10 +339,13 @@ async function upcomingLessonHrefs(page: Page): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Document privileges — lines 945-949
+// Document privileges — the "grant Dana `document_privileges='read'`" Setup through "The **Add
+// Document** button now appears in that horse's Documents section"
 //
-// Serial, because line 948 is a mid-file change to the same grant the two tests above it read. The
-// two `Setup —` checkboxes in this range (945, 948) are tagged with the test whose seeding they
+// Serial, because the "change that same grant to `document_privileges='write'`" Setup is a
+// mid-file change to the same grant the two tests above it read. The
+// two `Setup —` checkboxes in this range (the `document_privileges='read'` grant and the change
+// to `'write'`) are tagged with the test whose seeding they
 // serve, per this batch's shared-name rule: the seed and the assertion it enables are one
 // indivisible step, and `(manual)` would reverse a #1251 verdict rather than record one.
 // ---------------------------------------------------------------------------
@@ -378,7 +385,7 @@ test.describe.serial('document privileges on Butter', () => {
     })
   })
 
-  // Line 948's Setup step, performed where the manual walkthrough performs it — between the read
+  // That Setup step, performed where the manual walkthrough performs it — between the read
   // assertions above and the write assertion below. A service-role write, not a read: the
   // "preconditions only" rule governs what a spec may *believe* from a direct query, and this
   // believes nothing, it plants the state whose consequence the assertion then reads off the page.
@@ -423,7 +430,8 @@ test.describe.serial('document privileges on Butter', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Document privileges — line 950, the absent state
+// Document privileges — "On a horse Dana has no document privilege on, no Documents section",
+// the absent state
 // ---------------------------------------------------------------------------
 
 // Pepper holds no privileges row at all, which is what the line means by "no document privilege" —
@@ -437,9 +445,11 @@ test('rider_without_a_document_privilege_sees_no_documents_section @rider', asyn
 })
 
 // ---------------------------------------------------------------------------
-// Lesson-read privileges — lines 951-955
+// Lesson-read privileges — the "grant Dana `lesson_read_privileges=true`" Setup through "Tapping
+// a lesson in that Upcoming Lessons list"
 //
-// Line 951's Setup checkbox is tagged with the test its seeding serves, same rule as 945 and 948.
+// That Setup checkbox is tagged with the test its seeding serves, the same rule the two
+// document-privilege Setup lines follow.
 // ---------------------------------------------------------------------------
 
 // The bar's accessible name is derived from the seeded exertions, not written out: a fixture change
@@ -475,7 +485,8 @@ test('rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown @rider', 
 // together if the section moved.
 //
 // Neither way of splitting this is available, which is why they are bundled rather than merely
-// convenient to bundle. Splitting the *test* three ways would leave line 954 naming one of them and
+// convenient to bundle. Splitting the *test* three ways would leave the collapsed **Upcoming
+// Lessons** line naming one of them and
 // the other two claims asserted by tests no checklist line names — the batch's bundling rule is
 // about several checkboxes sharing one test, and offers nothing for one checkbox making several
 // claims. Splitting the *line* three ways would insert two lines into a file fifteen slices are
@@ -514,7 +525,7 @@ test('rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page @rider',
 })
 
 // ---------------------------------------------------------------------------
-// Lesson-read privileges — lines 956-957, the absent state
+// Lesson-read privileges — the two "Dana has no lesson-read privilege" lines, the absent state
 // ---------------------------------------------------------------------------
 
 // Butter's row grants documents and leaves `lesson_read_privileges` false, so these two isolate the
@@ -536,7 +547,8 @@ test('rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section @ri
 })
 
 // ---------------------------------------------------------------------------
-// The privileged lesson's detail page — lines 968-970
+// The privileged lesson's detail page — "does show an exertion rating" through "other riders'
+// rider and private notes stay hidden"
 //
 // Reached by goto rather than by re-driving the tap above: it is the same URL and the same page
 // state, and the test directly above owns the claim that the tap gets there. Keeping these three

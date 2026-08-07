@@ -30,7 +30,8 @@ const BOARD_DETAIL_HEADING = 'Boarding Detail'
 // checklist's Emery is a claimed rider seeded in Phase 1 and switched to via change-user.sh, so
 // reusing that name for an unclaimed stub would invert what the checklist means by it. The three
 // e2e logins are global to the Supabase project, so an unclaimed rider has to be this barn's own
-// stub, and it needs a name of its own — line 499 is the only line it serves and names nobody.
+// stub, and it needs a name of its own — the "managed (unclaimed) rider's detail page shows the
+// same **Active Agreements** section" line is the only line it serves and names nobody.
 const MANAGED_RIDER = { firstName: 'Rowan', lastName: 'Test' }
 
 let leaseAgreement: Agreement
