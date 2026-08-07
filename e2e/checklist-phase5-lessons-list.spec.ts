@@ -7,7 +7,9 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // The trainer's Lessons list, and the four permission claims reachable from it
-// (checklists/pre-release/phase-5-trainer.md, lines 20-22 and 45-48).
+// (checklists/pre-release/phase-5-trainer.md — the list-and-filters block from "Lessons list
+// defaults to **My Lessons**", and the edit block from "Editing one of your own lessons shows the
+// instructor field **hidden entirely**").
 //
 // Four of the seven lines are only meaningful against *another instructor's* lesson. That
 // instructor is `members.manager`: addMemberships already gives it `can_instruct: true`, so a
@@ -25,7 +27,7 @@ const WILLOW = 'Willow'
 const STANDARD_TIER = 'Standard'
 const TIER_PRICE = 80
 
-// Whole rows rather than bare ids: the 853 read-back below compares the seeded fee,
+// Whole rows rather than bare ids: the direct-`/edit`-URL read-back below compares the seeded fee,
 // instructor and lesson_at against what the row still holds, and Lesson.lesson_at is a plain
 // timestamptz string (src/lib/db/types.ts), so the builder's own return value is the
 // comparison baseline. Expected values are never hardcoded strings.
@@ -37,8 +39,8 @@ let othersSecond: Lesson
 const barn = withBarn('phase5-lessons-list', async ({ supabase, barn, members }) => {
   // A tier is not decoration here: LessonForm short-circuits its entire render to "No lesson
   // tiers have been configured…" when `tiers` is empty, so a tier-less barn has no edit form
-  // at all — which would have made the 851 assertion below (no Instructor label) and the 853
-  // assertion (no Save button behind the 404) both pass against a page that renders no form
+  // at all — which would have made the hidden-instructor-field assertion below and the
+  // direct-`/edit`-URL one (no Save button behind the 404) both pass against a page that renders no form
   // for anyone. Measured, not assumed: a first run without this seeded exactly that page.
   const standard = await addTier(supabase, barn.id, { name: STANDARD_TIER, price: TIER_PRICE, isDefault: true })
   const apollo = await addHorse(supabase, barn.id, APOLLO)
@@ -156,7 +158,8 @@ async function headerControls(page: Page): Promise<{ edit: number; delete: numbe
 }
 
 // ---------------------------------------------------------------------------
-// The list and its filters (lines 826-828)
+// The list and its filters — "Lessons list defaults to **My Lessons**" through "The filter pills
+// show the same ... bar as the manager view"
 // ---------------------------------------------------------------------------
 
 // No `?filter=` in the URL: lessons/page.tsx defaults a trainer to 'mine' (a manager to 'all'),
@@ -194,7 +197,8 @@ test('trainer_filter_pills_show_the_same_six_filters_as_the_manager_view @traine
 })
 
 // ---------------------------------------------------------------------------
-// What a trainer may edit from the list (lines 851-854)
+// What a trainer may edit from the list — "Editing one of your own lessons shows the instructor
+// field **hidden entirely**" through "No **Delete** button is shown on any lesson"
 // ---------------------------------------------------------------------------
 
 /**

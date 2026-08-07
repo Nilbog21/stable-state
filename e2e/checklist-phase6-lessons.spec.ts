@@ -8,16 +8,18 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
 // The rider's Lessons list and the detail page of a lesson she is enrolled in
-// (checklists/pre-release/phase-6-rider.md, lines 53-58, 64 and 65 — eight checkboxes).
+// (checklists/pre-release/phase-6-rider.md — the Lessons-list and enrolled-lesson-detail block,
+// plus the group-lesson co-rider names and the unenrolled-404 lines; eight checkboxes).
 //
 // Three lessons, and each of the three exists for a claim the other two cannot make:
 //
 //   mine    normal, the rider login alone, on Comet. Carries her own rider_notes and
-//           private_notes, and an exertion level she must not see (965, 966, 967).
-//   group   group, the rider login + two co-riders (973), so "every co-rider" is a plural
+//           private_notes, and an exertion level she must not see — the three
+//           enrolled-lesson-detail lines.
+//   group   group, the rider login + two co-riders, so "every co-rider's real name" is a plural
 //           rather than a single name that a one-row list would satisfy by accident.
 //   others  normal, the stub rider alone, on Willow — the lesson she is neither enrolled in
-//           nor privileged for (974), and the one the list must leave out (962).
+//           nor privileged for (the **404** line), and the one the list must leave out.
 //
 // ## Why this barn holds no member_horse_privileges rows at all
 //
@@ -25,9 +27,9 @@ import type { Lesson } from '@/lib/db/types'
 // precisely the fixture that would make `others` load rather than 404: `lessons_select_horse
 // _privilege` (backed by `auth_lesson_has_privileged_horse`) is additive to the enrolled-rider
 // policy, so one privileges row on that lesson's horse hands the row back through RLS. Holding
-// none makes 974's "with no horse she holds lesson-read privileges on" true by construction, and
-// makes 967's parenthetical ("still true for a horse Dana holds no lesson-read privilege on") true
-// of Comet for the same reason.
+// none makes the **404** line's "with no horse she holds lesson-read privileges on" true by
+// construction, and makes the exertion-rating line's parenthetical ("still true for a horse Dana
+// holds no lesson-read privilege on") true of Comet for the same reason.
 //
 // Isolating the *flag* from the *row* — slice 13's Butter-vs-Pepper argument — is that slice's
 // claim and its lines own it. Repeating it here would add a row whose only effect is to make the
@@ -49,12 +51,14 @@ const COMET = 'Comet' // mine — the enrolled normal lesson
 const JUNIPER = 'Juniper' // group
 const WILLOW = 'Willow' // others — the unenrolled, unprivileged lesson
 
-// The rider login's own notes, planted on her `mine` lesson_riders row. Line 965 asserts the first
-// renders read-only; line 966 asserts the second never renders at all.
+// The rider login's own notes, planted on her `mine` lesson_riders row. "shows Dana's own rider
+// notes" asserts the first renders read-only; "That page shows **no private notes**" asserts the
+// second never renders at all.
 const MY_RIDER_NOTES = 'Keep the canter transitions balanced through the corner.'
 const MY_PRIVATE_NOTES = 'Board payment is two weeks late; handle it off the lesson.'
 
-// Line 973's third rider — a managed stub, added inline because "every co-rider's real name" is
+// The group-lesson line's third rider — a managed stub, added inline because "every co-rider's
+// real name" is
 // only falsifiable against a plural: with one co-rider, a page rendering just the first name in
 // the list would satisfy the line. `addManagedMember` rather than a fixtures.ts edit, which this
 // batch's fifteen parallel slices are forbidden.
@@ -93,7 +97,7 @@ const barn = withBarn('phase6-lessons', async ({ supabase, barn, members }) => {
   })
 
   // Group lessons require >= 2 riders (assert_lesson_participant_counts); three is what makes
-  // line 973's "every" a real quantifier.
+  // that line's "every" a real quantifier.
   group = await addUnpaidLesson(supabase, barn, {
     at: daysFromNow(2, barn.timezone),
     time: '11:00',
@@ -117,7 +121,7 @@ const barn = withBarn('phase6-lessons', async ({ supabase, barn, members }) => {
   // options, the same way #1331 planted its stub rider's: create_lesson_with_participants takes
   // neither notes column, and neither of lesson-participants.ts's write paths takes an injectable
   // client. Planted on `mine` and nowhere else, so the group lesson's rider list renders names and
-  // nothing else — which is what lets line 973 read those names straight off the <li>s.
+  // nothing else — which is what lets the group-lesson line read those names straight off the <li>s.
   mustSucceed(
     await supabase
       .from('lesson_riders')
@@ -148,7 +152,8 @@ function lessonCards(page: Page): Locator {
 }
 
 /**
- * The set of lessons the list is showing. Sorted: what line 962 claims is *which* lessons appear,
+ * The set of lessons the list is showing. Sorted: what "Lessons list shows only Dana's enrolled
+ * lessons" claims is *which* lessons appear,
  * not in what order, so a membership assertion is correct either side of #1286's ordering work.
  *
  * evaluateAll is one-shot and does not auto-retry, so an unsettled read yields [] and an assertion
@@ -192,13 +197,14 @@ function detailHeading(page: Page): Locator {
 }
 
 // ---------------------------------------------------------------------------
-// The Lessons list — lines 962-964
+// The Lessons list — "Lessons list shows only Dana's enrolled lessons" through "Dana's own name
+// does not appear on her own lesson cards"
 // ---------------------------------------------------------------------------
 
 // No `?filter=` in the URL: lessons/page.tsx defaults a rider to 'all', so this is the list as she
 // finds it. `others` exists in this barn and is excluded here by enrolment alone
 // (getLessonsByBarn's rider branch scopes to getRiderEnrolledLessonIds), which is the same fact
-// line 974 reads from the other side.
+// the unenrolled-404 line reads from the other side.
 test('rider_lessons_list_shows_only_enrolled_lessons @rider', async ({ page }) => {
   await page.goto(lessonsPath())
   await expect.poll(() => visibleLessonIds(page)).toEqual(sortedIds([mine, group]))
@@ -240,7 +246,8 @@ test('rider_own_name_absent_from_own_lesson_cards @rider', async ({ page }) => {
 })
 
 // ---------------------------------------------------------------------------
-// The enrolled lesson's detail page — lines 965-967
+// The enrolled lesson's detail page — "shows Dana's own rider notes" through "no exertion rating
+// next to any horse name"
 // ---------------------------------------------------------------------------
 
 // Two assertions for one line, by the indivisible-line exception: "shows … read-only" is one page
@@ -248,7 +255,8 @@ test('rider_own_name_absent_from_own_lesson_cards @rider', async ({ page }) => {
 // field is not read-only, and zero textboxes on a page showing no notes is vacuous.
 //
 // Read-only is asserted as the absence of a *textbox*, not of controls generally: the header
-// carries a rider Cancel link on an eligible lesson (line 975, a later slice's), so a blanket
+// carries a rider Cancel link on an eligible lesson ("An enrolled lesson's detail-page header
+// carries a **Cancel** button", a later slice's), so a blanket
 // no-controls assertion would be asserting something false. OwnRiderNotesBlock renders the value
 // in a <p>, so a textbox here would mean the notes had become editable.
 test('rider_own_rider_notes_render_read_only_on_the_lesson_detail_page @rider', async ({ page }) => {
@@ -291,7 +299,7 @@ test('rider_sees_no_exertion_rating_on_an_unprivileged_horse @rider', async ({ p
 })
 
 // ---------------------------------------------------------------------------
-// The enrolled group lesson — line 973
+// The enrolled group lesson — "shows every co-rider's real name, not a blank or raw ID"
 // ---------------------------------------------------------------------------
 
 // Every name in the Rider(s) list, compared as a set against the three seeded riders — a blank
@@ -315,7 +323,7 @@ test('rider_group_lesson_shows_every_co_riders_real_name @rider', async ({ page 
 })
 
 // ---------------------------------------------------------------------------
-// The lesson she can reach neither way — line 974
+// The lesson she can reach neither way — the unenrolled-lesson **404** line
 // ---------------------------------------------------------------------------
 
 // Both halves of the line in one assertion: "shows 404" and "rather than the lesson details" are

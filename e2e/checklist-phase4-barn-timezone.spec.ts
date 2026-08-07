@@ -335,8 +335,8 @@ assertPinArithmetic()
 
 /**
  * One tier, one horse, one lesson. Nothing else, and that is load-bearing rather than minimal
- * for its own sake: it is what lets the two "stores it barn-local" items assert an EXACT ARRAY
- * of stored values
+ * for its own sake: it is what lets the "stores 4:00 PM *barn-local*" and "stores that as 11:30
+ * PM *barn-local*" items assert an EXACT ARRAY of stored values
  * ("one named recipient's `kind='expense'` transactions are exactly [this]" — barn-wide until
  * #1395 added a second expense-writing test and scoped the read by recipient) instead of hunting
  * for the right row, which makes "no row was created at all" a failure rather than a silent pass.

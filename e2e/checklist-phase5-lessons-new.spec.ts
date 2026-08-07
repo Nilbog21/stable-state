@@ -17,7 +17,8 @@ import { mustSucceed } from '@/lib/db/service-role'
 import type { Horse } from '@/lib/db/types'
 
 // The trainer's New Lesson form and the notification a nearby lesson writes for the *other*
-// instructor (checklists/pre-release/phase-5-trainer.md, lines 23-27, 39 and 43-44).
+// instructor (checklists/pre-release/phase-5-trainer.md — the New Lesson form block, the
+// within-the-buffer creation line, and the two `notifications`-row lines).
 //
 // `src/components/ui/date-nav.ts` is declared for the reason #1394 declared it on
 // checklist-phase4-expenses-form.spec.ts, not because anything here reads the class: phase-3's
@@ -38,13 +39,14 @@ import type { Horse } from '@/lib/db/types'
 // can never be an instructor, so it is not a candidate. No fourth persona, and no name added to
 // the set `support/fixtures.test.ts` holds to its collision constraint.
 //
-// ## Line 833's "same as the manager view" is a source-level fact, not an e2e claim
+// ## The month-calendar line's "same as the manager view" is a source-level fact, not an e2e claim
 //
 // One spec file runs as one role (Playwright dispatches on spec × project), so a `@trainer`
 // test can never observe the manager's rendering of this form to compare against. What makes
 // the two the *same* calendar is that `lessons/new/page.tsx` renders one `LessonForm` for both
 // roles and `LessonForm` passes `getScheduleRange` unconditionally — the manager/trainer branch
-// in that file covers the Instructor field alone. So 833 is asserted here in its observable
+// in that file covers the Instructor field alone. So the month-calendar line is asserted here in
+// its observable
 // form: the Date field IS the month calendar rather than the native date input it falls back
 // to without a schedule reader. Narrowing only, no line rewrite.
 //
@@ -60,7 +62,8 @@ import type { Horse } from '@/lib/db/types'
 //
 // The serial block below creates lessons through the UI, and a created lesson is a real
 // scheduling item. Every lesson it creates uses WILLOW, so APPLE's exertion window — the
-// subject of line 834 — is untouched either way; declaring the read-only block first makes
+// subject of the exertion-shading line — is untouched either way; declaring the read-only block
+// first makes
 // that a property of the file's order as well as of its horse choice.
 
 const APPLE = 'Apple'
@@ -86,10 +89,12 @@ const APPOINTMENT_TIME = '09:00'
 const OTHER_INSTRUCTOR_TIME = '14:00'
 // Fifteen minutes after the other instructor's lesson — inside `schedule_buffer_minutes`' 30
 // (and inside the 60 + 30 window `getNearbyInstructorMembershipIds` actually applies), which
-// is the precondition line 847 names.
+// is the precondition "Creating one more lesson dated within 30 minutes of one of Blake's
+// lessons" names.
 const NEARBY_TIME = '14:15'
 
-// APPLE carries per-horse thresholds rather than the barn defaults so line 834's band is an
+// APPLE carries per-horse thresholds rather than the barn defaults so the exertion-shading
+// line's band is an
 // arithmetic certainty rather than a coincidence: one exertion-5 lesson sums to 5, and
 // `getExhaustionBand(5, { moderate: 2, high: 4 })` is 'high' while an empty window's 0 is 'low'.
 const APPLE_THRESHOLD_MODERATE = 2
@@ -143,7 +148,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
 
   const dayAt = (day: string, time: string) => wallClockToInstant(`${day}T${time}:00`, barn.timezone)
 
-  // Line 834's whole point: this lesson is instructed by someone else. A role-filtered heatmap
+  // The exertion-shading line's whole point: this lesson is instructed by someone else. A
+  // role-filtered heatmap
   // would leave `shadedDay` reading 'low' for the trainer, which is exactly what the assertion
   // discriminates against. `quietDay` is 14 days away — well outside the +/-3-day exertion
   // window — so it stays the 'low' control.
@@ -159,7 +165,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
   })
 
   // `time` is required, not cosmetic: `getScheduleForRange` filters `.not('expense_time','is',
-  // null)`, so a date-only appointment never reaches the calendar and line 835 would assert
+  // null)`, so a date-only appointment never reaches the calendar and the conflict-dot line
+  // would assert
   // against a grid that legitimately shows no dot.
   await addExpense(supabase, barn, {
     at: dayAt(appointmentDay, APPOINTMENT_TIME),
@@ -170,8 +177,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
     horseIds: [apple.id],
   })
 
-  // "Blake's lesson" for line 847 — the one the trainer's new lesson lands within the buffer of.
-  // WILLOW, not APPLE, so it contributes nothing to line 834's window.
+  // "Blake's lesson" for the within-the-buffer line — the one the trainer's new lesson lands
+  // within the buffer of. WILLOW, not APPLE, so it contributes nothing to the shading window.
   await addUnpaidLesson(supabase, barn, {
     at: dayAt(nearbyDay, OTHER_INSTRUCTOR_TIME),
     time: OTHER_INSTRUCTOR_TIME,
@@ -182,7 +189,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
     tierName: standard.name,
   })
 
-  // No trainer-instructed lesson is seeded at all — that is what lets line 831's "My Lessons now
+  // No trainer-instructed lesson is seeded at all — that is what lets the locked-instructor
+  // line's "My Lessons now
   // holds exactly the two you just created" mean something.
 })
 
@@ -289,13 +297,15 @@ async function dotsOn(page: Page, dates: string[]): Promise<Record<string, boole
 
 /**
  * Fills and submits the form for one lesson, and reports how many Instructor pickers the form
- * offered — line 831's other half, measured where it is observable (on the form) and asserted
+ * offered — the "instructor field is locked to you" half, measured where it is observable (on
+ * the form) and asserted
  * where the line's claim resolves (the created lessons' owner), in one expectation.
  *
  * Submit is activated by keyboard rather than a pointer click: it sits at the bottom of a long
  * scrollable form, the shape that raced Chromium's scroll-into-view animation in #501.
  *
- * The trailing `waitForURL` is the "succeeds with no error" half of line 847 as well as a sync
+ * The trailing `waitForURL` is the "succeeds with no error" half of the within-the-buffer line
+ * as well as a sync
  * point: `submitLesson` re-renders the form with a `role="alert"` and no navigation on every
  * failure path, and only redirects on success. It cannot no-op (#1204) — the pattern excludes
  * the `/lessons/new` this is called from.
@@ -372,11 +382,13 @@ async function nearbyNotification(): Promise<NearbyNotification> {
 }
 
 // ---------------------------------------------------------------------------
-// The form itself — checklist lines 831-835 (833, 832, 834, 835 here)
+// The form itself — the checklist block from "Create 2 lessons via `/barn/dev-barn/lessons/new`"
+// through the conflict-dot line (month calendar, exhaustion bars, shading, dot — in that order here)
 // ---------------------------------------------------------------------------
 
 test.describe("the trainer's New Lesson form", () => {
-  // Line 833. Both halves in one equality: the month grid is present at its full fixed 6x7, and
+  // The month-calendar line. Both halves in one equality: the month grid is present at its full
+  // fixed 6x7, and
   // the native `<input type="date">` LessonForm falls back to without a schedule reader is not.
   // Either half alone is satisfiable by the wrong page — a form with both controls, or a form
   // with neither.
@@ -389,7 +401,8 @@ test.describe("the trainer's New Lesson form", () => {
     }).toEqual({ dayCells: 42, nativeDateInputs: 0 })
   })
 
-  // Line 832. One bar per seeded horse, counted from the builder's own return value rather than
+  // "exhaustion bars render below each horse". One bar per seeded horse, counted from the
+  // builder's own return value rather than
   // a literal. The count starts at 0 and can only reach the expected number after React has
   // hydrated, resolved the Server Action and re-rendered, so `toHaveCount` is doing real waiting
   // here rather than confirming server-rendered markup — specifically on the post-pick
@@ -404,7 +417,8 @@ test.describe("the trainer's New Lesson form", () => {
     })
   })
 
-  // Line 834. The shaded day's only lesson belongs to the *manager*, so a heatmap narrowed to
+  // The exertion-shading line. The shaded day's only lesson belongs to the *manager*, so a
+  // heatmap narrowed to
   // the lessons this trainer instructs would report 'low' there and this equality would fail on
   // exactly the claim the line makes. The quiet day is the control that keeps 'high' from being
   // true of every cell.
@@ -418,7 +432,8 @@ test.describe("the trainer's New Lesson form", () => {
       .toEqual({ [shadedDay]: 'high', [quietDay]: 'low' })
   })
 
-  // Line 835. The appointment day carries no lesson at all, so a dot there can only have come
+  // The conflict-dot line. The appointment day carries no lesson at all, so a dot there can only
+  // have come
   // from Apple's vet appointment — which is the line's claim, that the dot fires on appointments
   // for a trainer and not only on lessons.
   test('trainer_conflict_dot_fires_on_the_selected_horses_appointment_day @trainer', async ({ page }) => {
@@ -433,14 +448,15 @@ test.describe("the trainer's New Lesson form", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Creating lessons, and the row a nearby one writes — lines 831, 847, 851, 852
+// Creating lessons, and the row a nearby one writes — the locked-instructor line, the
+// within-the-buffer line, and the two `notifications`-row lines
 // ---------------------------------------------------------------------------
 //
 // `.serial` because these four are one chain: the two lessons of 831 are the baseline 847's
 // count is measured against, and 851/852 read a row that only 847's submission can have written.
 
 test.describe.serial('a trainer creating lessons', () => {
-  // Line 831. Both halves of the line in one equality. The barn holds two manager-instructed
+  // The locked-instructor line. Both halves in one equality. The barn holds two manager-instructed
   // lessons and no trainer-instructed one, and the Lessons list defaults to My Lessons — so
   // "exactly the two just created" is the observable form of "the instructor field is locked to
   // you", and the picker count is the mechanism that locks it.
@@ -454,7 +470,8 @@ test.describe.serial('a trainer creating lessons', () => {
     }).toEqual({ instructorPickers: 0, myLessons: 2 })
   })
 
-  // Line 847. `createLesson`'s `waitForURL` is the "no error" half — a rejected submit re-renders
+  // The within-the-buffer line. `createLesson`'s `waitForURL` is the "no error" half — a rejected
+  // submit re-renders
   // the form in place and never navigates — and this is the "the lesson exists" half: the
   // trainer's own list grows from the two above to three.
   test('trainer_can_create_a_lesson_within_the_buffer_of_another_instructors_lesson @trainer', async ({ page }) => {
@@ -463,7 +480,8 @@ test.describe.serial('a trainer creating lessons', () => {
     expect(await visibleLessonIds(page)).toHaveLength(3)
   })
 
-  // Line 851. The recipient is the *other* instructor, so this is a direct row read rather than
+  // The `type = 'instructor_lesson_nearby'` row line. The recipient is the *other* instructor, so
+  // this is a direct row read rather than
   // a UI assertion — the acting trainer's own bell would never show it.
   test('nearby_lesson_writes_a_notification_row_for_the_other_instructor @trainer', async () => {
     const row = await nearbyNotification()
@@ -475,7 +493,8 @@ test.describe.serial('a trainer creating lessons', () => {
     })
   })
 
-  // Line 852. The literal is the app's own copy, quoted by the checklist line itself — deriving
+  // The "**\"1 new lesson scheduled nearby\"**" line. The literal is the app's own copy, quoted by
+  // the checklist line itself — deriving
   // it from `formatNearbyInstructorNotification` would re-implement the thing under test. The
   // count is 1 rather than an increment because the two lessons of 831 sit on days no other
   // instructor teaches, so 847's submission is the only nearby one this barn ever sees.

@@ -5,9 +5,12 @@
 // a horse you do not own renders both fields as read-only text with no textarea and no Save
 // button, a field that is unset drops its row entirely rather than rendering blank, and a horse
 // you *own* renders both as editable textareas with a Save whose write survives a reload.
-// checklists/pre-release/phase-5-trainer.md lines 64-70, and phase-6-rider.md lines 26-29.
+// checklists/pre-release/phase-5-trainer.md's horse-notes block, and phase-6-rider.md's
+// owned-horse notes block.
 //
-// Three of those eleven checkboxes are `Setup —` lines (P5 65, P5 67, P6 26): a manager mutation the
+// Three of those eleven checkboxes are `Setup —` lines — "clear one of that horse's two notes
+// fields", "grant this trainer a horse-privileges row on **Clover**", and "make Dana the owning
+// member of **Clover**": a manager mutation the
 // manual walkthrough performs between assertions, which an e2e run seeds instead. Each is tagged
 // with the name of the test its seeding serves, per the issue's "several checkboxes may share a
 // single test" rule — the seed and the assertion it enables are one indivisible step here, and
@@ -22,12 +25,14 @@
 //
 // ## Why the rider's owned horse is not called Clover
 //
-// Lines 935-936 name Clover, and this file's rider tests assert against Willow instead — the same
-// divergence checklist-phase56-horses-list.spec.ts documents for lines 939-941, forced by the
+// The rider's owned-horse lines name Clover, and this file's rider tests assert against Willow
+// instead — the same divergence checklist-phase56-horses-list.spec.ts documents for the **My
+// Horses** lines, forced by the
 // same paired seeding. Clover is the *trainer's* owned horse and both live in one barn, so from
 // the rider's side Clover is a horse someone else owns and renders read-only; it cannot also be
 // the horse whose editable form the rider asserts on. The checklist lines keep their wording:
-// their Clover is the manual dev-barn walkthrough's horse, planted by line 935's own Setup step.
+// their Clover is the manual dev-barn walkthrough's horse, planted by the "make Dana the owning
+// member of **Clover**" Setup step.
 // The claim each test makes is the line's claim; only the fixture's name differs.
 //
 // ## Ordering
@@ -51,7 +56,7 @@ const BUTTER = 'Butter' // unowned, both notes fields set — the read-only subj
 const PEPPER = 'Pepper' // unowned, feed notes only — the dropped-row subject
 
 // Butter's notes are the read-only text both roles assert on. Pepper carries the feed half only,
-// which is what line 871's Setup ("clear one of that horse's two notes fields") seeds instead.
+// which is what the "clear one of that horse's two notes fields" Setup seeds instead.
 const BUTTER_FEED_NOTES = 'Two flakes of hay, morning and night.'
 const BUTTER_MEDICATION_NOTES = 'Bute 1g with the evening feed.'
 const PEPPER_FEED_NOTES = 'One scoop of ration balancer at noon.'
@@ -104,7 +109,8 @@ const barn = withBarn('phase56-horses-notes', async ({ supabase, barn, members }
   // wrong thing — the page gates on falsiness, and an empty string is a different write path.
   pepperId = (await addHorse(supabase, barn.id, PEPPER, { feedNotes: PEPPER_FEED_NOTES })).id
 
-  // Line 873's other half — the horse-privileges row a manager grants before making the trainer
+  // The other half of the "grant this trainer a horse-privileges row on **Clover**" Setup — the
+  // horse-privileges row a manager grants before making the trainer
   // Clover's owning member. Seeded inline rather than through a builder, per this batch's
   // seed-inline ruling: HorseOptions covers ownership but there is no member_horse_privileges
   // builder, and support/fixtures.ts is off limits to the fifteen slices running in parallel.
@@ -115,7 +121,7 @@ const barn = withBarn('phase56-horses-notes', async ({ supabase, barn, members }
   // set_horse_owner raises 'privilege_grant_not_found' for a member holding no privileges row
   // (20260725115546). Here ownership is planted directly through addHorse, and the write path
   // under test — update_horse_notes (20260724155324) — authorizes on horses.owning_member_id
-  // alone and never reads this table. The row is seeded because checklist line 873 names it, so
+  // alone and never reads this table. The row is seeded because that Setup line names it, so
   // that the fixture says what the manual step says. Don't read a document-privileges claim into
   // its value: granting ownership through the real UI elevates the new owner to write plus
   // lesson-read (#1069), which this deliberately does not replay, since nothing in this slice's
@@ -247,7 +253,8 @@ async function editAndSaveNotes(page: Page): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's read-only view (lines 870-872)
+// Phase 5 — the trainer's read-only view: "Horse detail page shows the Feed Notes/Medication
+// Notes entered as manager as read-only text" through "drops the cleared field's row entirely"
 // ---------------------------------------------------------------------------
 
 // Two assertions, by the ratified indivisible-line exception (checklist-phase4-horses-detail.spec
@@ -271,7 +278,8 @@ test('trainer_unset_notes_field_row_is_dropped_entirely @trainer', async ({ page
 })
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's owned horse (lines 873-876)
+// Phase 5 — the trainer's owned horse: the "grant this trainer a horse-privileges row" Setup
+// through "persists the new text across a reload"
 // ---------------------------------------------------------------------------
 
 // Two assertions, same ratified exception: the line names both fields, and one form renders them.
@@ -303,7 +311,8 @@ test('trainer_owned_horse_note_edits_persist_across_a_reload @trainer', async ({
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's owned horse (lines 935-937)
+// Phase 6 — the rider's owned horse: the "make Dana the owning member of **Clover**" Setup
+// through "That page shows a **Save** button for those fields"
 // ---------------------------------------------------------------------------
 
 test('rider_owned_horse_notes_render_as_editable_textareas @rider', async ({ page }) => {
@@ -319,7 +328,8 @@ test('rider_owned_horse_notes_form_shows_a_save_button @rider', async ({ page })
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's read-only view (line 938)
+// Phase 6 — the rider's read-only view: "On **Butter**, whom Dana does *not* own, Feed
+// Notes/Medication Notes remain read-only text"
 // ---------------------------------------------------------------------------
 
 // The rider's half of the read-only claim — see the trainer's comment above for both assertions.

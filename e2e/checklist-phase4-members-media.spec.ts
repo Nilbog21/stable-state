@@ -47,8 +47,8 @@ const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
   //
   // emery-photo.jpg rather than clover-photo.png: docs/scripts.md's asset table assigns
   // emery-photo.jpg to a profile and clover-photo.png to the horse Clover's upload flow. The one
-  // place this spec does use clover-photo.png is the manager's own upload, where checklist line
-  // 480 names that file explicitly.
+  // place this spec does use clover-photo.png is the manager's own upload, where the "tap **Set
+  // Photo** and upload `scripts/data/clover-photo.png`" line names that file explicitly.
   const claimedTrainer = await addManagedMember(supabase, barn.id, { ...CLAIMED_TRAINER, role: 'trainer' })
   claimedTrainerId = claimedTrainer.membershipId
   await setMemberPhoto(supabase, barn, claimedTrainer.profileId, EMERY_PHOTO)

@@ -12,8 +12,9 @@
 // default/active state is actually observable. A change to LessonForm's tier handling breaks
 // this file, so it declares that route.
 //
-// Adjacent slices: #1204 owns 476-486 and 495-512, #1252 owns 513-526, #1206/#1240 own
-// 535-575. Nothing outside 487-494 and 527-534 is touched here.
+// Adjacent slices: #1204 owns the accordions and settings fields, #1252 the barn-local instant
+// items, #1206/#1240 the Data Backup block. Nothing outside the tier and Barn Events blocks is
+// touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { settledTextContents } from './support/read'

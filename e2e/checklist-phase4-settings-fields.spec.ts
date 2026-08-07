@@ -46,8 +46,10 @@
 // form and the Add Lease/Add Boarding form, and the board-fee and timezone items land on
 // Agreements and Finances. A change to any of those breaks this file, so it declares them.
 //
-// Adjacent slices: #1205 owns 487-494 and 527-534, #1252 owns 513-526, #1206/#1240 own
-// 535-575. Nothing outside 476-486, 495-506 and 507-512 is touched here.
+// Adjacent slices: #1205 owns the tier and Barn Events blocks, #1252 the barn-local instant
+// items, #1206/#1240 own
+// the Data Backup block. Nothing outside the accordions, settings-fields and #1149 barn-day
+// blocks is touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import {
@@ -77,8 +79,8 @@ const EASTERN = 'America/New_York'
 /**
  * Hawaii, in both of its two unrelated roles.
  *
- * As a *barn* zone it is the westernmost `BARN_TIMEZONES` offers, which is what makes line
- * 695 work at all — see BARN_TIMEZONE_CHANGE below.
+ * As a *barn* zone it is the westernmost `BARN_TIMEZONES` offers, which is what makes the
+ * "With the timezone changed above" line work at all — see BARN_TIMEZONE_CHANGE below.
  *
  * As the *device* zone it is the #1149 setup line's "set your *machine's* timezone to Hawaii",
  * expressed as
@@ -767,7 +769,7 @@ test.describe.serial('Manage Barn — Schedule Buffer', () => {
 
 // ---------------------------------------------------------------------------
 // Barn Timezone — the checklist block from "**Barn Timezone** select shows the current value"
-// through "add a planned expense due a day that is already past in the barn's zone"
+// through "add a planned expense due a few minutes from now"
 // ---------------------------------------------------------------------------
 
 test.describe.serial('Manage Barn — Barn Timezone', () => {

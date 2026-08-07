@@ -5,7 +5,8 @@
 // The manager's Expenses list: the nav slot it occupies, the five fields an expense card renders,
 // the recent/older split and its toggle, a future-dated planned expense with no amount, the
 // whole-card tap target, and the absence of a row-level Delete link
-// (checklists/pre-release/phase-4-manager-verification.md 149-159).
+// (checklists/pre-release/phase-4-manager-verification.md, the block from "Nav shows **Expenses**
+// between Lessons and Horses" through "There is no separate row-level Delete link on the list").
 //
 // Every test does its own goto and mutates nothing the next one reads — the one click that changes
 // state (the older-expenses toggle) is component state, discarded by the next navigation. So this

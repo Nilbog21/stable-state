@@ -7,7 +7,8 @@
 // **Registered Name** row, which the page renders for a non-manager only when the column is set.
 // Plus #1003's first non-manager file upload in this suite: a rider replacing the photo on the
 // horse they own, driven through the real file input.
-// checklists/pre-release/phase-5-trainer.md lines 74-80, and phase-6-rider.md lines 20-25, 33-35.
+// checklists/pre-release/phase-5-trainer.md's photo and Registered Name blocks, and
+// phase-6-rider.md's counterparts plus its #1003 own-horse photo block.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the
@@ -23,10 +24,12 @@
 //    Clover would make every id-addressed locator here ambiguous by name. Same substitution, and
 //    the same reason, as checklist-phase56-horses-list.spec.ts's.
 //
-// 2. **The horse with no registered name is Domino, not Apple.** Lines 885/933 are the `Setup`
+// 2. **The horse with no registered name is Domino, not Apple.** The two "clear Apple's
+//    **Registered Name**" lines are the `Setup`
 //    steps that *state* the substitution — "An e2e run seeds a second horse with no registered
-//    name instead" — and 886/934 read "Apple's detail page **then** shows no Registered Name
-//    row" only because the manual walkthrough gets there by clearing the column. Seeding two
+//    name instead" — and the two assertions read "Apple's detail page **then** shows no
+//    Registered Name row" only because the manual walkthrough gets there by clearing the column.
+//    Seeding two
 //    horses is what makes the pair two independent reads rather than one mutation asserted twice
 //    (the issue's own requirement), so the second read's subject is Domino.
 //
@@ -59,14 +62,16 @@ const REGISTERED_NAME = 'Emerald Fortune'
 
 // One asset per photographed horse, all four distinct, so a digest comparison below can only be
 // satisfied by the file the seed actually put there. clover-photo.png is the *upload* source
-// line 943 names by path; the other three are pre-seeded starting states.
+// the "Using it to set `scripts/data/clover-photo.png`" line names by path; the other three are
+// pre-seeded starting states.
 const BUTTER_PHOTO = 'butter-photo.jpg'
 const HARPER_PHOTO = 'harper-photo.png'
 const EMERY_PHOTO = 'emery-photo.jpg'
 const CLOVER_PHOTO = 'clover-photo.png'
 
 // The horse detail page's <dl> is rendered for non-managers only, one <div> per set field. These
-// are its labels, in DOM order, which is where lines 884/932's "below Status" is asserted.
+// are its labels, in DOM order, which is where the two "**Registered Name** row below Status"
+// lines are asserted.
 const STATUS_LABEL = 'Status'
 const REGISTERED_NAME_LABEL = 'Registered Name'
 
@@ -262,7 +267,8 @@ async function replacePhotoThroughTheUploadScreen(
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's view of the photo (lines 880-882)
+// Phase 5 — the trainer's view of the photo: "displays her seeded photo" through "does show a
+// **Set Photo**/**Replace Photo** control"
 // ---------------------------------------------------------------------------
 
 test('trainer_sees_the_seeded_photo_on_a_horse_they_do_not_own @trainer', async ({ page }) => {
@@ -296,7 +302,8 @@ test('trainer_sees_a_photo_control_on_the_horse_they_own @trainer', async ({ pag
 })
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's view of Registered Name (lines 883-886)
+// Phase 5 — the trainer's view of Registered Name: the "set Apple's **Registered Name**" Setup
+// through "Apple's detail page then shows no **Registered Name** row"
 // ---------------------------------------------------------------------------
 
 // "Below Status" is a positional claim, so it is asserted positionally: the label list is read in
@@ -327,7 +334,8 @@ test('trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset @train
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's view of the photo (lines 929-930)
+// Phase 6 — the rider's view of the photo: "Butter's detail page (Dana does **not** own her)
+// displays her seeded photo" and its no-controls companion
 // ---------------------------------------------------------------------------
 
 test('rider_sees_the_seeded_photo_on_a_horse_they_do_not_own @rider', async ({ page }) => {
@@ -347,7 +355,8 @@ test('rider_sees_no_photo_controls_on_a_horse_they_do_not_own @rider', async ({ 
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's view of Registered Name (lines 931-934)
+// Phase 6 — the rider's view of Registered Name: the "set Apple's **Registered Name**" Setup
+// through "Apple's detail page then shows no **Registered Name** row"
 // ---------------------------------------------------------------------------
 
 test('rider_horse_detail_shows_the_registered_name_row_below_status @rider', async ({ page }) => {
@@ -364,7 +373,8 @@ test('rider_horse_detail_omits_the_registered_name_row_when_it_is_unset @rider',
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — a rider writing their own horse's photo (lines 942-944, #1003)
+// Phase 6 — a rider writing their own horse's photo (#1003): "Clover's detail page shows a
+// **Set Photo**/**Replace Photo** control" through "That photo then displays on Clover's detail page"
 // ---------------------------------------------------------------------------
 
 // Serial: the last two steps start from the state the one before left behind, which is the
