@@ -218,45 +218,38 @@ describe('updateHorseAction', () => {
     })
   })
 
-  it('should_pass_feed_notes_and_medication_notes_to_updateHorseDetails', async () => {
-    const fd = validThresholdsFormData()
-    fd.set('feed_notes', '2 flakes hay AM/PM')
-    fd.set('medication_notes', 'Bute 1g daily')
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+  // #1390 moved feed/medication out of HorseManagerForm and into its own Feed & Medication
+  // section, which saves through update_horse_notes. This form no longer carries the fields,
+  // so it re-sends the horse's stored values -- the same pass-through already used for
+  // owning_member_id, and the reason the 12-param update_horse_details signature is untouched.
+  it('should_pass_the_horses_stored_notes_through_to_updateHorseDetails', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      owning_member_id: null,
+      feed_notes: '2 flakes hay AM/PM',
+      medication_notes: 'Bute 1g daily',
+    }))
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
     expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
       feed_notes: '2 flakes hay AM/PM',
       medication_notes: 'Bute 1g daily',
     }))
   })
 
-  it('should_trim_feed_notes_and_medication_notes_before_calling_updateHorseDetails', async () => {
-    const fd = validThresholdsFormData()
-    fd.set('feed_notes', '  2 flakes hay AM/PM  ')
-    fd.set('medication_notes', '  Bute 1g daily  ')
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
-      feed_notes: '2 flakes hay AM/PM',
-      medication_notes: 'Bute 1g daily',
+  it('should_ignore_notes_submitted_in_the_form_data', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      owning_member_id: null,
+      feed_notes: 'stored feed',
+      medication_notes: 'stored meds',
     }))
-  })
-
-  it('should_treat_blank_feed_notes_and_medication_notes_as_null', async () => {
     const fd = validThresholdsFormData()
-    fd.set('feed_notes', '   ')
-    fd.set('medication_notes', '   ')
+    fd.set('feed_notes', 'submitted feed')
+    fd.set('medication_notes', 'submitted meds')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
     expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
-      feed_notes: null,
-      medication_notes: null,
-    }))
-  })
-
-  it('should_treat_absent_feed_notes_and_medication_notes_fields_as_null', async () => {
-    const fd = validThresholdsFormData()
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
-      feed_notes: null,
-      medication_notes: null,
+      feed_notes: 'stored feed',
+      medication_notes: 'stored meds',
     }))
   })
 
@@ -492,6 +485,22 @@ describe('updateHorseNotesAction', () => {
   })
 
   it('should_call_updateHorseNotes_with_barn_scoped_ids_and_notes', async () => {
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(updateHorseNotes).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      feed_notes: '2 flakes hay AM/PM',
+      medication_notes: 'Bute 1g daily',
+    })
+  })
+
+  // #1390 routes the manager's Feed & Medication save through here too, rather than through
+  // HorseManagerForm's update_horse_details. The action was already role-agnostic; the manager
+  // branch it now needs lives in the update_horse_notes RPC, not here.
+  it('should_call_updateHorseNotes_for_a_manager_too', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
     await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
     expect(updateHorseNotes).toHaveBeenCalledWith('horse-1', mockBarn.id, {
       feed_notes: '2 flakes hay AM/PM',
@@ -743,19 +752,45 @@ describe('grantHorseAccessAction', () => {
     })
   })
 
+  // #1390: takes FormData rather than a memberId argument, because the member is chosen from a
+  // <select> inside the form -- the value isn't known at render time, so it can't be `.bind()`'d,
+  // and a closure over client state is exactly what defeats progressive enhancement (#1385).
+  function grantFormData(memberId: string): FormData {
+    const fd = new FormData()
+    fd.set('member_id', memberId)
+    return fd
+  }
+
   it('should_call_requireMembership_with_manager_role_only', async () => {
-    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    await grantHorseAccessAction('green-acres', 'horse-1', grantFormData('mem-rider-1'))
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_grant_privilege_for_selected_member', async () => {
-    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    await grantHorseAccessAction('green-acres', 'horse-1', grantFormData('mem-rider-1'))
     expect(grantHorsePrivilege).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-rider-1')
   })
 
   it('should_revalidate_horse_detail_path', async () => {
-    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    await grantHorseAccessAction('green-acres', 'horse-1', grantFormData('mem-rider-1'))
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  // The select's placeholder option submits an empty value, and pre-hydration there is no
+  // disabled-until-chosen button to stop it reaching the server.
+  it('should_not_grant_a_privilege_when_no_member_was_selected', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', grantFormData(''))
+    expect(grantHorsePrivilege).not.toHaveBeenCalled()
+  })
+
+  it('should_not_revalidate_when_no_member_was_selected', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', grantFormData(''))
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('should_not_grant_a_privilege_when_the_member_id_field_is_absent', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', new FormData())
+    expect(grantHorsePrivilege).not.toHaveBeenCalled()
   })
 })
 
@@ -773,19 +808,49 @@ describe('updateHorseAccessDocumentAction', () => {
     })
   })
 
+  // #1390: FormData for the same reason as grantHorseAccessAction -- the new value comes from a
+  // <select> in the row's own form, so only the privilege id can be bound at render time.
+  function documentFormData(value: string): FormData {
+    const fd = new FormData()
+    fd.set('value', value)
+    return fd
+  }
+
   it('should_call_requireMembership_with_manager_role_only', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('write'))
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_update_document_privileges_for_the_grant', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('write'))
     expect(updateHorsePrivilegeDocumentAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, 'write')
   })
 
   it('should_revalidate_horse_detail_path', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'read')
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('read'))
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  // The value now arrives as an untrusted string rather than a typed argument, so it has to be
+  // checked against the enum before reaching the DAL.
+  it('should_not_update_privileges_for_a_value_outside_the_enum', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('admin'))
+    expect(updateHorsePrivilegeDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it('should_not_revalidate_for_a_value_outside_the_enum', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('admin'))
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('should_not_update_privileges_when_the_value_field_is_absent', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', new FormData())
+    expect(updateHorsePrivilegeDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it('should_accept_none_as_a_valid_value', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('none'))
+    expect(updateHorsePrivilegeDocumentAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, 'none')
   })
 })
 
