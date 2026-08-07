@@ -249,8 +249,15 @@ describe('HorseCard', () => {
       expect(screen.queryByText(/Injury/)).toBeNull()
     })
 
-    it('should_not_render_exhaustion_bar_even_when_exhaustion_provided', () => {
+    // #1391 inverted this: the owned variant used to swallow an exhaustion prop, which is why
+    // page.tsx never fetched one for an owned horse (#1000). Both halves moved together.
+    it('should_render_exhaustion_bar_when_exhaustion_provided', () => {
       render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" exhaustion={exhaustion} />)
+      expect(screen.getByRole('button', { name: /exhaustion/i })).toBeDefined()
+    })
+
+    it('should_not_render_exhaustion_bar_when_exhaustion_omitted', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" />)
       expect(screen.queryByRole('button', { name: /exhaustion/i })).toBeNull()
     })
 

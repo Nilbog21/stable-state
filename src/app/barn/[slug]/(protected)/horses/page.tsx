@@ -3,7 +3,8 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, getOwnedHorses, resolveExhaustionThresholds } from '@/lib/db/horses'
-import type { HorseExertionSummary } from '@/lib/db/types'
+import { getMyHorseLessonReadPrivilege } from '@/lib/db/member-horse-privileges'
+import type { Horse, HorseExertionSummary } from '@/lib/db/types'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
 import { GuardedForm } from '../NavigationBlocker'
@@ -11,6 +12,11 @@ import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/Button'
 
 type HorseCardData = Pick<HorseExertionSummary, 'id' | 'name' | 'registered_name' | 'is_active' | 'is_available' | 'unavailability_reason'>
+
+// The two branches feed this from different sources — HorseExertionSummary rows for
+// manager/trainer, plain Horse rows for the owned cards — so it's the columns
+// getHorseProjectedExhaustion and resolveExhaustionThresholds actually need, and nothing else.
+type ExhaustionSubject = { id: string } & Pick<Horse, 'exhaustion_threshold_high' | 'exhaustion_threshold_moderate'>
 
 export default async function HorsesPage({
   params,
@@ -36,22 +42,33 @@ export default async function HorsesPage({
   let available: HorseCardData[]
   let unavailable: HorseCardData[]
   let inactive: HorseExertionSummary[] = []
-  let exhaustionByHorseId = new Map<
-    string,
-    { existingRows: Awaited<ReturnType<typeof getHorseProjectedExhaustion>>; thresholds: ReturnType<typeof resolveExhaustionThresholds> }
-  >()
+  let exhaustionSubjects: ExhaustionSubject[]
+
+  const today = new Date()
 
   if (isRider) {
-    // Riders never get exertion/exhaustion data, not even via the RPC — see #765.
+    // A rider's own horse is the one place a rider sees exhaustion (#1391). #765's blanket
+    // "riders never get exertion/exhaustion data, not even via the RPC" predates the #997/#999
+    // privilege model: get_horse_projected_exhaustion admits a rider holding
+    // lesson_read_privileges on the horse, and raises for one holding none. So the grant is
+    // checked here rather than inferred from ownership — set_horse_owner does elevate it when
+    // it makes a member the owner, but a manager can toggle it back off without clearing
+    // ownership, and an unchecked call would 500 this page for that rider.
+    // get_horse_exertion_summary stays manager/trainer-only, so Available/Unavailable still
+    // come from a plain getHorsesByBarn list with no bar.
     const horses = await getHorsesByBarn(barn.id)
     available = horses.filter((h) => h.is_available && !ownedIds.has(h.id))
     unavailable = horses.filter((h) => !h.is_available && !ownedIds.has(h.id))
+
+    const privileged = await Promise.all(
+      ownedHorses.map(async (h) => ((await getMyHorseLessonReadPrivilege(h.id, barn.id)) ? h : null))
+    )
+    exhaustionSubjects = privileged.filter((h) => h !== null)
   } else {
-    const today = new Date()
     const horses = await getHorseExertionSummary(barn.id, today)
 
-    // #1000: owned horses are excluded here, before the exhaustion RPC fan-out below, since the
-    // owned HorseCard variant never renders ExhaustionBar — same rationale as #765's rider skip.
+    // Owned horses come out of these three sections and are rendered by My Horses instead
+    // (#1000); they rejoin the exhaustion fan-out below.
     const availableFull = horses
       .filter((h) => h.is_active && h.is_available && !ownedIds.has(h.id))
       .sort((a, b) => a.totalExertion - b.totalExertion)
@@ -60,17 +77,21 @@ export default async function HorsesPage({
     unavailable = unavailableFull
     inactive = horses.filter((h) => !h.is_active && !ownedIds.has(h.id))
 
-    const activeHorses = [...availableFull, ...unavailableFull]
-    exhaustionByHorseId = new Map(
-      await Promise.all(
-        activeHorses.map(async (h) => {
-          const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today, barn.timezone)
-          const thresholds = resolveExhaustionThresholds(h, barn)
-          return [h.id, { existingRows, thresholds }] as const
-        })
-      )
-    )
+    // #1391 reversed #1000's skip: the owned card renders ExhaustionBar now. Their thresholds
+    // come off the getOwnedHorses rows rather than the summary, whose owned entries the filters
+    // above have already dropped.
+    exhaustionSubjects = [...availableFull, ...unavailableFull, ...ownedHorses]
   }
+
+  const exhaustionByHorseId = new Map(
+    await Promise.all(
+      exhaustionSubjects.map(async (h) => {
+        const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today, barn.timezone)
+        const thresholds = resolveExhaustionThresholds(h, barn)
+        return [h.id, { existingRows, thresholds }] as const
+      })
+    )
+  )
 
   const allEmpty =
     ownedHorses.length === 0 && available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
@@ -96,7 +117,14 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">My Horses</h2>
           <div className="flex flex-col gap-2">
             {ownedHorses.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="owned" linkable />
+              <HorseCard
+                key={horse.id}
+                horse={horse}
+                barnSlug={slug}
+                variant="owned"
+                exhaustion={exhaustionByHorseId.get(horse.id)}
+                linkable
+              />
             ))}
           </div>
         </section>

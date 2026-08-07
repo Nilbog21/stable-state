@@ -47,7 +47,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Available** — horses in active rotation, sorted by total exertion (within 3 days of today) ascending. Each card shows the name and an exhaustion bar reflecting exertion from lessons within 3 days of today; tap the bar to see the individual lessons behind it.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason entered by your barn manager, and the same exhaustion bar.
 
-If your barn manager has made you the owning member of any horse, a **My Horses** section appears at the top of the page listing those horses instead — each card shows a status badge (**Active**/**Unavailable**/**Inactive**) instead of an exhaustion bar (plus the unavailability reason when the badge is Unavailable), and the horse is no longer duplicated in its usual Available/Unavailable section.
+If your barn manager has made you the owning member of any horse, a **My Horses** section appears at the top of the page listing those horses instead — each card shows a status badge (**Active**/**Unavailable**/**Inactive**) alongside the same exhaustion bar (plus the unavailability reason when the badge is Unavailable), and the horse is no longer duplicated in its usual Available/Unavailable section.
 
 Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)".
 

@@ -242,6 +242,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: owned_horse_appears_under_my_horses) (#1000) Clover appears under **My Horses**
 - [ ] (e2e: owned_horse_shows_a_green_active_badge_under_my_horses) (#1000) Clover shows a green **Active** badge there
 - [ ] (e2e: owned_horse_no_longer_appears_under_available) (#1000) Clover no longer appears under Available
+- [ ] (e2e: owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card under **My Horses** also shows an exhaustion bar — owned horses used to be skipped by the exhaustion fetch entirely
 - [ ] (e2e: clearing_registered_name_removes_the_card_parenthetical) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
 - [ ] (e2e: re_checking_use_barn_defaults_reverts_thresholds_on_reload) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload
 - [ ] (e2e: moderate_not_below_high_is_rejected_with_an_error) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error

@@ -68,7 +68,10 @@ export function HorseCard({
       ) : (
         <div className="p-4">{content}</div>
       )}
-      {(variant === 'available' || variant === 'unavailable') && exhaustion && (
+      {/* The prop alone decides — page.tsx never hands an `inactive` card one, and since #1391
+          put the bar on `owned` too, a variant list here would only restate the call site's
+          choice for three of the four variants. */}
+      {exhaustion && (
         <div className="px-4 pb-3">
           <ExhaustionBar existingRows={exhaustion.existingRows} thresholds={exhaustion.thresholds} />
         </div>
