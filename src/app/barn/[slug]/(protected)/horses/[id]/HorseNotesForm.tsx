@@ -23,12 +23,15 @@ export function HorseNotesForm({
   // instead. The discriminator is referential identity, not value: useActionState hands back the
   // exact object it was seeded with until an action resolves, and every server response
   // deserializes to a fresh one, so `state !== INITIAL_STATE` means a real result landed.
-  const [state, formAction] = useActionState(action, INITIAL_STATE)
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
   const show = useSaveFlashOn(state !== INITIAL_STATE && !state.error ? state : null)
   // Submit clears the flag optimistically (as GuardedForm does) and a returned error re-arms it,
-  // because a failed save leaves the fields holding exactly the edits that didn't land.
+  // because a failed save leaves the fields holding exactly the edits that didn't land. `pending`
+  // spans the gap between the two: onSubmit fires on click, while `state` still reads as the
+  // previous result until the action resolves, so without it nothing is armed for the whole
+  // round trip — the window #1362 built the guard for.
   const [dirty, setDirty] = useState(false)
-  useUnsavedChangesGuard(dirty || state.error !== null)
+  useUnsavedChangesGuard(dirty || pending || state.error !== null)
 
   return (
     <form

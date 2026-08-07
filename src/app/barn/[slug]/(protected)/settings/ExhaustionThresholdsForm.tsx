@@ -15,10 +15,12 @@ export function ExhaustionThresholdsForm({ barn, action }: ExhaustionThresholdsF
   // so the dirty flag is derived from the returned state instead of cleared on the action's
   // return path. Submit clears it optimistically (as GuardedForm does) and a returned error
   // re-arms it, because a failed save leaves the fields holding exactly the edits that didn't
-  // land.
-  const [state, formAction] = useActionState(action, { error: null })
+  // land. `pending` spans the gap between the two: onSubmit fires on click, while `state` still
+  // reads as the previous result until the action resolves, so without it nothing is armed for
+  // the whole round trip — the window #1362 built the guard for.
+  const [state, formAction, pending] = useActionState(action, { error: null })
   const [dirty, setDirty] = useState(false)
-  useUnsavedChangesGuard(dirty || state.error !== null)
+  useUnsavedChangesGuard(dirty || pending || state.error !== null)
 
   return (
     <form
