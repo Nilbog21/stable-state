@@ -46,10 +46,9 @@
 // form and the Add Lease/Add Boarding form, and the board-fee and timezone items land on
 // Agreements and Finances. A change to any of those breaks this file, so it declares them.
 //
-// Adjacent slices: #1205 owns the tier and Barn Events blocks, #1252 the barn-local instant
-// items, #1206/#1240 own
-// the Data Backup block. Nothing outside the accordions, settings-fields and #1149 barn-day
-// blocks is touched here.
+// Adjacent slices: #1205 owns the tier and Barn Events blocks, #1252 the barn-local instant items,
+// #1206/#1240 own the Data Backup block. Nothing outside the accordions, settings-fields and #1149
+// barn-day blocks is touched here.
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import {
@@ -83,9 +82,8 @@ const EASTERN = 'America/New_York'
  * "With the timezone changed above" line work at all — see BARN_TIMEZONE_CHANGE below.
  *
  * As the *device* zone it is the #1149 setup line's "set your *machine's* timezone to Hawaii",
- * expressed as
- * `test.use({ timezoneId })` on the barn-day describe. Never a `playwright.config.ts` edit:
- * #1221 owns the runner's `TZ`, and the browser context zone is a per-file override.
+ * expressed as `test.use({ timezoneId })` on the barn-day describe. Never a `playwright.config.ts`
+ * edit: #1221 owns the runner's `TZ`, and the browser context zone is a per-file override.
  */
 const HAWAII = 'Pacific/Honolulu'
 
@@ -158,26 +156,24 @@ const DEVICE_DAY = shiftDay(BARN_TODAY, -1)
  * green and worthless for most of the day — which is the exact failure mode #1222 existed to
  * remove.
  *
- * **1pm and not the 8pm the #1149 setup line names, and the difference is load-bearing.**
- * Hawaii is UTC−10
- * with no DST, so any Hawaii evening is already the *next* UTC day: 8pm on DEVICE_DAY is 06:00
- * UTC on BARN_TODAY, and the browser's UTC calendar day would then equal the very value all six
- * tests assert. A `new Date().toISOString().slice(0, 10)` implementation would render the right
+ * **1pm and not the 8pm the #1149 setup line names, and the difference is load-bearing.** Hawaii is
+ * UTC−10 with no DST, so any Hawaii evening is already the *next* UTC day: 8pm on DEVICE_DAY is
+ * 06:00 UTC on BARN_TODAY, and the browser's UTC calendar day would then equal the very value all
+ * six tests assert. A `new Date().toISOString().slice(0, 10)` implementation would render the right
  * answer for the wrong reason and every one of these would stay green — and per the note on the
- * describe below, the server host's UTC day is precisely the regression #1224 already shipped
- * once. 1pm keeps Hawaii *and* UTC on DEVICE_DAY (23:00 UTC), so the pin separates the barn's
- * day from the device's zone and from UTC together. 8pm is the manual recipe for producing the
- * barn-ahead-of-device relationship by hand; pinning constructs that relationship directly, and
- * is free to pick the hour that also closes the UTC axis.
+ * describe below, the server host's UTC day is precisely the regression #1224 already shipped once.
+ * 1pm keeps Hawaii *and* UTC on DEVICE_DAY (23:00 UTC), so the pin separates the barn's day from
+ * the device's zone and from UTC together. 8pm is the manual recipe for producing the
+ * barn-ahead-of-device relationship by hand; pinning constructs that relationship directly, and is
+ * free to pick the hour that also closes the UTC axis.
  */
 const DEVICE_INSTANT = wallClockToInstant(`${DEVICE_DAY}T13:00:00`, HAWAII)
 
 /**
- * `local-day.ts:formatCalendarDate`'s output, rebuilt here rather than imported — the
- * dashboard heading is what the #1149 setup line asserts, and that helper is half of what
- * produces it.
- * Same in-spec `Intl` mirror `checklist-timezone.spec.ts` already uses for the same reason.
- * UTC-forced because a "YYYY-MM-DD" names a day, not an instant.
+ * `local-day.ts:formatCalendarDate`'s output, rebuilt here rather than imported — the dashboard
+ * heading is what the #1149 setup line asserts, and that helper is half of what produces it. Same
+ * in-spec `Intl` mirror `checklist-timezone.spec.ts` already uses for the same reason. UTC-forced
+ * because a "YYYY-MM-DD" names a day, not an instant.
  */
 function calendarDateLabel(date: string): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -353,10 +349,9 @@ const barn = withBarn('settings-fields', async ({ supabase, barn: seededBarn, me
     fee: EXISTING_BOARD_FEE,
   })
 
-  // The "add a planned expense" line's three expenses. `addExpense` derives `expense_date`
-  // from `at` in the seeded
-  // barn's own zone — Eastern, the value captured at createBarn — which is the frame these
-  // wall clocks are reasoned in above.
+  // The "add a planned expense" line's three expenses. `addExpense` derives `expense_date` from
+  // `at` in the seeded barn's own zone — Eastern, the value captured at createBarn — which is the
+  // frame these wall clocks are reasoned in above.
   const halfAnHourAgo = new Date(Date.now() - 30 * 60 * 1000)
   const aWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const aWeekAhead = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -706,9 +701,8 @@ test.describe.serial('Manage Barn — Horse Exhaustion Thresholds', () => {
   }
 
   test('exhaustion_threshold_fields_show_the_barns_current_values @manager', async ({ page }) => {
-    // Both fields in one equality — the checklist names them as a "Moderate/High" pair, and
-    // reading only one would
-    // pass on a form that rendered the same value into both.
+    // Both fields in one equality — the checklist names them as a "Moderate/High" pair, and reading
+    // only one would pass on a form that rendered the same value into both.
     expect(await thresholdValues(page)).toEqual(DEFAULT_THRESHOLDS)
   })
 

@@ -81,13 +81,12 @@ const MANAGER_NAV_LABELS = [
  * one type would collapse to one and the whole "lists the notifications" claim would be asserted
  * against a single row.
  *
- * **Exactly one of them is already read**, which is the only reason the "unread-count badge"
- * line's assertion says anything. `upsertNotification` hard-codes `read_at: null`, so with an
- * all-unread fixture
- * `unreadCount` and `notifications.length` are the same number — and a bell computing
+ * **Exactly one of them is already read**, which is the only reason the "unread-count badge" line's
+ * assertion says anything. `upsertNotification` hard-codes `read_at: null`, so with an all-unread
+ * fixture `unreadCount` and `notifications.length` are the same number — and a bell computing
  * `notifications.length`, ignoring `read_at` entirely, renders an identical badge. The word the
- * checklist line turns on is *unread*, so the fixture has to be able to tell those apart: the
- * badge reads 3 while the list holds 4.
+ * checklist line turns on is *unread*, so the fixture has to be able to tell those apart: the badge
+ * reads 3 while the list holds 4.
  *
  * **`day` is a fixed past date, never today.** The bell renders `formatBarnDate(created_at)`.
  * Seeded at today's date the assertion would be vacuous in the fourth shape: a bell that ignored

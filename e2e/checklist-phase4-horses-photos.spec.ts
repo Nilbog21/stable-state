@@ -6,9 +6,9 @@
 // photo-locked upload screen and its three absent fields, upload-on-choose, aspect-ratio-preserving
 // display, replace with a different file *and* format, the post-reload check that the old photo is
 // gone, remove restoring the placeholder, a non-image rejection, and #1003's owner lock
-// (checklists/pre-release/phase-4-manager-verification.md, the block from "Clover's detail page
-// (no photo seeded) shows a placeholder icon" through "no **Replace Photo**/**Remove** control is
-// shown to you").
+// (checklists/pre-release/phase-4-manager-verification.md, the block from "Clover's detail page (no
+// photo seeded) shows a placeholder icon" through "no **Replace Photo**/**Remove** control is shown
+// to you").
 //
 // Four horses, because each flow needs a different starting state and two of them must *stay* in
 // theirs: Clover with no photo (the set/replace/remove chain), Apple owned by a rider but with no
@@ -36,11 +36,11 @@ const DAISY = 'Daisy'
 
 // Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
 // harper-photo.png and emery-photo.jpg to *member* photo flows, but two lines name both files
-// explicitly for Apple the horse — "As manager, set `scripts/data/harper-photo.png` on Apple"
-// and "Replace Apple's photo with `scripts/data/emery-photo.jpg`". The line text wins, on the
-// precedent #1201 set when its "tap **Set Photo** and upload `scripts/data/clover-photo.png`"
-// line named clover-photo.png for a member. These files are read-only sources — reuse across
-// entities costs nothing.
+// explicitly for Apple the horse — "As manager, set `scripts/data/harper-photo.png` on Apple" and
+// "Replace Apple's photo with `scripts/data/emery-photo.jpg`". The line text wins, on the precedent
+// #1201 set when its "tap **Set Photo** and upload `scripts/data/clover-photo.png`" line named
+// clover-photo.png for a member. These files are read-only sources — reuse across entities costs
+// nothing.
 const CLOVER_PHOTO = 'clover-photo.png'
 const BUTTER_PHOTO = 'butter-photo.jpg'
 const HARPER_PHOTO = 'harper-photo.png'

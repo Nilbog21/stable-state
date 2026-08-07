@@ -20,19 +20,17 @@
 // ## Why the rider's subject horse is not called Clover
 //
 // The rider's three **My Horses** lines name Clover, and this file's rider tests assert against
-// Willow instead. That is
-// deliberate, and it is forced by the paired-slice seeding above. Both subjects live in one
-// barn, so the trainer's Clover is an ordinary unowned horse from the rider's side and sits in
-// the rider's *Available* section — which is exactly the region the "no longer appears under
-// Available/Unavailable" absence assertion
-// scopes to. A second horse called Clover would make that assertion unfalsifiable.
+// Willow instead. That is deliberate, and it is forced by the paired-slice seeding above. Both
+// subjects live in one barn, so the trainer's Clover is an ordinary unowned horse from the rider's
+// side and sits in the rider's *Available* section — which is exactly the region the "no longer
+// appears under Available/Unavailable" absence assertion scopes to. A second horse called Clover
+// would make that assertion unfalsifiable.
 //
-// The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's
-// horse, planted by the "make Dana the owning member of **Clover**" Setup line above them,
-// which this slice must not touch.
-// Rewording the rider's **My Horses** lines alone would contradict it. The claim each test makes
-// is the line's claim;
-// only the fixture's name differs, which is how the whole #1187-#1208 batch worked.
+// The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's horse,
+// planted by the "make Dana the owning member of **Clover**" Setup line above them, which this
+// slice must not touch. Rewording the rider's **My Horses** lines alone would contradict it. The
+// claim each test makes is the line's claim; only the fixture's name differs, which is how the
+// whole #1187-#1208 batch worked.
 //
 // Every test does its own goto and mutates nothing, so this file is a set of independent reads
 // of one seeded barn — no test.describe.serial, and no test runs against state a previous one

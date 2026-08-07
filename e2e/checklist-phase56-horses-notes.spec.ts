@@ -1,12 +1,12 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/components/ExhaustionBar.tsx
 //
-// #1006's Feed Notes / Medication Notes on the horse detail page, through a non-manager's eye:
-// a horse you do not own renders both fields as read-only text with no textarea and no Save
-// button, a field that is unset drops its row entirely rather than rendering blank, and a horse
-// you *own* renders both as editable textareas with a Save whose write survives a reload.
-// checklists/pre-release/phase-5-trainer.md's horse-notes block, and phase-6-rider.md's
-// owned-horse notes block.
+// #1006's Feed Notes / Medication Notes on the horse detail page, through a non-manager's eye: a
+// horse you do not own renders both fields as read-only text with no textarea and no Save button, a
+// field that is unset drops its row entirely rather than rendering blank, and a horse you *own*
+// renders both as editable textareas with a Save whose write survives a reload.
+// checklists/pre-release/phase-5-trainer.md's horse-notes block, and phase-6-rider.md's owned-horse
+// notes block.
 //
 // Three of those eleven checkboxes are `Setup —` lines — "clear one of that horse's two notes
 // fields", "grant this trainer a horse-privileges row on **Clover**", and "make Dana the owning

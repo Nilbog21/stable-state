@@ -70,17 +70,15 @@ import type { Lesson } from '@/lib/db/types'
 // ---------------------------------------------------------------------------
 
 /**
- * The barn's own zone — `barns.timezone`'s schema default, so a freshly seeded barn already
- * carries it and the #1149 setup line's "set **Barn Timezone** to Eastern" (the setup all eleven
- * of these
+ * The barn's own zone — `barns.timezone`'s schema default, so a freshly seeded barn already carries
+ * it and the #1149 setup line's "set **Barn Timezone** to Eastern" (the setup all eleven of these
  * lines say "under that setup" about) holds without this file arranging anything.
  */
 const EASTERN = 'America/New_York'
 
 /**
  * The #1149 setup line's "set your *machine's* timezone to Hawaii", expressed as the browser
- * context's
- * zone. Never a `playwright.config.ts` edit: #1221 owns the *runner's* `TZ` (and pins the
+ * context's zone. Never a `playwright.config.ts` edit: #1221 owns the *runner's* `TZ` (and pins the
  * default browser zone to Asia/Kolkata); the per-file override below is what these lines are
  * actually about.
  */
@@ -168,9 +166,8 @@ const NEW_LESSON_DAY = shiftDay(BARN_TODAY, 3)
  * 4:00 PM, the wall clock every one of the "still reads 4:00 PM" / "stores 4:00 PM" / barn-event
  * items names.
  *
- * Its counter-value is the reason it was chosen: 4:00 PM Eastern is 20:00 UTC, which is
- * **10:00 AM in Honolulu** — the exact string "not 10:00 AM Hawaii" says must NOT appear. So an
- * app that
+ * Its counter-value is the reason it was chosen: 4:00 PM Eastern is 20:00 UTC, which is **10:00 AM
+ * in Honolulu** — the exact string "not 10:00 AM Hawaii" says must NOT appear. So an app that
  * reverted to the viewer-local frame #1222 deleted renders "10:00 AM" into every one of these
  * assertions and fails it, and an app rendering in UTC produces "8:00 PM" and fails it too.
  */
@@ -263,10 +260,9 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * **Why this pin and not #1204's 1pm-Hawaii one.** Its six items all assert values the SERVER
  * rendered, so its pin put the browser's barn-zone day one day BEHIND the server's and every
  * assertion still named the server's answer. The two **New Lesson** pre-fill items are the
- * opposite: their answers
- * are computed in the BROWSER, off this frozen clock, and read against a month grid whose
- * past-day cutoff comes from the server's `todayStr`. So the browser's barn-zone day has to
- * EQUAL the server's, while its *local* (Honolulu) day differs. Same frame, opposite
+ * opposite: their answers are computed in the BROWSER, off this frozen clock, and read against a
+ * month grid whose past-day cutoff comes from the server's `todayStr`. So the browser's barn-zone
+ * day has to EQUAL the server's, while its *local* (Honolulu) day differs. Same frame, opposite
  * requirement, because of where the computation happens.
  *
  * `wallClockToInstant` is used here and in the seed below, and nowhere else. Building a
@@ -288,15 +284,14 @@ const PIN_BARN_TIME = '01:00'
  * rendered the right answer for the wrong reason). That was caught only by review. A guard
  * that throws at collection makes the whole class impossible here instead of documented.
  *
- * The third check is the one worth reading twice, because it asserts an EQUALITY that looks
- * like a bug and is not. `HNL ≤ EDT ≤ UTC` at every instant, and that span is 10h < 24h — so
- * the Eastern calendar day always equals either the Honolulu day or the UTC day, and can never
- * differ from both. No date assertion in this file can separate the barn's day from the
- * device's AND from UTC. The date item therefore takes the axis its own line names (the
- * device), and the UTC axis is closed by the **Start Time** item's HOUR, where all three frames
- * are distinct by
- * construction — same form, same page load. Asserting the equality here means a future edit
- * that "fixes" the pin thinking it has separated all three is told the truth immediately.
+ * The third check is the one worth reading twice, because it asserts an EQUALITY that looks like a
+ * bug and is not. `HNL ≤ EDT ≤ UTC` at every instant, and that span is 10h < 24h — so the Eastern
+ * calendar day always equals either the Honolulu day or the UTC day, and can never differ from
+ * both. No date assertion in this file can separate the barn's day from the device's AND from UTC.
+ * The date item therefore takes the axis its own line names (the device), and the UTC axis is
+ * closed by the **Start Time** item's HOUR, where all three frames are distinct by construction —
+ * same form, same page load. Asserting the equality here means a future edit that "fixes" the pin
+ * thinking it has separated all three is told the truth immediately.
  */
 function assertPinArithmetic(): void {
   const barnSideDay = barnDay(PIN_INSTANT, EASTERN)
@@ -350,15 +345,14 @@ let seededLesson: Lesson
 const barn = withBarn('phase4-barn-timezone', async ({ supabase, barn, members }) => {
   // The one precondition the whole file rests on, and it is not decoration.
   //
-  // The four display items read a value the app both ENCODES and DECODES through
-  // `barns.timezone`: the
-  // seed writes an instant, and `formatBarnDateTime`/`formatBarnTime`/`LessonForm`'s pre-fill
-  // all render it back through `instant.tz`, which the DAL fills from that same column. Encode
-  // and decode therefore share one zone Z, and "4:00 PM" comes back unchanged for ANY Z — so
-  // if the barn's zone were ever Honolulu, those four items would go green in precisely the
-  // configuration under which they prove nothing at all. Nothing else in this file would catch
-  // it: `EASTERN` only enters through the direct-DB helpers, which the resave, storage and
-  // barn-event items use and the four display items do not.
+  // The four display items read a value the app both ENCODES and DECODES through `barns.timezone`:
+  // the seed writes an instant, and `formatBarnDateTime`/`formatBarnTime`/`LessonForm`'s pre-fill
+  // all render it back through `instant.tz`, which the DAL fills from that same column. Encode and
+  // decode therefore share one zone Z, and "4:00 PM" comes back unchanged for ANY Z — so if the
+  // barn's zone were ever Honolulu, those four items would go green in precisely the configuration
+  // under which they prove nothing at all. Nothing else in this file would catch it: `EASTERN` only
+  // enters through the direct-DB helpers, which the resave, storage and barn-event items use and
+  // the four display items do not.
   //
   // Asserting the barn's zone once here closes it for all four, and the seed below then frames
   // its instant in `EASTERN` rather than in whatever the row happens to say, so the expected
@@ -392,13 +386,12 @@ const barn = withBarn('phase4-barn-timezone', async ({ supabase, barn, members }
 /**
  * Every lesson in this barn except the seeded one, as barn-local wall clocks.
  *
- * The batch's rule is that a direct service-role read verifies preconditions, never the
- * expected answer. The two "check the DB value" items are the sanctioned exception, and their
- * own issue body
- * ratifies it: they are *about storage*. The expected value is the wall clock the test typed
- * into the form, and the assertion is that the barn's zone — not the device's — is what turned
- * it into an instant. Reading the column and rendering it back in the barn's zone IS that
- * assertion, not a shortcut around it.
+ * The batch's rule is that a direct service-role read verifies preconditions, never the expected
+ * answer. The two "check the DB value" items are the sanctioned exception, and their own issue body
+ * ratifies it: they are *about storage*. The expected value is the wall clock the test typed into
+ * the form, and the assertion is that the barn's zone — not the device's — is what turned it into
+ * an instant. Reading the column and rendering it back in the barn's zone IS that assertion, not a
+ * shortcut around it.
  */
 async function otherLessonWallClocks(): Promise<string[]> {
   const { data, error } = await barn.data.supabase
@@ -798,14 +791,13 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     // (client), and the cell still read `2026-08-04` after the barrier below. The pin was doing
     // nothing and the assertion was green for the wrong reason.
     //
-    // The cell was then dropped from the assertion rather than kept alongside: past the barrier
-    // it provably still carries the server's answer, so asserting it adds a claim that cannot
-    // fail for the reason the date pre-fill item is about — #1204's F1 shape, an assertion whose
-    // expected
-    // value the component produces whether or not it read its input. `input[name="lesson_at"]`
-    // is a React-controlled PROPERTY, so it carries the browser's computation, and it is also
-    // the value the form submits — the pre-fill that actually decides anything. With the clock
-    // pinned, a control resolving the default in the DEVICE's zone answers `BARN_TODAY - 1`.
+    // The cell was then dropped from the assertion rather than kept alongside: past the barrier it
+    // provably still carries the server's answer, so asserting it adds a claim that cannot fail for
+    // the reason the date pre-fill item is about — #1204's F1 shape, an assertion whose expected
+    // value the component produces whether or not it read its input. `input[name="lesson_at"]` is a
+    // React-controlled PROPERTY, so it carries the browser's computation, and it is also the value
+    // the form submits — the pre-fill that actually decides anything. With the clock pinned, a
+    // control resolving the default in the DEVICE's zone answers `BARN_TODAY - 1`.
     const submitted = await page.locator('input[name="lesson_at"]').inputValue()
     expect(barnWallClock(new Date(submitted), EASTERN).slice(0, 10)).toBe(BARN_TODAY)
   })

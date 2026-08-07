@@ -128,12 +128,11 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
   })
 
   // The notes the horse-notes and hidden-notes lines assert on. Inline service-role writes rather
-  // than builder options:
-  // create_lesson_with_participants takes neither horse notes nor rider notes, and neither of
-  // lesson-participants.ts's two write paths (update_lesson_rider_notes, and the plain
-  // lesson_horses update beside it) takes an injectable client — the same reason addLeaseCharge
-  // gives for not calling updateChargePaymentType. support/fixtures.ts, where a builder would
-  // otherwise go, is off limits to this batch's parallel slices.
+  // than builder options: create_lesson_with_participants takes neither horse notes nor rider
+  // notes, and neither of lesson-participants.ts's two write paths (update_lesson_rider_notes, and
+  // the plain lesson_horses update beside it) takes an injectable client — the same reason
+  // addLeaseCharge gives for not calling updateChargePaymentType. support/fixtures.ts, where a
+  // builder would otherwise go, is off limits to this batch's parallel slices.
   mustSucceed(
     await supabase
       .from('lesson_horses')

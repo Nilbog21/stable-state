@@ -96,10 +96,9 @@ const SEEDED_CANCELLATION_NOTE = 'Arena flooded — this lesson will be reschedu
 
 /**
  * One distinct fee per lesson, none of them 0. Only `liveCancel`'s is asserted (the
- * rest-of-the-lesson line's
- * "unaffected"), but the three stay distinct because it is free at seed time and it is what makes
- * a *failure* legible: a test that landed on the wrong lesson reports a page whose fee names which
- * one it actually reached.
+ * rest-of-the-lesson line's "unaffected"), but the three stay distinct because it is free at seed
+ * time and it is what makes a *failure* legible: a test that landed on the wrong lesson reports a
+ * page whose fee names which one it actually reached.
  */
 const FEES = { seededCancelled: 501, headerCancel: 502, liveCancel: 503 } as const
 

@@ -8,12 +8,11 @@
 // column header, no Exhaustion Thresholds section, and a Reminder Date column that is text
 // rather than an input.
 //
-// The five Phase 5 horse-document lines in checklists/pre-release/phase-5-trainer.md, from
-// "Horse detail page lists documents with working links" through "The Reminder Date column there
-// is **read-only**". #1330 filed them under the pre-#1358 monolith's line numbers and every
-// heading below carried one; #1366 replaced those with the quoted fragments, which stay true
-// across the renumberings a line number cannot survive. The tags themselves are what pin the
-// mapping.
+// The five Phase 5 horse-document lines in checklists/pre-release/phase-5-trainer.md, from "Horse
+// detail page lists documents with working links" through "The Reminder Date column there is
+// **read-only**". #1330 filed them under the pre-#1358 monolith's line numbers and every heading
+// below carried one; #1366 replaced those with the quoted fragments, which stay true across the
+// renumberings a line number cannot survive. The tags themselves are what pin the mapping.
 //
 // ## Why two horses
 //

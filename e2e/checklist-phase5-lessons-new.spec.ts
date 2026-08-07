@@ -41,14 +41,13 @@ import type { Horse } from '@/lib/db/types'
 //
 // ## The month-calendar line's "same as the manager view" is a source-level fact, not an e2e claim
 //
-// One spec file runs as one role (Playwright dispatches on spec × project), so a `@trainer`
-// test can never observe the manager's rendering of this form to compare against. What makes
-// the two the *same* calendar is that `lessons/new/page.tsx` renders one `LessonForm` for both
-// roles and `LessonForm` passes `getScheduleRange` unconditionally — the manager/trainer branch
-// in that file covers the Instructor field alone. So the month-calendar line is asserted here in
-// its observable
-// form: the Date field IS the month calendar rather than the native date input it falls back
-// to without a schedule reader. Narrowing only, no line rewrite.
+// One spec file runs as one role (Playwright dispatches on spec × project), so a `@trainer` test
+// can never observe the manager's rendering of this form to compare against. What makes the two the
+// *same* calendar is that `lessons/new/page.tsx` renders one `LessonForm` for both roles and
+// `LessonForm` passes `getScheduleRange` unconditionally — the manager/trainer branch in that file
+// covers the Instructor field alone. So the month-calendar line is asserted here in its observable
+// form: the Date field IS the month calendar rather than the native date input it falls back to
+// without a schedule reader. Narrowing only, no line rewrite.
 //
 // ## Why every fixture lives in *next* month
 //
@@ -60,11 +59,10 @@ import type { Horse } from '@/lib/db/types'
 //
 // ## Ordering: the read-only block runs first, deliberately
 //
-// The serial block below creates lessons through the UI, and a created lesson is a real
-// scheduling item. Every lesson it creates uses WILLOW, so APPLE's exertion window — the
-// subject of the exertion-shading line — is untouched either way; declaring the read-only block
-// first makes
-// that a property of the file's order as well as of its horse choice.
+// The serial block below creates lessons through the UI, and a created lesson is a real scheduling
+// item. Every lesson it creates uses WILLOW, so APPLE's exertion window — the subject of the
+// exertion-shading line — is untouched either way; declaring the read-only block first makes that a
+// property of the file's order as well as of its horse choice.
 
 const APPLE = 'Apple'
 const WILLOW = 'Willow'
@@ -87,15 +85,13 @@ const BARRIER_TIME = '10:37'
 const SHADED_LESSON_TIME = '10:00'
 const APPOINTMENT_TIME = '09:00'
 const OTHER_INSTRUCTOR_TIME = '14:00'
-// Fifteen minutes after the other instructor's lesson — inside `schedule_buffer_minutes`' 30
-// (and inside the 60 + 30 window `getNearbyInstructorMembershipIds` actually applies), which
-// is the precondition "Creating one more lesson dated within 30 minutes of one of Blake's
-// lessons" names.
+// Fifteen minutes after the other instructor's lesson — inside `schedule_buffer_minutes`' 30 (and
+// inside the 60 + 30 window `getNearbyInstructorMembershipIds` actually applies), which is the
+// precondition "Creating one more lesson dated within 30 minutes of one of Blake's lessons" names.
 const NEARBY_TIME = '14:15'
 
-// APPLE carries per-horse thresholds rather than the barn defaults so the exertion-shading
-// line's band is an
-// arithmetic certainty rather than a coincidence: one exertion-5 lesson sums to 5, and
+// APPLE carries per-horse thresholds rather than the barn defaults so the exertion-shading line's
+// band is an arithmetic certainty rather than a coincidence: one exertion-5 lesson sums to 5, and
 // `getExhaustionBand(5, { moderate: 2, high: 4 })` is 'high' while an empty window's 0 is 'low'.
 const APPLE_THRESHOLD_MODERATE = 2
 const APPLE_THRESHOLD_HIGH = 4
@@ -149,10 +145,9 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
   const dayAt = (day: string, time: string) => wallClockToInstant(`${day}T${time}:00`, barn.timezone)
 
   // The exertion-shading line's whole point: this lesson is instructed by someone else. A
-  // role-filtered heatmap
-  // would leave `shadedDay` reading 'low' for the trainer, which is exactly what the assertion
-  // discriminates against. `quietDay` is 14 days away — well outside the +/-3-day exertion
-  // window — so it stays the 'low' control.
+  // role-filtered heatmap would leave `shadedDay` reading 'low' for the trainer, which is exactly
+  // what the assertion discriminates against. `quietDay` is 14 days away — well outside the
+  // +/-3-day exertion window — so it stays the 'low' control.
   await addUnpaidLesson(supabase, barn, {
     at: dayAt(shadedDay, SHADED_LESSON_TIME),
     time: SHADED_LESSON_TIME,
@@ -165,9 +160,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
   })
 
   // `time` is required, not cosmetic: `getScheduleForRange` filters `.not('expense_time','is',
-  // null)`, so a date-only appointment never reaches the calendar and the conflict-dot line
-  // would assert
-  // against a grid that legitimately shows no dot.
+  // null)`, so a date-only appointment never reaches the calendar and the conflict-dot line would
+  // assert against a grid that legitimately shows no dot.
   await addExpense(supabase, barn, {
     at: dayAt(appointmentDay, APPOINTMENT_TIME),
     time: APPOINTMENT_TIME,
@@ -189,9 +183,8 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
     tierName: standard.name,
   })
 
-  // No trainer-instructed lesson is seeded at all — that is what lets the locked-instructor
-  // line's "My Lessons now
-  // holds exactly the two you just created" mean something.
+  // No trainer-instructed lesson is seeded at all — that is what lets the locked-instructor line's
+  // "My Lessons now holds exactly the two you just created" mean something.
 })
 
 // ---------------------------------------------------------------------------
@@ -297,18 +290,17 @@ async function dotsOn(page: Page, dates: string[]): Promise<Record<string, boole
 
 /**
  * Fills and submits the form for one lesson, and reports how many Instructor pickers the form
- * offered — the "instructor field is locked to you" half, measured where it is observable (on
- * the form) and asserted
- * where the line's claim resolves (the created lessons' owner), in one expectation.
+ * offered — the "instructor field is locked to you" half, measured where it is observable (on the
+ * form) and asserted where the line's claim resolves (the created lessons' owner), in one
+ * expectation.
  *
  * Submit is activated by keyboard rather than a pointer click: it sits at the bottom of a long
  * scrollable form, the shape that raced Chromium's scroll-into-view animation in #501.
  *
- * The trailing `waitForURL` is the "succeeds with no error" half of the within-the-buffer line
- * as well as a sync
- * point: `submitLesson` re-renders the form with a `role="alert"` and no navigation on every
- * failure path, and only redirects on success. It cannot no-op (#1204) — the pattern excludes
- * the `/lessons/new` this is called from.
+ * The trailing `waitForURL` is the "succeeds with no error" half of the within-the-buffer line as
+ * well as a sync point: `submitLesson` re-renders the form with a `role="alert"` and no navigation
+ * on every failure path, and only redirects on success. It cannot no-op (#1204) — the pattern
+ * excludes the `/lessons/new` this is called from.
  */
 async function createLesson(page: Page, opts: { day: string; time: string }): Promise<{ instructorPickers: number }> {
   await openNewLessonForm(page)
@@ -388,10 +380,9 @@ async function nearbyNotification(): Promise<NearbyNotification> {
 
 test.describe("the trainer's New Lesson form", () => {
   // The month-calendar line. Both halves in one equality: the month grid is present at its full
-  // fixed 6x7, and
-  // the native `<input type="date">` LessonForm falls back to without a schedule reader is not.
-  // Either half alone is satisfiable by the wrong page — a form with both controls, or a form
-  // with neither.
+  // fixed 6x7, and the native `<input type="date">` LessonForm falls back to without a schedule
+  // reader is not. Either half alone is satisfiable by the wrong page — a form with both controls,
+  // or a form with neither.
   test('trainer_new_lesson_form_renders_the_month_calendar_as_its_date_field @trainer', async ({ page }) => {
     await openNewLessonForm(page)
 
@@ -417,11 +408,10 @@ test.describe("the trainer's New Lesson form", () => {
     })
   })
 
-  // The exertion-shading line. The shaded day's only lesson belongs to the *manager*, so a
-  // heatmap narrowed to
-  // the lessons this trainer instructs would report 'low' there and this equality would fail on
-  // exactly the claim the line makes. The quiet day is the control that keeps 'high' from being
-  // true of every cell.
+  // The exertion-shading line. The shaded day's only lesson belongs to the *manager*, so a heatmap
+  // narrowed to the lessons this trainer instructs would report 'low' there and this equality would
+  // fail on exactly the claim the line makes. The quiet day is the control that keeps 'high' from
+  // being true of every cell.
   test('trainer_exertion_shading_counts_another_instructors_lesson_for_the_selected_horse @trainer', async ({ page }) => {
     await openNewLessonForm(page)
     await goToNextMonth(page)
@@ -433,9 +423,8 @@ test.describe("the trainer's New Lesson form", () => {
   })
 
   // The conflict-dot line. The appointment day carries no lesson at all, so a dot there can only
-  // have come
-  // from Apple's vet appointment — which is the line's claim, that the dot fires on appointments
-  // for a trainer and not only on lessons.
+  // have come from Apple's vet appointment — which is the line's claim, that the dot fires on
+  // appointments for a trainer and not only on lessons.
   test('trainer_conflict_dot_fires_on_the_selected_horses_appointment_day @trainer', async ({ page }) => {
     await openNewLessonForm(page)
     await goToNextMonth(page)
@@ -473,9 +462,8 @@ test.describe.serial('a trainer creating lessons', () => {
   })
 
   // The within-the-buffer line. `createLesson`'s `waitForURL` is the "no error" half — a rejected
-  // submit re-renders
-  // the form in place and never navigates — and this is the "the lesson exists" half: the
-  // trainer's own list grows from the two above to three.
+  // submit re-renders the form in place and never navigates — and this is the "the lesson exists"
+  // half: the trainer's own list grows from the two above to three.
   test('trainer_can_create_a_lesson_within_the_buffer_of_another_instructors_lesson @trainer', async ({ page }) => {
     await createLesson(page, { day: nearbyDay, time: NEARBY_TIME })
 

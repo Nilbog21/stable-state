@@ -70,8 +70,8 @@ const EMERY_PHOTO = 'emery-photo.jpg'
 const CLOVER_PHOTO = 'clover-photo.png'
 
 // The horse detail page's <dl> is rendered for non-managers only, one <div> per set field. These
-// are its labels, in DOM order, which is where the two "**Registered Name** row below Status"
-// lines are asserted.
+// are its labels, in DOM order, which is where the two "**Registered Name** row below Status" lines
+// are asserted.
 const STATUS_LABEL = 'Status'
 const REGISTERED_NAME_LABEL = 'Registered Name'
 

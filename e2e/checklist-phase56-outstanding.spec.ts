@@ -30,17 +30,16 @@
 // ## Why one test mutates, and why the order dependence is belt-and-braces
 //
 // The rider's two "N unpaid lessons" card lines — the plain "With unpaid lessons" one and #938's
-// "card still appears (its count includes the cancellation fee)" one — are
-// contradictory preconditions on one query in one barn: the first needs the rider to have unpaid
-// lesson fees, the second needs them to have none while still holding a cancellation fee — and a
-// spec file gets exactly one barn per project. So the #938 one arranges its own state:
-// it collects the rider's only unpaid lesson fee before asserting. It is declared last,
-// but nothing here depends on that, and that is the property worth checking rather than the
-// ordering: both tests are standalone-safe under a bare --grep. The plain one never
-// mutates, and the #938 one
-// performs its own arrange regardless of what ran before it — each Playwright job re-seeds its
-// own barn in beforeAll whichever tests the grep selected — so neither can pass only by virtue
-// of running in file order. Declaration order is belt-and-braces, not load-bearing.
+// "card still appears (its count includes the cancellation fee)" one — are contradictory
+// preconditions on one query in one barn: the first needs the rider to have unpaid lesson fees, the
+// second needs them to have none while still holding a cancellation fee — and a spec file gets
+// exactly one barn per project. So the #938 one arranges its own state: it collects the rider's
+// only unpaid lesson fee before asserting. It is declared last, but nothing here depends on that,
+// and that is the property worth checking rather than the ordering: both tests are standalone-safe
+// under a bare --grep. The plain one never mutates, and the #938 one performs its own arrange
+// regardless of what ran before it — each Playwright job re-seeds its own barn in beforeAll
+// whichever tests the grep selected — so neither can pass only by virtue of running in file order.
+// Declaration order is belt-and-braces, not load-bearing.
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addHorse,

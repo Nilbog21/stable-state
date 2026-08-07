@@ -286,8 +286,8 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
 
   // The /delete-page thread — "**Delete** lands on `/barn/dev-barn/lessons/[id]/delete`" through
   // "that lesson's income is also gone from Finances". Paid, so `payment_type !== null` is the live
-  // term of the
-  // fork; `monthsAgo: 0` puts their income in the Finances month the last two checks read.
+  // term of the fork; `monthsAgo: 0` puts their income in the Finances month the last two checks
+  // read.
   for (const key of ['paidInspect', 'paidUnchecked', 'paidIncomeKept', 'paidIncomeGone'] as const) {
     await seedPaid(key)
   }
@@ -463,9 +463,8 @@ async function notificationFingerprints(): Promise<string[]> {
  *
  * The two tests that only *read* the edit form (the "shows a **Cancellation Notes** textarea" and
  * "does *not* appear when editing a non-cancelled lesson" items) deliberately skip this: their
- * claims are
- * about server-rendered markup, and waiting for hydration to assert a server-rendered absence would
- * be the SSR-default confusion running the other way.
+ * claims are about server-rendered markup, and waiting for hydration to assert a server-rendered
+ * absence would be the SSR-default confusion running the other way.
  *
  * The barrier itself lives in `support/hydration.ts` (#1280); this is only the choice of signal.
  */

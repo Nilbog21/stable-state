@@ -57,11 +57,10 @@ const WILLOW = 'Willow' // others — the unenrolled, unprivileged lesson
 const MY_RIDER_NOTES = 'Keep the canter transitions balanced through the corner.'
 const MY_PRIVATE_NOTES = 'Board payment is two weeks late; handle it off the lesson.'
 
-// The group-lesson line's third rider — a managed stub, added inline because "every co-rider's
-// real name" is
-// only falsifiable against a plural: with one co-rider, a page rendering just the first name in
-// the list would satisfy the line. `addManagedMember` rather than a fixtures.ts edit, which this
-// batch's fifteen parallel slices are forbidden.
+// The group-lesson line's third rider — a managed stub, added inline because "every co-rider's real
+// name" is only falsifiable against a plural: with one co-rider, a page rendering just the first
+// name in the list would satisfy the line. `addManagedMember` rather than a fixtures.ts edit, which
+// this batch's fifteen parallel slices are forbidden.
 //
 // The name clears both halves of E2E_STUB_RIDER's collision rule against all four seeded members:
 // it contains none of them and none contains it, and its first-initial-derived form (`Robin F.`)

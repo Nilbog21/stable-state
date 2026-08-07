@@ -45,8 +45,8 @@ const BARN_DEFAULT_INSTRUCTOR_CUT = 37
  * expected answer clear of all four fallbacks — alphabetical-first, insertion-first,
  * `created_at`-first and the previous default — every one of which is ARENA.
  *
- * GROUP keeps the checklist's own name for the tier the **Deactivate** and **Reactivate** lines
- * act on.
+ * GROUP keeps the checklist's own name for the tier the **Deactivate** and **Reactivate** lines act
+ * on.
  */
 const ARENA = { name: 'Arena Basics', price: 40 }
 const GROUP = { name: 'Group Special', price: 55 }
@@ -60,11 +60,10 @@ const PRICE_WARNING = 'Changing the price will not affect past lessons'
 const INSTRUCTOR_CUT_WARNING = 'Changing the instructor cut will not affect past lessons'
 
 /**
- * The price line claims "an amber warning" and the Instructor Cut line claims "the same style
- * amber warning", so
- * the colour is part of both claims and text equality alone leaves it unasserted. TierForm
- * gives both warnings this identical class string — asserting the same literal in both tests
- * is what makes "same style" a checked claim rather than a described one.
+ * The price line claims "an amber warning" and the Instructor Cut line claims "the same style amber
+ * warning", so the colour is part of both claims and text equality alone leaves it unasserted.
+ * TierForm gives both warnings this identical class string — asserting the same literal in both
+ * tests is what makes "same style" a checked claim rather than a described one.
  */
 const AMBER_WARNING_CLASS = 'mt-1 text-xs text-amber-600 dark:text-amber-400'
 
