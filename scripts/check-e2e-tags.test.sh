@@ -313,7 +313,19 @@ assert_fails_with "project with no parseable storageState: exits non-zero" \
   "$REPO" "no parseable storageState"
 rm -rf "$REPO"
 
-# Test 23: the real tree. This is the gate's own acceptance criterion — it was written against a
+# Test 23: a head that is punctuation only. `,` survives the empty-head check — it is not the empty
+# string — but splitting it yields zero tokens, so the unknown-token loop never runs and nothing
+# else would object either. Fail-open in this gate's own failure class, and the same dormant-typo
+# shape test 20 exists for: the file passes clean until the PR that adds its first tag, which then
+# fails on a line it didn't touch.
+REPO="$(make_repo '- [ ] Something happens, asserted by nothing' \
+  "test('a_thing_happens @manager', async ({ page }) => {});" \
+  "$DEFAULT_PROJECTS" '<!-- Asserting role: , — an unauthenticated visitor. -->')"
+assert_fails_with "punctuation-only asserting-role head: exits non-zero" \
+  "$REPO" "unparseable"
+rm -rf "$REPO"
+
+# Test 24: the real tree. This is the gate's own acceptance criterion — it was written against a
 # tree measured clean (733 tags, 0 orphans, and 0 role violations: phase 4 is 559 @manager plus 1
 # @mobile, phase 5 is 82 @trainer plus 3 dual, phase 6 is 85 @rider plus 3 dual), so a non-zero
 # here on the first commit means the scanner is wrong, not the repo.

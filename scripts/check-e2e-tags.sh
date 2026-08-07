@@ -151,13 +151,17 @@ for glob in "${CHECKLIST_GLOBS[@]}"; do
       role_head="${role_head%% — *}"
       role_head="${role_head#"${role_head%%[![:space:]]*}"}"
       role_head="${role_head%"${role_head##*[![:space:]]}"}"
-      if [ -z "$role_head" ]; then
+      read -ra role_tokens <<<"${role_head//,/ }"
+      # Both emptinesses are the same failure and are checked together: `` trips the first, `,`
+      # only the second — it is not the empty string, so it clears a `-z` guard, but it splits to
+      # zero tokens, and a zero-length token list runs the unknown-token loop zero times. Left to
+      # the loop alone, punctuation is a declaration constraining nothing.
+      if [ -z "$role_head" ] || [ "${#role_tokens[@]}" -eq 0 ]; then
         echo "FAIL: $f: unparseable \`Asserting role:\` head — expected" >&2
         echo "      \`<!-- Asserting role: <roles> — <free prose> -->\`" >&2
         fail=1
         role_check_ok=0
       else
-        read -ra role_tokens <<<"${role_head//,/ }"
         for token in "${role_tokens[@]}"; do
           case " $VALID_ROLE_TOKENS " in
             *" $token "*) ;;
