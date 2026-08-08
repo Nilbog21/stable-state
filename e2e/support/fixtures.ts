@@ -235,6 +235,152 @@ export function secondBarnKey(key: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Auth logins
+// ---------------------------------------------------------------------------
+
+/** The shape Playwright's `storageState` option takes, and the shape global-setup.ts writes. */
+export type AuthStorageState = {
+  cookies: {
+    name: string
+    value: string
+    domain: string
+    path: string
+    expires: number
+    httpOnly: boolean
+    secure: boolean
+    sameSite: 'Lax'
+  }[]
+  origins: never[]
+}
+
+/**
+ * A signed-in browser session for `email`, as the `sb-<ref>-auth-token` cookie `@supabase/ssr`
+ * reads — global-setup.ts writes one per shared login before any test runs, and #1425's spec
+ * mints one for its throwaway login inside a `beforeAll`. One definition, two callers: a second
+ * copy of this would produce subtly-wrong auth (a plain-JSON value, standard base64 rather than
+ * base64url, the wrong host) that presents as "the app thinks I'm signed out" a long way from
+ * the copy that caused it.
+ *
+ * `authFailureHint` is the caller's own guidance, appended only to a rejected grant. It is a
+ * parameter rather than a constant because the two callers' failures have different fixes: a
+ * missing *shared* login is repaired by the bootstrap script, and a throwaway login the caller
+ * created moments ago is not. The email is always named, which is what makes either actionable.
+ */
+export async function authStorageState(
+  email: string,
+  password: string,
+  authFailureHint?: string
+): Promise<AuthStorageState> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
+  const baseUrl = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
+
+  const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: anonKey },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) {
+    throw new Error(`auth failed for ${email}: ${await res.text()}${authFailureHint ? `\n${authFailureHint}` : ''}`)
+  }
+  const session = await res.json()
+  // A 200 carrying no user id is what a misconfigured project answers with, and the cookie built
+  // from it is one the app silently treats as signed-out rather than rejecting.
+  if (!session?.user?.id) throw new Error(`missing user.id in auth response for ${email}`)
+
+  const projectRef = new URL(supabaseUrl).hostname.split('.')[0]
+
+  return {
+    cookies: [
+      {
+        name: `sb-${projectRef}-auth-token`,
+        value: 'base64-' + Buffer.from(JSON.stringify(session)).toString('base64url'),
+        domain: new URL(baseUrl).hostname,
+        path: '/',
+        expires: -1,
+        httpOnly: false,
+        secure: false,
+        sameSite: 'Lax' as const,
+      },
+    ],
+    origins: [],
+  }
+}
+
+/**
+ * The address of a spec file's own throwaway login (#1425). Run- and project-scoped for the same
+ * reason `barnSlugFor` is: Playwright dispatches one job per (spec file × project), so a fixed
+ * address would have two jobs creating and deleting the same auth user underneath each other.
+ *
+ * The project name is deliberately not the last token. Local parts are rendered — the nav bar's
+ * user menu shows `user.email` — and every Playwright text matcher is substring-based, so a
+ * `…-manager@e2e.test` address would contain the `manager@e2e.test` shared login outright. Same
+ * containment rule `E2E_STUB_RIDER` states for person names, reaching addresses.
+ */
+export function throwawayAuthEmail(prefix: string, project: string): string {
+  return `${prefix}-${project}-invite@e2e.test`
+}
+
+/**
+ * One auth login, created and destroyed inside a single spec file (#1425).
+ *
+ * **Why this exists.** Phase 1's invite-claim story needs a user whose profile has *blank*
+ * contact fields, so that `/profile/complete` has something to complete. The three shared logins
+ * cannot be that user: `scripts/e2e-auth-users.ts` fills `phone` and `emergency_contact_*` on all
+ * three, and `profiles` is one global row per `user_id` rather than one per barn — so blanking a
+ * shared login's row would race every other spec across the suite's four workers and leave the
+ * project dirty on a failed run.
+ *
+ * **Why per-barn auth users still do not exist.** `E2E_USERS`' comment states the constraint and
+ * it is unchanged: a login per role per barn would be 3+ `auth.admin.createUser` calls on every
+ * seeded barn on every run — the operation most likely to trip Supabase's auth rate limits — and
+ * Playwright resolves each project's `storageState` from a static path before any `beforeAll`
+ * runs, so the shared addresses have to be knowable up front regardless. One login for one spec
+ * file is a different order of magnitude from that, and the distinction is the whole licence for
+ * this helper. Reach for it when a spec genuinely needs an identity the shared three cannot be;
+ * seeding a managed stub through `addManagedMember` covers everything else and costs no auth call.
+ *
+ * Creates **no** profile row, and that omission is load-bearing: `claim_managed_member` converts
+ * the *stub* profile in place when the claiming user has none — setting `user_id`/`email` and
+ * clearing `is_managed`, leaving the contact fields blank. A profile row here would send the
+ * claim down its other branch, which deletes the stub and keeps this row's fields instead.
+ */
+export async function createThrowawayAuthUser(supabase: SupabaseClient, email: string): Promise<string> {
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password: E2E_PASSWORD,
+    email_confirm: true,
+  })
+  if (error) throw new Error(`create throwaway auth user ${email}: ${error.message}`)
+  if (!data?.user) throw new Error(`create throwaway auth user ${email}: no user returned`)
+  return data.user.id
+}
+
+/**
+ * Hands a throwaway login back. Profile row first, then the auth user: `profiles.user_id`
+ * cascades from `auth.users`, so deleting the user first would take the profile row with it
+ * silently, and a `barn_memberships.profile_id` still pointing at that row would fail the delete
+ * from underneath the cascade rather than name it.
+ *
+ * Both deletes therefore require the claiming membership to be gone already — which is why the
+ * caller registers this *after* `withBarn`, whose `afterAll` runs first (support/test.ts states
+ * that hooks run in registration order, not reversed).
+ *
+ * The profile delete matches nothing when the login never claimed an invite, which is the
+ * ordinary shape of a run that failed before the claim; a zero-row delete is not an error.
+ */
+export async function deleteThrowawayAuthUser(supabase: SupabaseClient, userId: string): Promise<void> {
+  mustSucceed(
+    await supabase.from('profiles').delete().eq('user_id', userId),
+    `delete throwaway profile for ${userId}`
+  )
+  const { error } = await supabase.auth.admin.deleteUser(userId)
+  if (error) throw new Error(`delete throwaway auth user ${userId}: ${error.message}`)
+}
+
+// ---------------------------------------------------------------------------
 // Builders
 // ---------------------------------------------------------------------------
 

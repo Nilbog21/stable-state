@@ -512,7 +512,9 @@ describe('authStorageState', () => {
   })
 
   const stubFetch = (response: { ok: boolean; json?: unknown; text?: string }) => {
-    const fetchSpy = vi.fn(async () => ({
+    // Parameters declared, unused: `calls[0][0]` below has no type without them, and an
+    // `expect.anything()` second argument would have the same problem.
+    const fetchSpy = vi.fn(async (_url: string, _init?: RequestInit) => ({
       ok: response.ok,
       json: async () => response.json,
       text: async () => response.text ?? '',
@@ -571,7 +573,8 @@ describe('authStorageState', () => {
 
   it('should_omit_the_hint_when_the_caller_gives_none', async () => {
     stubFetch({ ok: false, text: 'invalid credentials' })
-    await expect(authStorageState(EMAIL, E2E_PASSWORD)).rejects.toThrow(/^(?!.*e2e-auth-users)/s)
+    const message = await authStorageState(EMAIL, E2E_PASSWORD).catch((err: Error) => err.message)
+    expect(message).not.toContain('e2e-auth-users')
   })
 
   // A 200 carrying no user id is the shape a misconfigured project answers with, and it would
