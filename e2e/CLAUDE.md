@@ -92,7 +92,10 @@ whose server markup is a bare `<form>` the browser would GET. `<form action={ser
 `<form action="" encType="multipart/form-data" method="POST">` plus
 `$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_*:1`/`$ACTION_KEY` hidden fields carrying the action id and
 its bound arguments. An early click submits *that*, so the interaction survives and needs no
-barrier. Two conditions, both load-bearing: the value passed to `useActionState` (or to `action=`
+barrier. That multipart encoding is the *markup*'s, and describes only the pre-hydration submit —
+a hydrated React dispatch of the same form posts `text/plain` like any other action call (#1409),
+so it is not a way to recognise a form submission on the wire. Two conditions, both load-bearing:
+the value passed to `useActionState` (or to `action=`
 directly) must be the Server Function itself or a `.bind` of one — an inline
 `async () => …` closure wrapping it is an ordinary client function and gets no markup, now caught
 by `eslint-rules/no-wrapped-server-action.js` — and the same is true of a `<button onClick>` with
@@ -141,25 +144,15 @@ a toggle, so it is safe to re-dispatch. Reference implementation:
 `checklist-phase56-nav-profile.spec.ts`'s `openAvatarMenu` (drive open, assert, then
 `closeAvatarMenu` to leave the page as it was found). *(#1289)*
 
-**14. A `waitForResponse` predicate matched on URL alone is ambiguous on any page whose client
-components call Server Actions.** Those calls post to the *page's own URL*, so "a POST to this
-page" names them as readily as it names the submission under test — and the request layer offers
-nothing else to tell them apart: measured on the lesson edit page, `LessonForm`'s two mount
-effects (`getProjectedExhaustion`, `getScheduleRange`) and the **Stop Recurring Lessons** form
-submission all posted `text/plain;charset=UTF-8`, `nav=false`, differing only by the `next-action`
-header, whose ids are build outputs a spec cannot name. Note against fact 10: multipart is the
-*enhanced markup* a native submit would post, not what a hydrated React dispatch sends, so
-encoding is not the discriminator it looks like. **Response status is**, where the action
-redirects — a `redirect()` answers 303 and a data-returning action answers 200, which is a
-property of the action's own code rather than of Next's request encoding. What the ambiguity costs
-is not a stale read: a `page.reload()` that fires on the wrong resolve **aborts the real action's
-in-flight POST** (`net::ERR_ABORTED`, nothing in the dev server's log), so the mutation never runs
-and no retrying assertion can converge on it. Reference implementation:
-`checklist-phase5-lessons-cancel.spec.ts`'s
-`trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page`. The suite's
-three other `waitForResponse` call sites are URL-only and safe *today* only because their pages
-have no competing action POSTs — that is a fact about those pages, not a property of the pattern.
-*(#1409)*
+**14. A `waitForResponse` predicate matched on URL alone names every Server Action a page's own
+client components fire, not just the submission under test** — they all post to the page's URL,
+and on the wire they are indistinguishable but for the `next-action` header, whose ids are build
+outputs a spec cannot name. Resolving on the wrong one is not a stale read: the `page.reload()`
+that follows **aborts the real action's in-flight POST**, so the mutation never runs and no
+retrying assertion can converge on it. Where the action redirects, its 303 is the discriminator —
+a property of the action's own code, unlike the encoding (see fact 10). The suite's three
+URL-only call sites are safe only because their pages fire no competing actions. Full statement:
+the stop-series test's comment in `checklist-phase5-lessons-cancel.spec.ts`. *(#1409)*
 
 ## Spec maintenance
 
