@@ -47,6 +47,20 @@ GET on `/profile`, only the explicit empty state lands on `/login`. The wrong fo
 identically. See `checklist-phase4-calendar-feed.spec.ts`'s `unauthenticatedRequest`, which
 throws if it ever stops being that third form. *(#1208)*
 
+**The same holds on the *browser* side, and the mechanism is one hook rather than two.** A bare
+`browser.newContext()` carries `sb-<ref>-auth-token` too — measured by dropping the explicit
+`storageState` from `checklist-phase1-terms-privacy.spec.ts`'s `anonPage` fixture, whose guard
+then named the cookie on all six tests. `@playwright/test`'s `_setupArtifacts` fixture
+(`node_modules/playwright/lib/index.js`) registers `runBeforeCreateBrowserContext` /
+`runBeforeCreateRequestContext` instrumentation hooks that copy every `_combinedContextOptions`
+key **not already present** into the caller's options bag, for *any* context the runner sees
+built — fixture-made or hand-made. Two consequences, and both matter. An explicitly named key
+wins, which is why the empty `storageState` survives; and an unnamed one is inherited, which is
+why `baseURL` reaches a hand-made context and a relative `goto('/login')` resolves from it.
+Reading `playwright-core`'s `Browser` class alone says the opposite — that class passes options
+through untouched, because the back-fill happens in the runner above it, not in the client
+library. *(#1422)*
+
 ## Fact 5
 
 **`hasTouch` + `locator.tap()` does not isolate an element's `touchstart` path.** Chromium's
