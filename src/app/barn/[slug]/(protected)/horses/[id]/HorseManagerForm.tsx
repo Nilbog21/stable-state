@@ -36,8 +36,6 @@ export function HorseManagerForm({
   const [name, setName] = useState(horse.name)
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
   const [registeredName, setRegisteredName] = useState(horse.registered_name ?? '')
-  const [feedNotes, setFeedNotes] = useState(horse.feed_notes ?? '')
-  const [medicationNotes, setMedicationNotes] = useState(horse.medication_notes ?? '')
   // React 19 resets the DOM's `checked`/`value` properties on uncontrolled form
   // fields to their mount-time value after a successful form action, without
   // re-syncing controlled props (#762 review) — remounting the inputs on every
@@ -254,40 +252,6 @@ export function HorseManagerForm({
               className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Feed & Medication
-        </h2>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="horse-feed-notes" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Feed Notes
-          </label>
-          <textarea
-            id="horse-feed-notes"
-            name="feed_notes"
-            value={feedNotes}
-            onChange={e => setFeedNotes(e.target.value)}
-            rows={3}
-            className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="horse-medication-notes" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Medication Notes
-          </label>
-          <textarea
-            id="horse-medication-notes"
-            name="medication_notes"
-            value={medicationNotes}
-            onChange={e => setMedicationNotes(e.target.value)}
-            rows={3}
-            className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-          />
         </div>
       </div>
 

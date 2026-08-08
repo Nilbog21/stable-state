@@ -373,41 +373,18 @@ describe('HorseManagerForm', () => {
     expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Blazing Comet')
   })
 
-  it('should_render_feed_notes_textarea', () => {
-    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    expect(screen.getByRole('textbox', { name: /feed notes/i })).toBeDefined()
-  })
-
-  it('should_render_medication_notes_textarea', () => {
-    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    expect(screen.getByRole('textbox', { name: /medication notes/i })).toBeDefined()
-  })
-
-  it('should_prefill_feed_notes_textarea_with_horse_value', () => {
+  // #1390 moved feed/medication out of this form into the page's own Feed & Medication section
+  // (HorseNotesForm, saved through update_horse_notes). This form must not carry them at all —
+  // it re-sends the stored values through update_horse_details, so a stray field here would
+  // give one column two writers.
+  it('should_not_render_a_feed_notes_field', () => {
     render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
-    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('2 flakes hay AM/PM')
+    expect(screen.queryByRole('textbox', { name: /feed notes/i })).toBeNull()
   })
 
-  it('should_prefill_medication_notes_textarea_with_horse_value', () => {
+  it('should_not_render_a_medication_notes_field', () => {
     render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
-    expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Bute 1g daily')
-  })
-
-  it('should_render_feed_notes_textarea_empty_when_horse_value_is_null', () => {
-    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('')
-  })
-
-  it('should_update_feed_notes_textarea_on_change', () => {
-    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '1 flake AM only' } })
-    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('1 flake AM only')
-  })
-
-  it('should_update_medication_notes_textarea_on_change', () => {
-    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Banamine PRN' } })
-    expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Banamine PRN')
+    expect(screen.queryByRole('textbox', { name: /medication notes/i })).toBeNull()
   })
 
   it('should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values', async () => {
@@ -464,27 +441,7 @@ describe('HorseManagerForm', () => {
       expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Four-Leaf Clover')
     })
 
-    it('should_keep_feed_notes_across_a_second_save', async () => {
-      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '1 flake AM only' } })
-      await save()
-      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '2 flakes hay AM/PM' } })
-
-      await save()
-
-      expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('2 flakes hay AM/PM')
-    })
-
-    it('should_keep_medication_notes_across_a_second_save', async () => {
-      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Banamine PRN' } })
-      await save()
-      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Bute 1g daily' } })
-
-      await save()
-
-      expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Bute 1g daily')
-    })
+    // The feed/medication counterparts of this live in HorseNotesForm.test.tsx now.
 
     it('should_keep_the_unavailability_reason_across_a_second_save', async () => {
       render(<HorseManagerForm horse={unavailableHorse} barn={mockBarn} action={mockAction} />)

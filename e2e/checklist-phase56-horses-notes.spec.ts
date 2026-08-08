@@ -1,5 +1,4 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
-// covers: src/components/ExhaustionBar.tsx
 //
 // #1006's Feed Notes / Medication Notes on the horse detail page, through a non-manager's eye: a
 // horse you do not own renders both fields as read-only text with no textarea and no Save button, a
@@ -44,7 +43,7 @@
 // barn it owns outright.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { waitForBarnPageHydrated } from './support/hydration'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs — these are what the spec puts in. No name contains another
@@ -73,8 +72,6 @@ const EDITED_MEDICATION_NOTES = 'Omeprazole paste before turnout.'
 // <label> getByLabel resolves) — one literal per field, so the two framings cannot drift apart.
 const FEED_LABEL = 'Feed Notes'
 const MEDICATION_LABEL = 'Medication Notes'
-// The first row of the non-manager <dl>, and the only one Pepper keeps besides its feed notes.
-const STATUS_LABEL = 'Status'
 // SavedIndicator's transient success confirmation — the owner form's only save signal.
 const SAVED_TEXT = '✓ Saved'
 
@@ -150,7 +147,11 @@ function horseHref(horseId: string): string {
 }
 
 /**
- * The <dt> label of every row in the non-manager detail <dl>, in DOM order.
+ * The <dt> label of every row in the read-only notes <dl>, in DOM order.
+ *
+ * #1390 shrank that list to the two notes rows: Status, Registered Name and the unavailability
+ * reason all moved into the identity header, and the <dl> now lives inside the Feed & Medication
+ * section and holds nothing else.
  *
  * Read as textContent (toHaveText's default) rather than innerText on purpose: the labels carry
  * a Tailwind `uppercase` class, which innerText would apply and textContent does not.
@@ -199,53 +200,23 @@ function editableNotesControls(page: Page) {
 // ---------------------------------------------------------------------------
 
 /**
- * Blocks until the horse detail page has hydrated, before anything fills a textarea.
- *
- * The notes textareas are *controlled* React inputs, so a fill landing before hydration moves the
- * DOM value and nothing else — no onChange, no state — and React's first render then restores the
- * seeded string over it. The save that follows writes the old text and the reload assertion reads
- * it back happily (e2e/CLAUDE.md facts 9 and 10; #1199 measured about three seconds on an
- * already-warm route).
- *
- * The ExhaustionBar's popover is the signal, because it is `useState`-gated and therefore *cannot*
- * be open before hydration. Nothing on this page renders differently on hydration unless driven,
- * so an interaction-based signal is the only kind available, and it has to be retried — all of
- * which is hydrateByDriving's, in support/hydration.ts. Driven through the bar rather than through
- * a textarea so the retry writes nothing, and toggled shut so the page is left as it was found.
- *
- * Deliberately a copy of checklist-phase4-horses-documents.spec.ts's waitForHorseDetailHydrated
- * rather than an import or an extraction: this batch's fifteen slices may not touch shared e2e
- * support files, and #1280 already extracted the part that generalises.
- *
- * Only the trainer reaches this: the bar is role-visible to manager/trainer, while a rider sees it
- * only with a lesson-read privilege the rider's horse here is not granted. No rider test fills
- * anything, so none needs a barrier.
- */
-async function waitForHorseDetailHydrated(page: Page): Promise<void> {
-  const bar = page.getByRole('button', { name: /^Exhaustion: / })
-  const openPopover = page.locator('[aria-label^="Exhaustion: "][aria-expanded="true"]')
-
-  // Names the cause before the retry loop can bury it — without this, a missing bar degrades to a
-  // bare test timeout inside toPass. Unbounded, so it tightens nothing (#1211).
-  await bar.waitFor()
-
-  await hydrateByDriving(
-    () => bar.click(),
-    async () => (await openPopover.count()) === 1
-  )
-
-  await bar.click()
-  await openPopover.waitFor({ state: 'detached' })
-}
-
-/**
  * Type both fields and save, waiting for the write to land. A wait, never the test's assertion:
  * SavedIndicator renders only when the action returned no error, so it is the one available
  * success signal — the Save button carries no `loading` prop, so there is no disabled state to
  * wait on, and reloading without this races the server action (e2e/CLAUDE.md fact 8).
  */
 async function editAndSaveNotes(page: Page): Promise<void> {
-  await waitForHorseDetailHydrated(page)
+  // The notes textareas are *controlled* React inputs, so a fill landing before hydration moves
+  // the DOM value and nothing else — no onChange, no state — and React's first render then
+  // restores the seeded string over it. The save writes the old text and the reload assertion
+  // reads it back happily (e2e/CLAUDE.md facts 9 and 10; #1199 measured ~3s on a warm route).
+  //
+  // The signal was this page's ExhaustionBar until #1390 removed it. Nothing the page renders now
+  // differs pre- and post-hydration — the accordions are native `<details>` and every field is
+  // `useState`-seeded from a server prop, fact 13's case — so the barrier drives the nav bar's
+  // avatar popover instead: same React root, and a control no test here asserts on, so the retry
+  // writes nothing. Role-agnostic, unlike the bar it replaces.
+  await waitForBarnPageHydrated(page)
   await notesField(page, FEED_LABEL).fill(EDITED_FEED_NOTES)
   await notesField(page, MEDICATION_LABEL).fill(EDITED_MEDICATION_NOTES)
   await saveButton(page).click()
@@ -271,10 +242,12 @@ test('trainer_unowned_horse_notes_render_as_read_only_text @trainer', async ({ p
 // The absence is asserted as the page's whole label list rather than as "Medication Notes is not
 // visible": a bare toHaveCount(0) on that label would pass on a page that rendered no <dl> at all,
 // which is the failure mode worth guarding. This fails in that case, fails if the surviving feed
-// row disappeared, and fails the moment an empty Medication Notes row appears.
+// row disappeared, and fails the moment an empty Medication Notes row appears. Since #1390 the
+// list is the two notes rows alone, so a one-element array is the whole <dl> rather than a slice
+// of it.
 test('trainer_unset_notes_field_row_is_dropped_entirely @trainer', async ({ page }) => {
   await page.goto(horseHref(pepperId))
-  await expect(rowLabels(page)).toHaveText([STATUS_LABEL, FEED_LABEL])
+  await expect(rowLabels(page)).toHaveText([FEED_LABEL])
 })
 
 // ---------------------------------------------------------------------------

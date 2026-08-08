@@ -17,37 +17,35 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_horse_cards_show_no_exhaustion_bar) No exhaustion bar appears on those cards (#1391 narrowed this to Available/Unavailable — the owned card below has one)
 - [ ] (e2e: rider_horses_page_shows_no_inactive_section) No Inactive section appears on that page
 - [ ] (e2e: rider_tapping_an_available_card_opens_the_horse_detail_page) (#1002) Tapping an Available or Unavailable card navigates to that horse's detail page — cards became linkable so a rider can view the horse's photo
-- [ ] (e2e: rider_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (Dana does **not** own her) displays her seeded photo
-- [ ] (e2e: rider_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
+- [ ] (e2e: rider_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (Dana does **not** own her) displays her seeded photo in the page header, beside her name
+- [ ] (e2e: rider_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove Photo control** in its header
 - [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) Setup (as manager, then switch back to Dana) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the rider's own barn instead
-- [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
+- [ ] (e2e: rider_horse_detail_shows_the_registered_name_row_below_status) (#1390) Apple's detail page shows her registered name in the page header, under her name — the labelled **Registered Name** row is gone, along with the labelled Status row above it (status is now a badge beside the name)
 - [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to Dana) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
-- [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
+- [ ] (e2e: rider_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no registered name in the header at all, rather than a blank line where it was
 - [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to Dana) — grant Dana a horse-privileges row on **Clover** (Access section), then make her Clover's owning member with **Set as Owner** on that row; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks. An e2e run seeds both in the rider's own barn instead
-- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006/#1390) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas, inside a **Feed & Medication** section that is open when the page loads
 - [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
-- [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
+- [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, the same section's Feed Notes/Medication Notes are read-only text
 - [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
 - [ ] (e2e: rider_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Horses** shows an exhaustion bar — the only exhaustion a rider sees on this page, and it appears because the Set-as-Owner setup above left her a `lesson_read_privileges` grant
-- [ ] (e2e: rider_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a rider
+- [ ] (e2e: rider_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control in its header — owning a horse grants photo write even to a rider
 - [ ] (e2e: rider_setting_the_photo_on_their_own_horse_through_the_upload_screen_succeeds) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
 - [ ] (e2e: rider_the_photo_they_uploaded_displays_on_their_horses_detail_page) (#1003) That photo then displays on Clover's detail page
 - [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) Setup (as manager, then switch back to Dana) — grant Dana `document_privileges='read'` on a horse via its Access section. An e2e run seeds the privileges row in the rider's own barn instead
-- [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) (#999) That horse's detail page now shows a **Documents** section for Dana
+- [ ] (e2e: rider_read_document_privilege_shows_the_documents_section) (#999) That horse's detail page now shows a **Documents** section for Dana, collapsed, with its document count on the row
 - [ ] (e2e: rider_read_document_privilege_hides_the_add_document_button) (#999) That Documents section shows no **Add Document** button
 - [ ] (e2e: rider_read_document_privilege_opens_a_seeded_document) (#1359) Tapping a document's filename in that section opens the file
 - [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) Setup (as manager, then switch back to Dana) — change that same grant to `document_privileges='write'`
-- [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) (#999) The **Add Document** button now appears in that horse's Documents section
+- [ ] (e2e: rider_write_document_privilege_shows_the_add_document_button) (#999) Expanding that horse's Documents section now shows the **Add Document** button in its header (it is hidden while the section is shut)
 - [ ] (e2e: rider_write_document_privilege_upload_succeeds) (#1359) Using that Add Document button as Dana to upload a file succeeds, and the new document's row appears in the horse's Documents section
 - [ ] (e2e: rider_without_a_document_privilege_sees_no_documents_section) (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
-- [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
-- [ ] (e2e: rider_lesson_read_privilege_shows_the_exhaustion_bar) (#999) That horse's detail page now shows an **Exhaustion** bar for Dana
-- [ ] (e2e: rider_tapping_the_exhaustion_bar_expands_the_three_day_breakdown) (#999) Tapping that Exhaustion bar expands it to show the ±3-day breakdown
-- [ ] (e2e: rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section) (#999) That same horse's page shows a collapsed **Upcoming Lessons** section at the bottom, listing its scheduled lessons
+- [ ] (e2e: rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section) Setup (as manager, then switch back to Dana) — grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson
+- [ ] (e2e: rider_sees_no_exhaustion_bar_on_a_horse_detail_page) (#1390) No **Exhaustion** bar appears on that horse's detail page — nor on one Dana holds no lesson-read privilege on. The bar is the Horses list's signal; this page carries the same schedule as Upcoming Lessons below, in a form a rider can read
+- [ ] (e2e: rider_lesson_read_privilege_shows_a_collapsed_upcoming_lessons_section) (#999) That same horse's page shows a collapsed **Upcoming Lessons** section directly under Feed & Medication, listing its scheduled lessons
 - [ ] (e2e: rider_tapping_an_unenrolled_upcoming_lesson_loads_its_detail_page) (#999) Tapping a lesson in that Upcoming Lessons list that Dana is **not** enrolled in loads the lesson detail page (no 404)
-- [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_exhaustion_bar) (#999) On a horse Dana has no lesson-read privilege on, no Exhaustion bar appears
 - [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section) (#999) On that same horse, no Upcoming Lessons section appears either
 - [ ] (e2e: rider_dashboard_day_view_shows_only_lessons_she_is_enrolled_in) Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day
 - [ ] (e2e: rider_dashboard_day_view_shows_no_appointment_cards) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
