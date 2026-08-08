@@ -10,8 +10,8 @@ not in the places you would look for them, and each of which cost a batch at lea
 is the index: headline only, and the full worked statement is the same-numbered section of
 [`docs/e2e-framework-facts.md`](../docs/e2e-framework-facts.md), which also carries their
 provenance. **Numbering is append-only** — a new fact takes the next number and no existing number
-ever moves, because ~65 comments across ~17 files cite `e2e/CLAUDE.md fact N` and renumbering
-breaks every one of them silently.
+ever moves, because 52 comments across 22 files cite a fact by number and renumbering breaks every
+one of them silently.
 
 **1. Timeouts come in three tiers, and only one of them wants a number.**
 [full](../docs/e2e-framework-facts.md#fact-1)

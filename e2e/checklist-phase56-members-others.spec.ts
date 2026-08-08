@@ -272,7 +272,8 @@ async function displayedPhotoDigest(page: Page, name: string): Promise<string> {
  *
  * "Opened from the roster, loads (no 404)" is a navigation claim, so it is driven rather than
  * constructed. The Card renders as a Next Link, so a click landing before React is listening
- * navigates the document instead of being lost (e2e/CLAUDE.md fact 11's anchor argument) — no
+ * navigates the document instead of being lost (fact 11's anchor argument, stated in full in
+ * docs/e2e-framework-facts.md) — no
  * hydration barrier is needed. No explicit timeout on the URL wait: navigationTimeout defaults to
  * unbounded, so a number could only tighten it (#1211).
  */

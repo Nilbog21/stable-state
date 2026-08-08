@@ -13,8 +13,8 @@ Facts 1 and 2 are stated in full where you meet them; the rest are stated here.
 
 The index — headlines only, plus facts 7's and 10's inversions — is `e2e/CLAUDE.md`'s
 `## Framework facts`, which is auto-loaded whenever `e2e/` is touched. **Numbering is append-only**:
-a new fact takes the next number and no existing number ever moves. ~65 comments across ~17 files
-cite `e2e/CLAUDE.md fact N`, and renumbering breaks every one of them silently.
+a new fact takes the next number and no existing number ever moves. 52 comments across 22 files
+cite a fact by number, and renumbering breaks every one of them silently.
 
 ## Fact 1
 

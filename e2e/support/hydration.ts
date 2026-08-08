@@ -1,7 +1,8 @@
 // Hydration barriers for the checklist specs (#1280).
 //
-// Two framework facts, both measured, both stated in e2e/CLAUDE.md as facts 9 and 10 — a
-// correction made here goes there as well:
+// Two framework facts, both measured, both stated in docs/e2e-framework-facts.md as facts 9 and
+// 10 (e2e/CLAUDE.md carries only their index headlines) — a correction made here goes there as
+// well:
 //
 // 1. **`page.goto` returns long before React hydrates.** On a page that hasn't hydrated,
 //    `fill()` moves the DOM value and nothing else: no `onChange` fires, no state updates, and
@@ -55,7 +56,8 @@ import { expect, type Locator } from '@playwright/test'
  * For a page that renders identically until it is driven, there is no such signal and this is
  * the wrong tool: use `hydrateByDriving` — unless that page also has no control whose repeat is
  * harmless, in which case neither helper applies and there is no barrier to place at all
- * (e2e/CLAUDE.md fact 13, which names the measured example and the one workaround).
+ * (fact 13, whose full statement in docs/e2e-framework-facts.md names the measured example and
+ * the one workaround).
  */
 export async function waitForHydrated(signal: Locator): Promise<void> {
   await signal.first().waitFor()

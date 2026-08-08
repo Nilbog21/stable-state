@@ -139,10 +139,12 @@ rm -rf "$REPO"
 
 # Test 10: the second pairwise anchor (#1420) — e2e/CLAUDE.md + docs/e2e-framework-facts.md over
 # the same 150,000 backstop exits non-zero and names the sub-doc. Both files are under their own
-# per-file budgets here, so only the pairwise check can produce this failure.
+# per-file budgets here, so only the pairwise check can produce this failure. Anchored on ^FAIL:
+# because the passing OK: line carries the same filename — an unanchored grep would accept an
+# unrelated failure elsewhere in the script as evidence this pair was checked at all.
 REPO="$(make_repo 15000 5000 1000 100 149000)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
-if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "docs/e2e-framework-facts.md"; then
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.md .* docs/e2e-framework-facts.md"; then
   assert_pass "e2e pairwise anchor over limit: exits non-zero, names the sub-doc"
 else
   assert_fail "e2e pairwise anchor over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"

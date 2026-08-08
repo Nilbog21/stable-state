@@ -26,7 +26,7 @@ BUDGETS=(
   "scripts/CLAUDE.md:10000"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md. Two prior raises (#1354 to 14000, #1409 to 15500) each restored
-  # headroom the file then spent within days, and the second left 244 characters — not enough to
+  # headroom the file then spent within days, and the second left 335 characters — not enough to
   # record the next measured fact in. Splitting is the answer; the number follows the file.
   "e2e/CLAUDE.md:7400"
   "src/components/ui/CLAUDE.md:8000"
