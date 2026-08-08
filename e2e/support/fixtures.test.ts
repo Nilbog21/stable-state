@@ -8,6 +8,7 @@ import {
   monthAnchor,
   pastInstantInMonth,
   barnSlugFor,
+  secondBarnKey,
   runPrefix,
   assetPath,
   daysFromNow,
@@ -212,6 +213,44 @@ describe('barnSlugFor', () => {
   // collides whenever two projects grep the same spec — see e2e/support/test.ts.
   it('should_produce_distinct_slugs_for_one_key_across_projects', () => {
     expect(barnSlugFor('e2e-123-456', 'smoke', 'manager')).not.toBe(barnSlugFor('e2e-123-456', 'smoke', 'rider'))
+  })
+})
+
+/**
+ * #1415: the second barn of a two-barn spec (support/test.ts's withSecondBarn). Every property
+ * asserted here is a property of suffixing the *key* rather than barn A's finished slug, which is
+ * the whole reason this function exists instead of a `${slug}-b` at the call site.
+ */
+describe('secondBarnKey', () => {
+  const PREFIX = 'e2e-123-456'
+  const slugA = barnSlugFor(PREFIX, 'isolation', 'manager')
+  const slugB = barnSlugFor(PREFIX, secondBarnKey('isolation'), 'manager')
+
+  it('should_derive_a_distinct_slug_from_the_same_prefix_and_project', () => {
+    expect(slugB).not.toBe(slugA)
+  })
+
+  /**
+   * The containment half of E2E_STUB_RIDER's collision rule, applied to barns. Every Playwright
+   * text matcher is substring-based, and createBarn derives the barn's *name* from its slug — so
+   * a `${slugA}-b` second slug would make a locator for barn A's nav name select barn B's too.
+   * Both directions, since either containment is equally fatal.
+   */
+  it('should_derive_a_slug_that_neither_contains_nor_is_contained_by_the_first', () => {
+    expect([slugA.includes(slugB), slugB.includes(slugA)]).toEqual([false, false])
+  })
+
+  // teardown-test-barn.ts sweeps a run's barns with a `${prefix}-%` LIKE, and
+  // run-checklist-suite.sh's exit trap is the only thing that reaches a barn whose afterAll
+  // never ran. A second barn the sweep can't match is one this fixture leaks by construction.
+  it('should_keep_the_run_prefix_leading_so_the_teardown_sweep_still_matches', () => {
+    expect(slugB.startsWith(`${PREFIX}-`)).toBe(true)
+  })
+
+  it('should_stay_distinct_across_projects_like_the_first_barn', () => {
+    expect(barnSlugFor(PREFIX, secondBarnKey('isolation'), 'manager')).not.toBe(
+      barnSlugFor(PREFIX, secondBarnKey('isolation'), 'rider')
+    )
   })
 })
 
