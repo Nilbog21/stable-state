@@ -63,6 +63,20 @@
 // withBarn is a plain registration helper rather than a Playwright fixture because Playwright
 // has no file scope — only test and worker — and a worker-scoped fixture would leak one barn
 // across every file that worker happens to run.
+//
+// ## Two barns in one spec (#1415)
+//
+// A spec asserting cross-barn isolation needs a second barn, and the thing it must not do is
+// seed one by hand: a barn nothing registered for teardown is a barn left standing in the shared
+// dev project on every run. withSecondBarn is withBarn's twin for that — same beforeAll/afterAll
+// shape, keyed through secondBarnKey so neither barn's slug (nor the name createBarn derives
+// from it) contains the other's, which is the substring-matcher hazard support/fixtures.ts's
+// E2E_STUB_RIDER states for people.
+//
+// Both barns' slugs then have to reach the page fixture, because src/proxy.ts gates every
+// /barn/<slug>/* route on a barn_session_<slug> cookie: with barn A's cookie alone, every barn B
+// URL redirects to barn B's login page and a spec's isolation assertions would pass against a
+// login form. Hence `active` is a list rather than a single barn.
 
 import { test as base, expect } from '@playwright/test'
 import { type SupabaseClient } from '@supabase/supabase-js'
@@ -73,6 +87,7 @@ import {
   addMemberships,
   teardownBarn,
   barnSlugFor,
+  secondBarnKey,
   runPrefix,
   type SeededBarn,
   type SeededMembers,
@@ -96,9 +111,10 @@ export type BarnHandle = {
 // failure between the two still tears the barn down.
 type BarnState = { slug: string | null; created: SupabaseClient | null; ctx: SeedContext | null }
 
-// One barn is active per worker process at a time (a worker runs a single file at a time),
-// so the page fixture below can read the current file's barn from here.
-let active: BarnState | null = null
+// The barns of the file a worker is currently running (a worker runs a single file at a time),
+// so the page fixture below can read them from here. withBarn's barn is always first and resets
+// the list; withSecondBarn appends.
+let active: BarnState[] = []
 
 // The mobile project runs on the manager storage state, so it authenticates as the manager.
 const ROLE_BY_PROJECT: Record<string, E2eRole> = {
@@ -120,8 +136,26 @@ function serviceClient(): SupabaseClient {
 }
 
 export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>): BarnHandle {
+  return registerBarn(key, seed, { first: true })
+}
+
+/**
+ * A second barn for the same spec file, seeded and torn down on the same hooks as withBarn's
+ * (see the two-barns block at the top of this file). Call it *after* withBarn in the module
+ * body: Playwright runs beforeAll hooks in registration order, so barn A exists before this
+ * one's seed callback runs, and its afterAll runs first on the way out.
+ */
+export function withSecondBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>): BarnHandle {
+  return registerBarn(secondBarnKey(key), seed, { first: false })
+}
+
+function registerBarn(
+  key: string,
+  seed: ((ctx: SeedContext) => Promise<void>) | undefined,
+  { first }: { first: boolean }
+): BarnHandle {
   const state: BarnState = { slug: null, created: null, ctx: null }
-  active = state
+  active = first ? [state] : [...active, state]
 
   // Registered from the spec file's own module evaluation, so both hooks attach to that
   // file's suite rather than to whichever file first imported this module.
@@ -139,7 +173,10 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
     state.created = supabase
     const members = await addMemberships(supabase, barn.id)
     state.ctx = { supabase, barn, members }
-    active = state
+    // Re-asserted here, not only at registration: a worker that loaded several spec files ran
+    // every one of their module bodies, so the last file loaded won the registration-time
+    // assignment. Barn A's hook resets the list; a second barn's appends to it.
+    active = first ? [state] : [...active, state]
     if (seed) await seed(state.ctx)
   })
 
@@ -171,25 +208,33 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
 /**
  * src/proxy.ts gates every /barn/<slug>/* route on a barn_session_<slug> cookie matching the
  * current user id. The slug isn't known until beforeAll runs, so it can't be baked into the
- * static storage states global-setup.ts writes — it's set per context here instead.
+ * static storage states global-setup.ts writes — it's set per context here instead, one cookie
+ * per barn the file seeded (see the two-barns block at the top of this file).
  */
 export const test = base.extend({
   // `runTest` is Playwright's `use` callback, renamed only so the React hooks lint rule
   // doesn't read this fixture as a misplaced hook call.
   page: async ({ page, context }, runTest, testInfo) => {
-    if (!active?.ctx || !active.slug) throw new Error('no seeded barn — the spec file must call withBarn() at module scope')
+    if (!active.length || active.some((barn) => !barn.ctx || !barn.slug)) {
+      throw new Error('no seeded barn — the spec file must call withBarn() at module scope')
+    }
     const role = ROLE_BY_PROJECT[testInfo.project.name]
     if (!role) throw new Error(`no e2e role mapped for Playwright project "${testInfo.project.name}"`)
-    const userId = active.ctx.members[role].userId
-    if (!userId) throw new Error(`no auth user for role "${role}"`)
 
-    await context.addCookies([
-      {
-        name: `barn_session_${active.slug}`,
-        value: userId,
-        url: testInfo.project.use.baseURL ?? 'http://localhost:3000',
-      },
-    ])
+    await context.addCookies(
+      active.map((barn) => {
+        // Each barn's own membership row, not the first barn's: the three logins are per
+        // Supabase project so the id is the same today, and reading it per barn is what keeps
+        // that a fact about the fixture rather than an assumption this file depends on.
+        const userId = barn.ctx!.members[role].userId
+        if (!userId) throw new Error(`no auth user for role "${role}"`)
+        return {
+          name: `barn_session_${barn.slug}`,
+          value: userId,
+          url: testInfo.project.use.baseURL ?? 'http://localhost:3000',
+        }
+      })
+    )
     await runTest(page)
   },
 })

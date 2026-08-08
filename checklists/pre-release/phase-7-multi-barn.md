@@ -36,6 +36,18 @@
 - [ ] Sign out, then visit `/login` — the connection status dot is green
 - [ ] The "Keep me logged in" checkbox is present on that page and checked
 
+Cross-barn isolation — the invariant this phase is named after (`#1415`). Every line here is performed against two seeded barns by a manager holding an active membership in both; the direct-URL lines are the ones that reach RLS rather than the UI's own scoping:
+
+- [ ] Under Barn B's slug, the Horses list shows Barn B's horse and none of Barn A's (e2e: barn_b_horses_page_lists_only_barn_b_horses)
+- [ ] Under Barn B's slug, the Lessons list shows Barn B's lesson and none of Barn A's (e2e: barn_b_lessons_page_lists_only_barn_b_lessons)
+- [ ] Under Barn B's slug, the Members list shows Barn B's memberships and none of Barn A's (e2e: barn_b_members_page_lists_only_barn_b_members)
+- [ ] Under Barn B's slug, Finances shows only Barn B's horse, at Barn B's own Gross figure (e2e: barn_b_finances_shows_only_barn_b_income)
+- [ ] A Barn A **horse** id addressed directly under Barn B's slug 404s at that URL rather than rendering the horse (e2e: a_barn_a_horse_id_under_barn_b_404s)
+- [ ] A Barn A **lesson** id addressed directly under Barn B's slug 404s at that URL rather than rendering the lesson (e2e: a_barn_a_lesson_id_under_barn_b_404s)
+- [ ] A Barn A **membership** id addressed directly under Barn B's slug 404s at that URL rather than rendering the member (e2e: a_barn_a_membership_id_under_barn_b_404s)
+- [ ] Barn B's *own* horse id at that same URL shape renders — the positive control, without which the three 404s above would also pass against a broken route (e2e: barn_b_own_horse_id_under_barn_b_renders)
+- [ ] After visiting Barn A and then Barn B, the nav barn name and the page title both name Barn B, not the barn last visited (e2e: the_barn_chrome_follows_the_url_not_the_previously_visited_barn)
+
 Cleanup (optional):
 
 ```bash

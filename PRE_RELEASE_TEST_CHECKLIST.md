@@ -63,12 +63,12 @@ Run them in order. Each file carries its own asserting role — the partitioning
 | `/demo` | Phase 1 |
 | `/api/cron/reset-demo` | Phase 1 |
 | `/barns` | Phase 7 |
-| `/barn/[slug]` (dashboard) | Phases 4, 6 |
+| `/barn/[slug]` (dashboard) | Phases 4, 6, 7 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |
 | `/barn/[slug]/register` | Phase 7 |
-| `/barn/[slug]/lessons` | Phases 4, 5, 6 |
+| `/barn/[slug]/lessons` | Phases 4, 5, 6, 7 |
 | `/barn/[slug]/lessons/new` | Phases 3, 5 |
-| `/barn/[slug]/lessons/[id]` | Phases 4, 5, 6 |
+| `/barn/[slug]/lessons/[id]` | Phases 4, 5, 6, 7 |
 | `/barn/[slug]/lessons/[id]/edit` | Phases 4, 5 |
 | `/barn/[slug]/lessons/[id]/delete` | Phase 4 |
 | `/barn/[slug]/lessons/[id]/cancel` | Phases 4, 5, 6 |
@@ -77,16 +77,16 @@ Run them in order. Each file carries its own asserting role — the partitioning
 | `/barn/[slug]/expenses/new` | Phase 4 |
 | `/barn/[slug]/expenses/[id]` | Phases 4, 5 |
 | `/barn/[slug]/expenses/[id]/delete` | Phase 4 |
-| `/barn/[slug]/horses` | Phases 2, 4 |
-| `/barn/[slug]/horses/[id]` | Phases 2, 4, 5 |
+| `/barn/[slug]/horses` | Phases 2, 4, 7 |
+| `/barn/[slug]/horses/[id]` | Phases 2, 4, 5, 7 |
 | `/barn/[slug]/agreements` | Phase 2 |
 | `/barn/[slug]/agreements/new` | Phase 2 |
 | `/barn/[slug]/agreements/[id]` | Phase 4 |
 | `/barn/[slug]/agreements/[id]/edit` | Phase 2 |
-| `/barn/[slug]/members` | Phases 2, 4, 5, 6 |
-| `/barn/[slug]/members/[membership_id]` | Phases 4, 5 |
+| `/barn/[slug]/members` | Phases 2, 4, 5, 6, 7 |
+| `/barn/[slug]/members/[membership_id]` | Phases 4, 5, 7 |
 | `/barn/[slug]/documents/new` | Phases 4, 6 |
-| `/barn/[slug]/finances` | Phases 4, 5, 6 |
+| `/barn/[slug]/finances` | Phases 4, 5, 6, 7 |
 | `/barn/[slug]/finances/outstanding` | Phases 4, 5, 6 |
 | `/barn/[slug]/finances/horses/[id]` | Phase 4 |
 | `/barn/[slug]/finances/riders/[id]` | Phase 4 |
