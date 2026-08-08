@@ -45,28 +45,41 @@
 //    "in the desktop nav bar" actually makes.
 //
 //    The bell/avatar ordering check goes further and asserts the order at BOTH widths in one
-//    test, resizing between them. `bell.x < avatar.x` is true at 1280 as well as at 390, so
-//    asserting it only at 390 would assert nothing about the width — fact 6's hollow pass reached
-//    through ordering instead of through the viewport. The reversal is what makes the line's
-//    "(reversed from desktop's avatar-then-bell order)" clause a claim rather than prose.
+//    test, resizing between them. Not because the property is width-invariant — it is not;
+//    `layout.tsx` reverses it with `order-1 md:order-2` / `order-2 md:order-1`, so `bell.x <
+//    avatar.x` is true at 390 and false at 1280, which is what the two expectations below say.
+//    The reason is that a single 390px assertion cannot tell "the bell leads at mobile width"
+//    from "the bell always leads": delete the `md:order-*` half of that pair and a mobile-only
+//    check stays green, leaving the line's "(reversed from desktop's avatar-then-bell order)"
+//    clause asserted by nothing. Reading the width proves which viewport ran; only the second
+//    assertion proves the order depends on it.
 //
 // 3. `MANAGER_NAV_LABELS` IS THE PIVOT FOR "THE DRAWER LISTS THE SAME LINKS", NOT A DIRECT
-//    COMPARISON OF THE TWO CONTAINERS. The direct comparison is unavailable and would also be
-//    weaker. Unavailable: at 390px the desktop container is `display:none`, and BOTH readers in
-//    support/read.ts bottom out in `waitFor()`, whose default is `state: 'visible'` — so a
-//    settled read of it can only run out the test's budget (e2e/CLAUDE.md fact 2; swapping
-//    `settledInnerTexts` for `settledTextContents` does not lift that, as read.ts's ceiling
-//    section says outright). Weaker: two locators compared against each other can drift together
-//    and still pass. So the drawer's labels are pinned to the constant here, the desktop
-//    container's labels are pinned to the same constant by the "other links stay unhighlighted"
-//    check below (where the container is genuinely visible), and the "same links" claim holds
-//    transitively with both ends nailed down.
+//    COMPARISON OF THE TWO CONTAINERS. Two constraints, and only the second is the deciding one.
+//    First, the obvious spelling of the direct comparison is closed off: at 390px the desktop
+//    container is `display:none`, and BOTH readers in support/read.ts bottom out in `waitFor()`,
+//    whose default is `state: 'visible'`, so a *settled* read of it can only run out the test's
+//    budget (e2e/CLAUDE.md fact 2; swapping `settledInnerTexts` for `settledTextContents` does not
+//    lift that, as read.ts's ceiling section says outright). That section also names the ways
+//    through — `toHaveText`, or `waitFor({ state: 'attached' })` before a bare `allTextContents` —
+//    and `desktopNavAnchors` below reaches the collapsed container by the same principle, so
+//    "impossible" would be the wrong word and is not the argument here.
+//
+//    The deciding constraint is the second: two locators compared against each other can drift
+//    together and still pass, which is precisely the failure this line exists to catch. So the
+//    drawer's labels are pinned to the constant here, the desktop container's labels are pinned to
+//    the same constant by the "other links stay unhighlighted" check below (where the container is
+//    genuinely visible), and the "same links" claim holds transitively with both ends nailed down
+//    against a value neither container can influence. Stronger than the direct comparison, not a
+//    substitute forced by a limitation.
 //
 // 4. THE DESKTOP LINK CONTAINER IS LOCATED BY ITS `hidden` CLASS, AND THAT COUPLING IS THE RIGHT
-//    ONE. #1423 puts changes to the nav components out of scope, so no `data-testid` is available
-//    to reach for. The usual objection to a class locator — brittle coupling to styling — does
-//    not apply, because `hidden md:flex` IS the mechanism the first checklist line asserts ("the
-//    nav bar's section links disappear"). The locator is coupled to the behaviour under test.
+//    ONE. The usual objection to a class locator is brittle coupling to styling, and it does not
+//    apply here: `hidden md:flex` IS the mechanism the first checklist line asserts ("the nav bar's
+//    section links disappear"), so the locator is coupled to the behaviour under test rather than
+//    to an incidental style. That is the durable reason, and it does not expire. (The immediate
+//    reason a `data-testid` was not added instead was that #1423 put nav-component changes out of
+//    scope — true when this was written, and not an argument to rely on afterwards.)
 //    The link-count floor on that first check is what stops a page that failed to render from
 //    reading as a correctly-hidden container.
 //
@@ -76,8 +89,11 @@
 //    faithful to a real phone — "closes on backdrop tap" is genuinely what is asserted — but it
 //    does not isolate a touch handler, and here there is no touch handler to isolate: the scrim
 //    carries `onClick` alone. Separately, the link-tap check cannot separate the link's own
-//    `onClick={close}` from NavDrawer's pathname-change effect, which closes the drawer on any
-//    navigation. Both would satisfy the checklist line, which claims only the outcome.
+//    `onClick={close}` from NavDrawer's other close path — the render-phase `lastPathname`
+//    comparison, which closes the drawer on any navigation. Render-phase and not an effect: #543's
+//    `320a821e` deliberately removed the `useEffect` that used to do this because it tripped
+//    `react-hooks/set-state-in-effect`. Either path would satisfy the checklist line, which claims
+//    only the outcome.
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addUnpaidLesson, daysFromNow } from './support/fixtures'
@@ -137,13 +153,18 @@ const HORSES = 'Horses'
 
 /** Tailwind `font-semibold` / `font-medium`, the two weights the active and inactive classes set. */
 const ACTIVE_FONT_WEIGHT = '600'
+const INACTIVE_FONT_WEIGHT = '500'
 
 /**
  * A point inside the scrim and outside the drawer panel, which is `w-64` (256px) and pinned to the
  * left edge. Relative to the scrim's own top-left, which is the viewport's — the scrim is
  * `fixed inset-0`. Passing it as a `position` rather than tapping raw coordinates keeps
  * Playwright's hit-target check in play, so the tap is verified to land on the scrim rather than
- * merely at a spot the scrim is assumed to own.
+ * merely at a spot the scrim is assumed to own — the tradeoff against the phase-4 spot-check's raw
+ * viewport coordinates, which bake in no layout assumption but also verify nothing about what they
+ * hit. The assumption baked in here is the panel's width: widen it past this x and the check fails
+ * as an opaque "element intercepts pointer events" timeout rather than as a named assertion, so
+ * move this point rather than debugging the drawer.
  */
 const BACKDROP_TAP = { x: 330, y: 400 }
 
@@ -226,14 +247,37 @@ async function highlightOf(link: Locator): Promise<{ ariaCurrent: string | null;
   }
 }
 
-/** Every desktop nav link's label paired with its `aria-current`, in DOM order. */
-async function desktopHighlightMap(page: Page): Promise<(string | null)[][]> {
+/**
+ * Every link's label paired with BOTH halves of its highlight state — `aria-current` and the
+ * computed font weight — in DOM order.
+ *
+ * The weight is in here rather than only in `highlightOf` because the negative direction needs it
+ * just as much as the positive one: a regression that applied the active class (`font-semibold`,
+ * and the `underline` that rides with it) to every link while leaving `aria-current` correct is
+ * exactly "other links are highlighted", and an `aria-current`-only map calls that page clean.
+ * `DesktopNavLinks`' unit tests treat the active and inactive classes as a matched pair for the
+ * same reason; this is the e2e half of that pair.
+ */
+async function highlightMap(links: Locator): Promise<string[][]> {
   // The inline wait `evaluateAll` keeps rather than delegating to support/read.ts (that module's
   // comment says why): a not-yet-rendered container yields `[]`, and `[]` must not reach an
   // expectation as a shortened answer.
-  await desktopNavLinks(page).first().waitFor()
-  return desktopNavLinks(page).evaluateAll((els) =>
-    els.map((el) => [el.textContent, el.getAttribute('aria-current')])
+  await links.first().waitFor()
+  return links.evaluateAll((els) =>
+    els.map((el) => [
+      el.textContent ?? '',
+      el.getAttribute('aria-current') ?? 'none',
+      getComputedStyle(el).fontWeight,
+    ])
+  )
+}
+
+/** The expected map on `/lessons`: Lessons active, the other eight inert. */
+function expectedHighlightMap(): string[][] {
+  return MANAGER_NAV_LABELS.map((label) =>
+    label === LESSONS
+      ? [label, 'page', ACTIVE_FONT_WEIGHT]
+      : [label, 'none', INACTIVE_FONT_WEIGHT]
   )
 }
 
@@ -267,18 +311,20 @@ test('the_desktop_nav_bar_leaves_the_other_links_unhighlighted @manager', async 
   await page.goto(`/barn/${barn.slug}/lessons`)
 
   // Full-set ordered equality over every link the container carries, not a spot check on one
-  // sibling: a highlight leaking onto any of the other eight is the regression, and naming them
-  // individually would leave whichever one was not named uncovered. This also pins the desktop
-  // container's labels to MANAGER_NAV_LABELS, which is the other end of note 3's pivot.
+  // sibling, and it catches drift in BOTH directions rather than only the leaking one: an inert
+  // link that lit up fails on its own row, and so does an active link that went inert. That
+  // second direction is the one this module has actually regressed in — #544 fixed
+  // `isNavLinkActive` dropping its nested-path match for any href carrying a query string, so
+  // Leases and Boarding never highlighted on a nested agreements route (a case whose own coverage
+  // lives on phase 2's checklist, since both nested-route checks here use query-less Lessons).
+  // Naming links individually would leave whichever one was not named uncovered. This also pins
+  // the desktop container's labels to MANAGER_NAV_LABELS, which is the other end of note 3's pivot.
   await expect
     .poll(async () => ({
       atLeastBreakpoint: page.viewportSize()!.width >= MD_BREAKPOINT,
-      links: await desktopHighlightMap(page),
+      links: await highlightMap(desktopNavLinks(page)),
     }))
-    .toEqual({
-      atLeastBreakpoint: true,
-      links: MANAGER_NAV_LABELS.map((label) => [label, label === LESSONS ? 'page' : null]),
-    })
+    .toEqual({ atLeastBreakpoint: true, links: expectedHighlightMap() })
 })
 
 // ---------------------------------------------------------------------------
@@ -353,6 +399,12 @@ test.describe('below the md breakpoint', () => {
     await page.goto(`/barn/${barn.slug}`)
     await openDrawer(page)
     await drawerLink(page, HORSES).tap()
+    // `waitForURL` rather than letting the poll below wait for the navigation, per support/test.ts's
+    // suite-wide URL rule: `expect.poll` carries the same 5s expect budget `toHaveURL` does, and the
+    // dev server can exceed it cold-compiling a route under full-suite load. `/horses` is visited by
+    // no other test in this file, so it is guaranteed cold here. This is a real sync point and not
+    // fact 3's no-op — the tap starts on the barn dashboard, a URL the pattern cannot already match.
+    await page.waitForURL(`**/barn/${barn.slug}/horses`, { waitUntil: 'commit' })
 
     // The landed-on path is the positive control: without it a tap that missed the link entirely
     // and merely dismissed the drawer would pass. See note 5 for what this does NOT separate.
@@ -424,23 +476,33 @@ test.describe('below the md breakpoint', () => {
     await page.goto(`/barn/${barn.slug}/lessons`)
     await openDrawer(page)
 
+    // The whole drawer map, not just the Lessons row. The checklist's "other links stay
+    // unhighlighted" line sits after both the desktop and the drawer highlighting lines, and #1423
+    // groups it with the desktop pair — so the drawer's negative half is claimed by no checkbox of
+    // its own, and reading only Lessons here would leave a regression that lit up all nine drawer
+    // links green across the whole file. Asserting the full map costs nothing and closes that.
     await expect
       .poll(async () => ({
         width: page.viewportSize()!.width,
-        ...(await highlightOf(drawerLink(page, LESSONS))),
+        links: await highlightMap(drawerLinks(page)),
       }))
-      .toEqual({ width: MOBILE_VIEWPORT.width, ariaCurrent: 'page', fontWeight: ACTIVE_FONT_WEIGHT })
+      .toEqual({ width: MOBILE_VIEWPORT.width, links: expectedHighlightMap() })
   })
 
   test('the_drawer_keeps_lessons_highlighted_on_a_lesson_detail_page @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/lessons/${lesson.id}`)
     await openDrawer(page)
 
+    // The whole drawer map, not just the Lessons row. The checklist's "other links stay
+    // unhighlighted" line sits after both the desktop and the drawer highlighting lines, and #1423
+    // groups it with the desktop pair — so the drawer's negative half is claimed by no checkbox of
+    // its own, and reading only Lessons here would leave a regression that lit up all nine drawer
+    // links green across the whole file. Asserting the full map costs nothing and closes that.
     await expect
       .poll(async () => ({
         width: page.viewportSize()!.width,
-        ...(await highlightOf(drawerLink(page, LESSONS))),
+        links: await highlightMap(drawerLinks(page)),
       }))
-      .toEqual({ width: MOBILE_VIEWPORT.width, ariaCurrent: 'page', fontWeight: ACTIVE_FONT_WEIGHT })
+      .toEqual({ width: MOBILE_VIEWPORT.width, links: expectedHighlightMap() })
   })
 })
