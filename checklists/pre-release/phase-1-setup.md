@@ -49,19 +49,19 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 
 > **Mobile viewport:** the `@mobile` project already supplies this width — Pixel 5 on the manager `storageState` (`playwright.config.ts`), exercised today by `dashboard_today_indicator_visible_on_current_day` (`checklist-phase4-dashboard.spec.ts`) — so the block below is tagging, not new-harness work. Whether these lines ride that project or take a per-describe `test.use` is the slice's call: Phase 4's Mobile spot-check chose `test.use` deliberately, because `@mobile` would have dispatched that whole mixed-role file a second time and seeded a second barn for four tests (`checklist-phase4-notifications-profile.spec.ts`) — a drawer-only spec doesn't carry that cost. A test whose claim is *"at this width"* must read `page.viewportSize()!.width` in its own expectation, or it passes at 1280×800 too (`e2e/CLAUDE.md` fact 6, #1207).
 
-- [ ] (e2e-candidate) Shrink the browser below 768px wide — the nav bar's section links disappear
-- [ ] (e2e-candidate) At that width a ☰ button appears
-- [ ] (e2e-candidate) Tapping ☰ opens a left drawer
-- [ ] (e2e-candidate) That drawer lists the same links the desktop nav bar carries
-- [ ] (e2e-candidate) The drawer closes on link tap
-- [ ] (e2e-candidate) The drawer closes on backdrop tap
-- [ ] (e2e-candidate) The drawer closes on Escape
-- [ ] (e2e-candidate) The bell icon sits to the left of the avatar at this width (reversed from desktop's avatar-then-bell order)
-- [ ] (e2e-candidate) **Lessons** is bolded/highlighted in the desktop nav bar while on `/barn/dev-barn/lessons`
-- [ ] (e2e-candidate) It stays bolded/highlighted in that nav bar on a nested page like `/barn/dev-barn/lessons/[id]`
-- [ ] (e2e-candidate) **Lessons** is bolded/highlighted in the drawer while on `/barn/dev-barn/lessons`
-- [ ] (e2e-candidate) It stays bolded/highlighted in the drawer on a nested page like `/barn/dev-barn/lessons/[id]`
-- [ ] (e2e-candidate) Other links stay unhighlighted
+- [ ] (e2e: below_the_md_breakpoint_the_desktop_nav_section_links_are_hidden) Shrink the browser below 768px wide — the nav bar's section links disappear
+- [ ] (e2e: below_the_md_breakpoint_a_hamburger_button_appears) At that width a ☰ button appears
+- [ ] (e2e: tapping_the_hamburger_opens_a_left_drawer) Tapping ☰ opens a left drawer
+- [ ] (e2e: the_drawer_lists_the_same_links_the_desktop_nav_bar_carries) That drawer lists the same links the desktop nav bar carries
+- [ ] (e2e: the_drawer_closes_when_a_link_in_it_is_tapped) The drawer closes on link tap
+- [ ] (e2e: the_drawer_closes_when_the_backdrop_is_tapped) The drawer closes on backdrop tap
+- [ ] (e2e: the_drawer_closes_on_escape) The drawer closes on Escape
+- [ ] (e2e: at_mobile_width_the_bell_sits_to_the_left_of_the_avatar) The bell icon sits to the left of the avatar at this width (reversed from desktop's avatar-then-bell order)
+- [ ] (e2e: the_desktop_nav_bar_highlights_lessons_on_the_lessons_list) **Lessons** is bolded/highlighted in the desktop nav bar while on `/barn/dev-barn/lessons`
+- [ ] (e2e: the_desktop_nav_bar_keeps_lessons_highlighted_on_a_lesson_detail_page) It stays bolded/highlighted in that nav bar on a nested page like `/barn/dev-barn/lessons/[id]`
+- [ ] (e2e: the_drawer_highlights_lessons_on_the_lessons_list) **Lessons** is bolded/highlighted in the drawer while on `/barn/dev-barn/lessons`
+- [ ] (e2e: the_drawer_keeps_lessons_highlighted_on_a_lesson_detail_page) It stays bolded/highlighted in the drawer on a nested page like `/barn/dev-barn/lessons/[id]`
+- [ ] (e2e: the_desktop_nav_bar_leaves_the_other_links_unhighlighted) Other links stay unhighlighted
 - [ ] (manual — needs source edited to `throw new Error('smoke test')` and the app reloaded; a spec cannot patch the app under test) Temporarily `throw new Error('smoke test')` at the top of any page or Server Action and load it — the global error boundary (`src/app/error.tsx`) renders "Something went wrong"
 - [ ] (manual — same source edit as the line above) That page shows no raw stack trace
 - [ ] (manual — same source edit as the line above) That error boundary's **Try again** button works (then revert the thrown error)
