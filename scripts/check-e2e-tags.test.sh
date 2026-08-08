@@ -441,7 +441,42 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 33: the real tree. This is the gate's own acceptance criterion — it was written against a
+# Test 33: a capitalized citation. `Line 696's …` and `Lines 702-712 …` are 52 of the 278 lines
+# #1366 removed, not a hypothetical — a case-sensitive pattern lets exactly that form back in
+# while the prose beside it says the dialect is banned outright, which is this gate's own failure
+# class arriving through a shift key.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// Lines 702-712 assert the same thing for the trainer.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "spec comment citing \`Lines N-M\` capitalized: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 34: a citation in a non-spec helper. The convention is about what a comment cites, not what
+# file it sits in, and a scan scoped to *.spec.ts would leave e2e/support/*.ts and global-setup.ts
+# permanently unlinted — the same fail-open shape CHECKLIST_GLOBS avoids by being a glob.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});")"
+mkdir -p "$REPO/e2e/support"
+printf '%s\n' "// Mirrors phase-4-manager-verification.md line 149." > "$REPO/e2e/support/helper.ts"
+assert_fails_with "line-number citation in a non-spec e2e helper: exits non-zero" \
+  "$REPO" "e2e/support/helper.ts"
+rm -rf "$REPO"
+
+# Test 35: a citation outside a `//` comment. The scan is whole-file by design — a dialect this
+# specific has no incidental use in test code (0 near-misses tree-wide), and restricting it to
+# comment lines would buy a parser plus a way to smuggle a citation past the gate inside a string.
+# The cost is stated rather than discovered: this fixture is the one that would break if a spec
+# ever legitimately needed `lines 5` in its UI copy.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {
+  await expect(page.getByText('phase-4-manager-verification.md 149')).toBeVisible();
+});")"
+assert_fails_with "line-number citation outside a comment: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 36: the real tree. This is the gate's own acceptance criterion — it was written against a
 # tree measured clean (733 tags, 0 orphans, and 0 role violations: phase 4 is 559 @manager plus 1
 # @mobile, phase 5 is 82 @trainer plus 3 dual, phase 6 is 85 @rider plus 3 dual), so a non-zero
 # here on the first commit means the scanner is wrong, not the repo. The citation check joins it

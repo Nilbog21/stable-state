@@ -15,13 +15,13 @@ cd "$(git rev-parse --show-toplevel)"
 #   wrong-role     — the tag's test runs only as identities the phase doesn't assert as (#1392)
 #   malformed      — the tag doesn't parse, so none of the checks above can be run on it
 #
-# And a fifth over spec *comments*:
-#   line-citation  — a spec comment cites a checklist item by line number rather than by quoted
+# And a fifth over the *text* of every e2e/**/*.ts file:
+#   line-citation  — a comment cites a checklist item by line number rather than by quoted
 #                    fragment (#1410), which rots the moment anything is inserted above it
 #
 # The reverse direction is deliberately not linted: a test claimed by no checklist line is
 # legitimate (5 today), so flagging it would buy busywork. The fifth check is not that lint — it
-# reads spec comments, never test titles. See docs/scripts.md.
+# reads file text, never test titles. See docs/scripts.md.
 
 # The files whose (e2e:) tags are data rather than prose. PRE_RELEASE_TEST_CHECKLIST.md is
 # excluded: all 4 of its `(e2e:` hits are convention prose (`<test name>`, `…`).
@@ -239,14 +239,24 @@ for glob in "${CHECKLIST_GLOBS[@]}"; do
   done
 done
 
-# The fifth check (#1410): a spec comment citing a checklist item by line number. Three dialects,
+# The fifth check (#1410): a comment citing a checklist item by line number. Three dialects,
 # counted off #1366's merge (2554b976^1..2554b976, removed lines in e2e/*.spec.ts): `line N`/
-# `lines N` (228), `P<digit> N` (16), and a number directly after the phase filename (10). All
-# three are banned outright rather than only where a checklist file is named nearby: pre-sweep,
-# only 13 of 135 `line N` hits named one on their own line — the rest read `line 523's test`, with
-# the file named once at the top of the comment block — so a context test catches a tenth of the
-# class. Source lines are cited colon-style here (`ExhaustionBar.tsx:57`), which is lexically
-# distinct, so `line N` has no legitimate use left in a spec comment.
+# `lines N` (278 lines, 292 occurrences), `P<digit> N` (16), and a number directly after the phase
+# filename (10). All three are banned outright rather than only where a checklist file is named
+# nearby: pre-sweep, only 13 of 135 `line N` hits named one on their own line — the rest read
+# `line 523's test`, with the file named once at the top of the comment block — so a context test
+# catches a tenth of the class. Source lines are cited colon-style here (`ExhaustionBar.tsx:57`),
+# which is lexically distinct, so `line N` has no legitimate use left in a spec comment.
+#
+# Matched case-insensitively: 52 of those 278 lines read `Line 696's …` or `Lines 702-712 …`, so a
+# case-sensitive pattern would let a fifth of the commonest dialect back in while the prose here
+# said it was banned outright — this gate's own failure class, arriving through a shift key.
+#
+# Every e2e/**/*.ts file, not only the specs: the convention is about what a comment cites, not
+# which file it sits in, and scoping to *.spec.ts would leave the helpers permanently unlinted,
+# the same fail-open shape CHECKLIST_GLOBS avoids by being a glob. The scan is whole-file rather
+# than comment-only — a dialect this specific has no incidental use in test code (0 near-misses
+# tree-wide), and parsing out comments would buy a way to smuggle a citation past inside a string.
 #
 # Documented ceiling: the bare-number dialect (`#938's 990`) is not statically distinguishable
 # from ordinary prose and is out of scope. The keyword-less `.md,? +[0-9]` dialect escapes that
@@ -254,7 +264,7 @@ done
 CITATION_DIALECTS='\blines?[[:space:]]+[0-9]|\bP[0-9][[:space:]]+[0-9]|\.md,?[[:space:]]+[0-9]'
 
 citation_fail=0
-for f in e2e/*.spec.ts; do
+for f in e2e/*.ts e2e/*/*.ts; do
   # An unmatched glob expands to itself, which is not a file.
   [ -f "$f" ] || continue
   while IFS= read -r hit; do
@@ -262,7 +272,7 @@ for f in e2e/*.spec.ts; do
     echo "FAIL: $f:${hit%%:*}: line-number citation of a checklist item —" \
       "cite by quoted fragment" >&2
     citation_fail=1
-  done < <({ grep -nE "$CITATION_DIALECTS" "$f" || true; })
+  done < <({ grep -inE "$CITATION_DIALECTS" "$f" || true; })
 done
 
 if [ "$fail" -ne 0 ]; then
@@ -280,9 +290,9 @@ fi
 
 if [ "$citation_fail" -ne 0 ]; then
   echo "" >&2
-  echo "A spec comment citing a checklist item by line number rots the moment anything is" >&2
+  echo "A comment citing a checklist item by line number rots the moment anything is" >&2
   echo "inserted above it in the phase file, and rots silently — the citation still reads as" >&2
-  echo "correct. #1366 swept ~254 of these after finding one that had pointed at the wrong" >&2
+  echo "correct. #1366 swept ~304 of these after finding one that had pointed at the wrong" >&2
   echo "section for a release. Quote a fragment of the item instead:" >&2
   echo "  // (checklists/pre-release/phase-4-manager-verification.md, the block from \"Clover's" >&2
   echo "  //  detail page\")" >&2
@@ -291,7 +301,7 @@ fi
 
 if [ "$fail" -eq 0 ] && [ "$citation_fail" -eq 0 ]; then
   echo "OK: $checked checklist (e2e:) tags resolve to a test that exists, runs, and runs as an" \
-    "identity its phase asserts as; no e2e/*.spec.ts comment carries a line-number citation"
+    "identity its phase asserts as; no e2e/**/*.ts file carries a line-number citation"
   exit 0
 fi
 
