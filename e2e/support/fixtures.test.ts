@@ -347,23 +347,30 @@ describe('seeded member names', () => {
  */
 describe('throwawayAuthEmail', () => {
   const PREFIX = 'e2e-123-456'
+  const KEY = 'invite'
 
   it('should_derive_a_distinct_email_per_project', () => {
-    expect(throwawayAuthEmail(PREFIX, 'manager')).not.toBe(throwawayAuthEmail(PREFIX, 'rider'))
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail(PREFIX, KEY, 'rider'))
   })
 
   it('should_derive_a_distinct_email_per_run', () => {
-    expect(throwawayAuthEmail(PREFIX, 'manager')).not.toBe(throwawayAuthEmail('e2e-999-1', 'manager'))
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail('e2e-999-1', KEY, 'manager'))
+  })
+
+  // The half a project-only key would lose: a second spec file wanting a throwaway login under
+  // the same project would otherwise derive this file's address and race its create/delete.
+  it('should_derive_a_distinct_email_per_spec_file', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail(PREFIX, 'other', 'manager'))
   })
 
   // Not a sweep requirement — nothing sweeps auth users by prefix — but a leaked login is found
   // by a human grepping the dashboard, and the prefix is what tells them which run left it.
   it('should_keep_the_run_prefix_leading', () => {
-    expect(throwawayAuthEmail(PREFIX, 'manager').startsWith(`${PREFIX}-`)).toBe(true)
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager').startsWith(`${PREFIX}-`)).toBe(true)
   })
 
   it('should_use_the_same_domain_as_the_shared_logins', () => {
-    expect(throwawayAuthEmail(PREFIX, 'manager').endsWith('@e2e.test')).toBe(true)
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager').endsWith('@e2e.test')).toBe(true)
   })
 
   /**
@@ -374,7 +381,7 @@ describe('throwawayAuthEmail', () => {
    */
   it('should_contain_no_shared_login_email_as_a_substring', () => {
     const emails = Object.values(E2E_USERS).map((u) => u.email)
-    const derived = ['manager', 'trainer', 'rider'].map((p) => throwawayAuthEmail(PREFIX, p))
+    const derived = ['manager', 'trainer', 'rider'].map((p) => throwawayAuthEmail(PREFIX, KEY, p))
     expect(derived.filter((d) => emails.some((e) => d.includes(e)))).toEqual([])
   })
 })
@@ -408,7 +415,7 @@ function stubClient(opts: StubOptions = {}) {
 }
 
 describe('createThrowawayAuthUser', () => {
-  const EMAIL = 'e2e-123-456-manager-invite@e2e.test'
+  const EMAIL = 'e2e-123-456-invite-manager-invite@e2e.test'
 
   it('should_create_a_confirmed_login_on_the_suite_password', async () => {
     const stub = stubClient()
@@ -435,12 +442,12 @@ describe('createThrowawayAuthUser', () => {
 
   it('should_throw_naming_the_email_when_creation_fails', async () => {
     const stub = stubClient({ createUserResult: { data: null, error: { message: 'rate limited' } } })
-    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-manager-invite@e2e\.test.*rate limited/)
+    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-invite-manager-invite@e2e\.test.*rate limited/)
   })
 
   it('should_throw_naming_the_email_when_no_user_comes_back', async () => {
     const stub = stubClient({ createUserResult: { data: null, error: null } })
-    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-manager-invite@e2e\.test/)
+    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-invite-manager-invite@e2e\.test/)
   })
 })
 

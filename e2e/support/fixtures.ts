@@ -310,17 +310,21 @@ export async function authStorageState(
 }
 
 /**
- * The address of a spec file's own throwaway login (#1425). Run- and project-scoped for the same
- * reason `barnSlugFor` is: Playwright dispatches one job per (spec file × project), so a fixed
- * address would have two jobs creating and deleting the same auth user underneath each other.
+ * The address of a spec file's own throwaway login (#1425). Takes the same three parts
+ * `barnSlugFor` does, and for the same reason: Playwright dispatches one job per (spec file ×
+ * project), so an address keyed on less than that has two jobs creating and deleting the same
+ * auth user underneath each other. `key` is the spec file's own — pass what that file passes
+ * `withBarn`. Dropping it and keying on the project alone would make this collide the moment a
+ * *second* spec wanted a throwaway login, which the note on `createThrowawayAuthUser` explicitly
+ * contemplates.
  *
  * The project name is deliberately not the last token. Local parts are rendered — the nav bar's
  * user menu shows `user.email` — and every Playwright text matcher is substring-based, so a
  * `…-manager@e2e.test` address would contain the `manager@e2e.test` shared login outright. Same
  * containment rule `E2E_STUB_RIDER` states for person names, reaching addresses.
  */
-export function throwawayAuthEmail(prefix: string, project: string): string {
-  return `${prefix}-${project}-invite@e2e.test`
+export function throwawayAuthEmail(prefix: string, key: string, project: string): string {
+  return `${prefix}-${key}-${project}-invite@e2e.test`
 }
 
 /**

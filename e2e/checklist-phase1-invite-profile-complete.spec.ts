@@ -1,6 +1,17 @@
 // covers: src/app/barn/[slug]/register/**
 // covers: src/app/barn/[slug]/login/**
 // covers: src/app/profile/**
+// covers: src/app/barn/[slug]/(protected)/nav-links.ts
+// covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
+// covers: src/app/barn/[slug]/(protected)/NavDrawer.tsx
+//
+// The three nav modules are declared because the last check's whole claim is carried by one nav
+// label: `nav-links.ts` is where `Manage Barn` is manager-only in the first place,
+// `DesktopNavLinks.tsx` is the container that renders it at this viewport, and `NavDrawer.tsx` is
+// what keeps the locator unambiguous (note 5). None of the three is in `select-specs.sh`'s
+// ALWAYS_FULL list — that list carries `(protected)/layout.tsx` but not the modules it renders —
+// so without these lines a change to any of them would not select this spec, and the last check
+// would go red for the first time in an unrelated PR's full run.
 //
 // Phase 1's invite-claim story, from an unauthenticated browser through to a completed profile
 // (checklists/pre-release/phase-1-setup.md, the block from "Open that path on your app origin (no
@@ -71,11 +82,19 @@
 //
 // 5. "YOU HOLD MANAGER" IS ASSERTED THROUGH `Manage Barn`, THE ONE NAV LABEL NO OTHER ROLE GETS.
 //    `buildNavLinks` returns it only on its manager branch, so its presence is a role
-//    discriminator rather than merely a link that rendered. One locator suffices even though the
-//    drawer carries a second copy of every nav link: at desktop width that container is
-//    `display:none`, and `getByRole` resolves against the accessibility tree rather than the DOM,
-//    where a `display:none` subtree is absent (#1423 measured this in the other direction, on a
-//    role query that returned 0 against nine attached anchors).
+//    discriminator rather than merely a link that rendered.
+//
+//    An unscoped locator suffices, and the reason is `NavDrawer`'s own markup rather than CSS:
+//    the drawer renders its link list inside `{open && (…)}` with `open` initialised `false`, so
+//    while it is shut those anchors are not in the DOM at all and this locator can only match the
+//    desktop container's copy. Only the hamburger *trigger* carries `md:hidden` — the panel is
+//    not viewport-gated — so a change making the drawer render its links unconditionally would
+//    give this locator two matches and trip strict mode rather than failing quietly. That is why
+//    `NavDrawer.tsx` is declared in this file's `covers:` set above alongside the two modules the
+//    assertion reads more directly. (An earlier draft of this note credited `display:none` plus
+//    the accessibility tree, generalising #1423's measurement from a different container. That is
+//    the right account of `DesktopNavLinks` below the breakpoint and the wrong one here; the
+//    component was read rather than assumed the second time.)
 import type { BrowserContext } from '@playwright/test'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { test as base, expect, withBarn, serviceClient, type Page } from './support/test'
@@ -106,9 +125,12 @@ const EMERGENCY_PHONE = '555-0143'
 const REMEMBER_LABEL = 'Keep me logged in'
 const MANAGER_ONLY_NAV_LINK = 'Manage Barn'
 
+/** This file's key, shared by its barn's slug and its throwaway login's address. */
+const BARN_KEY = 'invite'
+
 let inviteToken: string | null = null
 
-const barn = withBarn('invite', async ({ supabase, barn: seeded }) => {
+const barn = withBarn(BARN_KEY, async ({ supabase, barn: seeded }) => {
   inviteToken = (
     await addManagedMember(supabase, seeded.id, { ...INVITEE, role: 'manager' })
   ).inviteToken
@@ -122,7 +144,7 @@ let claimedPage: Page | null = null
 
 base.beforeAll(async ({ browser }, testInfo) => {
   admin = serviceClient()
-  const email = throwawayAuthEmail(runPrefix(), testInfo.project.name)
+  const email = throwawayAuthEmail(runPrefix(), BARN_KEY, testInfo.project.name)
   // Assigned before the two steps below, either of which can throw with the login already
   // created; gating teardown on a fully-built context instead would strand it (note 4).
   throwawayUserId = await createThrowawayAuthUser(admin, email)
