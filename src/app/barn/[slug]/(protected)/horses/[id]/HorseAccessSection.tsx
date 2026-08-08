@@ -4,13 +4,31 @@ import { Button } from '@/components/ui/Button'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 
+type DocumentPrivilege = 'none' | 'read' | 'write'
+
 type Grant = {
   id: string
   memberId: string
   name: string
-  documentPrivileges: 'none' | 'read' | 'write'
+  documentPrivileges: DocumentPrivilege
   lessonReadPrivileges: boolean
 }
+
+/**
+ * One button per state rather than a `<select>` (#1390's testing round). A select's value isn't
+ * known at render time, so it had to travel as `FormData` and submit from an `onChange` — the one
+ * control on this page still needing JS to be usable, and the one that didn't persist. It also
+ * put a lone Save button in a row where every other column submits on tap.
+ *
+ * Three states rules out the neighbours' label-names-the-current-state toggle, and a cycling
+ * button can't be jumped to a state or say whether its label is the state or the next action. So:
+ * all three shown, the current one filled, each binding its own value into the action.
+ */
+const DOCUMENT_STATES: { value: DocumentPrivilege; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'read', label: 'Read' },
+  { value: 'write', label: 'Write' },
+]
 
 /**
  * The Access table's contents (#1390 moved its "Access" heading up to the enclosing
@@ -21,15 +39,13 @@ type Grant = {
  * no-op inside the hydration window — the same defect #1385 fixed for member documents, on a
  * page a manager lands on and immediately clicks.
  *
- * Two of the five actions arrive already bound to `(barnSlug, horseId)` and take their
- * remaining value from the form's own fields (`onGrant`, `onUpdateDocument`), because a
- * `<select>`'s value isn't known at render time. The other three bind their next value here:
- * `.bind()` on a Server Action is still a Server Action, whereas the inline closure it replaces
- * would not be progressively enhanced.
+ * Only `onGrant` still takes its value from a form field, its `<select>` of barn members being
+ * open-ended. Every other action binds its value here: `.bind()` on a Server Action is still a
+ * Server Action, whereas the inline closure it replaces would not be progressively enhanced.
  *
- * Still a client component, for two reasons only: Revoke's `window.confirm` and the document
- * select's change-to-submit. Neither needs state, so there is no `useState`/`useRouter` here —
- * each action `revalidatePath`s, which is what refreshes the table.
+ * Still a client component for one reason: Revoke's `window.confirm`. Nothing here needs state,
+ * so there is no `useState`/`useRouter` — each action `revalidatePath`s, which is what refreshes
+ * the table.
  */
 export function HorseAccessSection({
   grants,
@@ -45,7 +61,7 @@ export function HorseAccessSection({
   availableMembers: { membershipId: string; name: string }[]
   ownerMemberId: string | null
   onGrant: (formData: FormData) => Promise<void>
-  onUpdateDocument: (privilegeId: string, formData: FormData) => Promise<void>
+  onUpdateDocument: (privilegeId: string, value: DocumentPrivilege) => Promise<void>
   onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
   onRevoke: (privilegeId: string) => Promise<void>
   onSetOwner: (memberId: string | null) => Promise<void>
@@ -108,27 +124,25 @@ export function HorseAccessSection({
                       </form>
                     </Td>
                     <Td>
-                      <form
-                        action={onUpdateDocument.bind(null, grant.id)}
-                        className="flex items-center gap-2"
-                      >
-                        <select
-                          name="value"
-                          aria-label={`${grant.name} document access`}
-                          defaultValue={grant.documentPrivileges}
-                          onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                          className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-                        >
-                          <option value="none">None</option>
-                          <option value="read">Read</option>
-                          <option value="write">Write</option>
-                        </select>
-                        {/* The onChange above is the post-hydration interaction; this button is
-                            what makes the same change reachable before it. */}
-                        <Button type="submit" size="sm" variant="ghost">
-                          Save
-                        </Button>
-                      </form>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {DOCUMENT_STATES.map(({ value, label }) => {
+                          const active = grant.documentPrivileges === value
+                          return (
+                            <form key={value} action={onUpdateDocument.bind(null, grant.id, value)}>
+                              {/* The fill is the only thing telling the three apart, so the same
+                                  state goes out through aria-pressed rather than colour alone. */}
+                              <Button
+                                type="submit"
+                                size="sm"
+                                variant={active ? 'primary' : 'ghost'}
+                                aria-pressed={active}
+                              >
+                                {label}
+                              </Button>
+                            </form>
+                          )
+                        })}
+                      </div>
                     </Td>
                     <Td>
                       <form action={onUpdateLesson.bind(null, grant.id, !grant.lessonReadPrivileges)}>

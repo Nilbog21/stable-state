@@ -23,13 +23,13 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] Horses page now shows Daisy under **Unavailable** with the reason visible
 - [ ] On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list with an **Owner** column showing **Set as Owner**
 - [ ] Tap **Set as Owner** on Dana's row → the button changes to **Owner**
-- [ ] (#1069) Dana's row now shows **Documents: Write** without touching the dropdown directly (auto-elevated on becoming owner)
+- [ ] (#1069) Dana's row now shows **Write** selected in the **Documents** column without tapping it directly (auto-elevated on becoming owner)
 - [ ] (#1069) Dana's row now shows lesson access **Can View** without tapping the toggle directly (auto-elevated on becoming owner)
 - [ ] Refresh the page → an "Owner: Dana Rider" line appears above the photo, linking to Dana's member detail page
 - [ ] Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
 - [ ] Grant access to rider Emery → Emery appears in the grants list with Documents set to **None**
 - [ ] Emery's row shows lesson access **Cannot View**
-- [ ] Change Emery's **Documents** dropdown to **Read** → refresh the page → the selection persists
+- [ ] Tap **Read** in Emery's **Documents** column → refresh the page → **Read** is still the selected one
 - [ ] Tap Emery's **Cannot View** button → it flips to **Can View**
 - [ ] Refresh the page → Emery's **Can View** selection persists
 - [ ] Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**

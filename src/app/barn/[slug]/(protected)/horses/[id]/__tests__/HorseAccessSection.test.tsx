@@ -172,21 +172,21 @@ describe('HorseAccessSection', () => {
       const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
       fireEvent.click(documentButton('Dana Rider', 'Write'))
-      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-1', 'write'])
+      expect(onUpdateDocument.mock.calls[0].slice(0, 2)).toEqual(['privilege-1', 'write'])
     })
 
     it('should_call_onUpdateDocument_with_none_from_the_none_button', () => {
       const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
       fireEvent.click(documentButton('Dana Rider', 'None'))
-      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-1', 'none'])
+      expect(onUpdateDocument.mock.calls[0].slice(0, 2)).toEqual(['privilege-1', 'none'])
     })
 
     it('should_bind_each_row_to_its_own_privilege_id', () => {
       const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
       fireEvent.click(documentButton('Emery Rider', 'Read'))
-      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-2', 'read'])
+      expect(onUpdateDocument.mock.calls[0].slice(0, 2)).toEqual(['privilege-2', 'read'])
     })
   })
 

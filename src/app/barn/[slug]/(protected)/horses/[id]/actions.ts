@@ -152,11 +152,10 @@ export async function deleteHorsePhotoAction(
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
-// #1390: this and updateHorseAccessDocumentAction take FormData rather than a typed argument
-// because their value comes from a <select> in the Access table's own form -- unknown at render
-// time, so it can't be `.bind()`'d, and a closure over client state is what defeats progressive
-// enhancement (#1385). The other three Access actions bind their next value and keep their
-// signatures. Both therefore validate input that used to arrive pre-typed.
+// #1390: this takes FormData rather than a typed argument because its value comes from a <select>
+// of barn members in the Access table's own form -- unknown at render time, so it can't be
+// `.bind()`'d, and a closure over client state is what defeats progressive enhancement (#1385).
+// The other four Access actions bind their next value and keep their signatures.
 export async function grantHorseAccessAction(
   barnSlug: string,
   horseId: string,
@@ -173,16 +172,18 @@ export async function grantHorseAccessAction(
 
 const DOCUMENT_PRIVILEGES = ['none', 'read', 'write'] as const
 
+// The value is bound at render time by whichever of the row's three buttons was pressed, but a
+// Server Action argument is still deserialized from whatever the client posted -- the union type
+// is a compile-time claim, not a runtime one, so the enum check stays.
 export async function updateHorseAccessDocumentAction(
   barnSlug: string,
   horseId: string,
   privilegeId: string,
-  formData: FormData
+  value: (typeof DOCUMENT_PRIVILEGES)[number]
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  const value = formData.get('value')
-  if (!DOCUMENT_PRIVILEGES.includes(value as (typeof DOCUMENT_PRIVILEGES)[number])) return
-  await updateHorsePrivilegeDocumentAccess(privilegeId, barn.id, value as 'none' | 'read' | 'write')
+  if (!DOCUMENT_PRIVILEGES.includes(value)) return
+  await updateHorsePrivilegeDocumentAccess(privilegeId, barn.id, value)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
