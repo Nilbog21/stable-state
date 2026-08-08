@@ -92,14 +92,13 @@ whose server markup is a bare `<form>` the browser would GET. `<form action={ser
 `<form action="" encType="multipart/form-data" method="POST">` plus
 `$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_*:1`/`$ACTION_KEY` hidden fields carrying the action id and
 its bound arguments. An early click submits *that*, so the interaction survives and needs no
-barrier. That multipart encoding is the *markup*'s, and describes only the pre-hydration submit —
-a hydrated React dispatch of the same form posts `text/plain` like any other action call (#1409),
-so it is not a way to recognise a form submission on the wire. Two conditions, both load-bearing:
-the value passed to `useActionState` (or to `action=`
-directly) must be the Server Function itself or a `.bind` of one — an inline
-`async () => …` closure wrapping it is an ordinary client function and gets no markup, now caught
-by `eslint-rules/no-wrapped-server-action.js` — and the same is true of a `<button onClick>` with
-no form around it. Reference:
+barrier. That multipart encoding is the *markup*'s, and describes only the pre-hydration submit — a
+hydrated React dispatch of the same form posts `text/plain` like any other action call (#1409), so
+it is not a way to recognise a form submission on the wire. Two conditions, both load-bearing: the
+value passed to `useActionState` (or to `action=` directly) must be the Server Function itself or a
+`.bind` of one — an inline `async () => …` closure wrapping it is an ordinary client function and
+gets no markup, now caught by `eslint-rules/no-wrapped-server-action.js` — and the same is true of
+a `<button onClick>` with no form around it. Reference:
 `checklist-phase4-members-media.spec.ts`'s `deleting_a_member_document_removes_its_row`, whose
 `goto`→`click` flaked until #1385 converted the component, and which now asserts that markup on
 both of the member detail page's forms. *(#1385, #1396)*

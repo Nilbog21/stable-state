@@ -12,7 +12,7 @@ BUDGETS=(
   "ARCHITECTURE.md:20000"
   "CLAUDE.md:10000"
   "scripts/CLAUDE.md:10000"
-  # Raised from 14000 by #1409, which had 82 characters of headroom to land a measured framework
+  # Raised from 14000 by #1409, which had 62 characters of headroom to land a measured framework
   # fact in. Not a sign the cap is working: #1354 set 14000 when the file was 10081 — after
   # *moving* e2e detail here out of the root CLAUDE.md — and #1365/#1385 spent the whole margin
   # within two days. Slimming the file is owed and unfiled; raising the number is the stopgap.

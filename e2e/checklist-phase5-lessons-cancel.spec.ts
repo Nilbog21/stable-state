@@ -545,14 +545,18 @@ test('trainer_edit_page_shows_the_stop_recurring_lessons_button @trainer', async
 // has committed the resulting state (fact 8), so the reload is what makes the second reading a
 // reading of the server's new answer rather than a race against the router's own refresh.
 //
-// **The POST await must name *which* POST** (#1409). This page issues three Server Action POSTs to
-// this one URL, not one: `LessonForm`'s two mount effects fire `getProjectedExhaustion` and
-// `getScheduleRange` at hydration, and both post to the page's own URL exactly as the stop
-// submission does. All three are `text/plain;charset=UTF-8` with `nav=false`, distinguishable at
-// the request layer only by the `next-action` header, whose ids are build outputs a spec cannot
-// name. A predicate of "a POST to this lesson's URL" therefore matches all three, and a hydration
-// POST landing after the click resolves the wait early — which was measured, not inferred, and is
-// what made this test fail 1-in-470 under 4-worker load.
+// **The POST await must name *which* POST** (#1409; e2e/CLAUDE.md fact 14 is this paragraph in
+// short form, and points back here for the full statement). This page issues three Server Action
+// POSTs to this one URL, not one: `LessonForm`'s two mount effects fire `getProjectedExhaustion`
+// and `getScheduleRange` at hydration, and both post to the page's own URL exactly as the stop
+// submission does. Once hydrated, all three are `text/plain;charset=UTF-8` with `nav=false`,
+// distinguishable at the request layer only by the `next-action` header, whose ids are build
+// outputs a spec cannot name — and a stop click landing *before* hydration posts fact 10's
+// `multipart/form-data` instead, the native submit `waitForEditFormHydrated`'s comment above
+// defends, but that is the one ordering in which the competing two have not fired yet, so the
+// encoding is never what separates them. A predicate of "a POST to this lesson's URL" therefore
+// matches all three, and a hydration POST landing after the click resolves the wait early — which
+// was measured, not inferred, and is what made this test fail 1-in-470 under 4-worker load.
 //
 // What that early resolve costs is worse than a stale read: `page.reload()` fires while the stop
 // action's own POST is still in flight and **aborts it** (`net::ERR_ABORTED`, and no matching
