@@ -32,21 +32,22 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e-candidate) That nav name renders amber
 - [ ] (e2e-candidate) The user menu does not show a **Profile** link while signed in as the demo user
 - [ ] (e2e-candidate) Visiting `/profile` directly while signed in as the demo user redirects to `/`
-- [ ] (manual — `reset-db.sh` wipes every barn in the dev project, so a spec running it would destroy its own fixtures) Reset and reseed the dev database:
+- [ ] (manual — a spec cannot drive it: `reset-db.sh` wipes every barn in the dev project, so a spec running it destroys its own fixtures mid-run) Reset and reseed the dev database:
 
   ```bash
   bash scripts/reset-db.sh
   ```
 
   This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults.
-- [ ] (manual — asserts on a local shell script's stdout, not on the app) The script prints `Invite path: /barn/dev-barn/register?token=<uuid>`
+- [ ] (manual — a spec cannot drive it: this is the stdout of the `reset-db.sh` run above, which is manual for the same reason) The script prints `Invite path: /barn/dev-barn/register?token=<uuid>`
 - [ ] (e2e-candidate) Open that path on your app origin (no existing session) — it redirects to `/barn/dev-barn/login?token=<uuid>`
 - [ ] (e2e-candidate) The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox
 - [ ] (e2e-candidate) That checkbox is checked by default
 - [ ] (manual — a real Google OAuth consent flow; the suite's logins are password-based) Sign in with the **`DEV_EMAIL`** Google account — you are redirected to `/profile/complete` (fresh claimed stub has no contact info)
-- [ ] (e2e-candidate) Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn. A spec reaches `/profile/complete` from a seeded membership whose profile has blank contact fields, rather than through the OAuth sign-in above
+- [ ] (e2e-candidate) Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app. A spec reaches `/profile/complete` from a seeded membership whose profile has blank contact fields, rather than through the OAuth sign-in above
+- [ ] (e2e-candidate) You hold **manager** in Dev Barn
 
-> **Mobile viewport:** the `@mobile` project already supplies this width — Pixel 5 on the manager `storageState` (`playwright.config.ts`), proven by Phase 4's Mobile spot-check — so the block below is tagging, not new-harness work. A test whose claim is *"at this width"* must read `page.viewportSize()!.width` in its own expectation, or it passes at 1280×800 too (`e2e/CLAUDE.md` fact 6, #1207).
+> **Mobile viewport:** the `@mobile` project already supplies this width — Pixel 5 on the manager `storageState` (`playwright.config.ts`), exercised today by `dashboard_today_indicator_visible_on_current_day` (`checklist-phase4-dashboard.spec.ts`) — so the block below is tagging, not new-harness work. Whether these lines ride that project or take a per-describe `test.use` is the slice's call: Phase 4's Mobile spot-check chose `test.use` deliberately, because `@mobile` would have dispatched that whole mixed-role file a second time and seeded a second barn for four tests (`checklist-phase4-notifications-profile.spec.ts`) — a drawer-only spec doesn't carry that cost. A test whose claim is *"at this width"* must read `page.viewportSize()!.width` in its own expectation, or it passes at 1280×800 too (`e2e/CLAUDE.md` fact 6, #1207).
 
 - [ ] (e2e-candidate) Shrink the browser below 768px wide — the nav bar's section links disappear
 - [ ] (e2e-candidate) At that width a ☰ button appears
