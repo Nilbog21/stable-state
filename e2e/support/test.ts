@@ -124,7 +124,15 @@ const ROLE_BY_PROJECT: Record<string, E2eRole> = {
   mobile: 'manager',
 }
 
-function serviceClient(): SupabaseClient {
+/**
+ * Exported for the spec that has to reach a service-role client from *outside* `withBarn`'s seed
+ * callback (#1425): a seed that throws after creating an auth user leaves `barn.data` unreadable,
+ * so a teardown reading its client from there would strand the user in the shared dev project —
+ * the one thing that teardown exists to prevent. Export rather than copy, because this function
+ * is where the `assertDevProject` gate below lives: a forked copy can drift, and the failure mode
+ * of a drifted copy is a spec running service-role deletes against a project that isn't dev.
+ */
+export function serviceClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY

@@ -13,6 +13,11 @@ import {
   assetPath,
   daysFromNow,
   addUnpaidLesson,
+  authStorageState,
+  createThrowawayAuthUser,
+  deleteThrowawayAuthUser,
+  throwawayAuthEmail,
+  E2E_PASSWORD,
   E2E_USERS,
   E2E_STUB_RIDER,
   type SeededBarn,
@@ -331,5 +336,270 @@ describe('seeded member names', () => {
   it('should_seed_a_distinct_truncated_surname_form_for_every_member', () => {
     const forms = members.map(truncated)
     expect(forms.filter((form, i) => forms.indexOf(form) !== i)).toEqual([])
+  })
+})
+
+/**
+ * #1425's throwaway auth user — the one login the suite creates and destroys inside a single
+ * spec file, rather than bootstrapping per project the way E2E_USERS are. Every case here is a
+ * property of the helper's *contract*, asserted against a hand-made client, because the real
+ * calls are `auth.admin.*` against the dev project and are not something a unit test may make.
+ */
+describe('throwawayAuthEmail', () => {
+  const PREFIX = 'e2e-123-456'
+  const KEY = 'invite'
+
+  it('should_derive_a_distinct_email_per_project', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail(PREFIX, KEY, 'rider'))
+  })
+
+  it('should_derive_a_distinct_email_per_run', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail('e2e-999-1', KEY, 'manager'))
+  })
+
+  // The half a project-only key would lose: a second spec file wanting a throwaway login under
+  // the same project would otherwise derive this file's address and race its create/delete.
+  it('should_derive_a_distinct_email_per_spec_file', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager')).not.toBe(throwawayAuthEmail(PREFIX, 'other', 'manager'))
+  })
+
+  // Not a sweep requirement — nothing sweeps auth users by prefix — but a leaked login is found
+  // by a human grepping the dashboard, and the prefix is what tells them which run left it.
+  it('should_keep_the_run_prefix_leading', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager').startsWith(`${PREFIX}-`)).toBe(true)
+  })
+
+  it('should_use_the_same_domain_as_the_shared_logins', () => {
+    expect(throwawayAuthEmail(PREFIX, KEY, 'manager').endsWith('@e2e.test')).toBe(true)
+  })
+
+  /**
+   * E2E_STUB_RIDER's containment rule, reaching addresses rather than names: the nav bar's user
+   * menu renders `user.email`, and every Playwright text matcher is substring-based. A local
+   * part *ending* in the project name would spell `…-manager@e2e.test`, which contains the
+   * `manager@e2e.test` shared login outright — so the project name may not be the last token.
+   */
+  it('should_contain_no_shared_login_email_as_a_substring', () => {
+    const emails = Object.values(E2E_USERS).map((u) => u.email)
+    const derived = ['manager', 'trainer', 'rider'].map((p) => throwawayAuthEmail(PREFIX, KEY, p))
+    expect(derived.filter((d) => emails.some((e) => d.includes(e)))).toEqual([])
+  })
+})
+
+type StubOptions = {
+  createUserResult?: { data: { user: { id: string } } | null; error: { message: string } | null }
+  deleteUserResult?: { error: { message: string } | null }
+  profileDeleteResult?: { data: null; error: { message: string } | null }
+}
+
+/**
+ * A client that records the order of the three operations these two helpers make, because the
+ * order is the contract: `profiles.user_id → auth.users` cascades, so deleting the auth user
+ * first would take the profile row with it, and a `barn_memberships.profile_id` still pointing
+ * at that row would fail the delete from underneath rather than name it.
+ */
+function stubClient(opts: StubOptions = {}) {
+  const {
+    createUserResult = { data: { user: { id: 'throwaway-user-id' } }, error: null },
+    deleteUserResult = { error: null },
+    profileDeleteResult = { data: null, error: null },
+  } = opts
+  const calls: string[] = []
+  const createUser = vi.fn(async () => { calls.push('createUser'); return createUserResult })
+  const deleteUser = vi.fn(async () => { calls.push('deleteUser'); return deleteUserResult })
+  const eq = vi.fn(async () => { calls.push('deleteProfile'); return profileDeleteResult })
+  const del = vi.fn(() => ({ eq }))
+  const from = vi.fn(() => ({ delete: del }))
+  const client = { auth: { admin: { createUser, deleteUser } }, from } as unknown as SupabaseClient
+  return { client, calls, createUser, deleteUser, from, del, eq }
+}
+
+describe('createThrowawayAuthUser', () => {
+  const EMAIL = 'e2e-123-456-invite-manager-invite@e2e.test'
+
+  it('should_create_a_confirmed_login_on_the_suite_password', async () => {
+    const stub = stubClient()
+    await createThrowawayAuthUser(stub.client, EMAIL)
+    expect(stub.createUser).toHaveBeenCalledWith({ email: EMAIL, password: E2E_PASSWORD, email_confirm: true })
+  })
+
+  it('should_return_the_new_user_id', async () => {
+    expect(await createThrowawayAuthUser(stubClient().client, EMAIL)).toBe('throwaway-user-id')
+  })
+
+  /**
+   * The load-bearing omission. `claim_managed_member` converts the *stub* profile in place —
+   * setting `user_id`, `email` and `is_managed = false`, leaving the contact fields blank, which
+   * is the precondition the /profile/complete checklist line names. A profile row created here
+   * would send the claim down its other branch, which deletes the stub and keeps this row's
+   * already-filled fields instead.
+   */
+  it('should_create_no_profile_row', async () => {
+    const stub = stubClient()
+    await createThrowawayAuthUser(stub.client, EMAIL)
+    expect(stub.from).not.toHaveBeenCalled()
+  })
+
+  it('should_throw_naming_the_email_when_creation_fails', async () => {
+    const stub = stubClient({ createUserResult: { data: null, error: { message: 'rate limited' } } })
+    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-invite-manager-invite@e2e\.test.*rate limited/)
+  })
+
+  it('should_throw_naming_the_email_when_no_user_comes_back', async () => {
+    const stub = stubClient({ createUserResult: { data: null, error: null } })
+    await expect(createThrowawayAuthUser(stub.client, EMAIL)).rejects.toThrow(/e2e-123-456-invite-manager-invite@e2e\.test/)
+  })
+})
+
+describe('deleteThrowawayAuthUser', () => {
+  const USER_ID = 'throwaway-user-id'
+
+  it('should_delete_the_profile_row_before_the_auth_user', async () => {
+    const stub = stubClient()
+    await deleteThrowawayAuthUser(stub.client, USER_ID)
+    expect(stub.calls).toEqual(['deleteProfile', 'deleteUser'])
+  })
+
+  it('should_delete_the_profile_row_by_user_id', async () => {
+    const stub = stubClient()
+    await deleteThrowawayAuthUser(stub.client, USER_ID)
+    expect(stub.eq).toHaveBeenCalledWith('user_id', USER_ID)
+  })
+
+  it('should_delete_from_the_profiles_table', async () => {
+    const stub = stubClient()
+    await deleteThrowawayAuthUser(stub.client, USER_ID)
+    expect(stub.from).toHaveBeenCalledWith('profiles')
+  })
+
+  it('should_throw_naming_the_user_when_the_profile_delete_fails', async () => {
+    const stub = stubClient({ profileDeleteResult: { data: null, error: { message: 'still referenced' } } })
+    await expect(deleteThrowawayAuthUser(stub.client, USER_ID)).rejects.toThrow(/throwaway-user-id.*still referenced/)
+  })
+
+  it('should_throw_naming_the_user_when_the_auth_delete_fails', async () => {
+    const stub = stubClient({ deleteUserResult: { error: { message: 'not found' } } })
+    await expect(deleteThrowawayAuthUser(stub.client, USER_ID)).rejects.toThrow(/throwaway-user-id.*not found/)
+  })
+})
+
+/**
+ * The auth cookie global-setup.ts writes for the three shared logins and the spec mints for its
+ * throwaway one — one definition, two callers (#1425). Every property below is something a
+ * drifted second copy would get subtly wrong in a way no test above this layer would name.
+ */
+describe('authStorageState', () => {
+  const SUPABASE_URL = 'https://abcdefghijklm.supabase.co'
+  const BASE_URL = 'http://localhost:3102'
+  const EMAIL = 'manager@e2e.test'
+  const SESSION = { access_token: 'token-abc', refresh_token: 'token-def', user: { id: 'user-1' } }
+
+  const original = {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    base: process.env.E2E_BASE_URL,
+  }
+
+  const restore = (key: string, value: string | undefined) => {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE_URL
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
+    process.env.E2E_BASE_URL = BASE_URL
+  })
+
+  afterEach(() => {
+    restore('NEXT_PUBLIC_SUPABASE_URL', original.url)
+    restore('NEXT_PUBLIC_SUPABASE_ANON_KEY', original.anon)
+    restore('E2E_BASE_URL', original.base)
+    vi.unstubAllGlobals()
+  })
+
+  const stubFetch = (response: { ok: boolean; json?: unknown; text?: string }) => {
+    // Parameters declared, unused: `calls[0][0]` below has no type without them, and an
+    // `expect.anything()` second argument would have the same problem.
+    const fetchSpy = vi.fn(async (_url: string, _init?: RequestInit) => ({
+      ok: response.ok,
+      json: async () => response.json,
+      text: async () => response.text ?? '',
+    }))
+    vi.stubGlobal('fetch', fetchSpy)
+    return fetchSpy
+  }
+
+  const cookie = async () => (await authStorageState(EMAIL, E2E_PASSWORD)).cookies[0]
+
+  it('should_name_the_cookie_for_the_supabase_project_ref', async () => {
+    stubFetch({ ok: true, json: SESSION })
+    expect((await cookie()).name).toBe('sb-abcdefghijklm-auth-token')
+  })
+
+  // `base64-` prefix plus base64url, which is what @supabase/ssr's cookie reader expects; a
+  // plain-JSON or standard-base64 value is accepted by the browser and rejected by the app.
+  it('should_encode_the_whole_session_into_the_cookie_value', async () => {
+    stubFetch({ ok: true, json: SESSION })
+    const value = (await cookie()).value
+    expect(JSON.parse(Buffer.from(value.replace('base64-', ''), 'base64url').toString())).toEqual(SESSION)
+  })
+
+  it('should_scope_the_cookie_to_the_base_url_host', async () => {
+    stubFetch({ ok: true, json: SESSION })
+    expect((await cookie()).domain).toBe('localhost')
+  })
+
+  it('should_request_a_password_grant_for_the_given_email', async () => {
+    const fetchSpy = stubFetch({ ok: true, json: SESSION })
+    await authStorageState(EMAIL, E2E_PASSWORD)
+    expect(fetchSpy.mock.calls[0][0]).toBe(`${SUPABASE_URL}/auth/v1/token?grant_type=password`)
+  })
+
+  it('should_carry_no_local_storage_origins', async () => {
+    stubFetch({ ok: true, json: SESSION })
+    expect((await authStorageState(EMAIL, E2E_PASSWORD)).origins).toEqual([])
+  })
+
+  it('should_throw_naming_the_email_when_the_grant_is_rejected', async () => {
+    stubFetch({ ok: false, text: 'invalid credentials' })
+    await expect(authStorageState(EMAIL, E2E_PASSWORD)).rejects.toThrow(/manager@e2e\.test.*invalid credentials/)
+  })
+
+  /**
+   * global-setup.ts's own guidance, threaded through rather than lost to the extraction: a
+   * missing shared login is fixed by the bootstrap script, and a throwaway login's failure is
+   * not, so the sentence belongs to the caller and the email belongs to the helper.
+   */
+  it('should_append_the_callers_hint_to_a_rejected_grant', async () => {
+    stubFetch({ ok: false, text: 'invalid credentials' })
+    await expect(authStorageState(EMAIL, E2E_PASSWORD, 'run: bash scripts/e2e-auth-users.sh create')).rejects.toThrow(
+      /run: bash scripts\/e2e-auth-users\.sh create/
+    )
+  })
+
+  it('should_omit_the_hint_when_the_caller_gives_none', async () => {
+    stubFetch({ ok: false, text: 'invalid credentials' })
+    const message = await authStorageState(EMAIL, E2E_PASSWORD).catch((err: Error) => err.message)
+    expect(message).not.toContain('e2e-auth-users')
+  })
+
+  // A 200 carrying no user id is the shape a misconfigured project answers with, and it would
+  // otherwise mint a cookie the app silently treats as signed-out.
+  it('should_throw_naming_the_email_when_the_response_carries_no_user', async () => {
+    stubFetch({ ok: true, json: { access_token: 'token-abc' } })
+    await expect(authStorageState(EMAIL, E2E_PASSWORD)).rejects.toThrow(/manager@e2e\.test/)
+  })
+
+  it('should_throw_when_the_supabase_url_is_unset', async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL
+    stubFetch({ ok: true, json: SESSION })
+    await expect(authStorageState(EMAIL, E2E_PASSWORD)).rejects.toThrow(/NEXT_PUBLIC_SUPABASE_URL/)
+  })
+
+  it('should_throw_when_the_anon_key_is_unset', async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    stubFetch({ ok: true, json: SESSION })
+    await expect(authStorageState(EMAIL, E2E_PASSWORD)).rejects.toThrow(/NEXT_PUBLIC_SUPABASE_ANON_KEY/)
   })
 })
