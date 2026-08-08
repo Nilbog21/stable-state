@@ -218,6 +218,22 @@ export function barnSlugFor(prefix: string, key: string, project: string): strin
   return `${prefix}-${key}-${project}`
 }
 
+/**
+ * The key a two-barn spec's *second* barn is seeded under (support/test.ts's withSecondBarn).
+ *
+ * The suffix goes on the key rather than on barn A's finished slug, and that is the whole point
+ * of the function. `barnSlugFor` composes `prefix-key-project`, so keying it yields
+ * `…-isolation-b-manager` beside `…-isolation-manager` — neither slug contains the other, and
+ * neither does the barn *name* createBarn derives from it by capitalising the segments. A
+ * `${slugA}-b` suffix would produce exactly the containment hazard E2E_STUB_RIDER states for
+ * person names: every Playwright text matcher is substring-based, so a locator for barn A's nav
+ * name would select barn B's as well. The run prefix stays leading either way, which is what
+ * keeps teardown-test-barn.ts's `${prefix}-%` sweep able to reach a leaked second barn.
+ */
+export function secondBarnKey(key: string): string {
+  return `${key}-b`
+}
+
 // ---------------------------------------------------------------------------
 // Builders
 // ---------------------------------------------------------------------------
