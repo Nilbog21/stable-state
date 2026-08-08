@@ -37,6 +37,15 @@ const STOP_SERIES_BUTTON = 'Stop Recurring Lessons'
 const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 
+/**
+ * What a Server Action ending in `redirect()` answers with, and the only thing that tells
+ * `stopLessonSeriesAction`'s POST apart from the two `LessonForm` fires on the same URL (#1409 —
+ * see the stop test's comment). Not `< 400` as `checklist-phase4-settings-fields.spec.ts` uses:
+ * that spec is discriminating a redirect from an error on a page with no competing action POSTs,
+ * and here 200 is exactly the value that must not match.
+ */
+const STOP_SERIES_REDIRECT_STATUS = 303
+
 /** Typed into the edit form's Cancellation Notes textarea, read back off the detail page. */
 const SAVED_CANCELLATION_NOTE = 'Trainer cancelled — arena resurfacing ran long.'
 
@@ -536,6 +545,27 @@ test('trainer_edit_page_shows_the_stop_recurring_lessons_button @trainer', async
 // has committed the resulting state (fact 8), so the reload is what makes the second reading a
 // reading of the server's new answer rather than a race against the router's own refresh.
 //
+// **The POST await must name *which* POST** (#1409). This page issues three Server Action POSTs to
+// this one URL, not one: `LessonForm`'s two mount effects fire `getProjectedExhaustion` and
+// `getScheduleRange` at hydration, and both post to the page's own URL exactly as the stop
+// submission does. All three are `text/plain;charset=UTF-8` with `nav=false`, distinguishable at
+// the request layer only by the `next-action` header, whose ids are build outputs a spec cannot
+// name. A predicate of "a POST to this lesson's URL" therefore matches all three, and a hydration
+// POST landing after the click resolves the wait early — which was measured, not inferred, and is
+// what made this test fail 1-in-470 under 4-worker load.
+//
+// What that early resolve costs is worse than a stale read: `page.reload()` fires while the stop
+// action's own POST is still in flight and **aborts it** (`net::ERR_ABORTED`, and no matching
+// request in the dev server's log), so the mutation never runs at all. This is why the retrying
+// `toHaveCount(0)` that suggests itself for the reads below is not the fix and was not applied —
+// the reload's *initial HTML* was measured carrying the indicator, so there is nothing for a retry
+// to converge on, and it would have passed for the next 469 runs while fixing nothing.
+//
+// The discriminator is the response status. `stopLessonSeriesAction` ends in `redirect()` and so
+// answers 303; both hydration actions return data and answer 200. That is a property of the
+// action's own code rather than of Next's request encoding, which is what makes it the durable
+// half of this pair — the encoding was the first thing tried and it is identical across all three.
+//
 // The `dialog` handler answers `StopSeriesButton`'s `window.confirm`. It is registered before the
 // click and left in place: an unanswered dialog blocks the page indefinitely.
 test('trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page @trainer', async ({ page }) => {
@@ -550,7 +580,12 @@ test('trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit
 
   page.on('dialog', (dialog) => void dialog.accept())
   await Promise.all([
-    page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes(`/lessons/${lessonIds.recurringStop}`)),
+    page.waitForResponse(
+      (r) =>
+        r.request().method() === 'POST' &&
+        r.url().includes(`/lessons/${lessonIds.recurringStop}`) &&
+        r.status() === STOP_SERIES_REDIRECT_STATUS
+    ),
     stopButton.click(),
   ])
   await page.reload()

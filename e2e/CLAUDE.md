@@ -5,13 +5,14 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Thirteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+Fourteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
-12 and 13 from the 2026-08-04 backlog run; fact 10 was later sharpened by #1385, which found its
-original unconditional form too broad. Every one is measured, not inferred. The spec named
-after each fact carries the worked example, with fact 12 the exception by construction: it exists
-to say why no spec does the thing it describes.
+12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction; fact 10 was later
+sharpened by #1385, which found its original unconditional form too broad, and again by 14, which
+found its multipart observation load-bearing in the other direction. Every one is measured, not
+inferred. The spec named after each fact carries the worked example, with fact 12 the exception by
+construction: it exists to say why no spec does the thing it describes.
 
 Facts 1 and 2 are stated in full where you meet them; the rest are stated here.
 
@@ -139,6 +140,26 @@ then renders brings a target with it: the `UserMenu` popover toggle is `useState
 a toggle, so it is safe to re-dispatch. Reference implementation:
 `checklist-phase56-nav-profile.spec.ts`'s `openAvatarMenu` (drive open, assert, then
 `closeAvatarMenu` to leave the page as it was found). *(#1289)*
+
+**14. A `waitForResponse` predicate matched on URL alone is ambiguous on any page whose client
+components call Server Actions.** Those calls post to the *page's own URL*, so "a POST to this
+page" names them as readily as it names the submission under test — and the request layer offers
+nothing else to tell them apart: measured on the lesson edit page, `LessonForm`'s two mount
+effects (`getProjectedExhaustion`, `getScheduleRange`) and the **Stop Recurring Lessons** form
+submission all posted `text/plain;charset=UTF-8`, `nav=false`, differing only by the `next-action`
+header, whose ids are build outputs a spec cannot name. Note against fact 10: multipart is the
+*enhanced markup* a native submit would post, not what a hydrated React dispatch sends, so
+encoding is not the discriminator it looks like. **Response status is**, where the action
+redirects — a `redirect()` answers 303 and a data-returning action answers 200, which is a
+property of the action's own code rather than of Next's request encoding. What the ambiguity costs
+is not a stale read: a `page.reload()` that fires on the wrong resolve **aborts the real action's
+in-flight POST** (`net::ERR_ABORTED`, nothing in the dev server's log), so the mutation never runs
+and no retrying assertion can converge on it. Reference implementation:
+`checklist-phase5-lessons-cancel.spec.ts`'s
+`trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page`. The suite's
+three other `waitForResponse` call sites are URL-only and safe *today* only because their pages
+have no competing action POSTs — that is a fact about those pages, not a property of the pattern.
+*(#1409)*
 
 ## Spec maintenance
 
