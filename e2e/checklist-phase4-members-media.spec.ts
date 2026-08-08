@@ -328,6 +328,17 @@ test.describe.serial('a managed rider document', () => {
   // (e2e/CLAUDE.md fact 10).
   test('deleting_a_member_document_removes_its_row @manager', async ({ page }) => {
     await page.goto(memberUrl(managedRiderId))
+    // The runtime half of the claim the comment above makes, and the only thing that can hold the
+    // two forms to it — jsdom cannot see this markup, and a wrapper satisfies the same
+    // `(prevState, FormData)` signature a Server Function does, so no unit test can either
+    // (#1396). `$ACTION_REF` is React's server-rendered pointer to the action; it is emitted only
+    // for a Server Function or a `.bind` of one, so its presence *is* the enhancement. Both forms
+    // are on this page for a managed member, so this costs no extra load.
+    const formWithButton = (name: string) =>
+      page.locator('form').filter({ has: page.getByRole('button', { name, exact: true }) })
+    await expect(formWithButton('Delete').locator('input[name^="$ACTION_REF"]')).toHaveCount(1)
+    await expect(formWithButton('Revoke').locator('input[name^="$ACTION_REF"]')).toHaveCount(1)
+
     await section(page, 'Documents').getByRole('button', { name: 'Delete' }).click()
     await expect(section(page, 'Documents').getByRole('link', { name: TEST_PDF })).toHaveCount(0)
   })

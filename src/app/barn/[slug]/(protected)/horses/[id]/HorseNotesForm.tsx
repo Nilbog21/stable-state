@@ -3,8 +3,11 @@
 import { useActionState, useState } from 'react'
 import type { Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
-import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
+import { SavedIndicator, useSaveFlashOn } from '@/components/ui/SavedIndicator'
 import { useUnsavedChangesGuard } from '../../NavigationBlocker'
+
+// Module scope so the identity check in the effect below has a stable sentinel to compare against.
+const INITIAL_STATE: { error: string | null } = { error: null }
 
 export function HorseNotesForm({
   horse,
@@ -15,21 +18,28 @@ export function HorseNotesForm({
 }) {
   const [feedNotes, setFeedNotes] = useState(horse.feed_notes ?? '')
   const [medicationNotes, setMedicationNotes] = useState(horse.medication_notes ?? '')
-  const { show, flash } = useSaveFlash()
+  // `action` goes to the hook unwrapped, or the form loses its progressive enhancement (#1396) —
+  // so everything that used to run on the action's return path is derived from the returned state
+  // instead. The discriminator is referential identity, not value: useActionState hands back the
+  // exact object it was seeded with until an action resolves, and every server response
+  // deserializes to a fresh one, so `state !== INITIAL_STATE` means a real result landed.
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
+  const show = useSaveFlashOn(state !== INITIAL_STATE && !state.error ? state : null)
+  // Submit clears the flag optimistically (as GuardedForm does) and a returned error re-arms it,
+  // because a failed save leaves the fields holding exactly the edits that didn't land. `pending`
+  // spans the gap between the two: onSubmit fires on click, while `state` still reads as the
+  // previous result until the action resolves, so without it nothing is armed for the whole
+  // round trip — the window #1362 built the guard for.
   const [dirty, setDirty] = useState(false)
-  useUnsavedChangesGuard(dirty)
-  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
-    const result = await action(prevState, formData)
-    if (!result.error) {
-      flash()
-      setDirty(false)
-    }
-    return result
-  }
-  const [state, formAction] = useActionState(wrappedAction, { error: null })
+  useUnsavedChangesGuard(dirty || pending || state.error !== null)
 
   return (
-    <form action={formAction} className="flex w-full flex-col gap-5" onChange={() => setDirty(true)}>
+    <form
+      action={formAction}
+      className="flex w-full flex-col gap-5"
+      onChange={() => setDirty(true)}
+      onSubmit={() => setDirty(false)}
+    >
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

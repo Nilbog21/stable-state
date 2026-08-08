@@ -158,7 +158,12 @@ export async function removeMemberAction(
 
 export async function revokeInviteTokenAction(
   barnSlug: string,
-  membershipId: string
+  membershipId: string,
+  // The `useActionState` calling convention, both ignored — same reason as deleteDocumentAction
+  // above: `page.tsx` binds the leading two and hands the Server Function straight to the hook,
+  // which is what keeps Revoke progressively enhanced (#1396).
+  _prevState?: { error: string | null } | null,
+  _formData?: FormData
 ): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 

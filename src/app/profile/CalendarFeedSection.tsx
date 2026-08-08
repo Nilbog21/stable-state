@@ -18,8 +18,11 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   // Nothing disables either button while writeText is awaiting — `pending` only goes true
   // once Regenerate is clicked — so a copy can still be in flight when Regenerate
   // supersedes its token. Bump on Regenerate and drop a copy that resumes on the far side
-  // of it, or it re-sets error/copied for a token that no longer exists. Same guard as
-  // ManageMemberSection.tsx's Revoke.
+  // of it, or it re-sets error/copied for a token that no longer exists. ManageMemberSection's
+  // Revoke used to share this ref; #1396 replaced it there with currency derived at render, which
+  // closes the window this bump-and-check leaves open when a copy settles in the same tick as a
+  // failed action. This surface still latches, so the two have diverged again (#1116 converged
+  // them).
   const copyGenerationRef = useRef(0)
 
   useEffect(() => {

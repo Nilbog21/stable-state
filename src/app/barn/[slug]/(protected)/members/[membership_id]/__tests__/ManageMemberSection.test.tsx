@@ -29,6 +29,15 @@ function deferredRevoke() {
   return { revokeAction, resolve }
 }
 
+function deferredFailingRevoke(message = 'permission denied') {
+  let resolve!: () => void
+  const promise = new Promise<{ error: string | null }>((r) => {
+    resolve = () => r({ error: message })
+  })
+  const revokeAction = vi.fn(() => promise) as unknown as RevokeAction
+  return { revokeAction, resolve }
+}
+
 function deferredWriteText() {
   let settle!: { resolve: () => void; reject: (reason: Error) => void }
   const promise = new Promise<void>((resolve, reject) => {
@@ -364,6 +373,72 @@ describe('ManageMemberSection', () => {
     expect(isDisabled(/revoke/i)).toBe(false)
   })
 
+  it('should_clear_revoke_error_after_a_successful_copy', async () => {
+    // One error slot, two sources: a later copy supersedes the revoke's error the same way the
+    // single pre-split `error` state did, or the banner sits there beside a button reading
+    // "Copied!" (#1116).
+    render(<ManageMemberSection {...defaultProps} revokeAction={failingRevoke()} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+  })
+
+  it('should_hide_previous_revoke_error_while_a_retry_is_pending', async () => {
+    let resolveRetry!: () => void
+    const retry = new Promise<{ error: string | null }>((r) => {
+      resolveRetry = () => r({ error: 'permission denied' })
+    })
+    const revokeAction = vi
+      .fn()
+      .mockResolvedValueOnce({ error: 'permission denied' })
+      .mockReturnValueOnce(retry) as unknown as RevokeAction
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+    await act(async () => {
+      resolveRetry()
+      await Promise.resolve()
+    })
+  })
+
+  it('should_show_copied_when_copy_settles_in_the_same_tick_as_a_failed_revoke', async () => {
+    // The narrow window the generation-counter rollback used to leave open: the clipboard resolves
+    // after the failed response but before React commits, so a check latched in the continuation
+    // reads a generation that has been bumped and not yet rolled back. Deriving currency at render
+    // instead means there is no such window.
+    const settle = deferredWriteText()
+    const { revokeAction, resolve } = deferredFailingRevoke()
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      resolve()
+      settle.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+  })
+
   it('should_show_copied_when_copy_settles_after_failed_revoke', async () => {
     const settle = deferredWriteText()
     render(<ManageMemberSection {...defaultProps} revokeAction={failingRevoke()} />)
@@ -380,5 +455,29 @@ describe('ManageMemberSection', () => {
       await Promise.resolve()
     })
     expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+  })
+
+  it('should_restore_revoke_error_when_the_copied_badge_expires', async () => {
+    // The deliberate consequence of letting a settled copy own the error slot outright: the copy
+    // hides the revoke error for exactly as long as "Copied!" is on screen, not for good. The
+    // revoke did fail and the token was never rotated, so the error is still true once the badge
+    // decays — it is not a stale message that a later copy earned the right to bury.
+    vi.useFakeTimers()
+    render(<ManageMemberSection {...defaultProps} revokeAction={failingRevoke()} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/permission denied/i)).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(screen.getByText(/permission denied/i)).toBeDefined()
+    vi.useRealTimers()
   })
 })

@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import noWrappedServerAction from "./eslint-rules/no-wrapped-server-action.js";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -67,6 +68,18 @@ const eslintConfig = defineConfig([
         },
       ],
     },
+  },
+  // #1396's fence, the progressive-enhancement counterpart to #1222's above. A `<form
+  // action={formAction}>` is only progressively enhanced when the value handed to
+  // `useActionState` is the Server Function itself or a `.bind` of one — React emits the
+  // pre-hydration `method="POST"` markup for nothing else. A wrapper renders a form that looks
+  // enhanced, satisfies the identical `(prevState, FormData)` signature, and drops any click
+  // that lands before hydration. jsdom cannot see server markup, so no unit test can catch it;
+  // #1362 walked into the class the same day #1385 named it, with both reviews clean.
+  {
+    files: ["src/**/*.tsx"],
+    plugins: { "stable-state": { rules: { "no-wrapped-server-action": noWrappedServerAction } } },
+    rules: { "stable-state/no-wrapped-server-action": "error" },
   },
   // Honor the `_`-prefix convention for intentionally-unused args/vars
   {
