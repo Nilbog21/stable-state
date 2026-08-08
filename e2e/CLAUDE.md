@@ -23,7 +23,7 @@ one of them silently.
 [full](../docs/e2e-framework-facts.md#fact-3) *(#1204)*
 
 **4. Only `newContext({ storageState: { cookies: [], origins: [] } })` is anonymous.**
-[full](../docs/e2e-framework-facts.md#fact-4) *(#1208)*
+[full](../docs/e2e-framework-facts.md#fact-4) *(#1208, #1422 — browser contexts too)*
 
 **5. `hasTouch` + `locator.tap()` does not isolate an element's `touchstart` path.**
 [full](../docs/e2e-framework-facts.md#fact-5) *(#1207)*

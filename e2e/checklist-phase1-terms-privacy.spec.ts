@@ -31,10 +31,17 @@
 //    request identically, so the wrong form passes for the wrong reason. `anonPage` below is the
 //    right form, and its cookie-count guard is what keeps that impossible to regress silently.
 //
-//    That same back-fill is why relative `goto('/login')` works here: Playwright's own artifacts
-//    fixture copies every configured context option that the caller did NOT name — `baseURL`
-//    included — into the options bag before the context is built. `storageState` IS named, so
-//    ours wins; `baseURL` is not, so the config's is inherited.
+//    That same back-fill is why relative `goto('/login')` works here: `@playwright/test`'s
+//    `_setupArtifacts` fixture registers a `runBeforeCreateBrowserContext` hook that copies every
+//    configured context option the caller did NOT name — `baseURL` included — into the options
+//    bag before the context is built. `storageState` IS named, so ours wins; `baseURL` is not, so
+//    the config's is inherited.
+//
+//    Read `playwright-core`'s `Browser` class alone and you will conclude the opposite, because
+//    that class passes options through untouched — the back-fill lives in the runner above it.
+//    Both halves are measured rather than inferred: dropping the explicit `storageState` makes
+//    the guard below name the inherited `sb-<ref>-auth-token`, and these six tests navigate by
+//    relative path on every green run. Fact 4 records it.
 //
 // 2. NO TEST HERE REQUESTS THE `page` FIXTURE, AND NONE MAY. `support/test.ts` overrides `page`
 //    to throw unless the spec file called `withBarn()` at module scope. This spec seeds no barn
@@ -55,6 +62,13 @@
 //    would hand back `[]`, `toHaveText([])` would pass against a page rendering nothing, and the
 //    assertion would be green in exactly the scenario it exists to catch. The throw closes that
 //    hollow pass. Do not "simplify" it away.
+//
+//    Headings alone are also narrower than the item, which says "content" rather than "structure":
+//    a regression that kept the headings and dropped the prose between them — a plugin or a
+//    component override reaching `<ReactMarkdown>` — renders a page of bare section titles that a
+//    heading-only assertion calls fully rendered. `bodyProbe` is the other half, and it is derived
+//    from the same source for the same reason, with the same refusal to return something
+//    degenerate.
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { test as base, expect, type Page } from './support/test'
@@ -105,6 +119,39 @@ function markdownHeadings(name: string): string[] {
     )
   }
   return [title, ...sections]
+}
+
+/**
+ * The longest line of plain body prose in the document — one paragraph's worth of the text that
+ * sits *between* the headings, which is the half `markdownHeadings` cannot see (note 3).
+ *
+ * "Plain" is doing real work: a line carrying inline markdown (`**bold**`, a link, code) renders
+ * as something other than its source text, so a source-derived expectation would not match the
+ * page. Filtering those out is what lets the probe be compared literally rather than parsed.
+ * "Longest" is an arbitrary but *deterministic* choice, and it self-maintains — the document can
+ * be rewritten freely and the probe follows it.
+ *
+ * Throws on a degenerate result, same polarity and same reason as `markdownHeadings`: a probe of
+ * `''` would match every paragraph on the page, and one of a dozen characters could match a
+ * fragment of an unrelated one.
+ */
+const MIN_PROBE_LENGTH = 80
+
+function bodyProbe(name: string): string {
+  const prose = readFileSync(repoFile(name), 'utf-8')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^[#\->|*]/.test(l) && !/[`*_[\]<>]/.test(l))
+  const probe = prose.reduce((longest, l) => (l.length > longest.length ? l : longest), '')
+
+  if (probe.length < MIN_PROBE_LENGTH) {
+    throw new Error(
+      `${name} yielded no body prose to probe with (longest plain line: ${probe.length} chars, ` +
+        `floor: ${MIN_PROBE_LENGTH}) — an expectation built from it would match paragraphs it ` +
+        'does not name; fix the document, not this helper'
+    )
+  }
+  return probe
 }
 
 /**
@@ -177,6 +224,10 @@ test('the_terms_page_renders_the_drafted_terms_content @manager', async ({ anonP
   // on an array auto-retries, so it is its own settle guard as well as the assertion — which is
   // why no `toBeVisible()` precedes it.
   await expect(anonPage.locator('h1, h2')).toHaveText(markdownHeadings(TERMS_FILE))
+  // The prose half — see note 3. Counted on `p` rather than asserted visible through
+  // `getByText`, which matches every ancestor carrying the text too and would trip strict mode;
+  // paragraphs do not nest, so exactly one can match.
+  await expect(anonPage.locator('p').filter({ hasText: bodyProbe(TERMS_FILE) })).toHaveCount(1)
 })
 
 // ---------------------------------------------------------------------------
@@ -197,4 +248,5 @@ test('the_privacy_page_renders_the_drafted_privacy_policy_content @manager', asy
   await anonPage.goto('/privacy')
 
   await expect(anonPage.locator('h1, h2')).toHaveText(markdownHeadings(PRIVACY_FILE))
+  await expect(anonPage.locator('p').filter({ hasText: bodyProbe(PRIVACY_FILE) })).toHaveCount(1)
 })
