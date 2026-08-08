@@ -60,6 +60,9 @@ import {
   updateBarnSettings,
 } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
+// Aliased: this file already has a settings-page `openSection` that navigates to `settingsUrl()`
+// first. The shared helper is the horse detail page's, which is already loaded when it is called.
+import { openSection as openAccordionSection } from './support/accordion'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type { Agreement, Horse } from '@/lib/db/types'
 
@@ -971,6 +974,7 @@ test.describe('Manage Barn — barn day versus device day', () => {
 
   test('a_document_due_on_the_barns_day_shows_the_reminder_due_badge @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/horses/${horse.id}`)
+    await openAccordionSection(page, 'Documents')
 
     const rowFor = (fileName: string) =>
       page.locator('tbody tr').filter({ has: page.getByRole('link', { name: fileName, exact: true }) })
