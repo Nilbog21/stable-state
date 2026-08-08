@@ -325,10 +325,162 @@ assert_fails_with "punctuation-only asserting-role head: exits non-zero" \
   "$REPO" "unparseable"
 rm -rf "$REPO"
 
-# Test 24: the real tree. This is the gate's own acceptance criterion — it was written against a
+# --- The fifth check: line-number citations of checklist items in spec comments (#1410) ---
+#
+# Runs the opposite direction from the four above — those resolve a checklist tag to a test, this
+# reads spec comments. A line number cited from a spec rots the moment anything is inserted above
+# it in the phase file, silently: #1366 found `checklist-phase4-calendar-feed.spec.ts` citing
+# `607-615` for a section starting at 615, unnoticed for a release.
+
+# Test 24: the `lines N-M` dialect — 228 of the lines #1366 removed.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// Covers checklists/pre-release/phase-4-manager-verification.md lines 149-159.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "spec comment citing \`lines N-M\`: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 25: the possessive singular — `line 523's test`. The commonest historical form by far, and
+# the one a same-line "is a checklist file named here?" test would miss: 122 of 135 pre-sweep hits
+# name no file on their own line, because the file was named once at the top of the block.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// Unlike line 523's test, the Date field IS moved here.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "spec comment citing \`line N's\`: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 26: the `P<digit> N` dialect (`P5 866`) — 16 removed. Same rot, shorter spelling.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// The trainer half of P5 866.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "spec comment citing \`P<digit> N\`: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 27: a number directly after the phase filename, with no `line` keyword — 10 removed, and
+# the dialect that survived longest precisely because no keyword draws the eye. Named on the file
+# and line it sits on, since that is where the fix is made.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// (checklists/pre-release/phase-4-manager-verification.md 149-159).
+test('a_thing_happens @manager', async ({ page }) => {});")"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && grep -qF "e2e/fixture.spec.ts:1" <<<"$err_output"; then
+  assert_pass "spec comment citing \`<file>.md N\`: exits non-zero, names the spec file:line"
+else
+  assert_fail "spec comment citing \`<file>.md N\`: exits non-zero, names the spec file:line" \
+    "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 28: the mirror the whole sweep exists to permit — naming the phase file stays legal, it is
+# only the number after it that rots. A check that flagged this would push specs into citing
+# nothing at all.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// (checklists/pre-release/phase-4-manager-verification.md, the block from \"Clover's page\").
+test('a_thing_happens @manager', async ({ page }) => {});")"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "spec comment naming a phase file with no number: exits 0"
+else
+  assert_fail "spec comment naming a phase file with no number: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 29: a *source* line citation, in this repo's colon form (`ExhaustionBar.tsx:57`). Source
+# line numbers rot too, but they are git-blameable and out of this convention's scope; the colon
+# form is also lexically distinct, which is what lets the ban on `line N` be unconditional.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// The bar this asserts on is ExhaustionBar.tsx:57, rendered from LessonForm.tsx:696.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "spec comment citing a source file in colon form: exits 0"
+else
+  assert_fail "spec comment citing a source file in colon form: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 30: a clock time. This is the false positive a naive `:NNN` line-number pattern produces —
+# the UI displays 12-hour AM/PM by convention, so `12:00` is everywhere in the specs. The dialects
+# here never match it; this assertion is what pins that rather than leaving it to inspection.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// The 12:00 AM slot sorts above the 1:00 PM one.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
+  assert_pass "spec comment containing a clock time: exits 0"
+else
+  assert_fail "spec comment containing a clock time: exits 0" "script exited non-zero"
+fi
+rm -rf "$REPO"
+
+# Test 31: a citation violation while every tag resolves cleanly. The two halves keep separate
+# counters and both feed the exit status — folding the citation count into the tag counter would
+# work today and mis-attribute the failure in the trailer, which is the only place a reader learns
+# what to fix.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// Covers phase-4-manager-verification.md lines 149-159.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && ! grep -qF "no test with this title exists" <<<"$err_output"; then
+  assert_pass "citation violation with every tag valid: exits non-zero, reports only the citation"
+else
+  assert_fail "citation violation with every tag valid: exits non-zero, reports only the citation" \
+    "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 32: the OK line names the citation check. A gate that lands green while its own summary
+# describes less than it enforced is worse than no gate, because the green becomes the evidence —
+# which is the defect #1392 found in this script's previous OK line.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});")"
+ok_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -eq 0 ] && grep -qF "line-number citation" <<<"$ok_output"; then
+  assert_pass "clean tree: OK line names the citation check"
+else
+  assert_fail "clean tree: OK line names the citation check" "exit=$script_exit output=$ok_output"
+fi
+rm -rf "$REPO"
+
+# Test 33: a capitalized citation. `Line 696's …` and `Lines 702-712 …` are 52 of the 278 lines
+# #1366 removed, not a hypothetical — a case-sensitive pattern lets exactly that form back in
+# while the prose beside it says the dialect is banned outright, which is this gate's own failure
+# class arriving through a shift key.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "// Lines 702-712 assert the same thing for the trainer.
+test('a_thing_happens @manager', async ({ page }) => {});")"
+assert_fails_with "spec comment citing \`Lines N-M\` capitalized: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 34: a citation in a non-spec helper. The convention is about what a comment cites, not what
+# file it sits in, and a scan scoped to *.spec.ts would leave e2e/support/*.ts and global-setup.ts
+# permanently unlinted — the same fail-open shape CHECKLIST_GLOBS avoids by being a glob.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {});")"
+mkdir -p "$REPO/e2e/support"
+printf '%s\n' "// Mirrors phase-4-manager-verification.md line 149." > "$REPO/e2e/support/helper.ts"
+assert_fails_with "line-number citation in a non-spec e2e helper: exits non-zero" \
+  "$REPO" "e2e/support/helper.ts"
+rm -rf "$REPO"
+
+# Test 35: a citation outside a `//` comment. The scan is whole-file by design — a dialect this
+# specific has no incidental use in test code (0 near-misses tree-wide), and restricting it to
+# comment lines would buy a parser plus a way to smuggle a citation past the gate inside a string.
+# The cost is stated rather than discovered: this fixture is the one that would break if a spec
+# ever legitimately needed `lines 5` in its UI copy.
+REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)' \
+  "test('a_thing_happens @manager', async ({ page }) => {
+  await expect(page.getByText('phase-4-manager-verification.md 149')).toBeVisible();
+});")"
+assert_fails_with "line-number citation outside a comment: exits non-zero" \
+  "$REPO" "line-number citation"
+rm -rf "$REPO"
+
+# Test 36: the real tree. This is the gate's own acceptance criterion — it was written against a
 # tree measured clean (733 tags, 0 orphans, and 0 role violations: phase 4 is 559 @manager plus 1
 # @mobile, phase 5 is 82 @trainer plus 3 dual, phase 6 is 85 @rider plus 3 dual), so a non-zero
-# here on the first commit means the scanner is wrong, not the repo.
+# here on the first commit means the scanner is wrong, not the repo. The citation check joins it
+# on the same terms: 0 survivors of all three dialects at 2554b976, #1366 having swept them.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "this repository: exits 0"
 else

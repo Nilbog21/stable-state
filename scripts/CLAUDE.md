@@ -82,5 +82,5 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `check-coverage` — the 100% branch-coverage gate
 - `check-doc-size` — doc size budgets (pairwise `ARCHITECTURE.md`+sub-doc cap, per-file caps on the auto-loaded set)
 - `check-pipefail-race` — CI gate for the `pipefail` + early-exit-consumer race (see Shell hazards above)
-- `check-e2e-tags` — CI gate: every checklist `(e2e:)` tag names a test that exists, carries a project tag, and runs as an identity its phase asserts as
+- `check-e2e-tags` — CI gate: every checklist `(e2e:)` tag names a test that exists, carries a project tag, and runs as an identity its phase asserts as; and no `e2e/**/*.ts` file cites a checklist item by line number rather than by quoted fragment (#1410)
 - `repair-migration-history`, `replace-all-migrations` — migration-history repair tooling (prod-targeting by design)
