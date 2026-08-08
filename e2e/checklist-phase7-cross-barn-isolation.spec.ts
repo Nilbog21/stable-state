@@ -1,4 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/layout.tsx
+// covers: src/app/barn/[slug]/(protected)/BarnSwitcher.tsx
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/members/**
@@ -41,16 +43,14 @@ import type { Horse, Lesson } from '@/lib/db/types'
 const BARN_A_FEE = 90
 const BARN_B_FEE = 40
 
-// One horse and one managed stub per barn. Both halves of E2E_STUB_RIDER's collision rule hold
-// across all six names here and the four members addMemberships seeds: no name contains another,
-// and no two share a `first-initial-of-surname` form.
+// One horse and one managed stub per barn. The two person names here hold both halves of
+// E2E_STUB_RIDER's collision rule against each other and against the four addMemberships seeds:
+// no name contains another, and no two share a `first-initial-of-surname` form. The two horse
+// names hold the containment half only — there is no surname to derive a truncated form from.
 const BARN_A_HORSE = 'Aurora'
 const BARN_B_HORSE = 'Blizzard'
 const BARN_A_MEMBER = { firstName: 'Alder', lastName: 'Vance' }
 const BARN_B_MEMBER = { firstName: 'Brook', lastName: 'Quinlan' }
-
-/** The Gross column of the Finances By Horse breakdown — label, Gross, Expenses, Net. */
-const GROSS_COL = 1
 
 type Seeded = { horse: Horse; lesson: Lesson; stubMembershipId: string }
 
@@ -186,10 +186,14 @@ test('barn_b_finances_shows_only_barn_b_income @manager', async ({ page }) => {
   const row = page.locator('tbody tr').filter({ has: page.locator(`a[href^="${prefix}${seededB.horse.id}"]`) })
   expect({
     horses: await recordIds(page, prefix),
-    gross: (await settledInnerTexts(row.locator('td').nth(GROSS_COL)))[0].trim(),
+    // The whole row positionally — Horse, Gross, Expenses, Net — rather than the Gross cell by
+    // index. No expense is seeded, so ByHorseTable renders Net as gross-minus-nothing: the same
+    // string as Gross, and a single-cell read pointed one column off would pass on it silently
+    // (the hazard #1195 found in the Unattributed row's own single-cell read).
+    row: (await settledInnerTexts(row.locator('td'))).map((cell) => cell.trim()),
   }).toEqual({
     horses: [seededB.horse.id],
-    gross: formatCurrency(BARN_B_FEE),
+    row: [BARN_B_HORSE, formatCurrency(BARN_B_FEE), '—', formatCurrency(BARN_B_FEE)],
   })
 })
 

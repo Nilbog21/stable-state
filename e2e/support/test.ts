@@ -143,7 +143,15 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
  * A second barn for the same spec file, seeded and torn down on the same hooks as withBarn's
  * (see the two-barns block at the top of this file). Call it *after* withBarn in the module
  * body: Playwright runs beforeAll hooks in registration order, so barn A exists before this
- * one's seed callback runs, and its afterAll runs first on the way out.
+ * one's seed callback runs.
+ *
+ * afterAll hooks run in registration order too, not reversed — measured against
+ * `_collectHooksAndModifiers`/`_runAllHooksForSuite` in playwright's workerProcessEntry.js, which
+ * filter `suite._hooks` by type without reversing, and confirmed by running a two-pair file. So
+ * barn A is torn down first, not last. Nothing here depends on that: each barn's afterAll reaches
+ * only its own `state.created`/`state.slug`, and the two barns share no rows. A third barn, or a
+ * teardown that spanned them, would have to be written against that order rather than against the
+ * LIFO one it would be natural to assume.
  */
 export function withSecondBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>): BarnHandle {
   return registerBarn(secondBarnKey(key), seed, { first: false })
