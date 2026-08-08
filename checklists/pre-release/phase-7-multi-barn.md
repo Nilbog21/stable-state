@@ -41,6 +41,7 @@ Cross-barn isolation — the invariant this phase is named after (`#1415`). Ever
 - [ ] Under Barn B's slug, the Horses list shows Barn B's horse and none of Barn A's (e2e: barn_b_horses_page_lists_only_barn_b_horses)
 - [ ] Under Barn B's slug, the Lessons list shows Barn B's lesson and none of Barn A's (e2e: barn_b_lessons_page_lists_only_barn_b_lessons)
 - [ ] Under Barn B's slug, the Members list shows Barn B's memberships and none of Barn A's (e2e: barn_b_members_page_lists_only_barn_b_members)
+- [ ] A member who holds a membership in *both* barns is present in that same list — the members-side positive control: isolation means Barn A's rows are absent, not that a shared person is (e2e: barn_b_members_page_lists_only_barn_b_members)
 - [ ] Under Barn B's slug, Finances shows only Barn B's horse, at Barn B's own Gross figure (e2e: barn_b_finances_shows_only_barn_b_income)
 - [ ] A Barn A **horse** id addressed directly under Barn B's slug 404s at that URL rather than rendering the horse (e2e: a_barn_a_horse_id_under_barn_b_404s)
 - [ ] A Barn A **lesson** id addressed directly under Barn B's slug 404s at that URL rather than rendering the lesson (e2e: a_barn_a_lesson_id_under_barn_b_404s)
