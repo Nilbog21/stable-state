@@ -40,12 +40,12 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 
   This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults.
 - [ ] (manual — a spec cannot drive it: this is the stdout of the `reset-db.sh` run above, which is manual for the same reason) The script prints `Invite path: /barn/dev-barn/register?token=<uuid>`
-- [ ] (e2e-candidate) Open that path on your app origin (no existing session) — it redirects to `/barn/dev-barn/login?token=<uuid>`
-- [ ] (e2e-candidate) The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox
-- [ ] (e2e-candidate) That checkbox is checked by default
+- [ ] (e2e: opening_an_invite_link_with_no_session_redirects_to_the_barn_login_page) Open that path on your app origin (no existing session) — it redirects to `/barn/dev-barn/login?token=<uuid>`
+- [ ] (e2e: the_barn_login_page_shows_a_keep_me_logged_in_checkbox) The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox
+- [ ] (e2e: the_keep_me_logged_in_checkbox_is_checked_by_default) That checkbox is checked by default
 - [ ] (manual — a real Google OAuth consent flow; the suite's logins are password-based) Sign in with the **`DEV_EMAIL`** Google account — you are redirected to `/profile/complete` (fresh claimed stub has no contact info)
-- [ ] (e2e-candidate) Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app. A spec reaches `/profile/complete` from a seeded membership whose profile has blank contact fields, rather than through the OAuth sign-in above
-- [ ] (e2e-candidate) You hold **manager** in Dev Barn
+- [ ] (e2e: saving_the_contact_fields_on_profile_complete_lands_in_the_app) Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app. A spec reaches `/profile/complete` from a seeded membership whose profile has blank contact fields, rather than through the OAuth sign-in above
+- [ ] (e2e: the_claimed_invite_holds_manager_in_the_barn) You hold **manager** in Dev Barn
 
 > **Mobile viewport:** the block below is automated by `e2e/checklist-phase1-nav-responsive.spec.ts`, which runs on the `@manager` project and puts the drawer half under a per-describe `test.use({ viewport: { width: 390, height: 844 }, hasTouch: true })` (#1423). It does **not** ride the `@mobile` project, and that was the choice rather than the default: these thirteen lines span two widths — the three desktop-nav-bar highlighting lines are explicitly about the desktop nav bar — so Pixel 5 would either dispatch the whole file a second time and seed a second barn, or render the desktop half through Chromium's `isMobile` meta-viewport emulation, which is not what those lines are about. Same call Phase 4's Mobile spot-check made (`checklist-phase4-notifications-profile.spec.ts`), and the spec's header note 1 carries the full reasoning. A test whose claim is *"at this width"* must read `page.viewportSize()!.width` in its own expectation, or it passes at 1280×800 too (`e2e/CLAUDE.md` fact 6, #1207) — every test in that spec does.
 
