@@ -12,7 +12,7 @@
 // not twenty regressions. Fix the top one and re-run before reading any of the rest.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, updateBarnSettings } from './support/fixtures'
-import { openSection } from './support/accordion'
+import { openSection, accordionSection } from './support/accordion'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs. The two horse names and the registered name are what this
@@ -404,18 +404,20 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
   return html.slice(start, end)
 }
 
-// Five controls, five forms: Grant Access, and then Set as Owner / the document-access select /
-// the Can View toggle / Revoke on the single seeded grant row. Before #1390 every one was a
-// `<button type="button" onClick>` with no form at all, so each was a silent no-op inside the
-// hydration window — the defect #1385 fixed for member documents, on a page a manager lands on
-// and immediately clicks.
+// Seven controls, seven forms: Grant Access, and then Set as Owner / the three document-access
+// buttons / the Can View toggle / Revoke on the single seeded grant row. Before #1390 every one
+// was a `<button type="button" onClick>` with no form at all, so each was a silent no-op inside
+// the hydration window — the defect #1385 fixed for member documents, on a page a manager lands
+// on and immediately clicks. Documents was a `<select>` carrying its value in `FormData` until
+// #1390's own testing round found it didn't persist; three bound buttons replaced it, which is
+// where three of these seven come from.
 //
-// A count rather than four presence checks, and taken on the *served* markup: React emits the
+// A count rather than six presence checks, and taken on the *served* markup: React emits the
 // enhanced `method="POST"` form only for a Server Function or a `.bind` of one, so a control
 // that regressed to an inline closure — the shape e2e/CLAUDE.md fact 10 warns about — drops out
 // of this count while still looking correct in the browser and still passing every other test in
 // this file.
-const EXPECTED_ACCESS_FORMS = 5
+const EXPECTED_ACCESS_FORMS = 7
 
 test('the_access_tables_controls_all_submit_through_enhanced_forms @manager', async ({ page }) => {
   const markup = await servedAccessMarkup(page, cloverId)
@@ -430,6 +432,29 @@ test('the_access_tables_forms_carry_their_action_reference_in_hidden_fields @man
   const markup = await servedAccessMarkup(page, cloverId)
 
   expect((markup.match(/name="\$ACTION_[^"]*"/g) ?? []).length).toBeGreaterThanOrEqual(EXPECTED_ACCESS_FORMS)
+})
+
+// The check the two above can't make and the unit tests can't either: that the value the manager
+// picked is the value the database ends up holding. #1390's testing round found the `<select>`
+// this replaces leaving the chosen value, the stored value and the *displayed* value all
+// disagreeing, and every test in the suite passed through it — the served markup was well-formed
+// and jsdom saw the right FormData, so only a real round-trip plus a reload could see it.
+//
+// A downgrade, not an upgrade: the `set_horse_owner` above elevated this grant to `write`, so
+// `read` is a value nothing else in the chain could have left behind.
+test('a_document_access_choice_survives_a_reload @manager', async ({ page }) => {
+  await page.goto(horseHref(cloverId))
+  await openSection(page, 'Access')
+  const readButton = accordionSection(page, 'Access').getByRole('button', { name: 'Read', exact: true })
+  await readButton.click()
+  // A wait, not the assertion: the row refreshes through the action's own revalidatePath with no
+  // navigation to wait on, and `aria-pressed` moving is the signal the action resolved (fact 8 —
+  // the POST landing and the DOM reflecting it are separate events).
+  await expect(readButton).toHaveAttribute('aria-pressed', 'true')
+
+  await page.reload()
+  await openSection(page, 'Access')
+  await expect(readButton).toHaveAttribute('aria-pressed', 'true')
 })
 
 // ---------------------------------------------------------------------------

@@ -808,48 +808,40 @@ describe('updateHorseAccessDocumentAction', () => {
     })
   })
 
-  // #1390: FormData for the same reason as grantHorseAccessAction -- the new value comes from a
-  // <select> in the row's own form, so only the privilege id can be bound at render time.
-  function documentFormData(value: string): FormData {
-    const fd = new FormData()
-    fd.set('value', value)
-    return fd
-  }
-
   it('should_call_requireMembership_with_manager_role_only', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('write'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_update_document_privileges_for_the_grant', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('write'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
     expect(updateHorsePrivilegeDocumentAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, 'write')
   })
 
   it('should_revalidate_horse_detail_path', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('read'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'read')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 
-  // The value now arrives as an untrusted string rather than a typed argument, so it has to be
-  // checked against the enum before reaching the DAL.
+  // A Server Action argument is deserialized from whatever the client posted, so the union type
+  // is a compile-time claim and not a runtime one -- hence the enum check the caller can't skip.
   it('should_not_update_privileges_for_a_value_outside_the_enum', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('admin'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'admin' as never)
     expect(updateHorsePrivilegeDocumentAccess).not.toHaveBeenCalled()
   })
 
   it('should_not_revalidate_for_a_value_outside_the_enum', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('admin'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'admin' as never)
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
-  it('should_not_update_privileges_when_the_value_field_is_absent', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', new FormData())
+  it('should_not_update_privileges_when_the_value_is_absent', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', undefined as never)
     expect(updateHorsePrivilegeDocumentAccess).not.toHaveBeenCalled()
   })
 
   it('should_accept_none_as_a_valid_value', async () => {
-    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', documentFormData('none'))
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'none')
     expect(updateHorsePrivilegeDocumentAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, 'none')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 
 import { HorseAccessSection } from '../HorseAccessSection'
 
@@ -35,6 +35,15 @@ function submittedFields(mock: ReturnType<typeof vi.fn>, argIndex: number): Reco
   return Object.fromEntries(formData.entries()) as Record<string, string>
 }
 
+/**
+ * One document-state button out of a named grant's row. Row-scoped because every row renders the
+ * same three labels — the accessible name alone can't tell Dana's Write from Emery's.
+ */
+function documentButton(grantName: string, label: string): HTMLButtonElement {
+  const row = screen.getByText(grantName).closest('tr')!
+  return within(row).getByRole('button', { name: label }) as HTMLButtonElement
+}
+
 describe('HorseAccessSection', () => {
   it('should_render_a_row_for_each_grant', () => {
     render(<HorseAccessSection {...makeProps()} />)
@@ -47,10 +56,20 @@ describe('HorseAccessSection', () => {
     expect(screen.getByText(/no additional members have been granted access/i)).toBeDefined()
   })
 
-  it('should_reflect_current_document_privileges_in_select', () => {
+  it('should_render_a_button_for_every_document_state', () => {
     render(<HorseAccessSection {...makeProps()} />)
-    const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-    expect(selects.find((s) => s.value === 'read')).toBeDefined()
+    const labels = ['None', 'Read', 'Write'].map((label) => documentButton('Dana Rider', label).textContent)
+    expect(labels).toEqual(['None', 'Read', 'Write'])
+  })
+
+  // The only thing distinguishing the three is which one is pressed, so that state has to be
+  // exposed to assistive tech rather than carried by the fill colour alone.
+  it('should_mark_only_the_current_document_privilege_as_pressed', () => {
+    render(<HorseAccessSection {...makeProps()} />)
+    const pressed = ['None', 'Read', 'Write'].map(
+      (label) => documentButton('Dana Rider', label).getAttribute('aria-pressed')
+    )
+    expect(pressed).toEqual(['false', 'true', 'false'])
   })
 
   it('should_show_cannot_view_label_when_lesson_read_privileges_is_false', () => {
@@ -104,18 +123,22 @@ describe('HorseAccessSection', () => {
       expect(new Set(types)).toEqual(new Set(['submit']))
     })
 
-    it('should_put_the_document_select_in_its_own_form', () => {
+    // The one control that still needed JS to be usable was the document-access `<select>`: its
+    // value was unknown at render time, so it took a `FormData` and an `onChange` submit, and it
+    // is the one that didn't persist. Three bound buttons carry their value in the action itself,
+    // so each is its own form with nothing left to hydrate.
+    it('should_give_each_document_state_its_own_form', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-      expect(selects.every((s) => s.closest('form') !== null)).toBe(true)
+      const forms = ['None', 'Read', 'Write'].map((label) => documentButton('Dana Rider', label).closest('form'))
+      expect(new Set(forms).size).toBe(3)
     })
 
-    // Without a submit button the select's form has no pre-hydration way to be submitted at
-    // all — `onChange` is exactly the handler that doesn't exist yet during that window.
-    it('should_give_the_document_select_form_its_own_submit_button', () => {
+    it('should_leave_no_select_in_the_grant_rows', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
-      expect(select.closest('form')!.querySelector('button[type="submit"]')).not.toBeNull()
+      const rowSelects = screen
+        .getAllByRole('combobox')
+        .filter((c) => c.closest('tbody') !== null)
+      expect(rowSelects).toEqual([])
     })
   })
 
@@ -145,21 +168,25 @@ describe('HorseAccessSection', () => {
   })
 
   describe('document access', () => {
-    it('should_call_onUpdateDocument_with_the_privilege_id_and_new_value_on_change', () => {
+    it('should_call_onUpdateDocument_with_the_privilege_id_and_the_buttons_own_value', () => {
       const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
-      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
-      fireEvent.change(select, { target: { value: 'write' } })
-      expect(onUpdateDocument.mock.calls[0][0]).toBe('privilege-1')
-      expect(submittedFields(onUpdateDocument, 1)).toEqual({ value: 'write' })
+      fireEvent.click(documentButton('Dana Rider', 'Write'))
+      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-1', 'write'])
     })
 
-    it('should_call_onUpdateDocument_when_its_submit_button_is_used_instead', () => {
+    it('should_call_onUpdateDocument_with_none_from_the_none_button', () => {
       const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
-      const select = (screen.getAllByRole('combobox') as HTMLSelectElement[]).find((s) => s.value === 'read')!
-      fireEvent.click(select.closest('form')!.querySelector('button[type="submit"]')!)
-      expect(submittedFields(onUpdateDocument, 1)).toEqual({ value: 'read' })
+      fireEvent.click(documentButton('Dana Rider', 'None'))
+      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-1', 'none'])
+    })
+
+    it('should_bind_each_row_to_its_own_privilege_id', () => {
+      const onUpdateDocument = vi.fn().mockResolvedValue(undefined)
+      render(<HorseAccessSection {...makeProps({ onUpdateDocument })} />)
+      fireEvent.click(documentButton('Emery Rider', 'Read'))
+      expect(onUpdateDocument.mock.calls[0]).toEqual(['privilege-2', 'read'])
     })
   })
 
