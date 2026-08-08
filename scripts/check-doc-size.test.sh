@@ -17,9 +17,11 @@ assert_fail() {
 }
 
 # Creates a temp git repo with ARCHITECTURE.md, docs/architecture/*.md, a nested
-# docs/architecture/dal/lessons.md, and the per-file-budgeted CLAUDE.md set at given byte sizes.
+# docs/architecture/dal/lessons.md, the per-file-budgeted CLAUDE.md set, and
+# docs/e2e-framework-facts.md (the second pairwise anchor's sub-doc), at given byte sizes.
 make_repo() {
   local main_size="$1" sub_size="$2" budget_file_size="${3:-1000}" nested_size="${4:-100}"
+  local facts_size="${5:-100}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
@@ -29,6 +31,7 @@ make_repo() {
     head -c "$sub_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/$f.md"
   done
   head -c "$nested_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/dal/lessons.md"
+  head -c "$facts_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-framework-facts.md"
   for f in CLAUDE.md scripts/CLAUDE.md e2e/CLAUDE.md src/components/ui/CLAUDE.md; do
     head -c "$budget_file_size" /dev/zero | tr '\0' 'a' > "$dir/$f"
   done
@@ -73,27 +76,33 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 5: a file over its per-file budget fails and is named; a file under its own budget is not
-REPO="$(make_repo 15000 5000 12000)"
+# Test 5: a file over its per-file budget fails and is named; a file under its own budget is not.
+# The two roles are the opposite way round from #1354's cut: e2e/CLAUDE.md's budget was the set's
+# largest until #1420 split its framework facts out and lowered it, and is now the smallest — so
+# 9000 is over e2e/CLAUDE.md's and under CLAUDE.md's, testing the same two directions inverted.
+REPO="$(make_repo 15000 5000 9000)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
-if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
-  assert_pass "CLAUDE.md over budget: exits non-zero, names CLAUDE.md"
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.md "; then
+  assert_pass "e2e/CLAUDE.md over budget: exits non-zero, names e2e/CLAUDE.md"
 else
-  assert_fail "CLAUDE.md over budget: exits non-zero, names CLAUDE.md" "exit=$script_exit output=$err_output"
+  assert_fail "e2e/CLAUDE.md over budget: exits non-zero, names e2e/CLAUDE.md" "exit=$script_exit output=$err_output"
 fi
-if echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.md "; then
-  assert_fail "e2e/CLAUDE.md under its larger budget: not flagged" "was flagged: $err_output"
+if echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
+  assert_fail "CLAUDE.md under its larger budget: not flagged" "was flagged: $err_output"
 else
-  assert_pass "e2e/CLAUDE.md under its larger budget: not flagged"
+  assert_pass "CLAUDE.md under its larger budget: not flagged"
 fi
 rm -rf "$REPO"
 
-# Test 6: exactly at a per-file budget boundary — treated as failing (>=), matching the pairwise rule
+# Test 6: exactly at a per-file budget boundary — treated as failing (>=), matching the pairwise
+# rule. Asserts on the message too: at this size e2e/CLAUDE.md is over its own budget as well, so
+# an exit status alone can't tell the boundary rule from that unrelated failure.
 REPO="$(make_repo 15000 5000 10000)"
-if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
-  assert_fail "exactly at per-file budget: treated as failing" "script exited 0 (expected non-zero)"
-else
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
   assert_pass "exactly at per-file budget: treated as failing"
+else
+  assert_fail "exactly at per-file budget: treated as failing" "exit=$script_exit output=$err_output"
 fi
 rm -rf "$REPO"
 
@@ -107,8 +116,9 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 8: everything under pairwise limit and all per-file budgets — exits 0
-REPO="$(make_repo 15000 5000 7999)"
+# Test 8: everything under pairwise limit and all per-file budgets — exits 0 (7000 is under the
+# smallest budget in the set, which since #1420 is e2e/CLAUDE.md's rather than the 8000 one)
+REPO="$(make_repo 15000 5000 7000)"
 if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "all files under budgets: exits 0"
 else
@@ -124,6 +134,18 @@ if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "docs/architecture/d
   assert_pass "oversized nested file: discovered and named"
 else
   assert_fail "oversized nested file: discovered and named" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 10: the second pairwise anchor (#1420) — e2e/CLAUDE.md + docs/e2e-framework-facts.md over
+# the same 150,000 backstop exits non-zero and names the sub-doc. Both files are under their own
+# per-file budgets here, so only the pairwise check can produce this failure.
+REPO="$(make_repo 15000 5000 1000 100 149000)"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "docs/e2e-framework-facts.md"; then
+  assert_pass "e2e pairwise anchor over limit: exits non-zero, names the sub-doc"
+else
+  assert_fail "e2e pairwise anchor over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"
 fi
 rm -rf "$REPO"
 
