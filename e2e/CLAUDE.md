@@ -5,13 +5,14 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Thirteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+Fourteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
-12 and 13 from the 2026-08-04 backlog run; fact 10 was later sharpened by #1385, which found its
-original unconditional form too broad. Every one is measured, not inferred. The spec named
-after each fact carries the worked example, with fact 12 the exception by construction: it exists
-to say why no spec does the thing it describes.
+12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction; fact 10 was later
+sharpened by #1385, which found its original unconditional form too broad, and again by 14, which
+found its multipart observation load-bearing in the other direction. Every one is measured, not
+inferred. The spec named after each fact carries the worked example, with fact 12 the exception by
+construction: it exists to say why no spec does the thing it describes.
 
 Facts 1 and 2 are stated in full where you meet them; the rest are stated here.
 
@@ -91,11 +92,13 @@ whose server markup is a bare `<form>` the browser would GET. `<form action={ser
 `<form action="" encType="multipart/form-data" method="POST">` plus
 `$ACTION_REF_*`/`$ACTION_*:0`/`$ACTION_*:1`/`$ACTION_KEY` hidden fields carrying the action id and
 its bound arguments. An early click submits *that*, so the interaction survives and needs no
-barrier. Two conditions, both load-bearing: the value passed to `useActionState` (or to `action=`
-directly) must be the Server Function itself or a `.bind` of one — an inline
-`async () => …` closure wrapping it is an ordinary client function and gets no markup, now caught
-by `eslint-rules/no-wrapped-server-action.js` — and the same is true of a `<button onClick>` with
-no form around it. Reference:
+barrier. That multipart encoding is the *markup*'s, and describes only the pre-hydration submit — a
+hydrated React dispatch of the same form posts `text/plain` like any other action call (#1409), so
+it is not a way to recognise a form submission on the wire. Two conditions, both load-bearing: the
+value passed to `useActionState` (or to `action=` directly) must be the Server Function itself or a
+`.bind` of one — an inline `async () => …` closure wrapping it is an ordinary client function and
+gets no markup, now caught by `eslint-rules/no-wrapped-server-action.js` — and the same is true of
+a `<button onClick>` with no form around it. Reference:
 `checklist-phase4-members-media.spec.ts`'s `deleting_a_member_document_removes_its_row`, whose
 `goto`→`click` flaked until #1385 converted the component, and which now asserts that markup on
 both of the member detail page's forms. *(#1385, #1396)*
@@ -139,6 +142,16 @@ then renders brings a target with it: the `UserMenu` popover toggle is `useState
 a toggle, so it is safe to re-dispatch. Reference implementation:
 `checklist-phase56-nav-profile.spec.ts`'s `openAvatarMenu` (drive open, assert, then
 `closeAvatarMenu` to leave the page as it was found). *(#1289)*
+
+**14. A `waitForResponse` predicate matched on URL alone names every Server Action a page's own
+client components fire, not just the submission under test** — they all post to the page's URL,
+and on the wire they are indistinguishable but for the `next-action` header, whose ids are build
+outputs a spec cannot name. Resolving on the wrong one is not a stale read: the `page.reload()`
+that follows **aborts the real action's in-flight POST**, so the mutation never runs and no
+retrying assertion can converge on it. Where the action redirects, its 303 is the discriminator —
+a property of the action's own code, unlike the encoding (see fact 10). The suite's three
+URL-only call sites are safe only because their pages fire no competing actions. Full statement:
+the stop-series test's comment in `checklist-phase5-lessons-cancel.spec.ts`. *(#1409)*
 
 ## Spec maintenance
 
