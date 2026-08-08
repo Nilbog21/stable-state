@@ -44,7 +44,7 @@
 // reason — its `timeout` defaults to 0 and it ignores the configured expect budget. A number
 // written here could only tighten them (#1211, #1279). Both are bounded by the test's own budget.
 
-import { expect, type Locator } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 
 /**
  * Blocks until `signal` is visible, where `signal` is markup that **cannot** exist before
@@ -90,4 +90,41 @@ export async function hydrateByDriving(
     if (!(await isLive())) await drive()
     expect(await isLive()).toBe(true)
   }).toPass()
+}
+
+/**
+ * A hydration barrier for any barn-scoped page, driven through the nav bar's avatar menu rather
+ * than through anything the page itself renders.
+ *
+ * Added by #1390, which removed the horse detail page's `ExhaustionBar` — the `useState`-gated
+ * popover two specs had been using as that page's signal. What replaced it has no signal of its
+ * own: the accordions are native `<details>` (open before hydration, so they prove nothing), and
+ * every field in the forms inside them is `useState`-seeded from a server prop, which is fact
+ * 13's byte-identical case exactly. The remaining controls all write.
+ *
+ * The nav bar is rendered by `(protected)/layout.tsx` into the **same React root** as the page,
+ * so its popover appearing means that root has hydrated — page included. This is fact 13's own
+ * prescribed workaround, generalised from `checklist-phase56-nav-profile.spec.ts`'s
+ * `openAvatarMenu`: `useState`-gated markup, and a toggle, so `hydrateByDriving` may re-dispatch
+ * it freely.
+ *
+ * Leaves the page as it was found — a menu left open would sit over the markup the caller is
+ * about to read, and would join any nav-link locator's results.
+ */
+export async function waitForBarnPageHydrated(page: Page): Promise<void> {
+  const avatar = page.getByRole('button', { name: 'User menu', exact: true })
+  const profileLink = page.getByRole('link', { name: 'Profile', exact: true })
+
+  // Names the cause before the retry loop can bury it: without this, a nav bar that failed to
+  // render at all degrades to a bare test timeout inside `toPass` with nothing saying why.
+  // Unbounded, so it tightens nothing.
+  await avatar.waitFor()
+
+  await hydrateByDriving(
+    () => avatar.click(),
+    async () => (await profileLink.count()) > 0
+  )
+
+  await avatar.click()
+  await expect(profileLink).toHaveCount(0)
 }

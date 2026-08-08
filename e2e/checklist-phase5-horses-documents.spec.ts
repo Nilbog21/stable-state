@@ -36,6 +36,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addHorseDocument, assetPath } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { accordionSection, openSection } from './support/accordion'
 import { barnToday } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 
@@ -108,17 +109,17 @@ const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entity=horse&id=${horseId}$`)
 
 /**
- * The <section> owning a given h2 — the horse detail page is h2-partitioned.
- *
- * Scoped to <main> rather than the whole page: an unscoped `page.locator('section')` is not
- * exploitable on this page today, but #1324 (PR #1345) ruled the same unscoped shape needless
- * latent fragility one slice over and narrowed it there.
+ * The Documents section, an `AccordionSection` since #1390 rather than the `<section>` the h2
+ * used to partition — see `support/accordion.ts`. Every read through it needs the section opened
+ * first, which is what `gotoHorseDocuments` is for.
  */
-function section(page: Page, heading: string) {
-  return page.locator('main section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
-}
+const documentsSection = (page: Page) => accordionSection(page, 'Documents')
 
-const documentsSection = (page: Page) => section(page, 'Documents')
+/** Land on a horse's page with Documents expanded. */
+async function gotoHorseDocuments(page: Page, horseId: string) {
+  await page.goto(horseUrl(horseId))
+  await openSection(page, 'Documents')
+}
 
 /** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
 const uploadForm = (page: Page) => page.locator('main form')
@@ -183,7 +184,8 @@ async function reminderDateCell(page: Page, fileName: string): Promise<Locator> 
  * that, and would need the field-based barrier #1323 switched to.
  */
 async function openAddDocument(page: Page, horseId: string): Promise<void> {
-  await page.goto(horseUrl(horseId))
+  // Add Document is the accordion's headerExtra, hidden until the `<details>` opens (#1390).
+  await gotoHorseDocuments(page, horseId)
   await documentsSection(page).getByRole('link', { name: 'Add Document', exact: true }).click()
   await page.waitForURL(atDocumentUpload(horseId), { waitUntil: 'commit' })
   await submitButton(page).waitFor()
@@ -205,7 +207,7 @@ async function openAddDocument(page: Page, horseId: string): Promise<void> {
 // is the same claim at full strength and carries its own negative half, since matching this
 // content excludes every other object in the bucket.
 test('trainer_horse_document_link_serves_the_stored_pdf @trainer', async ({ page }) => {
-  await page.goto(horseUrl(willowId))
+  await gotoHorseDocuments(page, willowId)
   const href = await documentsSection(page)
     .getByRole('link', { name: SEEDED_FILE_NAME, exact: true })
     .getAttribute('href')
@@ -246,6 +248,7 @@ test('trainer_uploading_a_horse_document_with_a_reminder_date_lists_it @trainer'
   await page.setInputFiles('input[type="file"]', assetPath(UPLOAD_ASSET))
   await submitButton(page).click()
   await page.waitForURL(atHorseDetail(rowanId), { waitUntil: 'commit' })
+  await openSection(page, 'Documents')
 
   const cell = await reminderDateCell(page, UPLOAD_ASSET)
   await cell.waitFor()
@@ -266,7 +269,7 @@ test('trainer_uploading_a_horse_document_with_a_reminder_date_lists_it @trainer'
 // `settledTextContents`' wait already guarantees) — and it fails for a header appearing
 // anywhere in the row, not only for one spelled "Actions".
 test('trainer_documents_table_has_no_actions_column_header @trainer', async ({ page }) => {
-  await page.goto(horseUrl(willowId))
+  await gotoHorseDocuments(page, willowId)
 
   expect(await settledTextContents(documentsSection(page).locator('th'))).toEqual(DOCUMENT_HEADERS)
 })
@@ -276,22 +279,25 @@ test('trainer_documents_table_has_no_actions_column_header @trainer', async ({ p
 // ---------------------------------------------------------------------------
 
 // The absence is paired with a presence in the same read, and the pairing is what makes it
-// falsifiable: `Exhaustion` (the section a trainer *does* get — resolveExhaustionThresholds
-// never returns null, so it always renders for a non-rider) is found by the same locator
-// machinery that reports zero for `Exhaustion Thresholds`. So a heading locator that had simply
-// stopped working fails this test rather than satisfying it.
+// falsifiable: a heading locator that had simply stopped working reports zero for both, and would
+// satisfy an unpaired absence assertion.
 //
-// `exact: true` on both is load-bearing rather than tidy: without it "Exhaustion" matches the
-// thresholds heading too and the two counts stop distinguishing anything.
+// The positive half used to be `Exhaustion` — the bar section a trainer did get — until #1390
+// removed that section from this page for every role. `Documents` replaces it: same locator
+// machinery, same page, and a section this file already proves a trainer sees.
+//
+// The thresholds editor did not merely move behind a heading a trainer can't read; it is inside
+// Horse Settings, which the page renders for a manager only. So the count is zero rather than
+// hidden, which is what makes a plain `count()` — no `openSection` — the right read here.
 test('trainer_horse_detail_page_shows_no_exhaustion_thresholds_section @trainer', async ({ page }) => {
   await page.goto(horseUrl(willowId))
-  const exhaustion = page.getByRole('heading', { name: 'Exhaustion', exact: true })
-  await exhaustion.waitFor()
+  const documents = page.getByRole('heading', { name: 'Documents', exact: true })
+  await documents.waitFor()
 
   expect({
-    exhaustion: await exhaustion.count(),
+    documents: await documents.count(),
     thresholds: await page.getByRole('heading', { name: 'Exhaustion Thresholds', exact: true }).count(),
-  }).toEqual({ exhaustion: 1, thresholds: 0 })
+  }).toEqual({ documents: 1, thresholds: 0 })
 })
 
 // ---------------------------------------------------------------------------
@@ -309,7 +315,7 @@ test('trainer_horse_detail_page_shows_no_exhaustion_thresholds_section @trainer'
 // read-only shell. Willow's reminder date is in the future, so ReminderDueBadge renders null and
 // the cell's whole text is the date.
 test('trainer_reminder_date_column_is_read_only_text @trainer', async ({ page }) => {
-  await page.goto(horseUrl(willowId))
+  await gotoHorseDocuments(page, willowId)
   const cell = await reminderDateCell(page, SEEDED_FILE_NAME)
   await cell.waitFor()
 

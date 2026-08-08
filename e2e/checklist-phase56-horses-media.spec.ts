@@ -69,11 +69,12 @@ const HARPER_PHOTO = 'harper-photo.png'
 const EMERY_PHOTO = 'emery-photo.jpg'
 const CLOVER_PHOTO = 'clover-photo.png'
 
-// The horse detail page's <dl> is rendered for non-managers only, one <div> per set field. These
-// are its labels, in DOM order, which is where the two "**Registered Name** row below Status" lines
-// are asserted.
-const STATUS_LABEL = 'Status'
-const REGISTERED_NAME_LABEL = 'Registered Name'
+// The one header line that always renders, whatever else does. Both horses this file reads the
+// header of are unowned, so it is what a registered-name assertion is read *against*: an
+// expectation of exactly [registered name, this] fails if the row moved, if it vanished, or if
+// the header stopped rendering at all — which is what the labelled `<dl>` used to buy before
+// #1390 moved these lines into the identity header and dropped their labels.
+const NO_OWNER_LINE = 'No owner set'
 
 const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
@@ -152,9 +153,12 @@ const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atPhotoUpload = (horseId: string) =>
   new RegExp(`/documents/new\\?entity=horse&id=${horseId}&type=photo`)
 
-/** The <section> owning the Photo h2 — the horse detail page is h2-partitioned. */
+/**
+ * The identity header, which is where the photo and its controls live since #1390 — the
+ * standalone **Photo** section this locator used to filter on is gone, along with its h2.
+ */
 function photoSection(page: Page) {
-  return page.locator('section').filter({ has: page.getByRole('heading', { name: 'Photo', exact: true }) })
+  return page.locator('main header')
 }
 
 /** The horse's photo, addressed by its accessible name — the <img>'s alt is the horse's name. */
@@ -163,39 +167,38 @@ function photoImage(page: Page, horseName: string) {
 }
 
 /**
- * Every interactive control in the Photo section, whichever variant rendered it.
+ * Every photo write control in the header, whichever variant rendered it.
  *
  * One locator covering all three controls the checklist names: Set Photo and Replace Photo are
- * `<Button href>` (a Next Link, so an `<a>`), Remove is a submit `<button>` inside its own form.
- * The `<img>` is deliberately *not* matched — the absence claim is about controls, and the
+ * `<Button href>` (a Next Link, so an `<a>`), Remove Photo is a submit `<button>` inside its own
+ * form. The `<img>` is deliberately *not* matched — the absence claim is about controls, and the
  * photo's own presence is a different line's claim.
+ *
+ * Named by role rather than counted as a bare `a, button`, which is what this was until #1390:
+ * the header now also carries the owner link, and a structural count could not tell the two
+ * apart.
  */
 function photoControls(page: Page) {
-  return photoSection(page).locator('a, button')
+  return photoSection(page)
+    .getByRole('link', { name: /Photo$/ })
+    .or(photoSection(page).getByRole('button', { name: 'Remove Photo', exact: true }))
 }
 
 /**
- * The non-manager detail list's labels, in DOM order. Manager pages render a form instead, and
- * this page holds the only `<dl>` in `<main>` for either role, so the selector needs no scoping
- * beyond that.
+ * The identity header's text lines, in DOM order.
  *
- * Read through `settledTextContents`, never `settledInnerTexts` — measured, and it cost this
- * slice a round: the `<dt>` carries Tailwind's `uppercase`, so `innerText` reads the *laid-out*
- * string ("STATUS") rather than the source one. That is `read.ts`'s documented
- * `settledTextContents` case, the same one `Th` presents one component over.
- */
-function detailLabels(page: Page) {
-  return page.locator('main dl dt')
-}
-
-/**
- * Its values, positionally paired with the labels above.
+ * #1390 replaced the labelled `Status` / `Registered Name` `<dl>` this used to read with an
+ * unlabelled header column: the horse's name as `<h1>` with a status `<Badge>` beside it, then a
+ * `<p>` per optional line — registered name, unavailability reason — and finally the owner line,
+ * which always renders. So the registered name's *position* is still assertable, and still
+ * assertable as a whole list rather than an index into one; only the labels are gone.
  *
- * These are read with `innerText` rather than `textContent`, unlike the labels: the `<dd>` carries
- * no text transform, so the two agree, and `innerText` is the string on screen.
+ * `<h1>` and the badge are excluded deliberately: the horse's own name and status are other
+ * lines' claims, and including them would make every registered-name assertion here fail on an
+ * unrelated change to either.
  */
-function detailValues(page: Page) {
-  return page.locator('main dl dd')
+function headerLines(page: Page) {
+  return page.locator('main header p')
 }
 
 /**
@@ -306,31 +309,27 @@ test('trainer_sees_a_photo_control_on_the_horse_they_own @trainer', async ({ pag
 // through "Apple's detail page then shows no **Registered Name** row"
 // ---------------------------------------------------------------------------
 
-// "Below Status" is a positional claim, so it is asserted positionally: the label list is read in
-// DOM order and compared in full, which fails both if the row is missing and if it moved above
-// Status. The value is read from the row the labels just pinned and compared to the *builder's*
-// returned column, not to this file's REGISTERED_NAME constant, so the assertion cannot pass by
-// comparing a literal to itself.
+// "Under the horse's name" is a positional claim, so it is asserted positionally: the header's
+// text lines are read in DOM order and compared in full, which fails if the line is missing, if
+// it moved below the owner, or if the header stopped rendering. The expected value is the
+// *builder's* returned column rather than this file's REGISTERED_NAME constant, so the assertion
+// cannot pass by comparing a literal to itself.
 //
 // settledTextContents rather than a bare allTextContents: the read is one-shot and an unrendered
-// <dl> answers [] (e2e/CLAUDE.md's read.ts rule). Its wait doubles as the guard that makes the
-// nth() read below non-premature.
+// header answers [] (e2e/CLAUDE.md's read.ts rule).
 test('trainer_horse_detail_shows_the_registered_name_row_below_status @trainer', async ({ page }) => {
   await page.goto(horseUrl(appleId))
-  expect({
-    labels: await settledTextContents(detailLabels(page)),
-    registeredName: await detailValues(page).nth(1).innerText(),
-  }).toEqual({ labels: [STATUS_LABEL, REGISTERED_NAME_LABEL], registeredName: seededRegisteredName })
+  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, NO_OWNER_LINE])
 })
 
-// Asserted as the list's *whole* contents rather than as "no Registered Name label", for the
-// reason a bare count of zero can't be trusted: a <dl> that failed to render satisfies an absence
-// claim and a mutation of it equally. Requiring exactly ['Status'] fails in that case, and the
-// settled read fails before it even gets there. Falsifiable against the test above, which drives
-// the same locator to a two-label answer in the same file.
+// Asserted as the list's *whole* contents rather than as "the registered name is not visible",
+// for the reason a bare count of zero can't be trusted: a header that failed to render satisfies
+// an absence claim and a mutation of it equally. Requiring exactly the owner line fails in that
+// case, and the settled read fails before it even gets there. Falsifiable against the test above,
+// which drives the same locator to a two-line answer in the same file.
 test('trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset @trainer', async ({ page }) => {
   await page.goto(horseUrl(dominoId))
-  expect(await settledTextContents(detailLabels(page))).toEqual([STATUS_LABEL])
+  expect(await settledTextContents(headerLines(page))).toEqual([NO_OWNER_LINE])
 })
 
 // ---------------------------------------------------------------------------
@@ -361,15 +360,12 @@ test('rider_sees_no_photo_controls_on_a_horse_they_do_not_own @rider', async ({ 
 
 test('rider_horse_detail_shows_the_registered_name_row_below_status @rider', async ({ page }) => {
   await page.goto(horseUrl(appleId))
-  expect({
-    labels: await settledTextContents(detailLabels(page)),
-    registeredName: await detailValues(page).nth(1).innerText(),
-  }).toEqual({ labels: [STATUS_LABEL, REGISTERED_NAME_LABEL], registeredName: seededRegisteredName })
+  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, NO_OWNER_LINE])
 })
 
 test('rider_horse_detail_omits_the_registered_name_row_when_it_is_unset @rider', async ({ page }) => {
   await page.goto(horseUrl(dominoId))
-  expect(await settledTextContents(detailLabels(page))).toEqual([STATUS_LABEL])
+  expect(await settledTextContents(headerLines(page))).toEqual([NO_OWNER_LINE])
 })
 
 // ---------------------------------------------------------------------------

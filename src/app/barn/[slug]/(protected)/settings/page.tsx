@@ -17,43 +17,13 @@ import {
 } from './actions'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
-import { cardBaseClass } from '@/components/ui/Card'
+import { AccordionSection } from '@/components/ui/AccordionSection'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { GuardedForm } from '../NavigationBlocker'
 import { DownloadButton } from './DownloadButton'
-
-function AccordionSection({
-  title,
-  defaultOpen = false,
-  headerExtra,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  headerExtra?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-6">
-      <details open={defaultOpen} className={`relative ${cardBaseClass}`}>
-        <summary
-          className={`flex min-h-11 cursor-pointer items-center px-4 py-3 ${headerExtra ? 'pr-32' : ''}`}
-        >
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {title}
-          </h2>
-        </summary>
-        {headerExtra && (
-          <div className="absolute right-4 top-0 flex h-11 items-center">{headerExtra}</div>
-        )}
-        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
-      </details>
-    </div>
-  )
-}
 
 export default async function SettingsPage({
   params,

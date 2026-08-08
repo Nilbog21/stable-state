@@ -5,6 +5,7 @@
 // covers: src/components/calendar/**
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
+import { openSection } from './support/accordion'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 import {
@@ -381,6 +382,7 @@ test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manage
   // full-suite load while the dev server cold-compiles this route (#1140). 'commit' matches the
   // repo's other cold-compile waits — it skips a `load` event that lags dev navigation.
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/horses/`), { waitUntil: 'commit' })
+  await openSection(page, 'Documents')
 
   const pastDate = new Date()
   pastDate.setUTCDate(pastDate.getUTCDate() - 1)

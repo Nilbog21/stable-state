@@ -56,16 +56,16 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_edit_page_shows_the_recurring_series_indicator) Its edit page shows a "This is part of a recurring series" indicator above the lesson form
 - [ ] (e2e: trainer_edit_page_shows_the_stop_recurring_lessons_button) That page shows a **Stop Recurring Lessons** button in the same place
 - [ ] (e2e: trainer_stopping_a_recurring_series_removes_the_series_block_from_the_edit_page) Stopping the series from there works the same as the manager flow
-- [ ] (e2e: trainer_horse_document_link_serves_the_stored_pdf) Horse detail page lists documents with working links
-- [ ] (e2e: trainer_uploading_a_horse_document_with_a_reminder_date_lists_it) Uploading `scripts/data/test_1_kb.pdf` there works, including setting a Reminder Date
+- [ ] (e2e: trainer_horse_document_link_serves_the_stored_pdf) Horse detail page's **Documents** section, once expanded, lists documents with working links
+- [ ] (e2e: trainer_uploading_a_horse_document_with_a_reminder_date_lists_it) Uploading `scripts/data/test_1_kb.pdf` from that section's **Add Document** button works, including setting a Reminder Date
 - [ ] (e2e: trainer_documents_table_has_no_actions_column_header) That documents table has **no Actions column at all** — not merely a hidden delete button
-- [ ] (e2e: trainer_horse_detail_page_shows_no_exhaustion_thresholds_section) The horse detail page shows **no Exhaustion Thresholds section**
+- [ ] (e2e: trainer_horse_detail_page_shows_no_exhaustion_thresholds_section) The horse detail page shows **no Exhaustion Thresholds section** — and since #1390 no **Horse Settings** section either, which is where that editor now lives, manager-only
 - [ ] (e2e: trainer_reminder_date_column_is_read_only_text) The Reminder Date column there is **read-only**
-- [ ] (e2e: trainer_unowned_horse_notes_render_as_read_only_text) Horse detail page shows the Feed Notes/Medication Notes entered as manager as read-only text — no textareas, no Save button
+- [ ] (e2e: trainer_unowned_horse_notes_render_as_read_only_text) (#1390) The horse detail page's **Feed & Medication** section — open when the page loads — shows the Feed Notes/Medication Notes entered as manager as read-only text: no textareas, no Save button
 - [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Setup (as manager, then switch back to the trainer) — clear one of that horse's two notes fields. An e2e run seeds the horse with only one of the two fields set instead
-- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank
+- [ ] (e2e: trainer_unset_notes_field_row_is_dropped_entirely) Reloading that horse's detail page drops the cleared field's row entirely instead of showing it blank, leaving the surviving one alone in Feed & Medication
 - [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) Setup (as manager, then switch back to the trainer) — grant this trainer a horse-privileges row on **Clover** (Access section), then make them Clover's owning member. An e2e run seeds both in the trainer's own barn instead
-- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) (#1006) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas
+- [ ] (e2e: trainer_owned_horse_notes_render_as_editable_textareas) (#1006/#1390) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas, inside the Feed & Medication section
 - [ ] (e2e: trainer_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e: trainer_owned_horse_note_edits_persist_across_a_reload) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
 - [ ] (e2e: trainer_available_horse_cards_show_an_exhaustion_bar) The Horses list's **Available** cards each show an exhaustion bar
@@ -73,13 +73,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
 - [ ] (e2e: trainer_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Horses** also shows an exhaustion bar — owned horses used to be skipped by the exhaustion fetch entirely
-- [ ] (e2e: trainer_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo
-- [ ] (e2e: trainer_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove control**
-- [ ] (e2e: trainer_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control — owning a horse grants photo write even to a non-manager
+- [ ] (e2e: trainer_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo in the page header, beside her name
+- [ ] (e2e: trainer_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove Photo control** in its header
+- [ ] (e2e: trainer_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control in its header — owning a horse grants photo write even to a non-manager
 - [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) Setup (as manager, then switch back to the trainer) — set Apple's **Registered Name** (e.g. "Four-Leaf Clover"). An e2e run seeds the registered name in the trainer's own barn instead
-- [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) Apple's detail page shows a **Registered Name** row below Status
+- [ ] (e2e: trainer_horse_detail_shows_the_registered_name_row_below_status) (#1390) Apple's detail page shows her registered name in the page header, under her name — the labelled **Registered Name** row is gone, along with the labelled Status row above it (status is now a badge beside the name)
 - [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Setup (as manager, then switch back to the trainer) — clear Apple's **Registered Name** again. An e2e run seeds a second horse with no registered name instead
-- [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no **Registered Name** row
+- [ ] (e2e: trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset) Apple's detail page then shows no registered name in the header at all, rather than a blank line where it was
 - [ ] (e2e: members_page_lists_all_four_roster_sections) Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view
 - [ ] (e2e: members_page_shows_no_add_member_forms_to_a_non_manager) That page shows no **Add Trainer**/**Add Rider** forms
 - [ ] (e2e: trainer_can_upload_a_document_with_a_reminder_date_on_their_own_member_page) Uploading `scripts/data/test_1_kb.pdf` on your own member detail page works, optionally with a Reminder Date set

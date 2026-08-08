@@ -48,6 +48,21 @@ export const DEV_RETIRED_HORSE = 'Willow'
 export const DEV_UNAVAILABLE_HORSE = 'Hazel'
 export const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
+// #1390: the seed set `owning_member_id` and one privilege row but never these three columns,
+// so nothing on `dev-barn` or `/demo` ever showed a registered name or a note — which is why a
+// rider's horse detail page could not be walked by hand at all. Deliberately partial, so the
+// page's three states are all reachable without setup:
+//   Butter  — both notes and a registered name; unowned, so trainers and Butter's privileged
+//             rider (see the grant below) get the read-only rendering
+//   Hazel   — feed notes only, exercising the drop-the-unset-row branch
+//   Apple / Clover — left bare: Apple is where the manager walk fills these in itself, and
+//             Clover is the horse phases 5 and 6 hand to a trainer/rider as owner, where the
+//             empty editable form is the thing being checked
+export const DEV_BUTTER_REGISTERED_NAME = 'Buttercream Dream'
+export const DEV_BUTTER_FEED_NOTES = 'Two flakes of hay AM and PM, half scoop ration balancer with breakfast.'
+export const DEV_BUTTER_MEDICATION_NOTES = 'Bute 1g daily with feed through the end of the month.'
+export const DEV_HAZEL_FEED_NOTES = 'Soaked hay cubes only while stalled — no dry hay.'
+
 export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
 // #950: kept out of DEV_TRAINERS so the existing i % trainerRowIds.length round-robin
 // assigning the main seed lessons is untouched — this trainer gets exactly one lesson.
@@ -391,8 +406,19 @@ export async function seedBarn(
     await supabase.from('horses').update({
       is_available: false,
       unavailability_reason: DEV_UNAVAILABLE_REASON,
+      feed_notes: DEV_HAZEL_FEED_NOTES,
     }).eq('id', unavailableHorse.id),
     'mark seed horse unavailable'
+  )
+
+  // See the DEV_BUTTER_* constants above for why only this horse gets the full set.
+  mustSucceed(
+    await supabase.from('horses').update({
+      registered_name: DEV_BUTTER_REGISTERED_NAME,
+      feed_notes: DEV_BUTTER_FEED_NOTES,
+      medication_notes: DEV_BUTTER_MEDICATION_NOTES,
+    }).eq('id', horseIds[1]),
+    'seed horse registered name and notes'
   )
 
   // #998 manual-testability seed data: one horse owned by a rider (Owner line),

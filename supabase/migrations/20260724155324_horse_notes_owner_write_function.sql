@@ -1,6 +1,7 @@
 -- #1006: lets a horse's owning member edit feed/medication notes for their own horse,
--- alongside managers (who keep writing these columns exclusively through
--- update_horse_details/HorseManagerForm, unchanged). Runs SECURITY DEFINER because
+-- alongside managers (who at the time of this migration kept writing these columns through
+-- update_horse_details/HorseManagerForm -- superseded by #1390, which moved the fields into
+-- their own section and admitted the manager to this function too). Runs SECURITY DEFINER because
 -- horses' own RLS grants column-blind UPDATE to managers only -- there is no
 -- owner-write policy on the table itself. No dynamic lock like update_horse_photo's
 -- (#1003): there's no "who wrote it last" concept for free-form notes.
