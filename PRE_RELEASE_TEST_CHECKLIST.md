@@ -32,6 +32,8 @@ To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` 
 ## Prerequisites
 
 - [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 takes the barn slug as a required argument, e.g. `bash scripts/change-user.sh dev-barn`)
+- [ ] `CRON_SECRET` in `.env.local` (any value — `openssl rand -hex 32`; prod's lives in Vercel). Phase 1's `/api/cron/reset-demo` checks authenticate against it, and `scripts/run-checklist-suite.sh` refuses to start without it rather than silently skipping them
+- [ ] The shared demo user exists in the target Supabase project — `bash scripts/setup-demo-user.sh`, with the `DEMO_USER_PASSWORD` it prints pasted into `.env.local`. Re-run it after **any** `scripts/reset-db.sh`: that script deletes every auth user, the demo one included, and Phase 1's `/demo` checks then fail with a `?error=demo_unavailable` redirect rather than anything that names the cause
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] Email provider enabled in the Supabase dashboard (required by the e2e auth logins `reset-db.sh` creates in Phase 1, which `seed-test-barn.sh` in Phase 7 then verifies exist)
 
