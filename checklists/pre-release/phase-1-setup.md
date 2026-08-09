@@ -15,23 +15,23 @@
 
 The `/demo` lines below are verdicted individually rather than as a block: they do not share an answer. Only the one needing the server restarted under different environment variables is out of a spec's reach — a fresh-context `/demo` visit and the `/api/cron/reset-demo` calls are ordinary Playwright work.
 
-- [ ] (e2e-candidate) In a fresh/incognito browser (no existing session), visit `/demo` — a spinner renders (requires `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` in `.env.local`, from `scripts/setup-demo-user.sh` — `/demo` 404s if unset)
-- [ ] (e2e-candidate) That page renders an "Explore Stable State" heading
-- [ ] (e2e-candidate) After the spinner, you land in a new `/barn/demo-.../` barn
-- [ ] (e2e-candidate) You hold **manager** in that demo barn
-- [ ] (e2e-candidate) Visiting `/demo` again in the same browser resumes the same demo barn (same URL) instead of creating a new one
+- [ ] (e2e: visiting_demo_in_a_fresh_browser_renders_a_spinner) In a fresh/incognito browser (no existing session), visit `/demo` — a spinner renders (requires `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` in `.env.local`, from `scripts/setup-demo-user.sh` — `/demo` 404s if unset)
+- [ ] (e2e: the_demo_page_renders_an_explore_stable_state_heading) That page renders an "Explore Stable State" heading
+- [ ] (e2e: the_demo_flow_lands_in_a_new_demo_barn) After the spinner, you land in a new `/barn/demo-.../` barn
+- [ ] (e2e: the_demo_visitor_holds_manager_in_the_demo_barn) You hold **manager** in that demo barn
+- [ ] (e2e: visiting_demo_again_in_the_same_browser_resumes_the_same_barn) Visiting `/demo` again in the same browser resumes the same demo barn (same URL) instead of creating a new one
 - [ ] (manual — needs the app restarted under different server env, which a spec cannot do to the server under test) With `DEMO_USER_EMAIL` set but `DEMO_USER_PASSWORD` unset, visit `/demo` — you land on `/login`
 - [ ] (manual — same env restart as the line above) That `/login` page carries a "demo is unavailable" message rather than arriving on a blank redirect
-- [ ] (e2e-candidate) `curl -X POST /api/cron/reset-demo` with **no** `Authorization` header — response is `401`
-- [ ] (e2e-candidate) The same request with a **wrong** `Authorization` header — response is `401`
-- [ ] (e2e-candidate) With `CRON_SECRET` set in `.env.local` and a demo barn from the step above manually backdated (`update barns set created_at = now() - interval '7 hours' where slug = '...'`), `curl -X POST /api/cron/reset-demo -H "Authorization: Bearer <CRON_SECRET>"` — response is `{"reaped":1}` (or more). A spec backdates `barns.created_at` with its own service client. **Prerequisite for this line and the one below:** `CRON_SECRET` reaches the spec's `process.env`. It is in no `.env.local` today (it lives as a Vercel env var — `vercel.json` runs this route hourly), and `run-checklist-suite.sh` parses a fixed four-var list out of `.env.local` rather than sourcing it, so the slice adds the var *and* a pass-through for it. The two `401` lines above need neither: an unset `CRON_SECRET` still denies everyone (`src/app/api/cron/reset-demo/route.ts`)
-- [ ] (e2e-candidate) After that curl, the reaped barn no longer resolves at its old `/barn/demo-.../` URL
-- [ ] (e2e-candidate) On the demo barn's dashboard, a banner reads "This is a demo barn. Data resets at approximately [time]."
-- [ ] (e2e-candidate) That banner renders amber
-- [ ] (e2e-candidate) In the nav, the demo barn's name renders as "{name} (DEMO)"
-- [ ] (e2e-candidate) That nav name renders amber
-- [ ] (e2e-candidate) The user menu does not show a **Profile** link while signed in as the demo user
-- [ ] (e2e-candidate) Visiting `/profile` directly while signed in as the demo user redirects to `/`
+- [ ] (e2e: the_reset_demo_cron_route_rejects_a_request_with_no_authorization_header) `curl -X POST /api/cron/reset-demo` with **no** `Authorization` header — response is `401`
+- [ ] (e2e: the_reset_demo_cron_route_rejects_a_wrong_authorization_header) The same request with a **wrong** `Authorization` header — response is `401`
+- [ ] (e2e: the_reset_demo_cron_route_reaps_a_backdated_demo_barn) With `CRON_SECRET` set in `.env.local` and a demo barn from the step above manually backdated (`update barns set created_at = now() - interval '7 hours' where slug = '...'`), `curl -X POST /api/cron/reset-demo -H "Authorization: Bearer <CRON_SECRET>"` — response is `{"reaped":1}` (or more). A spec backdates `barns.created_at` with its own service client.
+- [ ] (e2e: a_reaped_demo_barn_no_longer_resolves_at_its_url) After that curl, the reaped barn no longer resolves at its old `/barn/demo-.../` URL
+- [ ] (e2e: the_demo_barn_dashboard_shows_a_data_reset_banner) On the demo barn's dashboard, a banner reads "This is a demo barn. Data resets at approximately [time]."
+- [ ] (e2e: the_demo_barn_dashboard_banner_renders_amber) That banner renders amber
+- [ ] (e2e: the_nav_renders_the_demo_barn_name_with_a_demo_suffix) In the nav, the demo barn's name renders as "{name} (DEMO)"
+- [ ] (e2e: the_nav_demo_barn_name_renders_amber) That nav name renders amber
+- [ ] (e2e: the_user_menu_hides_the_profile_link_for_the_demo_user) The user menu does not show a **Profile** link while signed in as the demo user
+- [ ] (e2e: visiting_profile_as_the_demo_user_redirects_away) Visiting `/profile` directly while signed in as the demo user redirects to `/`
 - [ ] (manual — a spec cannot drive it: `reset-db.sh` wipes every barn in the dev project, so a spec running it destroys its own fixtures mid-run) Reset and reseed the dev database:
 
   ```bash

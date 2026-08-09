@@ -152,8 +152,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="$(parse_var NEXT_PUBLIC_SUPABASE_ANON_KEY || true
 # process needs the service-role key the seed script used to hold on its own.
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
+# Required rather than optional (#1424). The /demo reaper spec authenticates its POST to
+# /api/cron/reset-demo with this, and the alternative — pass it through when present and
+# test.skip() when absent — would leave two checklist lines reading `(e2e: …)` while their
+# assertions silently never ran on a given run, which is the exact laundering
+# scripts/check-e2e-tags.sh exists to prevent. Costs no CI: nothing in .github/workflows/ runs
+# Playwright, so this is local-developer and fable-worktree setup only, one `openssl rand -hex 32`.
+CRON_SECRET="$(parse_var CRON_SECRET || true)"
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY CRON_SECRET; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set in .env.local" >&2
     exit 1
@@ -211,6 +218,7 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
 SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
 DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
+CRON_SECRET="$CRON_SECRET" \
 E2E_BASE_URL="$E2E_BASE_URL" \
 E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
