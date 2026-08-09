@@ -1,9 +1,10 @@
 # E2E framework facts
 
-Fourteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+Fifteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
-12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction; fact 10 was later
+12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction, 15 from #1426's
+mutation pass; fact 10 was later
 sharpened by #1385, which found its original unconditional form too broad, and again by 14, which
 found its multipart observation load-bearing in the other direction. Every one is measured, not
 inferred. The spec named after each fact carries the worked example, with fact 12 the exception by
@@ -194,3 +195,25 @@ retrying assertion can converge on it. Where the action redirects, its 303 is th
 a property of the action's own code, unlike the encoding (see fact 10). The suite's three
 URL-only call sites are safe only because their pages fire no competing actions. Full statement:
 the stop-series test's comment in `checklist-phase5-lessons-cancel.spec.ts`. *(#1409)*
+
+## Fact 15
+
+**Playwright discards the worker process after any test failure and starts a new one.** The
+replacement re-imports the spec file, so every module-scope variable resets and every `beforeAll`
+re-runs — fixtures included, which for this suite means the barns are re-seeded. In a file whose
+tests are *ordered* — one test performing a mutation the rest observe — the first failure
+therefore silences everything after it: those tests run against freshly seeded state in which the
+mutation never happened, and report timeouts and "did not complete" throws that say nothing about
+their own claims. **The first `✘` in an ordered file is the finding; the rest is noise until it is
+fixed.** `retries: 0` (playwright.config.ts) is the same property seen from the other side, and
+its comment there has always said so about a *retry*; this is the same restart happening on the
+*first* attempt of every later test.
+
+Measured on `checklist-phase7-multi-barn.spec.ts`, whose whole-file mutant batch produced exactly
+that pattern: eight 30s timeouts, a `no claim landing URL — the claim test did not complete` throw
+from a test whose module variable the restart had reset, and one mutant that *passed* because the
+element it asserted the absence of legitimately no longer existed in the re-seeded session. The
+corollary, and the reason this is worth a numbered fact rather than a comment: **mutation-testing
+an ordered file has to run one mutant per run, or re-establish the ordered state in `beforeAll`
+for the duration of the pass.** A whole-file batch measures the restart, not the assertions —
+and its survivors are false reassurance, not evidence. *(#1426)*
