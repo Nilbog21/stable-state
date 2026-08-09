@@ -5,7 +5,7 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Fourteen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
+Fifteen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
 not in the places you would look for them, and each of which cost a batch at least one round. This
 is the index: headline only, and the full worked statement is the same-numbered section of
 [`docs/e2e-framework-facts.md`](../docs/e2e-framework-facts.md), which also carries their
@@ -62,6 +62,10 @@ param.** [full](../docs/e2e-framework-facts.md#fact-11) *(#1244)*
 **14. A `waitForResponse` predicate matched on URL alone names every Server Action a page's own
 client components fire, not just the submission under test.**
 [full](../docs/e2e-framework-facts.md#fact-14) *(#1409)*
+
+**15. Playwright discards the worker process after any test failure**, re-running every `beforeAll`
+— so in an ordered file the first `✘` silences every test after it.
+[full](../docs/e2e-framework-facts.md#fact-15) *(#1426)*
 
 ## Spec maintenance
 

@@ -78,7 +78,7 @@
 //    beneath them would FK-fail noisily on a developer who asked for exactly that state. The
 //    throwaway login therefore survives, and nothing sweeps it: run-checklist-suite.sh's exit
 //    trap reaches barns by run prefix, not auth users. Delete it by hand alongside the held-open
-//    barn — its address is `<run prefix>-<project>-invite@e2e.test`.
+//    barn — its address is `<run prefix>-<key>-<project>-invite@e2e.test`.
 //
 // 5. "YOU HOLD MANAGER" IS ASSERTED THROUGH `Manage Barn`, THE ONE NAV LABEL NO OTHER ROLE GETS.
 //    `buildNavLinks` returns it only on its manager branch, so its presence is a role

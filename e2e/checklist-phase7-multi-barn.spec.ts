@@ -3,6 +3,8 @@
 // covers: src/app/page.tsx
 // covers: src/app/login/**
 // covers: src/app/barn/[slug]/(protected)/layout.tsx
+// covers: src/app/barn/[slug]/(protected)/page.tsx
+// covers: src/app/barn/[slug]/(protected)/NavDrawer.tsx
 // covers: src/app/barn/[slug]/(protected)/BarnSwitcher.tsx
 // covers: src/app/barn/[slug]/(protected)/UserMenu.tsx
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
@@ -104,16 +106,12 @@
 //    `activeBarnMemberships.length > 1`. And the sign-out block is last, because it is terminal
 //    for the session every test above it needs.
 //
-//    THE PRICE, MEASURED RATHER THAN FEARED: **Playwright discards the worker process after any
-//    failure and starts a new one**, which re-imports this module and re-runs both barns' seeds
-//    and the `beforeAll` above — so the claim is undone and every test after the first failure
-//    runs against a session holding barn A alone. They then report 30s timeouts (no caret to
-//    open, `/barn/<barn B>` bouncing to its login) that say nothing about their own claim. The
-//    first `✘` in a run of this file is the finding; treat the rest as noise until it is fixed.
-//    Measured during this file's mutation pass, where a whole-file mutant batch produced exactly
-//    that pattern and one mutant that *passed* for the same reason. It also means a mutation pass
-//    on this file has to either re-establish the claim in `beforeAll` or run one mutant at a
-//    time — a whole-file batch measures the cascade, not the assertions.
+//    THE PRICE IS FACT 15, WHICH THIS FILE IS THE MEASURED EXAMPLE OF. A failure discards the
+//    worker, and the new one re-runs both barns' seeds and the `beforeAll` above — so the claim
+//    is undone and every test after the first failure runs against a session holding barn A
+//    alone, reporting 30s timeouts that say nothing about their own claim. The first `✘` in a
+//    run of this file is the finding; treat the rest as noise until it is fixed. The corollary
+//    for anyone mutation-testing this file is in that fact's full statement.
 //
 // 5. "SIGNING OUT WORKED" IS GUARDED, BECAUSE `/login` CANNOT SHOW IT. That page renders
 //    identically for a signed-in and a signed-out visitor (its one conditional branch needs
@@ -121,7 +119,17 @@
 //    that was never destroyed. `hasAuthCookie()` is read on both sides of the click — true
 //    before, polled to false after — as the precondition on those checks' validity rather than
 //    as one of their assertions; the same shape, and the same reasoning, as the
-//    anonymous-context cookie guard in checklist-phase1-invite-profile-complete.spec.ts.
+//    anonymous-context cookie guard in checklist-phase1-invite-profile-complete.spec.ts. All
+//    three sign-out tests carry it, because Playwright does not skip a test whose sibling failed.
+//
+//    WHAT THOSE THREE STILL CANNOT DISCRIMINATE, STATED SO NOBODY OVER-READS A GREEN RUN. The dot
+//    is green off `connected = !!process.env.NEXT_PUBLIC_SUPABASE_URL`, which cannot be false in
+//    a run that got this far — `serviceClient()` and `src/proxy.ts` both require that variable.
+//    And the checkbox is checked off `rememberPref !== '0'` with nothing in this file ever
+//    writing `remember_me_pref`: the throwaway login is minted by a direct token grant, not
+//    through `signInWithGoogle`'s `setRememberCookies`. Both lines are inherited from the
+//    checklist's wording rather than chosen here, and both are worth exactly what a human
+//    walking the phase would get from them — no more.
 //
 // 6. THE THROWAWAY LOGIN IS TORN DOWN UNCONDITIONALLY AND AFTER BOTH BARNS. `throwawayUserId` is
 //    assigned the instant the login exists and before anything below it that can throw, so a
@@ -234,7 +242,13 @@ test.beforeAll(async ({ browser }, testInfo) => {
   // RPC because `acceptInvite` is also what sets the `barn_session_<barn A>` cookie, without
   // which src/proxy.ts bounces the two "clicking the other barn navigates to its dashboard"
   // lines to barn A's login.
-  await claimInvite(member(), barnA.slug, tokenFor(barnAInviteToken, 'barn A'))
+  const landing = await claimInvite(member(), barnA.slug, tokenFor(barnAInviteToken, 'barn A'))
+  // Checked here because `claimInvite`'s wait now resolves on the failure redirect too (see its
+  // comment). Barn A's claim is a precondition rather than a checklist line, so a failure has to
+  // be named here or every test below it would fail obscurely against a one-barn session.
+  if (pathOf(landing) !== `/barn/${barnA.slug}`) {
+    throw new Error(`barn A's claim did not land in the barn — got ${landing}`)
+  }
 })
 
 test.afterAll(async () => {
@@ -280,12 +294,25 @@ function acceptInviteButton(page: Page) {
  * No hydration barrier, and that is fact 10 rather than an omission: `acceptInvite` is passed to
  * `action=` as a `.bind` of the Server Function itself, so React serves enhanced markup that an
  * early click submits on its own. The `waitForURL` is a real sync point rather than fact 3's
- * no-op — the click starts on `/register`, which the pattern cannot match.
+ * no-op — the click starts on `/register`, which neither branch of the predicate matches.
+ *
+ * THE PREDICATE ADMITS BOTH OUTCOMES, AND THAT IS WHAT MAKES THE TWO CHECKS BELOW FALSIFIABLE.
+ * The obvious spelling — waiting on `/barn/<slug>/?$` — is `$`-anchored against the whole URL, so
+ * `acceptInvite`'s failure redirect (`/barn/<slug>/register?token=…&error=1`) could never satisfy
+ * it. Every URL this returned would then carry an empty query *by construction*, and
+ * `the_second_barn_claim_produced_no_error_redirect` would be asserting a property of this
+ * helper rather than one of the app — a checklist line reading as covered while asserting
+ * nothing, which is what e2e/CLAUDE.md's third spec-maintenance rule exists to prevent. The
+ * error redirect keeps `/register`'s pathname, so "left the page" alone will not do it either:
+ * the query is the discriminator, and both are read below.
  */
 async function claimInvite(page: Page, slug: string, token: string): Promise<string> {
-  await page.goto(`/barn/${slug}/register?token=${token}`)
+  const registerPath = `/barn/${slug}/register`
+  await page.goto(`${registerPath}?token=${token}`)
   await acceptInviteButton(page).click()
-  await page.waitForURL(new RegExp(`/barn/${slug}/?$`), { waitUntil: 'commit' })
+  await page.waitForURL((url) => url.pathname !== registerPath || url.searchParams.has('error'), {
+    waitUntil: 'commit',
+  })
   return page.url()
 }
 
@@ -366,6 +393,28 @@ async function hasAuthCookie(): Promise<boolean> {
   return (await context().cookies()).some((cookie) => AUTH_COOKIE.test(cookie.name))
 }
 
+/** Throws rather than asserts: there is no session to destroy, so the sign-out proves nothing. */
+async function requireSignedIn(): Promise<void> {
+  if (!(await hasAuthCookie())) {
+    throw new Error('no session cookie before the sign-out — the checks below would measure nothing')
+  }
+}
+
+/**
+ * Throws if the session survived. The precondition every check after the sign-out rests on, and
+ * the reason it is a guard rather than one of their assertions is note 5: `/login` renders
+ * identically for a signed-in and a signed-out visitor, so all three would pass against a live
+ * session. `toPass` because the cookie clear arrives on the redirect response, which
+ * `waitUntil: 'commit'` does not promise has reached the jar yet.
+ */
+async function requireSignedOut(): Promise<void> {
+  await expect(async () => {
+    if (await hasAuthCookie()) {
+      throw new Error('the session cookie survived the sign-out — /login looks the same either way')
+    }
+  }).toPass()
+}
+
 // ---------------------------------------------------------------------------
 // The Join confirmation — "shows a \"Join test-barn-checklist\" confirmation" and the two
 // checks under it — read before the claim consumes the token
@@ -427,7 +476,8 @@ test('the_claimed_second_barn_membership_is_manager @manager', async () => {
  * `acceptInvite`'s failure path is `redirect('/barn/<slug>/register?token=…&error=1')`, so "no
  * `?error=1` redirect" is a claim about the landing URL's *query*, which the line above says
  * nothing about — it reads the path. Both halves come off the one URL the claim produced, because
- * the claim cannot be repeated.
+ * the claim cannot be repeated; `claimInvite`'s wait is written to let that URL be either
+ * outcome, so the path check and this one each reject a real failure the other would pass.
  */
 test('the_second_barn_claim_produced_no_error_redirect @manager', async () => {
   if (!claimLandingUrl) throw new Error('no claim landing URL — the claim test did not complete')
@@ -662,29 +712,27 @@ test('signing_out_lands_on_the_login_page_with_a_green_connection_dot @manager',
     () => avatar.click(),
     async () => (await signOut.count()) > 0
   )
-  // Precondition, not the line's assertion: without a session to destroy there is nothing here to
-  // measure, and `/login` looks the same either way (note 5).
-  expect(await hasAuthCookie()).toBe(true)
+  await requireSignedIn()
 
   await signOut.click()
   await page.waitForURL(/\/login$/, { waitUntil: 'commit' })
-
-  // The other half of the same precondition. `toPass` because the clear arrives on the redirect
-  // response, which `waitUntil: 'commit'` does not promise has been applied to the jar yet.
-  await expect(async () => {
-    expect(await hasAuthCookie()).toBe(false)
-  }).toPass()
+  await requireSignedOut()
 
   // The class, deliberately: `login/page.tsx` renders `connected ? 'bg-green-500' :
   // 'bg-yellow-400'`, so that class *is* the branch the line claims rather than incidental
   // styling — the same reasoning checklist-phase1-nav-responsive.spec.ts's note 4 records for
-  // its `hidden` locator.
+  // its `hidden` locator. What it cannot discriminate is stated in note 5's last paragraph.
   const statusPill = page.locator('main > div').filter({ hasText: 'Supabase connected' })
   await expect(statusPill.locator('> span').first()).toHaveClass(/bg-green-500/)
 })
 
+// Both carry the guard themselves rather than leaning on the test above. Playwright does not skip
+// a test because a sibling failed, so a sign-out that silently stopped destroying the session
+// would leave these two green — and two checklist lines marked verified — against exactly the
+// live session note 5 says they cannot tell apart.
 test('the_login_page_after_signing_out_shows_a_keep_me_logged_in_checkbox @manager', async () => {
   const page = member()
+  await requireSignedOut()
   await page.goto('/login')
 
   await expect(page.getByRole('checkbox', { name: REMEMBER_LABEL, exact: true })).toBeVisible()
@@ -692,6 +740,7 @@ test('the_login_page_after_signing_out_shows_a_keep_me_logged_in_checkbox @manag
 
 test('the_keep_me_logged_in_checkbox_after_signing_out_is_checked @manager', async () => {
   const page = member()
+  await requireSignedOut()
   await page.goto('/login')
 
   await expect(page.getByRole('checkbox', { name: REMEMBER_LABEL, exact: true })).toBeChecked()
