@@ -4,6 +4,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addManagedMember, addUnpaidLesson, daysFromNow, E2E_STUB_RIDER, E2E_USERS } from './support/fixtures'
 import { settledInnerTexts } from './support/read'
+import { lessonCards, sortedVisibleLessonIds } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
@@ -145,29 +146,6 @@ function lessonPath(lesson: Lesson): string {
   return `/barn/${barn.slug}/lessons/${lesson.id}`
 }
 
-/** Every lesson card currently rendered — the anchor `Card href` puts around each list item. */
-function lessonCards(page: Page): Locator {
-  return page.locator('main ul a[href*="/lessons/"]')
-}
-
-/**
- * The set of lessons the list is showing. Sorted: what "Lessons list shows only Dana's enrolled
- * lessons" claims is *which* lessons appear,
- * not in what order, so a membership assertion is correct either side of #1286's ordering work.
- *
- * evaluateAll is one-shot and does not auto-retry, so an unsettled read yields [] and an assertion
- * that accepts an empty array passes on nothing (#1243). support/read.ts leaves evaluateAll its
- * inline guard deliberately; the guard doubles as the assertion, since waitFor throws rather than
- * handing back an empty list.
- */
-async function visibleLessonIds(page: Page): Promise<string[]> {
-  await lessonCards(page).first().waitFor()
-  const ids = await lessonCards(page).evaluateAll((els) =>
-    els.map((el) => el.getAttribute('href')!.split('/').pop()!)
-  )
-  return ids.sort()
-}
-
 function sortedIds(lessons: Lesson[]): string[] {
   return lessons.map((l) => l.id).sort()
 }
@@ -206,7 +184,7 @@ function detailHeading(page: Page): Locator {
 // the unenrolled-404 line reads from the other side.
 test('rider_lessons_list_shows_only_enrolled_lessons @rider', async ({ page }) => {
   await page.goto(lessonsPath())
-  await expect.poll(() => visibleLessonIds(page)).toEqual(sortedIds([mine, group]))
+  await expect.poll(() => sortedVisibleLessonIds(page)).toEqual(sortedIds([mine, group]))
 })
 
 // Four pills, in the rendered order, which pins the count as well as each label — so "no My

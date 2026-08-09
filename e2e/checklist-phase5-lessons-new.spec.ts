@@ -10,6 +10,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
+import { visibleLessonIds } from './support/lesson-pages'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
@@ -318,22 +319,6 @@ async function createLesson(page: Page, opts: { day: string; time: string }): Pr
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 
   return { instructorPickers }
-}
-
-/** Every lesson card the list is currently showing. */
-function lessonCards(page: Page) {
-  return page.locator('main ul a[href*="/lessons/"]')
-}
-
-/**
- * The ids of the lessons on screen. `evaluateAll` is one-shot and does not auto-retry, so an
- * unsettled list yields `[]` and a length assertion would pass on nothing (#1243); the inline
- * `waitFor` is the guard `support/read.ts` deliberately leaves at `evaluateAll` call sites, and
- * it doubles as an assertion since it throws rather than handing back an empty list.
- */
-async function visibleLessonIds(page: Page): Promise<string[]> {
-  await lessonCards(page).first().waitFor()
-  return lessonCards(page).evaluateAll((els) => els.map((el) => el.getAttribute('href')!.split('/').pop()!))
 }
 
 type NearbyNotification = { user_id: string; type: string; link: string; title: string }

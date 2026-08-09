@@ -11,6 +11,7 @@ import {
   cancelLessonRider,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { detailField } from './support/lesson-pages'
 
 // ---------------------------------------------------------------------------
 // Seed inputs
@@ -244,11 +245,6 @@ function detailPath(key: LessonKey): string {
 
 function cancelPath(key: LessonKey): string {
   return `${detailPath(key)}/cancel`
-}
-
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
 }
 
 function detailHeader(page: Page): Locator {

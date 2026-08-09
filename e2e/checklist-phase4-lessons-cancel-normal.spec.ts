@@ -6,6 +6,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { detailField } from './support/lesson-pages'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 
 // ---------------------------------------------------------------------------
@@ -155,11 +156,6 @@ function cancelPath(key: keyof typeof FEES): string {
  */
 function headerActions(page: Page): Locator {
   return page.locator('main div:has(> h1) + div')
-}
-
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
 }
 
 /** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */

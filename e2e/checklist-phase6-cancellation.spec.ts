@@ -7,6 +7,8 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addManagedMember, addUnpaidLesson, cancelLesson, daysFromNow, E2E_STUB_RIDER, E2E_USERS } from './support/fixtures'
 import { settledInnerTexts, settledTextContents } from './support/read'
+import { detailField } from './support/lesson-pages'
+import { goToDaysAhead } from './support/dashboard'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
@@ -205,11 +207,6 @@ function headerCancelLink(page: Page): Locator {
   return headerActions(page).getByRole('link', { name: 'Cancel', exact: true })
 }
 
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
 /**
  * The Rider(s) row of the detail page's `<dl>`, scoped by its own label — the Horse(s) row holds a
  * structurally identical `<ul>`, and an unscoped locator would read horse names into a rider-name
@@ -241,23 +238,6 @@ function cancelledBadges(scope: Locator): Locator {
  */
 function cancelControls(page: Page): Locator {
   return page.getByRole('link', { name: 'Cancel', exact: true }).or(page.getByRole('button', { name: 'Cancel', exact: true }))
-}
-
-/**
- * Walks the dashboard forward `days` days from today. Copied from
- * checklist-phase4-dashboard.spec.ts — duplicated rather than extracted, per this batch's
- * convention — including its reason for re-deriving the link each time: it is a client-side
- * transition on a server-rendered Link, so the href (and the page underneath it) do not update
- * synchronously with the click, and firing clicks back-to-back races the same stale link.
- */
-async function goToDaysAhead(page: Page, days: number) {
-  await page.goto(`/barn/${barn.slug}`)
-  for (let i = 0; i < days; i++) {
-    const next = page.getByRole('link', { name: 'Next day' })
-    const targetDate = new URL((await next.getAttribute('href'))!, page.url()).searchParams.get('date')
-    await next.click()
-    await page.waitForURL((url) => url.searchParams.get('date') === targetDate, { waitUntil: 'commit' })
-  }
 }
 
 /**
@@ -359,7 +339,7 @@ test('rider_sees_no_cancel_button_on_the_lessons_list_or_the_dashboard @rider', 
   await lessonCard(page, headerCancel).waitFor()
   const list = { cards: await lessonCard(page, headerCancel).count(), cancels: await cancelControls(page).count() }
 
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   await lessonCard(page, headerCancel).waitFor()
   const dashboard = { cards: await lessonCard(page, headerCancel).count(), cancels: await cancelControls(page).count() }
 
@@ -409,7 +389,7 @@ test.describe.serial('rider cancels her own spot on a group lesson', () => {
   // reading as a pass.
   test('rider_cancelled_spot_shows_the_cancelled_badge_on_the_dashboard @rider', async ({ page }) => {
     test.slow()
-    await goToDaysAhead(page, 2)
+    await goToDaysAhead(page, barn.slug, 2)
     await lessonCard(page, liveCancel).waitFor()
 
     expect({

@@ -6,6 +6,7 @@
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { openSection } from './support/accordion'
+import { goToDaysAhead } from './support/dashboard'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 import {
@@ -310,22 +311,8 @@ test('dashboard_today_indicator_visible_on_current_day @mobile', async ({ page }
   await expect(page.getByRole('heading', { name: /Today$/ })).toBeVisible()
 })
 
-// Each click re-derives the "Next day" locator and waits for the URL's `date` param to
-// actually advance before clicking again — it's a client-side transition on a server-rendered
-// Link, so its href (and the page underneath it) don't update synchronously with the click.
-// Firing clicks back-to-back races the same stale link and nets zero navigation.
-async function goToDaysAhead(page: Page, days: number) {
-  await page.goto(`/barn/${barn.slug}`)
-  for (let i = 0; i < days; i++) {
-    const next = page.getByRole('link', { name: 'Next day' })
-    const targetDate = new URL((await next.getAttribute('href'))!, page.url()).searchParams.get('date')
-    await next.click()
-    await page.waitForURL((url) => url.searchParams.get('date') === targetDate, { waitUntil: 'commit' })
-  }
-}
-
 test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const cardLinks = page.locator('a[href*="/lessons/"], a[href*="/expenses/"]')
   // A wait, not an assertion: evaluateAll is a one-shot read with no auto-wait, so on its own
   // it can sample whichever document is mounted when it runs. The other goToDaysAhead callers
@@ -339,18 +326,18 @@ test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager',
 // Asserted on the Feed Supplier expense's own day (rather than "today") so this proves
 // the no-scheduled-time exclusion itself, not just that it's absent from an unrelated day.
 test('dashboard_date_only_planned_expense_not_shown @manager', async ({ page }) => {
-  await goToDaysAhead(page, 4)
+  await goToDaysAhead(page, barn.slug, 4)
   await expect(page.getByText('Feed Supplier')).toHaveCount(0)
 })
 
 test('dashboard_expense_card_shows_scheduled_time @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
   await expect(expenseLink.locator('p').first()).toContainText('11:00 PM')
 })
 
 test('dashboard_expense_card_shows_recipient @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
   await expect(expenseLink).toContainText('Valley Farrier')
 })
@@ -359,13 +346,13 @@ test('dashboard_expense_card_shows_recipient @manager', async ({ page }) => {
 // ("Valley Farrier") even if the expense-type field were removed entirely — this
 // targets the type paragraph specifically so it verifies that field independently.
 test('dashboard_expense_card_shows_type @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
   await expect(expenseLink.locator('p').nth(2)).toHaveText('Farrier')
 })
 
 test('dashboard_expense_card_shows_horse @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
   await expect(expenseLink).toContainText('Apollo')
 })
@@ -501,17 +488,17 @@ test('dashboard_todays_lessons_and_expense_are_ordered_by_time_not_grouped_by_ty
 // string: "navigates to the day the expense is scheduled for" is a claim about the
 // destination's contents, and computing the date here would just restate goToDaysAhead.
 test('dashboard_clicking_next_twice_reaches_the_day_of_the_two_day_out_expense @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   await expect(page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })).toBeVisible()
 })
 
 test('dashboard_today_link_appears_when_viewing_another_day @manager', async ({ page }) => {
-  await goToDaysAhead(page, 1)
+  await goToDaysAhead(page, barn.slug, 1)
   await expect(todayLink(page)).toBeVisible()
 })
 
 test('dashboard_today_link_returns_to_todays_calendar @manager', async ({ page }) => {
-  await goToDaysAhead(page, 1)
+  await goToDaysAhead(page, barn.slug, 1)
   await todayLink(page).click()
   // The Today link drops the ?date= param entirely rather than setting it to today's date.
   await page.waitForURL((url) => !url.searchParams.has('date'), { waitUntil: 'commit' })
@@ -529,7 +516,7 @@ test('dashboard_no_today_link_while_viewing_today @manager', async ({ page }) =>
 // a page-wide text check for "Entire Barn" would pass off any stray copy elsewhere, and
 // "in place of horse names" is a claim about that specific slot.
 test('dashboard_entire_barn_expense_card_shows_entire_barn_instead_of_horses @manager', async ({ page }) => {
-  await goToDaysAhead(page, 3)
+  await goToDaysAhead(page, barn.slug, 3)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Barn Supply Co' })
   await expect(expenseLink.locator('p').nth(3)).toHaveText('Entire Barn')
 })

@@ -13,7 +13,8 @@ import {
   E2E_STUB_RIDER,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
-import { hydrateByDriving, waitForHydrated } from './support/hydration'
+import { hydrateByDriving } from './support/hydration'
+import { detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -242,11 +243,6 @@ function headerCancelLink(page: Page): Locator {
   return headerActions(page).getByRole('link', { name: 'Cancel', exact: true })
 }
 
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
 /** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
 function headerCancelledBadge(page: Page): Locator {
   return detailHeader(page).getByText(CANCELLED_BADGE, { exact: true })
@@ -302,55 +298,27 @@ function cancellationNotesField(page: Page): Locator {
   return page.getByLabel(CANCELLATION_NOTES_LABEL, { exact: true })
 }
 
-/**
- * Blocks until the edit form has hydrated. Lifted from
- * `checklist-phase4-lessons-delete.spec.ts`, which lifted it from
- * `checklist-phase4-lessons-detail.spec.ts` — duplicated rather than extracted, per this batch's
- * convention. The signal: an ExhaustionBar cannot exist before `LessonForm`'s effects have run,
- * because it renders only once `exhaustionData` has arrived, and that state is set by an effect
- * whose input is itself produced by `LessonStartTime`'s mount effect via a server-action round
- * trip. A visible bar therefore strictly post-dates hydration rather than merely correlating
- * with it.
- *
- * Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
- * `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
- *
- * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
- * (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
- * series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
- * one of those would be the SSR-default
- * confusion running the other way.
- *
- * The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
- * and still skips it, which is the one case here that needs its reason
- * stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
- * landing before React is listening is not lost the way fact 10's button is: the browser submits
- * the form natively and the action runs regardless. Hydration only decides whether the
- * `window.confirm` is raised first, and that confirm is not what "Stopping the series from
- * there works the same as the manager flow" claims. Driving it
- * through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
- * "a control the test does not assert on, and one whose repeat is harmless", and this control is
- * both the mutation under test and one a retry would re-issue.
- */
-async function waitForEditFormHydrated(page: Page) {
-  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
-}
-
-/**
- * Keyboard activation rather than a pointer `.click()`. `LessonForm`'s submit sits at the bottom
- * of a long scrollable form — the shape #501 diagnosed, where Chromium's scroll-into-view
- * animation races Playwright's actionability check. `checklist-timezone.spec.ts`,
- * `checklist-phase4-lessons-detail.spec.ts` and `checklist-phase4-lessons-delete.spec.ts` all
- * drive this same component's submit this way, and in `edit` mode the form is longer still.
- *
- * `exact: true` and scoped to `main`: `getByRole`'s name match is a case-insensitive **substring**
- * by default, so a bare 'Save' would also match a future 'Save and close'.
- */
-async function saveLessonForm(page: Page) {
-  const save = page.locator('main').getByRole('button', { name: 'Save', exact: true })
-  await save.focus()
-  await save.press('Enter')
-}
+// On `waitForEditFormHydrated`, imported from `./support/lesson-pages`:
+//
+// Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
+// `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
+//
+// Three of the four other edit-page tests skip it because they only *read* server-rendered markup
+// (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
+// series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
+// one of those would be the SSR-default
+// confusion running the other way.
+//
+// The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
+// and still skips it, which is the one case here that needs its reason
+// stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
+// landing before React is listening is not lost the way fact 10's button is: the browser submits
+// the form natively and the action runs regardless. Hydration only decides whether the
+// `window.confirm` is raised first, and that confirm is not what "Stopping the series from
+// there works the same as the manager flow" claims. Driving it
+// through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
+// "a control the test does not assert on, and one whose repeat is harmless", and this control is
+// both the mutation under test and one a retry would re-issue.
 
 /**
  * Land back on a lesson's detail page after a redirect.
