@@ -27,9 +27,11 @@
 //
 // 1. THE ASSERTION ORDER IS NOT THE ORDER THE CHECKLIST READS, AND THAT IS DELIBERATE. The phase
 //    file lists the reaper checks before the banner/nav/profile chrome. Performed in that order,
-//    every chrome assertion would run against a barn the reap had just deleted. The order here is
-//    the only one that works: create the barn, assert the live-barn chrome, then the two
-//    unauthorized `401`s, then backdate `barns.created_at` and reap, then assert the barn is gone.
+//    every chrome assertion would run against a barn the reap had just deleted. What the file
+//    actually needs is one hard constraint — the reap runs LAST — so the order here is: the two
+//    unauthorized `401`s (barn-free, so they go first where nothing can reach them), then create
+//    the barn and assert the live-barn chrome, then backdate `barns.created_at` and reap, then
+//    assert the barn is gone.
 //
 // 2. THE REAP DOUBLES AS TEARDOWN, SO TEARDOWN CANNOT BE LEFT TO IT. On the happy path the reap
 //    removes the barn this file created. On every failure path that never reaches the reap, the
@@ -121,11 +123,28 @@ type DemoBarn = { id: string; slug: string; name: string; created_at: string; ti
 let supabase: SupabaseClient
 let context: BrowserContext | null = null
 let demoPage: Page
-/** Set the moment the created barn's row is read, and cleared only once it is gone. */
+/**
+ * The FIRST barn `/demo` created, recorded by the opening check and never overwritten by the
+ * re-visits after it — those are supposed to resume this one, and comparing a later visit against
+ * a baseline it had itself replaced is how the resume check would stop being a check.
+ */
 let demoBarn: DemoBarn | null = null
+/**
+ * Every `is_demo` barn that already existed when this file started. Two jobs, and the second is
+ * the one that makes it worth keeping: it is the baseline for the "lands in a *new* barn" claim,
+ * and it is what lets `afterAll` sweep a barn this file caused but never got to record.
+ */
+let preexistingDemoBarnIds = new Set<string>()
+
+async function demoBarnIds(): Promise<string[]> {
+  return mustSucceed(await supabase.from('barns').select('id').eq('is_demo', true), 'list demo barns').map(
+    (row: { id: string }) => row.id
+  )
+}
 
 test.beforeAll(async ({ browser }) => {
   supabase = serviceClient()
+  preexistingDemoBarnIds = new Set(await demoBarnIds())
   const fresh = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   // A precondition on every check's validity rather than one of this file's assertions: a
   // context that carried a session would send `/demo` down its resume branch on the very first
@@ -144,19 +163,41 @@ test.beforeAll(async ({ browser }) => {
 })
 
 // Unconditional, and see note 2 for why it neither defers to the reap nor honours E2E_HOLD_OPEN.
-// The existence re-read is what makes it a no-op on the happy path rather than a second delete.
+//
+// Swept by DELTA rather than by the recorded id, because the recorded id is not the whole set of
+// barns this file can cause. `/demo` creates one server-side on any visit whose resume branch does
+// not fire, and three checks below re-visit it — so a regression in exactly the behaviour the
+// resume check exists to catch would strand one barn per re-visit, none of them recorded. A
+// timeout inside the opening check reaches the same state through a different door: the Server
+// Action commits the barn while Playwright is aborting the test body that would have recorded it.
+//
+// The delete therefore runs FIRST and the context close is demoted to a `finally`. That ordering
+// is the point rather than a detail: `context.close()` is the failure this hook can afford — it
+// leaks a browser process that dies with the run — and the barn delete is the one it cannot, so
+// letting a wedged close consume the shared hook budget ahead of the delete would convert the
+// cheap leak into the permanent one. Same polarity as the shared-login restore rule in
+// e2e/CLAUDE.md.
+//
+// Blast radius, stated because it is wider than "our own barn": anything `is_demo` that appeared
+// while this file ran is swept. In a dev project mid-suite that is ours by construction, and the
+// reaper check below already deletes other expired demo barns by design — but a human clicking
+// /demo on the dev deployment during a run would lose their barn. Accepted: the alternative is a
+// permanent leak on every unrecorded path.
 test.afterAll(async () => {
-  if (context) {
-    await context.close()
-    context = null
+  try {
+    if (!supabase) return
+    const strays = (await demoBarnIds()).filter((id) => !preexistingDemoBarnIds.has(id))
+    for (const id of strays) {
+      await teardownBarnData(id, supabase)
+      await deleteBarn(id, supabase)
+    }
+    demoBarn = null
+  } finally {
+    if (context) {
+      await context.close()
+      context = null
+    }
   }
-  if (!demoBarn || !supabase) return
-  const { data } = await supabase.from('barns').select('id').eq('id', demoBarn.id).maybeSingle()
-  if (data) {
-    await teardownBarnData(demoBarn.id, supabase)
-    await deleteBarn(demoBarn.id, supabase)
-  }
-  demoBarn = null
 })
 
 /**
@@ -302,6 +343,28 @@ async function postResetDemo(
 }
 
 // ---------------------------------------------------------------------------
+// The two unauthorized cron calls. FIRST in the file, and outside every serial block — they
+// depend on no barn and create none, so nothing above can take their coverage with it and nothing
+// they do can disturb what follows. Running them here rather than between the chain and the reap
+// is what keeps that true in both directions: a failure in either one discards the worker (fact
+// 15), which resets the module state the reaper block reads, so from the middle they would have
+// knocked out two checks that have nothing to do with them.
+// ---------------------------------------------------------------------------
+
+test('the_reset_demo_cron_route_rejects_a_request_with_no_authorization_header @manager', async ({ playwright }) => {
+  expect(await postResetDemo(playwright, {})).toEqual({ status: 401, body: { error: 'Unauthorized' } })
+})
+
+test('the_reset_demo_cron_route_rejects_a_wrong_authorization_header @manager', async ({ playwright }) => {
+  // A syntactically valid Bearer token that is not the secret — the discriminating case. An
+  // unparseable header would be rejected by the same string comparison and prove less.
+  expect(await postResetDemo(playwright, { Authorization: 'Bearer not-the-cron-secret' })).toEqual({
+    status: 401,
+    body: { error: 'Unauthorized' },
+  })
+})
+
+// ---------------------------------------------------------------------------
 // The demo flow itself, and the chrome the barn it creates renders. Genuinely sequential — the
 // barn has to not exist, then exist, then be resumed, and each step is the next one's
 // precondition — so a failure skipping the rest is the honest outcome rather than a cascade of
@@ -333,13 +396,19 @@ test.describe.serial('the demo barn', () => {
     await startDemoVisit()
     const landed = await landedDemoBarnPath()
 
-    // Both halves in one assertion. The URL shape alone is satisfied by any barn whose slug
-    // happens to look like a demo slug; the row's own flag is what says the app actually made a
-    // demo barn rather than an ordinary one it routed to.
+    // Three halves, and the third carries the word the checklist line leans on: "a **new**
+    // barn". Shape alone is satisfied by any slug that looks like a demo slug, and the row's flag
+    // only says the app made a demo barn rather than routing to an ordinary one — neither can tell
+    // a barn this run created from one it merely found. Widen the resume lookup from the
+    // `demo_barn_slug` cookie to "any demo barn this user manages" and a run on a project holding
+    // a stranded barn lands in that barn on the very first visit, with every other check in this
+    // file still green and the reaper block below deleting something the spec never created.
+    const landedBarn = await readBarn(slugFromPath(landed))
     expect({
       landedOnADemoBarnPath: DEMO_BARN_PATH.test(landed),
-      rowIsFlaggedDemo: (await readBarn(slugFromPath(landed))).is_demo,
-    }).toEqual({ landedOnADemoBarnPath: true, rowIsFlaggedDemo: true })
+      rowIsFlaggedDemo: landedBarn.is_demo,
+      barnIsNewThisRun: !preexistingDemoBarnIds.has(landedBarn.id),
+    }).toEqual({ landedOnADemoBarnPath: true, rowIsFlaggedDemo: true, barnIsNewThisRun: true })
   })
 
   test('the_demo_visitor_holds_manager_in_the_demo_barn @manager', async () => {
@@ -379,9 +448,12 @@ test.describe.serial('the demo barn', () => {
     const barn = liveDemoBarn()
     await demoPage.goto(barnUrl())
 
-    // The expected time is derived from this barn's own `created_at` + 7h through the app's own
-    // barn-time formatter, so the assertion covers the offset arithmetic and the barn-zone
-    // wiring rather than merely matching a time-shaped placeholder.
+    // The expected time is derived from this barn's own `created_at` + 7h, so the assertion covers
+    // the offset arithmetic and the barn-zone wiring rather than merely matching a time-shaped
+    // placeholder: a page changed to 6h, or to UTC, fails here. What it deliberately does NOT
+    // cover is `formatBarnTime` itself — both sides call it, so a change to its output format
+    // moves them together. That is the right trade (the alternative hardcodes a rendering this
+    // spec has no business owning), but it is a real limit and not a claim to have tested more.
     const resetAt = new Date(new Date(barn.created_at).getTime() + DEMO_RESET_OFFSET_MS).toISOString()
     const expected = `This is a demo barn. Data resets at approximately ${formatBarnTime({ at: resetAt, tz: barn.timezone })}.`
 
@@ -456,25 +528,6 @@ test.describe.serial('the demo barn', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The two unauthorized cron calls. Outside the serial blocks on either side, and that is the
-// point: they depend on no barn, so a chrome failure above must not take their coverage with it.
-// They are declared here rather than at the top of the file because the reap below must run last.
-// ---------------------------------------------------------------------------
-
-test('the_reset_demo_cron_route_rejects_a_request_with_no_authorization_header @manager', async ({ playwright }) => {
-  expect(await postResetDemo(playwright, {})).toEqual({ status: 401, body: { error: 'Unauthorized' } })
-})
-
-test('the_reset_demo_cron_route_rejects_a_wrong_authorization_header @manager', async ({ playwright }) => {
-  // A syntactically valid Bearer token that is not the secret — the discriminating case. An
-  // unparseable header would be rejected by the same string comparison and prove less.
-  expect(await postResetDemo(playwright, { Authorization: 'Bearer not-the-cron-secret' })).toEqual({
-    status: 401,
-    body: { error: 'Unauthorized' },
-  })
-})
-
-// ---------------------------------------------------------------------------
 // The reap, and its aftermath. Last in the file, because it deletes the barn every check above
 // needs. Serial for the same reason as the first block: the "no longer resolves" item is only a
 // claim at all once the reap has run.
@@ -495,7 +548,14 @@ test.describe.serial('the demo reaper', () => {
       )
     }
 
-    mustSucceed(
+    // The row count is checked, not just the error. `mustSucceed` throws only on `result.error`,
+    // and an UPDATE matching no row is `data: []` with `error: null` — so a barn already gone
+    // (a concurrent reap, or `/demo`'s own cap-reap on a project sitting at DEMO_BARN_CAP) would
+    // make this a silent no-op. The route would then reap some *other* expired barn, `reaped >= 1`
+    // would hold, and the "no longer resolves" check below would pass because the barn was absent
+    // before the reap ran rather than because of it — two checklist lines green having exercised
+    // neither the backdate nor the route's effect on their own barn.
+    const backdated = mustSucceed(
       await supabase
         .from('barns')
         .update({ created_at: new Date(Date.now() - BACKDATE_MS).toISOString() })
@@ -503,8 +563,30 @@ test.describe.serial('the demo reaper', () => {
         .select('id'),
       'backdate the demo barn'
     )
+    if (backdated.length !== 1) {
+      throw new Error(
+        `backdating ${barn.slug} matched ${backdated.length} rows, not 1 — the barn this check is ` +
+          'about is already gone, so nothing below would be measuring the reaper against it'
+      )
+    }
 
     const { status, body } = await postResetDemo(playwright, { Authorization: `Bearer ${secret}` })
+
+    // The guard above proves THIS process has the secret; it says nothing about the process that
+    // answers the request. The route reads `CRON_SECRET` from the server under test, so a dev
+    // server started before the var was added to `.env.local` — the state every worktree is in the
+    // moment this lands — denies a request the suite believes is authorized, and a `--base-url`
+    // pointed at a deployment authenticates against that deployment's Vercel value instead. Both
+    // surface as a bare 401 that reads exactly like a broken reaper, so they get named here rather
+    // than left to the assertion's diff.
+    if (status === 401) {
+      throw new Error(
+        'the reaper rejected an Authorization header built from this process\'s CRON_SECRET. The ' +
+          'route reads the variable from the server under test, not from here: restart the dev ' +
+          'server if .env.local gained CRON_SECRET after it booted, or, when --base-url names a ' +
+          "deployment, reconcile that deployment's CRON_SECRET with .env.local's."
+      )
+    }
 
     // `>= 1`, never `=== 1`: the checklist item itself says "or more", and a concurrent demo barn
     // aging past the six-hour cutoff mid-run would make an equality check fail for a reason that
