@@ -218,6 +218,35 @@ function slugFromPath(pathname: string): string {
   return pathname.split('/')[2]
 }
 
+/**
+ * Runs `assert`, then records the barn `/demo` created **whether or not the assertion passed**,
+ * then re-raises whatever the assertion did.
+ *
+ * The ordering is the whole point, and it is measured rather than theorised. `/demo`'s Server
+ * Action goes on creating and seeding its barn server-side regardless of what the browser does,
+ * so an assertion failure that skipped the record stranded it: the app made a barn, the spec
+ * never learned its slug, and `afterAll` had nothing to tear down. Mutating the spinner assertion
+ * leaked exactly one demo barn per run until this existed — and a leak here is permanent, since
+ * the barn carries no run prefix for the exit trap and is far too young for the reaper's cutoff.
+ */
+async function assertThenRecordCreatedBarn(assert: () => Promise<void>): Promise<void> {
+  let failure: unknown = null
+  try {
+    await assert()
+  } catch (error) {
+    failure = error
+  }
+  try {
+    demoBarn = await readBarn(slugFromPath(await landedDemoBarnPath()))
+  } catch (error) {
+    // A recording problem must never mask the assertion's own failure, so it surfaces only when
+    // the assertion itself was fine. Nothing is lost in the other direction: a `/demo` that bailed
+    // creates no barn, so there is none to strand.
+    if (!failure) throw error
+  }
+  if (failure) throw failure
+}
+
 async function readBarn(slug: string): Promise<DemoBarn> {
   return mustSucceed(
     await supabase.from('barns').select('id,slug,name,created_at,timezone,is_demo').eq('slug', slug).single(),
@@ -283,12 +312,13 @@ test.describe.serial('the demo barn', () => {
   test('visiting_demo_in_a_fresh_browser_renders_a_spinner @manager', async () => {
     await startDemoVisit()
 
-    await expect(demoPage.locator('main .animate-spin')).toBeVisible()
-
-    // Finished here rather than left in flight: navigating away mid-visit would abort the Server
-    // Action that is seeding the barn, and a half-seeded barn is a far worse thing to hand the
-    // rest of this file than a slow test. Recording the row is also what arms `afterAll`.
-    demoBarn = await readBarn(slugFromPath(await landedDemoBarnPath()))
+    // The visit is driven to completion rather than left in flight, and the barn is recorded even
+    // if the assertion fails — see `assertThenRecordCreatedBarn`. Navigating away mid-visit would
+    // also abort the Server Action mid-seed, and a half-seeded barn is a far worse thing to hand
+    // the rest of this file than a slow test.
+    await assertThenRecordCreatedBarn(async () => {
+      await expect(demoPage.locator('main .animate-spin')).toBeVisible()
+    })
   })
 
   test('the_demo_page_renders_an_explore_stable_state_heading @manager', async () => {
