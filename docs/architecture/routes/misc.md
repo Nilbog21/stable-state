@@ -8,7 +8,7 @@
 `GET`-only; reads `?token=` from the query string, missing → `400`.
 The token is checked against `barn_memberships.calendar_feed_token` entirely inside the `get_calendar_feed` `SECURITY DEFINER` RPC (see [`rpc/calendar.md`](../rpc/calendar.md)) — there is no `requireMembership` call here, since that helper's `redirect()`/`notFound()` calls are Server Component/Action-only and don't work inside a Route Handler; an unknown/inactive token → `404`.
 A valid token returns `200` with `Content-Type: text/calendar; charset=utf-8` and a hand-rolled RFC 5545 `.ics` body (`buildIcsFeed`, `src/lib/ics.ts`) built fresh from the RPC's role-filtered rows every request — no stored file, no cache, `Cache-Control: no-store`.
-Linked from `/profile?barn=<slug>`'s Calendar Feed section (see that route's own entry above)
+Linked from `/profile?barn=<slug>`'s Calendar Feed section (see `/profile`'s entry in [`auth.md`](auth.md))
 
 ## `/demo`
 
