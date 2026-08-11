@@ -37,6 +37,7 @@ import type { Locator } from '@playwright/test'
 import { addHorse, addHorseDocument, assetPath } from './support/fixtures'
 import { settledTextContents } from './support/read'
 import { accordionSection, openSection } from './support/accordion'
+import { submitButton, uploadForm } from './support/document-upload'
 import { barnToday } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 
@@ -120,19 +121,6 @@ async function gotoHorseDocuments(page: Page, horseId: string) {
   await page.goto(horseUrl(horseId))
   await openSection(page, 'Documents')
 }
-
-/** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
-const uploadForm = (page: Page) => page.locator('main form')
-
-/**
- * The submit button, located structurally rather than by its accessible name: the label is
- * `{pending ? 'Uploading…' : 'Upload'}`, and a non-exact name match would treat "Upload" as a
- * prefix of "Uploading…" — the same substring-containment trap #1202 recorded for fee text, in a
- * second place. (#1202 is the agreements slice; #1323 corrected this same miscitation once
- * already, in a comment copied from checklist-phase4-horses-documents.spec.ts, which is also
- * where this locator's shape comes from — deliberately copied rather than reinvented.)
- */
-const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
 
 /** A document's row, addressed by the file-name link it contains. */
 const documentRow = (page: Page, fileName: string) =>

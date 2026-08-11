@@ -20,10 +20,10 @@
 // exactly one column, `photo_uploaded_by`. That is what makes the lock assertion a controlled
 // comparison rather than two unrelated readings: the only thing that can explain a difference
 // between them is the column the lock keys on.
-import { createHash } from 'crypto'
-import { readFileSync } from 'fs'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, setHorsePhoto, assetPath } from './support/fixtures'
+import { CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, displayedPhotoAsset, photoControls, photoImage, photoSection } from './support/horse-pages'
+import { uploadForm } from './support/document-upload'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -34,17 +34,9 @@ const APPLE = 'Apple'
 const BUTTER = 'Butter'
 const DAISY = 'Daisy'
 
-// Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
-// harper-photo.png and emery-photo.jpg to *member* photo flows, but two lines name both files
-// explicitly for Apple the horse — "As manager, set `scripts/data/harper-photo.png` on Apple" and
-// "Replace Apple's photo with `scripts/data/emery-photo.jpg`". The line text wins, on the precedent
-// #1201 set when its "tap **Set Photo** and upload `scripts/data/clover-photo.png`" line named
-// clover-photo.png for a member. These files are read-only sources — reuse across entities costs
-// nothing.
-const CLOVER_PHOTO = 'clover-photo.png'
-const BUTTER_PHOTO = 'butter-photo.jpg'
-const HARPER_PHOTO = 'harper-photo.png'
-const EMERY_PHOTO = 'emery-photo.jpg'
+// The one non-image asset here — the upload the unsupported-file-type line rejects. The four photo
+// filenames it used to sit beside, and the rationale for their reuse across entities, moved to
+// support/horse-pages.ts with the consts themselves.
 const TEST_PDF = 'test_1_kb.pdf'
 
 // All four images are 900x260 — deliberately non-square, which is the whole point of the
@@ -60,23 +52,6 @@ const PHOTO_NATURAL_SIZE = '900x260'
 // of "aspect ratio preserved" rather than of "an image is present".
 const PHOTO_RENDERED_HEIGHT = 128
 const PHOTO_RENDERED_WIDTH = 443
-
-const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
-
-/**
- * Every asset this spec can legitimately be displaying, keyed by the SHA-256 of its real bytes.
- *
- * This is what lets the "The displayed word changes from `clover` to `butter`" line be asserted
- * without reading pixels: the rendered <img src> is a signed URL over the stored object, so
- * fetching it and hashing the response identifies *which file* is on screen, exactly. That is
- * strictly stronger than the extension check #1201 narrowed the identical line shape to, and it
- * carries its own negative half — matching butter's digest excludes clover's by construction.
- */
-const ASSET_BY_DIGEST = new Map(
-  [CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO].map(
-    (name) => [digestOf(readFileSync(assetPath(name))), name] as const
-  )
-)
 
 let cloverId: string
 let appleId: string
@@ -134,42 +109,6 @@ const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atPhotoUpload = (horseId: string) =>
   new RegExp(`/documents/new\\?entity=horse&id=${horseId}&type=photo`)
 
-/**
- * The identity header, which is where the photo and its controls live since #1390 — the
- * standalone **Photo** section that used to own them, and the h2 this locator used to filter on,
- * are both gone. Nothing else on the page renders an `<img>` or a Set/Replace/Remove control, so
- * `<header>` is as tight a scope as the old section was.
- */
-function photoSection(page: Page) {
-  return page.locator('main header')
-}
-
-/**
- * The photo write controls as a group: Set Photo / Replace Photo links and the Remove button.
- * Named by role rather than counted structurally, because #1390's header also carries the owner
- * link and the two would otherwise be indistinguishable to a bare `a` count.
- */
-function photoControls(page: Page) {
-  return photoSection(page)
-    .getByRole('link', { name: /Photo$/ })
-    .or(photoSection(page).getByRole('button', { name: 'Remove Photo', exact: true }))
-}
-
-/** The horse's photo, addressed by its accessible name — the <img>'s alt is the horse's name. */
-function photoImage(page: Page, horseName: string) {
-  return photoSection(page).getByRole('img', { name: horseName, exact: true })
-}
-
-/**
- * The upload form, scoped to <main>.
- *
- * Scoped to <main> so the counts below can only ever be about the app's own markup, whatever a dev
- * overlay or a future layout adds elsewhere on the page.
- */
-function uploadForm(page: Page) {
-  return page.locator('main form')
-}
-
 /** The upload form's Document Type field — its first child div, located by its own label. */
 function documentTypeField(page: Page) {
   return uploadForm(page).locator('> div').filter({ has: page.getByText('Document Type', { exact: true }) })
@@ -185,26 +124,6 @@ function documentTypeField(page: Page) {
  */
 async function formRendered(page: Page): Promise<void> {
   await uploadForm(page).getByRole('button', { name: 'Upload', exact: true }).waitFor()
-}
-
-/**
- * Which committed asset the page is currently displaying, by content rather than by name.
- *
- * Throws — rather than returning a falsy default — at every step that could otherwise make a
- * caller's assertion vacuous: no <img>, no src, a signed URL that doesn't serve, or bytes matching
- * none of the seeded assets. A mutation of the expected asset name can therefore only fail by
- * comparing two real values.
- */
-async function displayedPhotoAsset(page: Page, horseName: string): Promise<string> {
-  const src = await photoImage(page, horseName).getAttribute('src')
-  if (!src) throw new Error(`no src on the ${horseName} photo img`)
-
-  const response = await page.request.get(src)
-  if (!response.ok()) throw new Error(`the ${horseName} photo src returned ${response.status()}`)
-
-  const name = ASSET_BY_DIGEST.get(digestOf(await response.body()))
-  if (!name) throw new Error(`the displayed ${horseName} photo matches none of the committed assets`)
-  return name
 }
 
 /**

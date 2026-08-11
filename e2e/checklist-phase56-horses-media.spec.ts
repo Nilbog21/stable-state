@@ -42,10 +42,9 @@
 //
 // In all three cases the checklist keeps its wording and only its tag changes, which is how the
 // whole #1187-#1208 batch handled a fixture whose name differs from the dev-barn walkthrough's.
-import { createHash } from 'crypto'
-import { readFileSync } from 'fs'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, setHorsePhoto, assetPath } from './support/fixtures'
+import { BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, CLOVER_PHOTO, displayedPhotoAsset, photoControls, photoImage, photoSection } from './support/horse-pages'
 import { settledTextContents } from './support/read'
 
 // Seed inputs, not builder outputs — these are what the spec puts in. No name contains another
@@ -60,37 +59,12 @@ const WILLOW = 'Willow' // the rider's subject
 // Deliberately not the checklist's "Four-Leaf Clover" — see divergence 3 in the header.
 const REGISTERED_NAME = 'Emerald Fortune'
 
-// One asset per photographed horse, all four distinct, so a digest comparison below can only be
-// satisfied by the file the seed actually put there. clover-photo.png is the *upload* source
-// the "Using it to set `scripts/data/clover-photo.png`" line names by path; the other three are
-// pre-seeded starting states.
-const BUTTER_PHOTO = 'butter-photo.jpg'
-const HARPER_PHOTO = 'harper-photo.png'
-const EMERY_PHOTO = 'emery-photo.jpg'
-const CLOVER_PHOTO = 'clover-photo.png'
-
 // The one header line that always renders, whatever else does. Both horses this file reads the
 // header of are unowned, so it is what a registered-name assertion is read *against*: an
 // expectation of exactly [registered name, this] fails if the row moved, if it vanished, or if
 // the header stopped rendering at all — which is what the labelled `<dl>` used to buy before
 // #1390 moved these lines into the identity header and dropped their labels.
 const NO_OWNER_LINE = 'No owner set'
-
-const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
-
-/**
- * Every asset this spec can legitimately be displaying, keyed by the SHA-256 of its real bytes.
- *
- * The rendered <img src> is a signed URL over the stored object, so fetching it and hashing the
- * response identifies *which file* is on screen, exactly — and it carries its own negative half,
- * since matching one asset's digest excludes the other three by construction. Mirrors
- * checklist-phase4-horses-photos.spec.ts, which established the pattern.
- */
-const ASSET_BY_DIGEST = new Map(
-  [BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, CLOVER_PHOTO].map(
-    (name) => [digestOf(readFileSync(assetPath(name))), name] as const
-  )
-)
 
 let butterId: string
 let appleId: string
@@ -122,6 +96,10 @@ let seededRegisteredName: string
  * Butter, which stamps it explicitly for exactly that reason.
  */
 const barn = withBarn('phase56-horses-media', async ({ supabase, barn, members }) => {
+  // One asset per photographed horse, all four distinct, so a digest comparison below can only be
+  // satisfied by the file the seed actually put there. clover-photo.png is the *upload* source
+  // the "Using it to set `scripts/data/clover-photo.png`" line names by path; the other three are
+  // pre-seeded starting states.
   butterId = (await addHorse(supabase, barn.id, BUTTER)).id
   await setHorsePhoto(supabase, barn, butterId, BUTTER_PHOTO)
 
@@ -154,37 +132,6 @@ const atPhotoUpload = (horseId: string) =>
   new RegExp(`/documents/new\\?entity=horse&id=${horseId}&type=photo`)
 
 /**
- * The identity header, which is where the photo and its controls live since #1390 — the
- * standalone **Photo** section this locator used to filter on is gone, along with its h2.
- */
-function photoSection(page: Page) {
-  return page.locator('main header')
-}
-
-/** The horse's photo, addressed by its accessible name — the <img>'s alt is the horse's name. */
-function photoImage(page: Page, horseName: string) {
-  return photoSection(page).getByRole('img', { name: horseName, exact: true })
-}
-
-/**
- * Every photo write control in the header, whichever variant rendered it.
- *
- * One locator covering all three controls the checklist names: Set Photo and Replace Photo are
- * `<Button href>` (a Next Link, so an `<a>`), Remove Photo is a submit `<button>` inside its own
- * form. The `<img>` is deliberately *not* matched — the absence claim is about controls, and the
- * photo's own presence is a different line's claim.
- *
- * Named by role rather than counted as a bare `a, button`, which is what this was until #1390:
- * the header now also carries the owner link, and a structural count could not tell the two
- * apart.
- */
-function photoControls(page: Page) {
-  return photoSection(page)
-    .getByRole('link', { name: /Photo$/ })
-    .or(photoSection(page).getByRole('button', { name: 'Remove Photo', exact: true }))
-}
-
-/**
  * The identity header's text lines, in DOM order.
  *
  * #1390 replaced the labelled `Status` / `Registered Name` `<dl>` this used to read with an
@@ -199,26 +146,6 @@ function photoControls(page: Page) {
  */
 function headerLines(page: Page) {
   return page.locator('main header p')
-}
-
-/**
- * Which committed asset the page is currently displaying, by content rather than by name.
- *
- * Throws — rather than returning a falsy default — at every step that could otherwise make a
- * caller's assertion vacuous: no <img>, no src, a signed URL that doesn't serve, or bytes matching
- * none of the seeded assets. A mutation of the expected asset name can therefore only fail by
- * comparing two real values.
- */
-async function displayedPhotoAsset(page: Page, horseName: string): Promise<string> {
-  const src = await photoImage(page, horseName).getAttribute('src')
-  if (!src) throw new Error(`no src on the ${horseName} photo img`)
-
-  const response = await page.request.get(src)
-  if (!response.ok()) throw new Error(`the ${horseName} photo src returned ${response.status()}`)
-
-  const name = ASSET_BY_DIGEST.get(digestOf(await response.body()))
-  if (!name) throw new Error(`the displayed ${horseName} photo matches none of the committed assets`)
-  return name
 }
 
 /**
