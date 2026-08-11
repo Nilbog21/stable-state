@@ -7,7 +7,13 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addManagedMember, addUnpaidLesson, cancelLesson, daysFromNow, E2E_STUB_RIDER, E2E_USERS } from './support/fixtures'
 import { settledInnerTexts, settledTextContents } from './support/read'
-import { detailField } from './support/lesson-pages'
+import {
+  CANCELLED_BADGE,
+  detailField,
+  detailHeader,
+  headerCancelLink,
+  landOnDetail,
+} from './support/lesson-pages'
 import { goToDaysAhead } from './support/dashboard'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
@@ -88,7 +94,6 @@ const WILLOW = 'Willow' // liveCancel
 
 // The app's own strings, quoted rather than imported: an expected value derived from the code
 // under test agrees with any bug in it.
-const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 const PARTICIPATION_NOTIFICATION_TITLE = 'Lesson participation cancelled'
 
@@ -184,29 +189,6 @@ function lessonPath(lesson: Lesson): string {
   return `/barn/${barn.slug}/lessons/${lesson.id}`
 }
 
-/** The detail page's header block — the `<div>` holding the `<h1>` and the badges beside it. */
-function detailHeader(page: Page): Locator {
-  return page.locator('main div:has(> h1)')
-}
-
-/**
- * The detail page header's action group, addressed as the sibling of the block holding the `<h1>`
- * rather than by its Tailwind classes. That relationship is what makes the header **Cancel**
- * button line a claim about the
- * *header* rather than about the page: a Cancel control rendered anywhere else falls outside this
- * locator entirely. Lifted from checklist-phase5-lessons-cancel.spec.ts, whose trainer-side line
- * makes the same claim about the same markup — duplicated rather than extracted, per this batch's
- * convention.
- */
-function headerActions(page: Page): Locator {
-  return page.locator('main div:has(> h1) + div')
-}
-
-/** The header's Cancel control, which is a `<Button href>` and therefore a link. */
-function headerCancelLink(page: Page): Locator {
-  return headerActions(page).getByRole('link', { name: 'Cancel', exact: true })
-}
-
 /**
  * The Rider(s) row of the detail page's `<dl>`, scoped by its own label — the Horse(s) row holds a
  * structurally identical `<ul>`, and an unscoped locator would read horse names into a rider-name
@@ -240,22 +222,10 @@ function cancelControls(page: Page): Locator {
   return page.getByRole('link', { name: 'Cancel', exact: true }).or(page.getByRole('button', { name: 'Cancel', exact: true }))
 }
 
-/**
- * Land back on a lesson's detail page after the cancellation redirect.
- *
- * Both halves are needed and neither replaces the other. `waitForURL` pins *which* lesson the
- * server redirected to, and it is a real sync point here rather than the no-op e2e/CLAUDE.md's
- * fact 3 warns about: the submit is dispatched from `/lessons/<id>/cancel-rider/<riderId>`, which
- * this pattern's `$` anchor does not match. `'commit'` resolves before the new document renders,
- * though, so a 404 or a 500 at the right URL would satisfy the URL half alone; the `<dl>` is the
- * render proof. It is also what keeps the following read off the page just left — `<dl>` appears
- * nowhere in the lessons route tree except the detail page itself, so it cannot resolve against
- * the cancel-rider form.
- */
-async function landOnDetail(page: Page, lesson: Lesson) {
-  await page.waitForURL(new RegExp(`/lessons/${lesson.id}$`), { waitUntil: 'commit' })
-  await page.locator('main dl').waitFor()
-}
+// On `landOnDetail` (imported from `./support/lesson-pages`) as this spec uses it:
+// it is a real sync point here rather than the no-op e2e/CLAUDE.md's
+// fact 3 warns about: the submit is dispatched from `/lessons/<id>/cancel-rider/<riderId>`, which
+// this pattern's `$` anchor does not match.
 
 /**
  * Drives the whole cancellation the way the checklist describes it — from the detail page's own
@@ -275,7 +245,7 @@ async function cancelOwnSpotFromHeader(page: Page, lesson: Lesson) {
   await page.waitForURL(new RegExp(`/lessons/${lesson.id}/cancel-rider/`), { waitUntil: 'commit' })
 
   await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
-  await landOnDetail(page, lesson)
+  await landOnDetail(page, lesson.id)
 }
 
 // ---------------------------------------------------------------------------

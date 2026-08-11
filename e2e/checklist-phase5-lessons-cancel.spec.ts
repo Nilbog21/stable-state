@@ -14,7 +14,19 @@ import {
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
 import { hydrateByDriving } from './support/hydration'
-import { detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
+import {
+  CANCELLED_BADGE,
+  cancelTypeRadio,
+  detailField,
+  detailHeader,
+  headerCancelLink,
+  headerCancelledBadge,
+  landOnDetail,
+  riderRow,
+  riderRows,
+  saveLessonForm,
+  waitForEditFormHydrated,
+} from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -35,7 +47,6 @@ const STUB_RIDER_NAME = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
 const RECURRING_BADGE = 'Recurring'
 const RECURRING_INDICATOR = 'This is part of a recurring series'
 const STOP_SERIES_BUTTON = 'Stop Recurring Lessons'
-const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 
 /**
@@ -223,45 +234,6 @@ function editPath(key: LessonKey): string {
   return `${detailPath(key)}/edit`
 }
 
-/** The detail page's header block — the `<div>` that holds the `<h1>` and the badges beside it. */
-function detailHeader(page: Page): Locator {
-  return page.locator('main div:has(> h1)')
-}
-
-/**
- * The detail page header's action group, addressed as the sibling of the block that holds the
- * `<h1>` rather than by its Tailwind classes. That relationship is what makes "a Cancel button in
- * its detail-page header" an assertion about the header rather than about the page: a Cancel
- * control rendered anywhere else is outside this locator entirely.
- */
-function headerActions(page: Page): Locator {
-  return page.locator('main div:has(> h1) + div')
-}
-
-/** The header's Cancel control, which is a `<Button href>` and therefore a link. */
-function headerCancelLink(page: Page): Locator {
-  return headerActions(page).getByRole('link', { name: 'Cancel', exact: true })
-}
-
-/** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
-function headerCancelledBadge(page: Page): Locator {
-  return detailHeader(page).getByText(CANCELLED_BADGE, { exact: true })
-}
-
-/** One `<li>` per enrolled rider, inside a group lesson's Rider(s) field. */
-function riderRows(page: Page): Locator {
-  return detailField(page, 'Rider(s)').locator('li')
-}
-
-/** A single rider's row, addressed by the name it displays. */
-function riderRow(page: Page, name: string): Locator {
-  return riderRows(page).filter({ hasText: name })
-}
-
-function cancelTypeRadio(page: Page, value: 'instructor' | 'rider'): Locator {
-  return page.locator(`input[name="cancel_type"][value="${value}"]`)
-}
-
 /** The rider picker's own labels — one per still-active rider, or nothing when it is hidden. */
 function pickerLabels(page: Page): Locator {
   return page.locator('main form fieldset:has(input[name="rider_id"]) label')
@@ -319,30 +291,6 @@ function cancellationNotesField(page: Page): Locator {
 // through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
 // "a control the test does not assert on, and one whose repeat is harmless", and this control is
 // both the mutation under test and one a retry would re-issue.
-
-/**
- * Land back on a lesson's detail page after a redirect.
- *
- * Both halves are needed and neither replaces the other, which is the pairing
- * `e2e/support/test.ts`'s convention block mandates after a click. `waitForURL` pins **which**
- * lesson the server redirected to — a redirect wired to the wrong id lands on a real, rendering
- * detail page and would satisfy any content check. `'commit'` resolves before that document
- * renders, though, so a 404 or a 500 at the right URL satisfies the URL half equally; the `<dl>`
- * is the render proof, and neither `/cancel` nor `/edit` has one, so a submit that failed and
- * re-rendered its own page fails here rather than sailing through.
- *
- * That `<dl>` is also what makes this helper safe against the soft-nav hazard #1319's review
- * found: after a `waitUntil: 'commit'` the previous route can still be mounted, so a read taken
- * on markup **both** pages render can answer from the page just left. `<dl>` appears nowhere in
- * the `lessons/` route tree except the detail page itself, so it cannot resolve against `/cancel`
- * or `/edit` — and both callers then read through auto-retrying detail-only locators
- * (`riderRows`, `detailField`) rather than shared chrome. Copying this helper onto a flow whose
- * *source* page has a `<dl>` reintroduces the hazard; check that before reusing it.
- */
-async function landOnDetail(page: Page, key: LessonKey) {
-  await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}$`), { waitUntil: 'commit' })
-  await page.locator('main dl').waitFor()
-}
 
 /** The instructor named on a detail page, e.g. `Test Trainer`. */
 async function instructorOnDetailPage(page: Page): Promise<string> {
@@ -413,7 +361,7 @@ test('trainer_cancelling_one_group_riders_spot_cancels_only_that_rider @trainer'
   )
   await page.getByRole('radio', { name: RIDER_NAME, exact: true }).check()
   await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
-  await landOnDetail(page, 'riderSpot')
+  await landOnDetail(page, lessonIds.riderSpot)
 
   await riderRows(page).first().waitFor()
   const reading = async (name: string) => ({
@@ -462,7 +410,7 @@ test('cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page @tr
   await waitForEditFormHydrated(page)
   await cancellationNotesField(page).fill(SAVED_CANCELLATION_NOTE)
   await saveLessonForm(page)
-  await landOnDetail(page, 'notesSave')
+  await landOnDetail(page, lessonIds.notesSave)
 
   const notes = (await settledTextContents(detailField(page, CANCELLATION_NOTES_LABEL)))[0].trim()
   expect(notes).toEqual(SAVED_CANCELLATION_NOTE)

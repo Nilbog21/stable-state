@@ -34,7 +34,7 @@ import {
   daysFromNow,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
-import { detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
+import { CANCELLED_BADGE, detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -115,7 +115,6 @@ const EDITED_NOTES = 'Rescheduled to Thursday afternoon.'
 // test agrees with any bug in it.
 const DELETE_CONFIRM =
   'Permanently delete this lesson? This cannot be undone, and unlike Cancel, no cancellation record, fee, or notification is created.'
-const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 const INSTRUCTOR_LABEL = 'Instructor'
 
