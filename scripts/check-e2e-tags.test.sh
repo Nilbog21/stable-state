@@ -125,7 +125,7 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 6: one tag claimed by two checklist lines. 18 tags today are shared this way — a check
+# Test 6: one tag claimed by two checklist lines. 23 tags today are shared this way — a check
 # split across two checkboxes is covered by one test — so a per-tag uniqueness rule would fail
 # the tree it was written against.
 REPO="$(make_repo '- [ ] Something happens (e2e: a_thing_happens)

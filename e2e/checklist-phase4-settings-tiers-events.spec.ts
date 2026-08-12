@@ -489,8 +489,8 @@ test.describe.serial('Manage Barn — Barn Events', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Sub-page round trip — the #1417 checklist line ("Add Tier → Save → back on Manage Barn with
-// Lesson Tiers open and the new tier in sight")
+// Sub-page round trip — the #1417 "**Add Tier** → Save → back on Manage Barn with **Lesson
+// Tiers** open" line and its "The new tier is listed in that section" pair
 // ---------------------------------------------------------------------------
 
 // Declared last on purpose: it adds a tier, and the Lesson Tiers block above asserts the new
@@ -505,9 +505,9 @@ test.describe.serial('Manage Barn — Add Tier round trip', () => {
     await page.locator('#tier-price').fill('65')
     await save(page, 'tiers')
 
-    // One read covering the whole line: a `<td>` inside a closed `<details>` is never visible,
-    // so a visible cell proves the section reopened *and* that the tier just created is the
-    // thing in sight — which is the round trip the issue is about.
+    // One read covering both lines: a `<td>` inside a closed `<details>` is never visible, so a
+    // visible cell proves the section reopened *and* that the tier just created is the one
+    // listed — which is the round trip the issue is about.
     const section = page
       .locator('details')
       .filter({ has: page.getByRole('heading', { name: 'Lesson Tiers', exact: true }) })
