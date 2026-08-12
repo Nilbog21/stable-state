@@ -8,7 +8,7 @@ Any reader returning an instant that gets rendered or compared therefore takes a
 
 | Module | Branded field(s) | Signature change |
 |---|---|---|
-| `lessons.ts` | `Lesson.lesson_at`, `LessonDetail.lesson_at` | `getLessonById`/`getLessonsByIds`/`getLessonsByBarn` take `timezone` |
+| `lessons.ts` | `LessonWithDetails.lesson_at`, `LessonDetail.lesson_at` | `getLessonById`/`getLessonsByIds`/`getLessonsByBarn` take `timezone` |
 | `barn-events.ts` | `BarnEvent.event_at` | `getEventsByBarn`/`getEventById`/`getEventsByIds` take `timezone`; `createEvent`/`updateEvent` return the raw row (unbranded — neither caller reads it) |
 | `outstanding.ts` | `OutstandingItem.date` | `mergeOutstandingItems` takes `timezone` |
 | `lesson-finances.ts` | `HorseIncomeDetailRow.lessonAt`, `RiderIncomeDetailRow.lessonAt`, `TrainerIncomeDetailRow.lessonAt` | the three `get*IncomeDetail` readers take `timezone` |
@@ -17,7 +17,7 @@ Any reader returning an instant that gets rendered or compared therefore takes a
 | `lesson-participants.ts` | the hydrated participant's `lesson_at` | `hydrateParticipants` takes `timezone` |
 
 Audit columns nothing displays stay plain strings — see `types.ts`'s `Instant` doc comment for the rule and its one exception.
-`backup.ts` is deliberately outside this scheme (see its row below): it needs zone-less wall-clock digits for an Excel serial, not a formatted string.
+`backup.ts` is deliberately outside this scheme (see [`dal/backup.md`](dal/backup.md)): it needs zone-less wall-clock digits for an Excel serial, not a formatted string.
 
 **`CalendarDate` return types (#1223).** The other frame.
 A `DATE` column names a day on a wall calendar, not a moment on the timeline, so it needs no `timezone` parameter — but while it was a bare `string` the compiler could not stop it reaching a zoned path, or an instant reaching a UTC-forced one.
