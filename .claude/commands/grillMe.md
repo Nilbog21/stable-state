@@ -80,7 +80,7 @@ Add these for issues the interview *touched*, not only for ones it created — i
 **In an issues-only session, never edit a tracked file.** If the interview surfaces a needed change to `CLAUDE.md`, `ARCHITECTURE.md`, source, or a migration, that change is itself an issue — capture it as one. Don't make the edit "just this once" as a convenience; every change to a version-controlled file goes through issue → branch → PR. (The `specs/issue-*.md` work log in the special mode above is gitignored scratch, not a tracked file — editing it is expected.)
 
 **If I want direct file changes:**
-Implement the changes directly in the codebase. Follow the project's TDD workflow: write failing tests first, then implement. Follow the canonical file-touch sequence from ARCHITECTURE.md.
+Implement the changes directly in the codebase, following `CLAUDE.md`'s Test-First Rules — write failing tests first, unless the whole deliverable is tests, which substitutes a mutation pass for the red step. Follow the canonical file-touch sequence from ARCHITECTURE.md.
 
 **Anything else:**
 Produce whatever I asked for, following its own conventions. If I never named a concrete deliverable, ask now rather than defaulting to one.

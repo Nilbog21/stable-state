@@ -105,6 +105,7 @@ Check `{worktree-path}/specs/issue-{N}.md`. If it doesn't exist, or exists but i
 4. After approval, run the same TDD loop Step 5 uses below, plus a lint pass (this is the whole reason revise mode exists — the deferred items were substantial enough to warrant going through this properly instead of a rushed inline fix):
    - Write a failing test, confirm red (`npx vitest run {test-file}`, or the single-spec Playwright command from Step 5's "Which runner the red-green loop uses" when the deliverable is an e2e spec), commit `[#{N}] Add failing tests: {short description}`.
    - Implement, confirm green, commit `[#{N}] {short description}`.
+   - Step 5's test-only carve-out applies here too: when a deferred entry's whole fix is test text — a strengthened assertion, a mutation-pass survivor — there is no red step to produce, so run the mutation pass in place of the first bullet and land the change as one commit.
    - Coverage: `bash scripts/check-coverage.sh` — fix gaps, re-run until clean.
    - Lint: `npm run lint` — fix issues, re-run until clean.
    - Remove the resolved entry from `## Open items` as each one lands. The same deviation checkpoint from Step 5 above applies here too — any incidental unrelated change gets the same ask-and-log treatment.
@@ -184,7 +185,9 @@ cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url 
 
 A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`) — `scripts/ci.sh` fails without them.
 
-If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — deciding it at step 4 instead strands the spec after the loop it was supposed to drive.
+If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — or, if the issue is test-only, through the mutation pass the next paragraph substitutes for that loop. Deciding the tag at step 4 instead strands the spec after the loop it was supposed to drive.
+
+**A test-only issue has no red step.** Step 1's failing-tests commit is the default and stays the default. But when the whole deliverable is tests — a spec characterizing already-shipped behaviour, or a refactor of existing tests — there is no implementation being withheld, so the spec is green on its first run and a failing-tests commit would be theatre. Skip step 1 and run a **mutation pass** before step 5 instead: break each new or changed assertion once, confirm red, revert, and report the kill count in the PR body. The rule, the ordered-spec constraint on how to batch the mutants, and the precedent it rests on are stated once in `CLAUDE.md`'s Test-First Rules — read them there rather than from a copy here. Everything else in this section is unchanged; the tests land as step 2's commit.
 
 1. **Write failing tests first** — following the project's TDD convention. Run the tests to confirm they are red before committing:
    ```
@@ -195,7 +198,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    cd /absolute/path/to/worktree && git add {test-files} && git commit -m "[#{number}] Add failing tests: {short description}"
    ```
 
-2. **Implement** the issue by making the failing tests pass. Run the tests to confirm they are green before committing:
+2. **Implement** the issue by making the failing tests pass — for a test-only issue there is nothing to implement, and this is the commit the tests themselves land as. Run the tests to confirm they are green before committing:
    ```
    cd /absolute/path/to/worktree && npx vitest run {test-file}
    ```
@@ -227,7 +230,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    - New or changed architectural patterns, abstractions, or dependencies
    - Removed or deprecated features
 
-   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `checklists/pre-release/phase-*.md` line, that section's born-automated-or-justified-manual rule applies: tag it `(e2e: <test name>)`, with the covering spec written in this same PR — through the red-green loop above, not here — or `(manual)` with the reason stated on the line. Leaving the line untagged and tagging it `(e2e-candidate)` are equally not options for a line you are adding. Stage and commit whatever you changed:
+   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `checklists/pre-release/phase-*.md` line, that section's born-automated-or-justified-manual rule applies: tag it `(e2e: <test name>)`, with the covering spec written in this same PR — through step 1's loop above, or the mutation pass that replaces it when the issue is test-only, not here — or `(manual)` with the reason stated on the line. Leaving the line untagged and tagging it `(e2e-candidate)` are equally not options for a line you are adding. Stage and commit whatever you changed:
    ```
    cd /absolute/path/to/worktree && git add {changed-doc-files} && git commit --amend --no-edit
    ```
@@ -247,7 +250,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    EOF
    )"
    ```
-   The body should contain only deviations from the issue — anything added, removed, or done differently. If the implementation exactly matches the issue, the body is just `Closes #{number}` with nothing else. Do not re-summarize the issue.
+   The body should contain only deviations from the issue — anything added, removed, or done differently — plus the mutation-pass kill count if this was a test-only issue. If the implementation exactly matches the issue and neither applies, the body is just `Closes #{number}` with nothing else. Do not re-summarize the issue.
 
    Then assign the PR via REST (capture PR number from the URL returned above):
    ```
