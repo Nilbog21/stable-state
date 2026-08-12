@@ -22,7 +22,7 @@
 - Don't install Docker locally or push to `stable-state-dev` just to check a migration applies cleanly (syntax, ordering, FK/RLS/RPC errors) — let the CI gate catch that. It replays from a clean instance, so it can't catch drift between a migration's assumptions and `stable-state-dev`/prod's actual accumulated schema state (e.g. a renamed constraint) — that class of bug still needs manual dev-DB verification or a repair script (see `scripts/repair-migration-history.sh`)
 
 ### E2E spec maintenance
-- Before writing or debugging a spec, read `e2e/CLAUDE.md` — the measured framework facts (timeout tiers, silent-auth request contexts, hydration races; indexed there, stated in full in `docs/e2e-framework-facts.md`) and the spec-maintenance rules (shared-login restore protocol, membership-orphan teardown, settled reads), each of which cost a batch at least one round
+- Before writing or debugging a spec, read `e2e/CLAUDE.md` — the measured framework facts (timeout tiers, silent-auth request contexts, hydration races) and the spec-maintenance rules (shared-login restore protocol, membership-orphan teardown, settled reads), each of which cost a batch at least one round. Both are indexed there and stated in full in `docs/e2e-framework-facts.md` and `docs/e2e-spec-maintenance.md`
 - A PR that changes UI (removes/renames/restructures a page, component, or user-facing flow) must update any `e2e/` spec covering that UI in the same PR — not as a follow-up. If unsure whether a spec covers the changed UI, grep `e2e/` for the route/selector/text being touched before merging
 
 ## Architecture Docs

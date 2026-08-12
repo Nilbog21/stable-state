@@ -5,12 +5,12 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Fifteen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
+Seventeen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
 not in the places you would look for them, and each of which cost a batch at least one round. This
 is the index: headline only, and the full worked statement is the same-numbered section of
 [`docs/e2e-framework-facts.md`](../docs/e2e-framework-facts.md), which also carries their
 provenance. **Numbering is append-only** — a new fact takes the next number and no existing number
-ever moves, because 52 comments across 22 files cite a fact by number and renumbering breaks every
+ever moves, because 87 citations across 29 files name a fact by number and renumbering breaks every
 one of them silently.
 
 **1. Timeouts come in three tiers, and only one of them wants a number.**
@@ -67,11 +67,32 @@ client components fire, not just the submission under test.**
 — so in an ordered file the first `✘` silences every test after it.
 [full](../docs/e2e-framework-facts.md#fact-15) *(#1426)*
 
+**16. `getByRole` returns zero matches inside a `display:none` container** — it resolves against
+the accessibility tree, not the DOM. Locate by tag to count what a collapsed container still holds.
+[full](../docs/e2e-framework-facts.md#fact-16) *(#1423)*
+
+**17. A wait predicate satisfiable only by the success path cannot observe the failure it exists
+to catch** — and a mutation pass is structurally blind to it.
+[full](../docs/e2e-framework-facts.md#fact-17) *(#1426)*
+
 ## Spec maintenance
 
-- **Never blind-write the three shared logins** (`manager@`/`trainer@`/`rider@e2e.test`). Their `profiles` rows are per Supabase *project*, not per barn, so `teardownBarnData` can never reach them and whatever a spec leaves there is inherited by every later slice and every later run — #1282 found `trainer@e2e.test` still pointing at a photo in a barn deleted a week earlier. Capture the old value, write, and restore it in an **unconditional** `afterAll` (no pass/fail gate, no early return except "the capture never happened"), then read the row back and throw on a mismatch — an unverified restore is one that can stop working silently. Restore the row *before* deleting any storage object: an un-restored row is a shared-state failure every later slice inherits, an orphaned object is only a leak, and deleting first converts the cheap failure into the expensive one. Reference implementation: `checklist-phase4-members-media.spec.ts`'s own-photo block. Nulling a field instead of restoring it is the same violation.
-- **A spec that deletes a membership orphans that profile.** `teardownBarnData` reaches profile rows *through* the barn's memberships, so severing the edge leaves the row behind permanently — one per run per Playwright project, even though the row is a perfectly ordinary stub. Hand it back with a `describe`-scoped `afterAll` (Playwright completes an inner suite's hooks before the file-scoped one `withBarn` registers) that deletes the profile **only if no membership still references it**, so a chain that failed before the removal leaves the row for `teardownBarnData` rather than tripping the FK. Reference implementation: `checklist-phase4-members-access.spec.ts`. Demoting a stub to `is_managed = false` needs no such hook — the sweep filters on `user_id IS NULL` (#1282), which a demotion can't change.
-- **Never call `allInnerTexts()`/`allTextContents()` on a bare locator** — they don't auto-retry, so a not-yet-rendered table yields `[]`, and an assertion that accepts an empty array then *passes on nothing* (#1243 found four such checks reading as covered while asserting nothing). Read through `settledInnerTexts`/`settledTextContents` in `e2e/support/read.ts`, whose wait doubles as the non-empty assertion. `evaluateAll` has the same hazard but keeps an inline `await locator.first().waitFor()` — wrapping a callback reads worse than the guard it replaces.
+Three rules about what a spec is allowed to leave behind. This is the index: headline only, and
+the full worked statement is the same-numbered section of
+[`docs/e2e-spec-maintenance.md`](../docs/e2e-spec-maintenance.md), which also carries each rule's
+reference implementation. Numbering is append-only, same as the facts above.
+
+**1. Never blind-write the three shared logins** (`manager@`/`trainer@`/`rider@e2e.test`) — their
+`profiles` rows are per Supabase *project*, so no teardown reaches them. Capture, write, restore
+unconditionally, verify. [full](../docs/e2e-spec-maintenance.md#rule-1) *(#1282)*
+
+**2. A spec that deletes a membership orphans that profile** — `teardownBarnData` reaches profile
+rows *through* memberships. Hand it back in a `describe`-scoped `afterAll`.
+[full](../docs/e2e-spec-maintenance.md#rule-2) *(#1282)*
+
+**3. Never call `allInnerTexts()`/`allTextContents()` on a bare locator** — they don't auto-retry,
+so an assertion accepting `[]` passes on nothing. Read through `support/read.ts`.
+[full](../docs/e2e-spec-maintenance.md#rule-3) *(#1243)*
 
 ## The rest of the e2e rules
 

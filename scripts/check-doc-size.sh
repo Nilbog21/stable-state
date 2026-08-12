@@ -12,6 +12,7 @@ LIMIT=150000
 PAIRS=(
   "ARCHITECTURE.md:docs/architecture"
   "e2e/CLAUDE.md:docs/e2e-framework-facts.md"
+  "e2e/CLAUDE.md:docs/e2e-spec-maintenance.md"
 )
 
 # Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
@@ -28,7 +29,11 @@ BUDGETS=(
   # docs/e2e-framework-facts.md. Two prior raises (#1354 to 14000, #1409 to 15500) each restored
   # headroom the file then spent within days, and the second left 335 characters — not enough to
   # record the next measured fact in. Splitting is the answer; the number follows the file.
-  "e2e/CLAUDE.md:7400"
+  # Lowered again from 7400 by #1433, which split the spec-maintenance rules out to
+  # docs/e2e-spec-maintenance.md — the same shape, one section later. The split freed ~2000
+  # characters and #1433 spent ~800 of them on facts 16/17 and the new index, so the rest is
+  # banked back into the budget rather than left as headroom, per the rule above.
+  "e2e/CLAUDE.md:6600"
   "src/components/ui/CLAUDE.md:8000"
 )
 
