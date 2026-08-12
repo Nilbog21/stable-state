@@ -48,6 +48,39 @@ export const DEV_RETIRED_HORSE = 'Willow'
 export const DEV_UNAVAILABLE_HORSE = 'Hazel'
 export const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
+// #1413: the two dark-mode lines in `checklists/pre-release/phase-3-manager-lesson-entry.md`'s
+// (#1019) block stay `(manual)` — they compare an amber day against a red one by eye — while
+// every line around them becomes an `(e2e:)` a human never performs. So the amber day and the
+// red day have to exist in the seed rather than fall out of the checkboxes above them.
+//
+// Its own horse rather than a cluster bolted onto Apple/Butter/Clover: those three carry the
+// low/moderate/high *total-exertion* spread the horses-list checks read, and adding future
+// lessons to any of them moves that spread. Here nothing else contributes, so the two days are
+// exactly the two lessons below.
+export const DEV_CALENDAR_BAND_HORSE = 'Juniper'
+
+// Deliberately far below the barn defaults (5 / 11), which is what lets two lessons do the job
+// of the seven it would otherwise take (exertion_level is capped at 5). Both bands render from
+// the same `BAND_TINT_CLASS` regardless of how the total got there, so a low threshold is not a
+// weaker fixture for a colour comparison — just a cheaper one.
+export const DEV_CALENDAR_BAND_THRESHOLDS = { moderate: 1, high: 3 }
+
+// Day +1 and day +5, and the gap is load-bearing rather than aesthetic: `computeDayDecorations`
+// centres its ±3-day window on the form's Start Time, not on midnight, so two lessons 4 days
+// apart fall inside one window at some hours. At 5 days apart the nearest approach is 3d13h —
+// outside it at every hour, which is what keeps day +1 amber instead of flipping red. Day +5 is
+// also the furthest day guaranteed visible: a 31-day month starting Saturday grids only to day
+// 36, so from its last day there are exactly 5 days of grid left.
+export const DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET = 1
+export const DEV_CALENDAR_BAND_HIGH_DAY_OFFSET = 5
+
+export function buildCalendarBandLessons(now: Date): { at: Date; exertionLevel: number }[] {
+  return [
+    { at: dayOffset(now, DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET, 12), exertionLevel: 2 },
+    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 4 },
+  ]
+}
+
 // #1390: the seed set `owning_member_id` and one privilege row but never these three columns,
 // so nothing on `dev-barn` or `/demo` ever showed a registered name or a note — which is why a
 // rider's horse detail page could not be walked by hand at all. Deliberately partial, so the
@@ -411,6 +444,18 @@ export async function seedBarn(
     'mark seed horse unavailable'
   )
 
+  // #1413 — see the DEV_CALENDAR_BAND_* constants above. Available and active, unlike the two
+  // horses either side of it: the manual line selects it on the New Lesson form, which offers
+  // neither an unavailable nor a retired horse.
+  const calendarBandHorse = await createHorse(barnId, DEV_CALENDAR_BAND_HORSE, undefined, supabase)
+  mustSucceed(
+    await supabase.from('horses').update({
+      exhaustion_threshold_moderate: DEV_CALENDAR_BAND_THRESHOLDS.moderate,
+      exhaustion_threshold_high: DEV_CALENDAR_BAND_THRESHOLDS.high,
+    }).eq('id', calendarBandHorse.id),
+    'set calendar-band seed horse thresholds'
+  )
+
   // See the DEV_BUTTER_* constants above for why only this horse gets the full set.
   mustSucceed(
     await supabase.from('horses').update({
@@ -504,6 +549,25 @@ export async function seedBarn(
     jumping: false,
     tierName: tier1.name,
   }, supabase)
+
+  // #1413: the two lessons that put one amber day and one red day on the New Lesson form's
+  // month calendar for DEV_CALENDAR_BAND_HORSE. `buildCalendarBandLessons` is the shared
+  // definition so `seed-barn.test.ts` can check the guarantee against the real
+  // `computeDayDecorations` rather than against a restatement of these offsets.
+  for (const { at, exertionLevel } of buildCalendarBandLessons(now)) {
+    await createLessonWithParticipants({
+      barnId,
+      instructorId: trainerRowIds[0],
+      lessonAt: at.toISOString(),
+      fee: tier1.price,
+      horseIds: [calendarBandHorse.id],
+      exertionLevels: [exertionLevel],
+      riderIds: [riderRowIds[0]],
+      lessonType: 'normal',
+      jumping: false,
+      tierName: tier1.name,
+    }, supabase)
+  }
 
   await createLessonSeries({
     barnId,
