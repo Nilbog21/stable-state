@@ -93,18 +93,21 @@ export const DEV_CALENDAR_BAND_NEXT_MONTH_DAY = 3
  * windows overlap — the moderate day tops out at 4 + 4 = 8, exactly its own `high` threshold,
  * and the high day floors at 5 + 5 = 10.
  */
-export function buildCalendarBandLessons(now: Date): { at: Date; exertionLevel: number }[] {
-  const nextMonthDay = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth() + 1,
-    DEV_CALENDAR_BAND_NEXT_MONTH_DAY,
-    12
-  ))
+export function buildCalendarBandLessons(now: Date, timezone: string): { at: Date; exertionLevel: number }[] {
+  // #1361's lesson, and every offset here hangs off it: the form's grid is anchored on
+  // `barnToday()`, so "today" has to be the barn's day and not the host's. In the last hours of
+  // the barn's day the host's UTC clock has already rolled over — `dayOffset(now, 5)` is then
+  // barn-day +6, and on the tightest grid (a 31-day month starting Saturday, viewed from its
+  // last day) that is one day past the edge and the red day vanishes. Same rollover a month up
+  // for the next-month anchor. Noon UTC keeps every one of these the day it says in every zone
+  // the barn picker offers.
+  const [barnYear, barnMonth, barnDate] = barnDay(now, timezone).split('-').map(Number)
+  const fromBarnToday = (offset: number) => new Date(Date.UTC(barnYear, barnMonth - 1, barnDate + offset, 12))
   return [
-    { at: dayOffset(now, DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET, 12), exertionLevel: 4 },
-    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 5 },
-    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 5 },
-    { at: nextMonthDay, exertionLevel: 4 },
+    { at: fromBarnToday(DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET), exertionLevel: 4 },
+    { at: fromBarnToday(DEV_CALENDAR_BAND_HIGH_DAY_OFFSET), exertionLevel: 5 },
+    { at: fromBarnToday(DEV_CALENDAR_BAND_HIGH_DAY_OFFSET), exertionLevel: 5 },
+    { at: new Date(Date.UTC(barnYear, barnMonth, DEV_CALENDAR_BAND_NEXT_MONTH_DAY, 12)), exertionLevel: 4 },
   ]
 }
 
@@ -577,11 +580,16 @@ export async function seedBarn(
     tierName: tier1.name,
   }, supabase)
 
+  const { timezone } = mustSucceed<{ timezone: string }>(
+    await supabase.from('barns').select('timezone').eq('id', barnId).single(),
+    'select barn timezone'
+  )
+
   // #1413: the two lessons that put one amber day and one red day on the New Lesson form's
   // month calendar for DEV_CALENDAR_BAND_HORSE. `buildCalendarBandLessons` is the shared
   // definition so `seed-barn.test.ts` can check the guarantee against the real
   // `computeDayDecorations` rather than against a restatement of these offsets.
-  for (const { at, exertionLevel } of buildCalendarBandLessons(now)) {
+  for (const { at, exertionLevel } of buildCalendarBandLessons(now, timezone)) {
     await createLessonWithParticipants({
       barnId,
       instructorId: trainerRowIds[0],
@@ -797,10 +805,6 @@ export async function seedBarn(
   }
 
   const defaultBoardFee = await getBarnDefaultBoardFee(barnId, supabase)
-  const { timezone } = mustSucceed<{ timezone: string }>(
-    await supabase.from('barns').select('timezone').eq('id', barnId).single(),
-    'select barn timezone'
-  )
   // #1361: generateChargeForMonth resolves the month in the barn's frame, so these anchors
   // have to be instants that fall inside the intended month *there* — both the month counted
   // back from and the day within it. The month comes from the barn's own calendar, since in
