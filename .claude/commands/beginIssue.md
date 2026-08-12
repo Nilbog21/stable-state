@@ -105,6 +105,7 @@ Check `{worktree-path}/specs/issue-{N}.md`. If it doesn't exist, or exists but i
 4. After approval, run the same TDD loop Step 5 uses below, plus a lint pass (this is the whole reason revise mode exists — the deferred items were substantial enough to warrant going through this properly instead of a rushed inline fix):
    - Write a failing test, confirm red (`npx vitest run {test-file}`, or the single-spec Playwright command from Step 5's "Which runner the red-green loop uses" when the deliverable is an e2e spec), commit `[#{N}] Add failing tests: {short description}`.
    - Implement, confirm green, commit `[#{N}] {short description}`.
+   - Step 5's test-only carve-out applies here too: when a deferred entry's whole fix is test text — a strengthened assertion, a mutation-pass survivor — there is no red step to produce, so run the mutation pass in place of the first bullet and land the change as one commit.
    - Coverage: `bash scripts/check-coverage.sh` — fix gaps, re-run until clean.
    - Lint: `npm run lint` — fix issues, re-run until clean.
    - Remove the resolved entry from `## Open items` as each one lands. The same deviation checkpoint from Step 5 above applies here too — any incidental unrelated change gets the same ask-and-log treatment.
@@ -197,7 +198,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    cd /absolute/path/to/worktree && git add {test-files} && git commit -m "[#{number}] Add failing tests: {short description}"
    ```
 
-2. **Implement** the issue by making the failing tests pass. Run the tests to confirm they are green before committing:
+2. **Implement** the issue by making the failing tests pass — for a test-only issue there is nothing to implement, and this is the commit the tests themselves land as. Run the tests to confirm they are green before committing:
    ```
    cd /absolute/path/to/worktree && npx vitest run {test-file}
    ```
@@ -229,7 +230,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    - New or changed architectural patterns, abstractions, or dependencies
    - Removed or deprecated features
 
-   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `checklists/pre-release/phase-*.md` line, that section's born-automated-or-justified-manual rule applies: tag it `(e2e: <test name>)`, with the covering spec written in this same PR — through the red-green loop above, not here — or `(manual)` with the reason stated on the line. Leaving the line untagged and tagging it `(e2e-candidate)` are equally not options for a line you are adding. Stage and commit whatever you changed:
+   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. If this change **adds** a `checklists/pre-release/phase-*.md` line, that section's born-automated-or-justified-manual rule applies: tag it `(e2e: <test name>)`, with the covering spec written in this same PR — through step 1's loop above, or the mutation pass that replaces it when the issue is test-only, not here — or `(manual)` with the reason stated on the line. Leaving the line untagged and tagging it `(e2e-candidate)` are equally not options for a line you are adding. Stage and commit whatever you changed:
    ```
    cd /absolute/path/to/worktree && git add {changed-doc-files} && git commit --amend --no-edit
    ```
