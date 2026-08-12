@@ -7,7 +7,7 @@
 // covers: src/app/barn/[slug]/(protected)/UserMenu.tsx
 //
 // Phase 1's fifteen `/demo` and cron-reaper checks: the public demo flow as a visitor with no
-// session, the demo-specific chrome the resulting barn renders, and the hourly reaper route that
+// session, the demo-specific chrome the resulting barn renders, and the daily reaper route that
 // tears it back down (checklists/pre-release/phase-1-setup.md, the block from "In a
 // fresh/incognito browser (no existing session), visit `/demo`" through "Visiting `/profile`
 // directly while signed in as the demo user redirects to `/`").
