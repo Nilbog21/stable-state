@@ -51,6 +51,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addHorseDocument, addUnpaidLesson, assetPath, daysFromNow, E2E_STUB_RIDER } from './support/fixtures'
 import { accordionSection, openSection } from './support/accordion'
+import { submitButton } from './support/document-upload'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs, not builder outputs. No name contains another (every Playwright text matcher is
@@ -242,15 +243,6 @@ const atDocumentUpload = (horseId: string) => new RegExp(`/documents/new\\?entit
 const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 
 /**
- * The upload form's submit button, located structurally: its label is
- * `{pending ? 'Uploading…' : 'Upload'}`, so a name locator stops matching mid-flight (the
- * containment hazard #1202 found, live in this form).
- */
-function uploadSubmitButton(page: Page) {
-  return page.locator('main form').locator('button[type="submit"]')
-}
-
-/**
  * Any exhaustion bar, for the absence assertions — its label carries live figures.
  *
  * Absence is all this locator is for since #1390: the bar no longer renders on this page for any
@@ -406,7 +398,7 @@ test.describe.serial('document privileges on Butter', () => {
     await addDocumentLink(page).click()
     await page.waitForURL(atDocumentUpload(butterId), { waitUntil: 'commit' })
 
-    const submit = uploadSubmitButton(page)
+    const submit = submitButton(page)
     await submit.waitFor()
     await page.locator('main form select').selectOption('coggins')
     await page.setInputFiles('input[type="file"]', assetPath(UPLOAD_PDF))

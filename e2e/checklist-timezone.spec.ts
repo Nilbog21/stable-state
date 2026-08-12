@@ -8,6 +8,7 @@ import { test, expect, withBarn } from './support/test'
 import { createClient } from '@supabase/supabase-js'
 import { addHorse, addTier, daysFromNow, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
 import { BROWSER_TIMEZONE } from './support/timezone'
+import { saveLessonForm } from './support/lesson-pages'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -188,9 +189,7 @@ test('resaving_the_edit_form_unchanged_preserves_the_lessons_minutes @manager', 
   // the decode without losing its minutes.
   await expect(page.locator('#lesson-start-time')).toHaveValue(LESSON_TIME)
 
-  const submit = page.getByRole('button', { name: 'Save' })
-  await submit.focus()
-  await submit.press('Enter')
+  await saveLessonForm(page)
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons/[0-9a-f-]+$`), { waitUntil: 'commit' })
 
   // The redirect above is what keeps this from being a tautology: it proves the action ran and

@@ -43,6 +43,7 @@
 // the containment hazard #1284 records for person names and which every substring matcher shares).
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addManagedMember, addStaffDocument, assetPath } from './support/fixtures'
+import { submitButton, uploadForm } from './support/document-upload'
 
 // ---------------------------------------------------------------------------
 // Seed inputs
@@ -192,19 +193,6 @@ const agreementCardText = (page: Page) => activeAgreements(page).locator('p')
 function cardsMatching(page: Page, lease: RegExp, board: RegExp) {
   return agreementCardText(page).filter({ hasText: lease }).or(agreementCardText(page).filter({ hasText: board }))
 }
-
-const uploadForm = (page: Page) => page.locator('main form')
-
-/**
- * The submit button, located structurally rather than by its accessible name.
- *
- * Not decoration: the label is `{pending ? 'Uploading…' : 'Upload'}`, so a non-exact name match
- * would match "Upload" as a prefix of "Uploading…" — the same substring-containment trap #1202
- * recorded for the fee text on these pages, in a second place on the same flow.
- * checklist-phase4-horses-documents.spec.ts locates this same form's submit structurally for this
- * reason; the shape is copied from there deliberately rather than reinvented.
- */
-const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
 
 /**
  * The upload screen's reminder-date field — and the barrier the upload test waits on after its

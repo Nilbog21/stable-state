@@ -13,7 +13,20 @@ import {
   E2E_STUB_RIDER,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
-import { hydrateByDriving, waitForHydrated } from './support/hydration'
+import { hydrateByDriving } from './support/hydration'
+import {
+  CANCELLED_BADGE,
+  cancelTypeRadio,
+  detailField,
+  detailHeader,
+  headerCancelLink,
+  headerCancelledBadge,
+  landOnDetail,
+  riderRow,
+  riderRows,
+  saveLessonForm,
+  waitForEditFormHydrated,
+} from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -34,7 +47,6 @@ const STUB_RIDER_NAME = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
 const RECURRING_BADGE = 'Recurring'
 const RECURRING_INDICATOR = 'This is part of a recurring series'
 const STOP_SERIES_BUTTON = 'Stop Recurring Lessons'
-const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 
 /**
@@ -222,50 +234,6 @@ function editPath(key: LessonKey): string {
   return `${detailPath(key)}/edit`
 }
 
-/** The detail page's header block — the `<div>` that holds the `<h1>` and the badges beside it. */
-function detailHeader(page: Page): Locator {
-  return page.locator('main div:has(> h1)')
-}
-
-/**
- * The detail page header's action group, addressed as the sibling of the block that holds the
- * `<h1>` rather than by its Tailwind classes. That relationship is what makes "a Cancel button in
- * its detail-page header" an assertion about the header rather than about the page: a Cancel
- * control rendered anywhere else is outside this locator entirely.
- */
-function headerActions(page: Page): Locator {
-  return page.locator('main div:has(> h1) + div')
-}
-
-/** The header's Cancel control, which is a `<Button href>` and therefore a link. */
-function headerCancelLink(page: Page): Locator {
-  return headerActions(page).getByRole('link', { name: 'Cancel', exact: true })
-}
-
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
-/** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
-function headerCancelledBadge(page: Page): Locator {
-  return detailHeader(page).getByText(CANCELLED_BADGE, { exact: true })
-}
-
-/** One `<li>` per enrolled rider, inside a group lesson's Rider(s) field. */
-function riderRows(page: Page): Locator {
-  return detailField(page, 'Rider(s)').locator('li')
-}
-
-/** A single rider's row, addressed by the name it displays. */
-function riderRow(page: Page, name: string): Locator {
-  return riderRows(page).filter({ hasText: name })
-}
-
-function cancelTypeRadio(page: Page, value: 'instructor' | 'rider'): Locator {
-  return page.locator(`input[name="cancel_type"][value="${value}"]`)
-}
-
 /** The rider picker's own labels — one per still-active rider, or nothing when it is hidden. */
 function pickerLabels(page: Page): Locator {
   return page.locator('main form fieldset:has(input[name="rider_id"]) label')
@@ -302,79 +270,27 @@ function cancellationNotesField(page: Page): Locator {
   return page.getByLabel(CANCELLATION_NOTES_LABEL, { exact: true })
 }
 
-/**
- * Blocks until the edit form has hydrated. Lifted from
- * `checklist-phase4-lessons-delete.spec.ts`, which lifted it from
- * `checklist-phase4-lessons-detail.spec.ts` — duplicated rather than extracted, per this batch's
- * convention. The signal: an ExhaustionBar cannot exist before `LessonForm`'s effects have run,
- * because it renders only once `exhaustionData` has arrived, and that state is set by an effect
- * whose input is itself produced by `LessonStartTime`'s mount effect via a server-action round
- * trip. A visible bar therefore strictly post-dates hydration rather than merely correlating
- * with it.
- *
- * Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
- * `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
- *
- * Three of the four other edit-page tests skip it because they only *read* server-rendered markup
- * (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
- * series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
- * one of those would be the SSR-default
- * confusion running the other way.
- *
- * The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
- * and still skips it, which is the one case here that needs its reason
- * stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
- * landing before React is listening is not lost the way fact 10's button is: the browser submits
- * the form natively and the action runs regardless. Hydration only decides whether the
- * `window.confirm` is raised first, and that confirm is not what "Stopping the series from
- * there works the same as the manager flow" claims. Driving it
- * through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
- * "a control the test does not assert on, and one whose repeat is harmless", and this control is
- * both the mutation under test and one a retry would re-issue.
- */
-async function waitForEditFormHydrated(page: Page) {
-  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
-}
-
-/**
- * Keyboard activation rather than a pointer `.click()`. `LessonForm`'s submit sits at the bottom
- * of a long scrollable form — the shape #501 diagnosed, where Chromium's scroll-into-view
- * animation races Playwright's actionability check. `checklist-timezone.spec.ts`,
- * `checklist-phase4-lessons-detail.spec.ts` and `checklist-phase4-lessons-delete.spec.ts` all
- * drive this same component's submit this way, and in `edit` mode the form is longer still.
- *
- * `exact: true` and scoped to `main`: `getByRole`'s name match is a case-insensitive **substring**
- * by default, so a bare 'Save' would also match a future 'Save and close'.
- */
-async function saveLessonForm(page: Page) {
-  const save = page.locator('main').getByRole('button', { name: 'Save', exact: true })
-  await save.focus()
-  await save.press('Enter')
-}
-
-/**
- * Land back on a lesson's detail page after a redirect.
- *
- * Both halves are needed and neither replaces the other, which is the pairing
- * `e2e/support/test.ts`'s convention block mandates after a click. `waitForURL` pins **which**
- * lesson the server redirected to — a redirect wired to the wrong id lands on a real, rendering
- * detail page and would satisfy any content check. `'commit'` resolves before that document
- * renders, though, so a 404 or a 500 at the right URL satisfies the URL half equally; the `<dl>`
- * is the render proof, and neither `/cancel` nor `/edit` has one, so a submit that failed and
- * re-rendered its own page fails here rather than sailing through.
- *
- * That `<dl>` is also what makes this helper safe against the soft-nav hazard #1319's review
- * found: after a `waitUntil: 'commit'` the previous route can still be mounted, so a read taken
- * on markup **both** pages render can answer from the page just left. `<dl>` appears nowhere in
- * the `lessons/` route tree except the detail page itself, so it cannot resolve against `/cancel`
- * or `/edit` — and both callers then read through auto-retrying detail-only locators
- * (`riderRows`, `detailField`) rather than shared chrome. Copying this helper onto a flow whose
- * *source* page has a `<dl>` reintroduces the hazard; check that before reusing it.
- */
-async function landOnDetail(page: Page, key: LessonKey) {
-  await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}$`), { waitUntil: 'commit' })
-  await page.locator('main dl').waitFor()
-}
+// On `waitForEditFormHydrated`, imported from `./support/lesson-pages`:
+//
+// Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
+// `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
+//
+// Three of the four other edit-page tests skip it because they only *read* server-rendered markup
+// (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
+// series" indicator, and the **Stop Recurring Lessons** button) — waiting for hydration to assert
+// one of those would be the SSR-default
+// confusion running the other way.
+//
+// The fourth — "Stopping the series from there works the same as the manager flow" — *writes*
+// and still skips it, which is the one case here that needs its reason
+// stated rather than inferred. `StopSeriesButton` is a `<form action={serverAction}>`, so a click
+// landing before React is listening is not lost the way fact 10's button is: the browser submits
+// the form natively and the action runs regardless. Hydration only decides whether the
+// `window.confirm` is raised first, and that confirm is not what "Stopping the series from
+// there works the same as the manager flow" claims. Driving it
+// through `hydrateByDriving` would also be actively wrong — `support/hydration.ts` says to prefer
+// "a control the test does not assert on, and one whose repeat is harmless", and this control is
+// both the mutation under test and one a retry would re-issue.
 
 /** The instructor named on a detail page, e.g. `Test Trainer`. */
 async function instructorOnDetailPage(page: Page): Promise<string> {
@@ -445,7 +361,7 @@ test('trainer_cancelling_one_group_riders_spot_cancels_only_that_rider @trainer'
   )
   await page.getByRole('radio', { name: RIDER_NAME, exact: true }).check()
   await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
-  await landOnDetail(page, 'riderSpot')
+  await landOnDetail(page, lessonIds.riderSpot)
 
   await riderRows(page).first().waitFor()
   const reading = async (name: string) => ({
@@ -494,7 +410,7 @@ test('cancellation_notes_saved_by_a_trainer_render_on_the_lesson_detail_page @tr
   await waitForEditFormHydrated(page)
   await cancellationNotesField(page).fill(SAVED_CANCELLATION_NOTE)
   await saveLessonForm(page)
-  await landOnDetail(page, 'notesSave')
+  await landOnDetail(page, lessonIds.notesSave)
 
   const notes = (await settledTextContents(detailField(page, CANCELLATION_NOTES_LABEL)))[0].trim()
   expect(notes).toEqual(SAVED_CANCELLATION_NOTE)

@@ -4,7 +4,7 @@
 
 **Roles:** manager
 
-Kind-scoped list (`?kind=lease|board`, defaults to `lease` when missing/invalid) of agreements of that kind, rendered as full-card links (`Card`, matching the Horses page pattern) to `/barn/[slug]/agreements/[id]` — each card shows rider, horse, fee, and status via the shared `getAgreementStatusLabel` helper (`src/lib/db/agreements.ts`: `is_active=false` → "Ended"; `is_active=true` + `cadence='one_time'` → "Complete", since a one-time agreement's single charge is created at creation and never bills again; `is_active=true` + `cadence='monthly'` → "Active"); no separate row-level Edit link — Edit remains reachable from the detail page; **Add Lease**/**Add Boarding** button top-right; `EmptyState` when the list is empty
+Kind-scoped list (`?kind=lease|board`, defaults to `lease` when missing/invalid) of agreements of that kind, rendered as full-card links (`Card`, matching the Horses page pattern) to `/barn/[slug]/agreements/[id]` — each card shows rider, horse, fee, and status via the shared `getAgreementStatusLabel` helper (`src/lib/db/agreements.ts`: `is_active=false` → "Ended"; `is_active=true` + `cadence='one_time'` → "Complete", since a one-time agreement's single charge is created at creation and never bills again; `is_active=true` + `cadence='monthly'` → "Active"), plus an amber **Unpaid** `Badge` (#871) when the agreement has at least one charge transaction still uncollected and dated before the first of the current *barn* month (`getUnpaidAgreementIds(barn.id, barn.timezone)` — the barn-month bound is #1360's; full semantics in [`dal/agreements.md`](../dal/agreements.md)); no separate row-level Edit link — Edit remains reachable from the detail page; **Add Lease**/**Add Boarding** button top-right; `EmptyState` when the list is empty
 
 ## `/barn/[slug]/agreements/new`
 
@@ -22,4 +22,4 @@ Agreement detail page: rider and horse (resolved via `resolveMemberNames`/`resol
 
 **Roles:** manager
 
-Edit form: only fee is editable; rider, horse, start date, and cadence are shown read-only (resolved via `resolveMemberNames`/`resolveHorseNames`) — to change any of those, end the agreement and create a new one; **End Agreement** button (confirm dialog) sets `is_active=false`, hidden once already ended
+Edit form: only fee is editable; rider, horse, and start date are shown read-only (names resolved via `resolveMemberNames`/`resolveHorseNames`), and cadence is shown read-only for a lease only — a boarding agreement's edit form renders no cadence row at all (`AgreementForm`'s board branch emits its hidden `cadence=monthly` input only in `new` mode, and a board's cadence is fixed `monthly` by the table `CHECK` anyway; the detail page still shows Cadence for both kinds) — to change any of those, end the agreement and create a new one; **End Agreement** button (confirm dialog) sets `is_active=false`, hidden once already ended

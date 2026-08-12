@@ -6,6 +6,14 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import {
+  CANCELLED_BADGE,
+  cancelTypeFieldset,
+  cancelTypeRadio,
+  detailField,
+  headerActions,
+  headerCancelledBadge,
+} from './support/lesson-pages'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 
 // ---------------------------------------------------------------------------
@@ -53,7 +61,6 @@ const CANCELLATION_NOTE = 'Trainer is away at a clinic this weekend.'
 // The app's own strings, quoted rather than imported: an expected value derived from the code
 // under test agrees with any bug in it.
 const LATE_FEE_WARNING = 'The rider will be due a late cancellation fee.'
-const CANCELLED_BADGE = 'Cancelled'
 
 // Filled in by the seed.
 const lessonIds: Record<keyof typeof FEES, string> = {} as Record<keyof typeof FEES, string>
@@ -145,35 +152,6 @@ function detailPath(key: keyof typeof FEES): string {
 
 function cancelPath(key: keyof typeof FEES): string {
   return `${detailPath(key)}/cancel`
-}
-
-/**
- * The detail page header's action group, addressed as the sibling of the block that holds the
- * `<h1>` rather than by its Tailwind classes. That relationship is what makes "a single Cancel
- * button *next to* Edit/Delete" an assertion about the header rather than about the page: a
- * Cancel control rendered anywhere else is outside this locator entirely.
- */
-function headerActions(page: Page): Locator {
-  return page.locator('main div:has(> h1) + div')
-}
-
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
-/** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
-function headerCancelledBadge(page: Page): Locator {
-  return page.locator('main div:has(> h1)').getByText(CANCELLED_BADGE, { exact: true })
-}
-
-/** The cancel page's Type toggle, as a whole, so its options can be asserted in one string. */
-function cancelTypeFieldset(page: Page): Locator {
-  return page.locator('main fieldset:has(input[name="cancel_type"])')
-}
-
-function cancelTypeRadio(page: Page, value: 'instructor' | 'rider'): Locator {
-  return page.locator(`input[name="cancel_type"][value="${value}"]`)
 }
 
 /** The amber late-cancellation-fee note, which only ever renders on the cancel page. */

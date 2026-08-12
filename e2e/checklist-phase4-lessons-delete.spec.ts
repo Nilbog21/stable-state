@@ -34,7 +34,7 @@ import {
   daysFromNow,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
-import { waitForHydrated } from './support/hydration'
+import { CANCELLED_BADGE, detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // ---------------------------------------------------------------------------
@@ -115,7 +115,6 @@ const EDITED_NOTES = 'Rescheduled to Thursday afternoon.'
 // test agrees with any bug in it.
 const DELETE_CONFIRM =
   'Permanently delete this lesson? This cannot be undone, and unlike Cancel, no cancellation record, fee, or notification is created.'
-const CANCELLED_BADGE = 'Cancelled'
 const CANCELLATION_NOTES_LABEL = 'Cancellation Notes'
 const INSTRUCTOR_LABEL = 'Instructor'
 
@@ -321,11 +320,6 @@ function listCard(page: Page, key: LessonKey): Locator {
   return page.locator(`main ul a[href$="/lessons/${ids[key]}"]`)
 }
 
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
 /**
  * Every element on the detail page whose whole text is a given label — not just the `<dl>` rows.
  *
@@ -453,42 +447,12 @@ async function notificationFingerprints(): Promise<string[]> {
   return rows.map((row) => `${row.type}:${row.title}`).sort()
 }
 
-/**
- * Blocks until the edit form has hydrated. Lifted from
- * `checklist-phase4-lessons-detail.spec.ts`, whose docstring works out why this particular signal
- * is the right one: an ExhaustionBar cannot exist before LessonForm's effects have run, because it
- * is rendered only once `exhaustionData` has arrived, and that state is set by an effect whose
- * input is itself produced by LessonStartTime's mount effect via a server-action round trip. So a
- * visible bar strictly post-dates hydration rather than merely correlating with it.
- *
- * The two tests that only *read* the edit form (the "shows a **Cancellation Notes** textarea" and
- * "does *not* appear when editing a non-cancelled lesson" items) deliberately skip this: their
- * claims are about server-rendered markup, and waiting for hydration to assert a server-rendered
- * absence would be the SSR-default confusion running the other way.
- *
- * The barrier itself lives in `support/hydration.ts` (#1280); this is only the choice of signal.
- */
-async function waitForEditFormHydrated(page: Page) {
-  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
-}
-
-/**
- * Keyboard activation rather than a pointer `.click()`. LessonForm's submit sits at the bottom of a
- * long scrollable form — the shape #501 (04c64505) diagnosed, where Chromium's scroll-into-view
- * animation races Playwright's actionability check. `checklist-timezone.spec.ts` and
- * `checklist-phase4-lessons-detail.spec.ts` both drive *this same component's* submit this way, and
- * in `edit` mode the form is longer still.
- */
-async function saveLessonForm(page: Page) {
-  // `exact: true` and scoped to `main`, unlike the merged sibling this helper is otherwise copied
-  // from: `getByRole`'s name match is a case-insensitive **substring** by default, so a bare 'Save'
-  // would also match any future 'Save and close'/'Save draft' control. Latent rather than live
-  // today — no other button on the edit page contains 'Save' — and that is exactly when it is cheap
-  // to close.
-  const save = page.locator('main').getByRole('button', { name: 'Save', exact: true })
-  await save.focus()
-  await save.press('Enter')
-}
+// On `waitForEditFormHydrated`, imported from `./support/lesson-pages`:
+//
+// The two tests that only *read* the edit form (the "shows a **Cancellation Notes** textarea" and
+// "does *not* appear when editing a non-cancelled lesson" items) deliberately skip this: their
+// claims are about server-rendered markup, and waiting for hydration to assert a server-rendered
+// absence would be the SSR-default confusion running the other way.
 
 /** The detail header's Delete control on the browser-prompt arm — a submit button, not a link. */
 function deleteButton(page: Page): Locator {

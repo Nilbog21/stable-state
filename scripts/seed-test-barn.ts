@@ -128,8 +128,12 @@ async function run() {
   await addUnpaidLesson(supabase, barn, lesson(daysFromNow(5, barn.timezone), { horseIds: [bella.id], fee: tier2.price, tierName: tier2.name, jumping: true }))
 
   // Same-day lesson so the dashboard's current day has content. fee: 0 keeps it out of every
-  // outstanding-fee query. Pinned 15 minutes out, not at `now` — getUpcomingLessons filters
-  // lesson_at >= the dashboard request's own `now`, which is always later than the seed.
+  // outstanding-fee query (and out of the Unpaid badge, which requires fee > 0). Pinned 15
+  // minutes out, not at `now`, so the lesson is still upcoming when a walkthrough's requests
+  // run: the dashboard itself no longer filters by `now` (#1015 deleted getUpcomingLessons;
+  // the Day view fetches the whole barn day), but the horse page's Upcoming Lessons read
+  // (getUpcomingLessonsForHorse) still filters `lesson_at >= now()`, and a lesson seeded at
+  // `now` would be born already-past.
   await addUnpaidLesson(supabase, barn, lesson(new Date(Date.now() + 15 * 60 * 1000), { fee: 0, tierName: 'Custom' }))
 
   // Unpaid lesson and lease charge on the stub rider only, so the `rider` login still has

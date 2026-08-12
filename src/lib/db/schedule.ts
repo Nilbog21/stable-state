@@ -210,8 +210,10 @@ export async function getScheduleForRange(
   // Horse ids come from the junction table but exertion levels come from an RPC, because
   // the two have different visibility: `lesson_horses` row RLS lets an enrolled rider see
   // the row, while `exertion_level` has no SELECT grant to `authenticated` at all (#937)
-  // and is readable only via get_lesson_horse_exertion_levels_batch, whose filter is
-  // narrower (manager/trainer, or a rider holding lesson_read_privileges on the horse).
+  // and is readable only through SECURITY DEFINER RPCs — for a lesson's rows that's
+  // get_lesson_horse_exertion_levels_batch and its per-lesson sibling (lessons.ts), which
+  // share a row filter narrower than the row RLS above (manager/trainer, or a
+  // rider holding lesson_read_privileges on the horse).
   // Selecting the column here instead makes Postgres deny the whole query with 42501 —
   // the #1019 regression this split fixes.
   const lessonHorseRows: { lesson_id: string; horse_id: string }[] = []

@@ -26,7 +26,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | Table | manager | trainer | rider |
 |---|---|---|---|
 | barns | SELECT, UPDATE (own barn) | SELECT | SELECT |
-| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE `can_instruct` for barn members; DELETE any non-manager in barn (#969 — a manager can no longer delete another manager's row, or their own, even via a direct call; manager removal requires direct DB access) | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own — plus (#779) any active barn member can read barn-wide member summaries (`id`/`user_id`/`profile_id`/`role`/`can_instruct`/`created_at`, never `invite_token`) via the `get_active_barn_member_summaries` RPC |
+| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE `can_instruct` for barn members; DELETE any non-manager in barn (#969 — a manager can no longer delete another manager's row, or their own, even via a direct call; manager removal requires direct DB access) | SELECT own + the barn's active rider rows; INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own — plus (#779) any active barn member can read barn-wide member summaries (`id`/`user_id`/`profile_id`/`role`/`can_instruct`/`created_at`, never `invite_token`) via the `get_active_barn_member_summaries` RPC |
 | horses | SELECT, INSERT, UPDATE, DELETE — but `feed_notes`/`medication_notes` only through the `update_horse_notes` RPC since #1390, which admitted the manager alongside the owner when the fields moved out of `HorseManagerForm`; `update_horse_details` re-sends the stored values unchanged | SELECT | SELECT — plus (#1006) the horse's owning member (`owning_member_id`) can write just `feed_notes`/`medication_notes` for their own horse via the `update_horse_notes` RPC, same owner-write-RPC convention as `photo_path` below |
 | lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT (enrolled only), INSERT |
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
@@ -57,8 +57,9 @@ Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers
 
 Policy-helper functions — all `SECURITY DEFINER` SQL, each existing to break a would-be RLS recursion or to avoid over-granting through a row-level policy. Full per-helper rationale: [`docs/architecture/rls.md`](docs/architecture/rls.md).
 
-- `auth_is_barn_manager(p_barn_id)` — manager check; used by any policy needing one
-- `auth_is_any_barn_manager()` — manager of *any* barn; backs the managed-member-stub INSERT policies
+- `auth_is_barn_manager(p_barn_id)` — manager check; required in `barn_memberships` policies, optional elsewhere
+- `auth_is_barn_trainer(p_barn_id)` — trainer check; backs `barn_memberships_trainer_read_riders`
+- `auth_is_any_barn_manager()` — manager of *any* barn; backs `profiles_manager_insert_managed`
 - `auth_get_profile_immutable_fields(p_id)` — pre-update row for `profiles_manager_update`'s WITH CHECK; reach gated (#1158)
 - `auth_is_enrolled_rider(p_lesson_id, p_barn_id)` — backs the rider SELECT policies on `lessons`/`lesson_horses`/`lesson_riders`
 - `auth_can_read_instructor_membership(p_membership_id, p_barn_id)` — auth check inside `get_instructor_membership_names` (a row policy would expose `invite_token`)

@@ -3,6 +3,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
+import { sortedVisibleLessonIds } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { Lesson } from '@/lib/db/types'
 
@@ -97,29 +98,6 @@ function lessonPath(lesson: Lesson): string {
   return `/barn/${barn.slug}/lessons/${lesson.id}`
 }
 
-/** Every lesson card currently rendered. */
-function lessonCards(page: Page): Locator {
-  return page.locator('main ul a[href*="/lessons/"]')
-}
-
-/**
- * The set of lessons the list is currently showing. Sorted, because what these checkboxes
- * claim is *which* lessons appear, not in what order — and #1286 is still moving `ORDER BY`
- * around in the DAL, so a membership assertion is correct either side of it.
- *
- * evaluateAll is one-shot and does not auto-retry, so an unsettled read yields [] and any
- * assertion that happens to accept an empty array passes on nothing (#1243). support/read.ts
- * leaves evaluateAll its inline guard deliberately, so the guard belongs here; it doubles as
- * the assertion, since waitFor throws rather than handing back an empty list.
- */
-async function visibleLessonIds(page: Page): Promise<string[]> {
-  await lessonCards(page).first().waitFor()
-  const ids = await lessonCards(page).evaluateAll((els) =>
-    els.map((el) => el.getAttribute('href')!.split('/').pop()!)
-  )
-  return ids.sort()
-}
-
 function sortedIds(lessons: Lesson[]): string[] {
   return lessons.map((l) => l.id).sort()
 }
@@ -166,7 +144,7 @@ async function headerControls(page: Page): Promise<{ edit: number; delete: numbe
 // so this is the default the checkbox names, not a filter this test selected.
 test('trainer_lessons_list_defaults_to_my_lessons @trainer', async ({ page }) => {
   await page.goto(lessonsPath())
-  await expect.poll(() => visibleLessonIds(page)).toEqual(sortedIds([myFirst, mySecond]))
+  await expect.poll(() => sortedVisibleLessonIds(page)).toEqual(sortedIds([myFirst, mySecond]))
 })
 
 // "every barn lesson, including another instructor's" is literally all four seeded lessons —
@@ -175,7 +153,7 @@ test('trainer_all_filter_shows_every_barn_lesson_including_another_instructors @
   await page.goto(lessonsPath())
   await pickFilter(page, 'All', 'all')
   await expect
-    .poll(() => visibleLessonIds(page))
+    .poll(() => sortedVisibleLessonIds(page))
     .toEqual(sortedIds([myFirst, mySecond, othersFirst, othersSecond]))
 })
 

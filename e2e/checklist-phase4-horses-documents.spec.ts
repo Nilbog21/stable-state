@@ -31,6 +31,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addHorseDocument, assetPath, updateBarnSettings } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { accordionSection, openSection } from './support/accordion'
+import { submitButton, uploadForm } from './support/document-upload'
 import { mustSucceed } from '@/lib/db/service-role'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
@@ -335,21 +336,6 @@ async function reloadHorseDocuments(page: Page) {
   await page.reload()
   await openSection(page, 'Documents')
 }
-
-/** The upload form, scoped to <main> so a dev overlay or a future layout can never join it. */
-const uploadForm = (page: Page) => page.locator('main form')
-
-/**
- * The submit button, located structurally rather than by its accessible name.
- *
- * Not decoration: the label is `{pending ? 'Uploading…' : 'Upload'}`, so a name locator stops
- * matching at exactly the moment the "Upload button disables while the upload is pending" and
- * "indeterminate progress bar shows while that upload is pending" lines need it — and a
- * *non-exact* name match would
- * match "Uploading…" as a substring of nothing and "Upload" as a prefix of it, which is the
- * containment hazard #1202 found, live in this form.
- */
-const submitButton = (page: Page) => uploadForm(page).locator('button[type="submit"]')
 
 /**
  * The form's File field — its own child div, located by the file input it contains.

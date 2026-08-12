@@ -12,7 +12,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
 import { settledInnerTexts, settledTextContents } from './support/read'
-import { waitForHydrated } from './support/hydration'
+import { detailField, lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs the assertions read back by name. Horse names are inputs to addHorse rather than
@@ -192,11 +192,6 @@ function firstBlockInMain(page: Page): Locator {
   return page.locator('main > div').first()
 }
 
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
 /**
  * The paragraph a note label sits above. Relational rather than class-based, so it survives a
  * restyle, and it is the same shape for horse notes and rider notes.
@@ -222,50 +217,6 @@ function horsesNavLink(page: Page): Locator {
 /** A lesson card in one of the Lessons list's `<ul>`s, addressed by the lesson it points at. */
 function listCard(page: Page, lessonId: string): Locator {
   return page.locator(`main ul a[href$="/lessons/${lessonId}"]`)
-}
-
-/** Every lesson card currently rendered on the Lessons list. */
-function lessonCards(page: Page): Locator {
-  return page.locator('main ul a[href*="/lessons/"]')
-}
-
-/**
- * Blocks until the edit form has hydrated, which every interaction below depends on and none of
- * them can prove on its own.
- *
- * The navigation guard is installed by a `useEffect` inside LessonForm (`setDirty(shouldWarn)`).
- * Until that effect has run, the nav bar's Horses entry is still an ordinary server-rendered
- * `<a>`: clicking it navigates straight through, no dialog is ever raised, and the check fails
- * for a reason that has nothing to do with the behaviour it is about — intermittently, under
- * whatever load the dev server happens to be carrying.
- *
- * An ExhaustionBar is the signal because it cannot exist before that effect has run: it is
- * rendered only once `exhaustionData` has arrived, and that state is set by a *second* effect
- * whose input (`lessonAt`) is itself only produced by LessonStartTime's mount effect, via a
- * server-action round trip. So a visible bar strictly post-dates hydration rather than merely
- * correlating with it. That ordering is the whole point of the wait — read as a bare "wait for
- * the page to settle" it looks like superstition and invites deletion.
- *
- * The barrier itself, and why no timeout is written here, live in `support/hydration.ts` (#1280).
- * This function is only the choice of signal.
- */
-async function waitForEditFormHydrated(page: Page) {
-  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
-}
-
-/**
- * Keyboard activation rather than a pointer `.click()`. LessonForm's submit sits at the bottom
- * of a long scrollable form — the exact shape #501 (04c64505) diagnosed, where Chromium's
- * scroll-into-view animation races Playwright's actionability check and something else
- * intercepts the click mid-scroll. `checklist-timezone.spec.ts` already drives *this same
- * component's* submit this way for that reason; in `edit` mode the form is longer still, since
- * it adds the whole notes block (a textarea per horse and two per rider) below the button's
- * `new`-mode position.
- */
-async function saveLessonForm(page: Page) {
-  const save = page.getByRole('button', { name: 'Save' })
-  await save.focus()
-  await save.press('Enter')
 }
 
 // ---------------------------------------------------------------------------

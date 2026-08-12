@@ -4,6 +4,8 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, cancelLesson, daysFromNow } from './support/fixtures'
+import { lessonCards, visibleLessonIds } from './support/lesson-pages'
+import { goToDaysAhead } from './support/dashboard'
 import { mustSucceed } from '@/lib/db/service-role'
 
 // Seed inputs the assertions read back by name. Horse and tier names are inputs to the
@@ -128,22 +130,6 @@ const barn = withBarn('phase4-lessons-list', async ({ supabase, barn, members })
 /** A lesson card in one of the list's <ul>s, addressed by the lesson it points at. */
 function listCard(page: Page, lessonId: string): Locator {
   return page.locator(`main ul a[href$="/lessons/${lessonId}"]`)
-}
-
-/** Every lesson card currently rendered, in DOM order — which is the page's own sort order. */
-function lessonCards(page: Page): Locator {
-  return page.locator('main ul a[href*="/lessons/"]')
-}
-
-async function visibleLessonIds(page: Page): Promise<string[]> {
-  // evaluateAll is one-shot and does not auto-retry, so an unsettled read yields [] and any
-  // assertion that happens to accept an empty array passes on nothing (#1243). support/read.ts
-  // wraps allInnerTexts/allTextContents for exactly this; it leaves evaluateAll its inline
-  // guard ("a helper that has to wrap a callback reads worse than the guard it would replace"),
-  // so the guard belongs here. It doubles as the assertion: waitFor throws on timeout, so a
-  // list that renders nothing fails the test instead of satisfying it.
-  await lessonCards(page).first().waitFor()
-  return lessonCards(page).evaluateAll((els) => els.map((el) => el.getAttribute('href')!.split('/').pop()!))
 }
 
 /**
@@ -405,22 +391,8 @@ test('willow_upcoming_lesson_shows_needs_attention_badge_on_lessons_list @manage
   await expect.poll(() => attentionBadgeState(listCard(page, willowUpcomingId))).toEqual({ cards: 1, badges: 1 })
 })
 
-// Each click re-derives the "Next day" link and waits for the URL's `date` to advance before
-// clicking again — it is a client-side transition on a server-rendered Link, so firing clicks
-// back to back races the same stale href. Lifted from checklist-phase4-dashboard.spec.ts;
-// e2e/support is off limits to this slice, so it is duplicated rather than shared.
-async function goToDaysAhead(page: Page, days: number) {
-  await page.goto(`/barn/${barn.slug}`)
-  for (let i = 0; i < days; i++) {
-    const next = page.getByRole('link', { name: 'Next day' })
-    const targetDate = new URL((await next.getAttribute('href'))!, page.url()).searchParams.get('date')
-    await next.click()
-    await page.waitForURL((url) => url.searchParams.get('date') === targetDate, { waitUntil: 'commit' })
-  }
-}
-
 test('willow_upcoming_lesson_shows_needs_attention_badge_on_dashboard_day_view @manager', async ({ page }) => {
-  await goToDaysAhead(page, 2)
+  await goToDaysAhead(page, barn.slug, 2)
   const card = page.locator(`main a[href$="/lessons/${willowUpcomingId}"]`)
   await expect.poll(() => attentionBadgeState(card)).toEqual({ cards: 1, badges: 1 })
 })

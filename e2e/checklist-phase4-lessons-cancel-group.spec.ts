@@ -11,6 +11,17 @@ import {
   cancelLessonRider,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import {
+  CANCELLED_BADGE,
+  cancelTypeFieldset,
+  cancelTypeRadio,
+  detailField,
+  detailHeader,
+  headerCancelledBadge,
+  landOnDetail,
+  riderRow,
+  riderRows,
+} from './support/lesson-pages'
 
 // ---------------------------------------------------------------------------
 // Seed inputs
@@ -76,7 +87,6 @@ const WHOLE_LESSON_NOTE = 'Arena flooded, the whole group is off.'
 // under test agrees with any bug in it.
 const GROUP_FEE_WARNING =
   'Warning: No late cancellation fees are currently leveraged for group lessons.'
-const CANCELLED_BADGE = 'Cancelled'
 const GROUP_BADGE = 'Group'
 
 // Filled in by the seed.
@@ -246,20 +256,6 @@ function cancelPath(key: LessonKey): string {
   return `${detailPath(key)}/cancel`
 }
 
-/** The `<dd>` of a detail-page `<dt>`/`<dd>` pair, addressed by the label above it. */
-function detailField(page: Page, label: string): Locator {
-  return page.locator(`main dl dt:text-is("${label}") + dd`)
-}
-
-function detailHeader(page: Page): Locator {
-  return page.locator('main div:has(> h1)')
-}
-
-/** The Cancelled badge in the detail page header — not a rider row's badge, which is separate. */
-function headerCancelledBadge(page: Page): Locator {
-  return detailHeader(page).getByText(CANCELLED_BADGE, { exact: true })
-}
-
 /**
  * The lesson-type badge, which every group lesson's header carries unconditionally. It exists
  * only to be the positive control for a *zero* read of `headerCancelledBadge` — those two share
@@ -268,25 +264,6 @@ function headerCancelledBadge(page: Page): Locator {
  */
 function headerTypeBadge(page: Page): Locator {
   return detailHeader(page).getByText(GROUP_BADGE, { exact: true })
-}
-
-/** One `<li>` per enrolled rider, inside the detail page's Rider(s) field. */
-function riderRows(page: Page): Locator {
-  return detailField(page, 'Rider(s)').locator('li')
-}
-
-/** A single rider's row, addressed by the name it displays. */
-function riderRow(page: Page, name: string): Locator {
-  return riderRows(page).filter({ hasText: name })
-}
-
-/** The cancel page's Type toggle, as a whole, so its options can be asserted in one string. */
-function cancelTypeFieldset(page: Page): Locator {
-  return page.locator('main fieldset:has(input[name="cancel_type"])')
-}
-
-function cancelTypeRadio(page: Page, value: 'instructor' | 'rider'): Locator {
-  return page.locator(`input[name="cancel_type"][value="${value}"]`)
 }
 
 /**
@@ -403,23 +380,6 @@ async function openCancelPage(page: Page, key: LessonKey) {
 }
 
 /**
- * Land back on a lesson's detail page after a Confirm.
- *
- * Both halves are needed and neither replaces the other, which is the pairing
- * `checklist-phase4-lessons-detail.spec.ts` already uses and `e2e/support/test.ts`'s convention
- * block mandates after a click. `waitForURL` pins **which** lesson the server redirected to — a
- * redirect wired to the wrong id lands on a real, rendering detail page and would satisfy any
- * content check. `'commit'` resolves before that document renders, though, so a 404 or a 500 at
- * the right URL satisfies the URL half equally; the `<dl>` is the render proof, and `/cancel`
- * has none, so a submit that failed and re-rendered the confirmation page fails here rather than
- * sailing through.
- */
-async function landOnDetail(page: Page, key: LessonKey) {
-  await page.waitForURL(new RegExp(`/lessons/${lessonIds[key]}$`), { waitUntil: 'commit' })
-  await page.locator('main dl').waitFor()
-}
-
-/**
  * Cancel a whole group lesson. Only reachable as **Cancelled by Instructor**:
  * `cancelLessonAction` re-routes a group lesson submitted with `cancel_type=rider` to the
  * per-rider action instead, so "cancel the whole thing" and "cancel one rider" are the toggle's
@@ -430,7 +390,7 @@ async function cancelWholeLesson(page: Page, key: LessonKey, notes?: string) {
   await cancelTypeRadio(page, 'instructor').check()
   if (notes !== undefined) await page.getByLabel('Cancellation notes (optional)', { exact: true }).fill(notes)
   await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
-  await landOnDetail(page, key)
+  await landOnDetail(page, lessonIds[key])
 }
 
 /**
@@ -445,7 +405,7 @@ async function cancelOneRider(page: Page, key: LessonKey, riderName: string) {
   await cancelTypeRadio(page, 'rider').check()
   await page.getByRole('radio', { name: riderName, exact: true }).check()
   await page.getByRole('button', { name: 'Confirm Cancellation', exact: true }).click()
-  await landOnDetail(page, key)
+  await landOnDetail(page, lessonIds[key])
 }
 
 // ---------------------------------------------------------------------------
