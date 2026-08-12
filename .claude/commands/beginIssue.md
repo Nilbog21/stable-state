@@ -186,6 +186,8 @@ A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`)
 
 If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — deciding it at step 4 instead strands the spec after the loop it was supposed to drive.
 
+**A test-only issue has no red step.** Step 1's failing-tests commit is the default and stays the default. But when the whole deliverable is tests — a spec characterizing already-shipped behaviour, or a refactor of existing tests — there is no implementation being withheld, so the spec is green on its first run and a failing-tests commit would be theatre. Skip it (`CLAUDE.md`'s Test-First Rules; precedent `bd4e8a3a`, `c771a7da`) and substitute a **mutation pass** before step 5: break each new or changed assertion once, confirm red, revert, and report the kill count in the PR body. Mutate an *ordered* spec file one mutant per run, or re-establish its ordered state in `beforeAll` — a whole-file batch measures the Playwright worker restart rather than the assertions, and its survivors are false reassurance (`docs/e2e-framework-facts.md` fact 15). Everything else in this section is unchanged; the tests land as step 2's commit.
+
 1. **Write failing tests first** — following the project's TDD convention. Run the tests to confirm they are red before committing:
    ```
    cd /absolute/path/to/worktree && npx vitest run {test-file}
@@ -247,7 +249,7 @@ If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's 
    EOF
    )"
    ```
-   The body should contain only deviations from the issue — anything added, removed, or done differently. If the implementation exactly matches the issue, the body is just `Closes #{number}` with nothing else. Do not re-summarize the issue.
+   The body should contain only deviations from the issue — anything added, removed, or done differently — plus the mutation-pass kill count if this was a test-only issue. If the implementation exactly matches the issue and neither applies, the body is just `Closes #{number}` with nothing else. Do not re-summarize the issue.
 
    Then assign the PR via REST (capture PR number from the URL returned above):
    ```
