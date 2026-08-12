@@ -44,7 +44,7 @@ Every step in the phases below that uploads a file names one from `scripts/data/
 Run them in order. Each file carries its own asserting role — the partitioning rule is the Convention above.
 
 - [Phase 1 — Setup](checklists/pre-release/phase-1-setup.md) — role-agnostic setup — an unauthenticated visitor, then the shared demo user, then the developer's own account pre-membership and as its manager.
-- [Phase 2 — Manager seeding](checklists/pre-release/phase-2-manager-seeding.md) — manager only. Data other phases depend on is created here.
+- [Phase 2 — Manager seeding](checklists/pre-release/phase-2-manager-seeding.md) — manager only.
 - [Phase 3 — Manager lesson entry](checklists/pre-release/phase-3-manager-lesson-entry.md) — manager only.
 - [Phase 4 — Manager verification](checklists/pre-release/phase-4-manager-verification.md) — manager, or role-agnostic. A line whose asserting eye is a trainer or rider belongs in Phase 5 or 6 — see the phase-partitioning Convention at the top.
 - [Phase 5 — Trainer](checklists/pre-release/phase-5-trainer.md) — trainer only. A manager may plant a precondition mid-phase, but never inside a checkbox — a manager mutation gets its own tagged `Setup —` checkbox above the assertions it serves, so every asserting checkbox here is a single trainer-eye assertion.
