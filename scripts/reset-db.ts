@@ -24,8 +24,10 @@ import {
   DEV_UNAVAILABLE_HORSE,
   DEV_UNAVAILABLE_REASON,
   DEV_CALENDAR_BAND_HORSE,
+  DEV_CALENDAR_BAND_THRESHOLDS,
   DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET,
   DEV_CALENDAR_BAND_HIGH_DAY_OFFSET,
+  DEV_CALENDAR_BAND_NEXT_MONTH_DAY,
   DEV_MANAGER_2,
   DEV_TRAINER_4,
   DEV_TIER_NAME,
@@ -90,7 +92,7 @@ async function run() {
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')} (${DEV_RIDERS[1].firstName} has a profile photo set)`)
-  console.log(`  Horses:   ${DEV_HORSES[0]}, ${DEV_HORSES[1]} (photo set), ${DEV_HORSES[2]}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}"), plus ${DEV_CALENDAR_BAND_HORSE} (low exhaustion thresholds + 1 lesson at day +${DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET} and 1 at day +${DEV_CALENDAR_BAND_HIGH_DAY_OFFSET}, so its New Lesson month calendar always shows one amber day and one red day — #1413's manual dark-mode checks)`)
+  console.log(`  Horses:   ${DEV_HORSES[0]}, ${DEV_HORSES[1]} (photo set), ${DEV_HORSES[2]}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}"), plus ${DEV_CALENDAR_BAND_HORSE} (thresholds ${DEV_CALENDAR_BAND_THRESHOLDS.moderate}/${DEV_CALENDAR_BAND_THRESHOLDS.high} + 4 lessons: day +${DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET}, day +${DEV_CALENDAR_BAND_HIGH_DAY_OFFSET}, and the ${DEV_CALENDAR_BAND_NEXT_MONTH_DAY}rd of next month — so its New Lesson month calendar always shows an amber day, a red day, and a tinted neighbouring-month day for #1413's manual dark-mode checks)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 8} (${groupCount} group, ${lessonDates.length - groupCount + 5} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 12 older than 1 week, 11 within past week, 2 today, 6 next week — the +5 from #950's seed additions) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)

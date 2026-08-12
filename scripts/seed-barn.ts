@@ -59,25 +59,52 @@ export const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 // exactly the two lessons below.
 export const DEV_CALENDAR_BAND_HORSE = 'Juniper'
 
-// Deliberately far below the barn defaults (5 / 11), which is what lets two lessons do the job
-// of the seven it would otherwise take (exertion_level is capped at 5). Both bands render from
-// the same `BAND_TINT_CLASS` regardless of how the total got there, so a low threshold is not a
-// weaker fixture for a colour comparison — just a cheaper one.
-export const DEV_CALENDAR_BAND_THRESHOLDS = { moderate: 1, high: 3 }
+// Below the barn defaults (5 / 11), which is what lets four lessons do the job of the eleven it
+// would otherwise take — exertion_level is capped at 5. Both bands render from the same
+// `BAND_TINT_CLASS` regardless of how the total got there, so a low pair is not a weaker fixture
+// for a colour comparison, just a cheaper one. The gap between them is the headroom that keeps
+// the moderate day moderate when a neighbouring cluster leaks into its window (see below).
+export const DEV_CALENDAR_BAND_THRESHOLDS = { moderate: 3, high: 8 }
 
-// Day +1 and day +5, and the gap is load-bearing rather than aesthetic: `computeDayDecorations`
-// centres its ±3-day window on the form's Start Time, not on midnight, so two lessons 4 days
-// apart fall inside one window at some hours. At 5 days apart the nearest approach is 3d13h —
-// outside it at every hour, which is what keeps day +1 amber instead of flipping red. Day +5 is
-// also the furthest day guaranteed visible: a 31-day month starting Saturday grids only to day
-// 36, so from its last day there are exactly 5 days of grid left.
+// Day +1 and day +5, and the 4-day gap is load-bearing rather than aesthetic:
+// `computeDayDecorations` centres its ±3-day window on the form's *Start Time*, not on midnight,
+// so two lessons 4 days apart fall inside one window at some hours and not others. At 5 days
+// apart the nearest approach is 3d13h — outside it at every hour, which is what keeps day +1
+// moderate instead of flipping high. Day +5 is also the furthest day guaranteed to be on the
+// grid at all: a 31-day month starting Saturday grids only to day 36, so from its last day
+// there are exactly 5 days of grid left.
 export const DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET = 1
 export const DEV_CALENDAR_BAND_HIGH_DAY_OFFSET = 5
 
+// The third cluster serves the *other* dark-mode line — the date number on a **tinted
+// neighbouring-month** day. Anchored to the next month's 3rd rather than to an offset from
+// today, because the two above are neighbouring-month days only when today happens to fall in
+// the last few days of a month. Days 1–5 of the next month are always carried into the current
+// grid (42 cells from the Sunday on or before the 1st leaves at least 5), so the 3rd always
+// lands there, always dimmed, always in the future.
+export const DEV_CALENDAR_BAND_NEXT_MONTH_DAY = 3
+
+/**
+ * The four lessons behind #1413's two `(manual)` dark-mode checks. Exported so
+ * `seed-barn.test.ts` can put them through the real `computeDayDecorations` and prove the
+ * guarantee holds from every "today" and every Start Time, rather than restating these offsets.
+ *
+ * The exertion levels are chosen so no cluster can push another out of its band when the two
+ * windows overlap — the moderate day tops out at 4 + 4 = 8, exactly its own `high` threshold,
+ * and the high day floors at 5 + 5 = 10.
+ */
 export function buildCalendarBandLessons(now: Date): { at: Date; exertionLevel: number }[] {
+  const nextMonthDay = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    DEV_CALENDAR_BAND_NEXT_MONTH_DAY,
+    12
+  ))
   return [
-    { at: dayOffset(now, DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET, 12), exertionLevel: 2 },
-    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 4 },
+    { at: dayOffset(now, DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET, 12), exertionLevel: 4 },
+    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 5 },
+    { at: dayOffset(now, DEV_CALENDAR_BAND_HIGH_DAY_OFFSET, 12), exertionLevel: 5 },
+    { at: nextMonthDay, exertionLevel: 4 },
   ]
 }
 

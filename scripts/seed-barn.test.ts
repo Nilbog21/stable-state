@@ -425,13 +425,13 @@ describe('buildCalendarBandLessons', () => {
     )
   }
 
-  // Every day of a 31-day month, a 28-day one, and a leap February — the tightest case is
-  // "today is the last day of the month", where the grid reaches only a few days past it.
+  // Every day of a three-year span, at four hours each — enough to cover every (month length,
+  // weekday the 1st falls on) pair, including the leap February. The tightest case is "today is
+  // the last day of a 31-day month starting on a Saturday", where the grid reaches exactly 5
+  // days past month end and both the high day and the neighbouring-month day sit on that edge.
   const days: Date[] = []
-  for (const [year, month, length] of [[2026, 0, 31], [2026, 1, 28], [2028, 1, 29]] as const) {
-    for (let d = 1; d <= length; d++) {
-      for (const hour of [0, 9, 17, 23]) days.push(new Date(Date.UTC(year, month, d, hour)))
-    }
+  for (let d = new Date(Date.UTC(2026, 0, 1)); d < new Date(Date.UTC(2029, 0, 1)); d.setUTCDate(d.getUTCDate() + 1)) {
+    for (const hour of [0, 9, 17, 23]) days.push(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour)))
   }
 
   it('should_put_a_moderate_day_on_the_visible_grid_from_every_today_and_hour', () => {
