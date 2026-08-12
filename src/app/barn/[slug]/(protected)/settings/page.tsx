@@ -27,12 +27,16 @@ import { DownloadButton } from './DownloadButton'
 
 export default async function SettingsPage({
   params,
-  searchParams: _searchParams,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
   searchParams: Promise<Record<string, string>>
 }) {
   const { slug } = await params
+  // #1417 — which section a save just landed in (`?saved=`), or should merely reopen
+  // (`?open=`, for a delete). Threaded into every section rather than resolved here so the
+  // deriving stays in one place; `AccordionSection` guards the undefined-matches-undefined case.
+  const { saved, open } = await searchParams
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
@@ -64,7 +68,7 @@ export default async function SettingsPage({
         Manage Barn
       </h1>
 
-      <AccordionSection title="Default Instructor Cut">
+      <AccordionSection title="Default Instructor Cut" slug="instructor-cut" savedSlug={saved} openSlug={open}>
         <GuardedForm action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
@@ -91,7 +95,7 @@ export default async function SettingsPage({
         </p>
       </AccordionSection>
 
-      <AccordionSection title="Horse Exhaustion Thresholds">
+      <AccordionSection title="Horse Exhaustion Thresholds" slug="exhaustion-thresholds" savedSlug={saved} openSlug={open}>
         <ExhaustionThresholdsForm
           barn={barn}
           action={updateExhaustionThresholdsAction.bind(null, slug)}
@@ -101,7 +105,7 @@ export default async function SettingsPage({
         </p>
       </AccordionSection>
 
-      <AccordionSection title="Schedule Buffer">
+      <AccordionSection title="Schedule Buffer" slug="schedule-buffer" savedSlug={saved} openSlug={open}>
         <GuardedForm action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
@@ -130,6 +134,9 @@ export default async function SettingsPage({
 
       <AccordionSection
         title="Lesson Tiers"
+        slug="tiers"
+        savedSlug={saved}
+        openSlug={open}
         headerExtra={<Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>}
       >
         {tiers.length > 0 ? (
@@ -178,6 +185,9 @@ export default async function SettingsPage({
 
       <AccordionSection
         title="Barn Events"
+        slug="events"
+        savedSlug={saved}
+        openSlug={open}
         headerExtra={<Button href={`/barn/${slug}/settings/events/new`}>Add Event</Button>}
       >
         {events.length > 0 ? (
@@ -220,7 +230,7 @@ export default async function SettingsPage({
         )}
       </AccordionSection>
 
-      <AccordionSection title="Default Board Fee">
+      <AccordionSection title="Default Board Fee" slug="board-fee" savedSlug={saved} openSlug={open}>
         <GuardedForm action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
@@ -244,7 +254,7 @@ export default async function SettingsPage({
         </p>
       </AccordionSection>
 
-      <AccordionSection title="Barn Timezone">
+      <AccordionSection title="Barn Timezone" slug="timezone" savedSlug={saved} openSlug={open}>
         <GuardedForm action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">

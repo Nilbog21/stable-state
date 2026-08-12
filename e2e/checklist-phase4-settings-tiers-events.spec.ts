@@ -224,11 +224,19 @@ function roleCheckbox(page: Page, role: string) {
   return page.locator(`input[name="visible_to_roles"][value="${role}"]`)
 }
 
-/** Submits a form by its Save button. focus()+Enter, per #501/`04c64505`. */
-async function save(page: Page) {
+/**
+ * Submits a form by its Save button. focus()+Enter, per #501/`04c64505`.
+ *
+ * `savedSlug` is the section the action's redirect names (#1417) — `tiers` from a tier form,
+ * `events` from an event form. Taken as an argument rather than matched loosely, so the wait
+ * still proves *which* round trip completed.
+ */
+async function save(page: Page, savedSlug: 'tiers' | 'events') {
   await page.getByRole('button', { name: 'Save', exact: true }).focus()
   await page.keyboard.press('Enter')
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings$`), { waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings\\?saved=${savedSlug}$`), {
+    waitUntil: 'commit',
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -301,7 +309,7 @@ test.describe.serial('Manage Barn — Lesson Tiers', () => {
   }) => {
     await page.goto(tierEditUrl(winter.id))
     await page.locator('#set-as-default').check()
-    await save(page)
+    await save(page, 'tiers')
 
     await page.goto(`/barn/${barn.slug}/lessons/new`)
     await expect(page.locator('#tier_name')).toHaveValue(winter.id)
@@ -381,7 +389,7 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     await page.locator('#dh-date').fill(NEW_EVENT.date)
     await page.locator('#dh-hour').selectOption(NEW_EVENT.hour)
     await page.locator('#event-notes').fill(NEW_EVENT.notes)
-    await save(page)
+    await save(page, 'events')
 
     expect(await eventTitles(page)).toEqual([NEW_EVENT.title, SURVIVING_EVENT.title])
   })
@@ -407,7 +415,7 @@ test.describe.serial('Manage Barn — Barn Events', () => {
   test('unchecking_rider_on_an_event_persists_after_save @manager', async ({ page }) => {
     await openEventEdit(page, NEW_EVENT.title)
     await roleCheckbox(page, 'rider').uncheck()
-    await save(page)
+    await save(page, 'events')
 
     await openEventEdit(page, NEW_EVENT.title)
     const rider = roleCheckbox(page, 'rider')
@@ -473,9 +481,36 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     await page.waitForURL(/\/settings\/events\/[0-9a-f-]{36}\/delete$/, { waitUntil: 'commit' })
     await page.getByRole('button', { name: 'Confirm Delete', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings$`), { waitUntil: 'commit' })
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings\\?open=events$`), { waitUntil: 'commit' })
 
     // Absence paired with presence, in one equality — see SURVIVING_EVENT.
     expect(await eventTitles(page)).toEqual([SURVIVING_EVENT.title])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sub-page round trip — the #1417 "**Add Tier** → Save → back on Manage Barn with **Lesson
+// Tiers** open" line and its "The new tier is listed in that section" pair
+// ---------------------------------------------------------------------------
+
+// Declared last on purpose: it adds a tier, and the Lesson Tiers block above asserts the new
+// lesson form's tier list by exact equality. `fullyParallel` is false, so declaration order is
+// run order and those equalities keep their pre-state.
+test.describe.serial('Manage Barn — Add Tier round trip', () => {
+  const ROUND_TRIP_TIER = 'Round Trip'
+
+  test('adding_a_tier_returns_to_settings_with_lesson_tiers_open @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}/settings/tiers/new`)
+    await page.locator('#tier-name').fill(ROUND_TRIP_TIER)
+    await page.locator('#tier-price').fill('65')
+    await save(page, 'tiers')
+
+    // One read covering both lines: a `<td>` inside a closed `<details>` is never visible, so a
+    // visible cell proves the section reopened *and* that the tier just created is the one
+    // listed — which is the round trip the issue is about.
+    const section = page
+      .locator('details')
+      .filter({ has: page.getByRole('heading', { name: 'Lesson Tiers', exact: true }) })
+    await expect(section.getByRole('cell', { name: ROUND_TRIP_TIER, exact: true })).toBeVisible()
   })
 })

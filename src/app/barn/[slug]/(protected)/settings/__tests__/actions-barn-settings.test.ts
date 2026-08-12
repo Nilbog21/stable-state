@@ -104,7 +104,7 @@ describe('updateInstructorCutAction', () => {
       updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '30' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=instructor-cut')
   })
 
   it('should_allow_zero', async () => {
@@ -180,7 +180,7 @@ describe('updateExhaustionThresholdsAction', () => {
       )
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=exhaustion-thresholds')
   })
 
   it('should_accept_zero_moderate', async () => {
@@ -320,7 +320,7 @@ describe('updateScheduleBufferMinutesAction', () => {
       updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=schedule-buffer')
   })
 
   it('should_return_early_when_minutes_is_blank', async () => {
@@ -376,7 +376,7 @@ describe('updateDefaultBoardFeeAction', () => {
       updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '1200' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=board-fee')
   })
 
   it('should_return_early_when_fee_is_blank', async () => {
@@ -432,7 +432,7 @@ describe('updateBarnTimezoneAction', () => {
       updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'America/Los_Angeles' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=timezone')
   })
 
   it('should_return_early_when_timezone_is_blank', async () => {

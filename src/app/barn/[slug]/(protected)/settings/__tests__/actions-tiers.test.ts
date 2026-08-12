@@ -111,7 +111,7 @@ describe('createTierAction', () => {
       createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=tiers')
   })
 
   it('should_return_error_when_price_is_blank', async () => {
@@ -285,7 +285,7 @@ describe('updateTierAction', () => {
       updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=tiers')
   })
 
   it('should_return_error_when_price_is_blank', async () => {

@@ -453,12 +453,13 @@ function sectionHeading(page: Page, sec: Locator, title: string) {
 /**
  * Submits one section's form and waits for the server action to answer.
  *
- * The wait is on the action's own POST response, not on `waitForURL`. Every settings action
- * redirects to `/barn/[slug]/settings` — the URL the form is already on — so a `waitForURL`
- * for it resolves on its first poll whether or not anything happened, which is #1202's
- * tautological-wait finding in its purest form. The POST response is the one signal that
- * distinguishes "the action ran" from "nothing happened yet", and it is what makes the
- * reload-and-read on the far side of every persistence item a real read.
+ * The wait is on the action's own POST response, not on `waitForURL`. Since #1417 each settings
+ * action redirects to `/barn/[slug]/settings?saved=<slug>`, so a `waitForURL` for it is no longer
+ * strictly tautological — but it is still the wrong signal here: this helper is called from every
+ * section, so it would need the caller's slug threaded through it to say anything, and #1202's
+ * finding is that a wait which can resolve against the pre-state buys nothing. The POST response
+ * is the one signal that distinguishes "the action ran" from "nothing happened yet", and it is
+ * what makes the reload-and-read on the far side of every persistence item a real read.
  *
  * No explicit timeout: `actionTimeout: 0` makes every `waitFor*` unbounded, so passing one
  * would tighten the budget rather than loosen it.
@@ -1114,5 +1115,28 @@ test.describe.serial('Manage Barn — unsaved-changes nav guard', () => {
     // wait (fact 3) — /lessons differs from the /settings URL the click happens on.
     await page.waitForURL(`**/barn/${barn.slug}/lessons`)
     await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Save confirmation — the #1417 "Save a section's field → that section stays open" line and its
+// "That section shows a green **Saved** badge beside its heading" pair
+// ---------------------------------------------------------------------------
+
+test.describe('Manage Barn — save confirmation', () => {
+  test('saving_a_settings_field_leaves_its_section_open_with_a_saved_badge @manager', async ({
+    page,
+  }) => {
+    // Submits the stored value unchanged rather than a new one. The claim is about the round
+    // trip, not about persistence — and this file's other blocks are `.serial` around the
+    // values they leave behind, so writing a fresh one here would reach into them.
+    const sec = await openSection(page, 'Schedule Buffer')
+    await saveSection(page, sec)
+
+    // One assertion per checklist line, and both are needed: the badge lives in the `<summary>`,
+    // which is visible whether or not the section is open, so badge-alone would pass on the very
+    // collapse this fixes.
+    await expect(sec).toHaveJSProperty('open', true)
+    await expect(sec.locator('summary').getByText('Saved', { exact: true })).toBeVisible()
   })
 })

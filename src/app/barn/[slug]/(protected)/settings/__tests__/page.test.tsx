@@ -596,4 +596,59 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(downloadBarnDataAction).toHaveBeenCalled())
     expect(downloadAllDocumentsAction).not.toHaveBeenCalled()
   })
+
+  /** The `<details>` whose `<summary>` heading is exactly `title` (#1417). */
+  function section(title: string): HTMLDetailsElement {
+    const heading = [...document.querySelectorAll('summary h2')].find(
+      (h) => h.textContent === title
+    )
+    return heading!.closest('details')!
+  }
+
+  it('should_open_the_saved_section_and_badge_it', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ saved: 'tiers' }),
+    })
+    render(jsx)
+
+    expect(section('Lesson Tiers').open).toBe(true)
+    expect(screen.getByText('Saved')).toBeDefined()
+  })
+
+  it('should_open_the_open_param_section_without_a_badge', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ open: 'events' }),
+    })
+    render(jsx)
+
+    expect(section('Barn Events').open).toBe(true)
+    expect(screen.queryByText('Saved')).toBeNull()
+  })
+
+  it('should_leave_every_section_closed_when_no_param_is_given', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect([...document.querySelectorAll('details')].map((d) => d.open)).toEqual(
+      Array(8).fill(false)
+    )
+  })
+
+  it('should_leave_every_section_closed_when_the_param_names_no_section', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ saved: 'not-a-section' }),
+    })
+    render(jsx)
+
+    expect(screen.queryByText('Saved')).toBeNull()
+    expect([...document.querySelectorAll('details')].map((d) => d.open)).toEqual(
+      Array(8).fill(false)
+    )
+  })
 })
