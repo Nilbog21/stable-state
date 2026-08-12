@@ -1,10 +1,11 @@
 # E2E framework facts
 
-Fifteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+Seventeen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
 12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction, 15 from #1426's
-mutation pass; fact 10 was later
+mutation pass, 16 and 17 from the #1422–#1426 fleet batch (16 found by #1423, 17 by #1426's review
+fan-out, both harvested into this file by #1433); fact 10 was later
 sharpened by #1385, which found its original unconditional form too broad, and again by 14, which
 found its multipart observation load-bearing in the other direction. Every one is measured, not
 inferred. The spec named after each fact carries the worked example, with fact 12 the exception by
@@ -14,8 +15,8 @@ Facts 1 and 2 are stated in full where you meet them; the rest are stated here.
 
 The index — headlines only, plus facts 7's and 10's inversions — is `e2e/CLAUDE.md`'s
 `## Framework facts`, which is auto-loaded whenever `e2e/` is touched. **Numbering is append-only**:
-a new fact takes the next number and no existing number ever moves. 52 comments across 22 files
-cite a fact by number, and renumbering breaks every one of them silently.
+a new fact takes the next number and no existing number ever moves. 87 citations across 29 files
+name a fact by number, and renumbering breaks every one of them silently.
 
 ## Fact 1
 
@@ -217,3 +218,54 @@ corollary, and the reason this is worth a numbered fact rather than a comment: *
 an ordered file has to run one mutant per run, or re-establish the ordered state in `beforeAll`
 for the duration of the pass.** A whole-file batch measures the restart, not the assertions —
 and its survivors are false reassurance, not evidence. *(#1426)*
+
+## Fact 16
+
+**`getByRole` returns zero matches inside a `display:none` container**, because it resolves
+against the **accessibility tree** rather than the DOM, and a `display:none` subtree is absent
+from that tree even though every one of its elements is attached. Locating by tag —
+`container.locator('a')` — is the one form that can still count them.
+
+Measured, not inferred. #1423's "the desktop nav's section links are hidden below the md
+breakpoint" check read `linksInDom: 0` against a container demonstrably carrying nine anchors.
+That reading would have made the check's own **positive control unsatisfiable**: the count is
+there so that a nav bar rendering no links at all cannot pass as a correctly-collapsed one, and a
+locator that returns 0 either way cannot tell those two apart. A test that cannot distinguish
+"correctly hidden" from "the page failed to render" is not a weaker test — it is asserting
+something other than what its name claims.
+
+This is a trap for **any spec asserting something is hidden**, which is a whole class of
+responsive checklist line: the hidden state is exactly the state in which the natural locator
+stops working, so the hazard arrives at the moment the assertion becomes interesting. Same family
+as fact 2's visibility ceiling — an element that is attached but unreachable by the reader you
+picked — reached through the accessibility tree instead of through `waitFor`. Fixed in #1423 with
+a tag-based `desktopNavAnchors` for that one count, keeping the role query everywhere the
+container is visible, so the a11y-tree semantics are still exercised where they hold. Reference
+implementation: `checklist-phase1-nav-responsive.spec.ts`'s `desktopNavAnchors`. *(#1423)*
+
+## Fact 17
+
+**A wait predicate satisfiable only by the success path cannot observe the failure it exists to
+catch.** The wait then constrains the *helper's* return value rather than the app's behavior, and
+every assertion downstream of it inherits that — passing on a property established by
+construction.
+
+Measured on `checklist-phase7-multi-barn.spec.ts`'s `claimInvite`. The obvious spelling is
+`waitForURL(new RegExp('/barn/<slug>/?$'))`, and Playwright matches a `waitForURL` regex against
+the **whole URL**, query included — so `acceptInvite`'s failure redirect,
+`/barn/<slug>/register?token=…&error=1`, could never satisfy it. Every URL the helper returned
+carried an empty query *by construction*, which is precisely what the
+`the_second_barn_claim_produced_no_error_redirect` check exists to detect. The check would have
+read as covered while asserting nothing.
+
+The reason this is worth a numbered fact rather than a comment is how it survives review: **a
+mutant of the expectation literal still goes red**, because the success path is genuinely being
+waited on, so a mutation pass is structurally blind to this class — the defect is in what the
+predicate *cannot* match, and no mutation of the matching branch reaches it. Four of six review
+agents found it independently by reading. Fixed in #1426 as a two-branch predicate admitting both
+outcomes (`url.pathname !== registerPath || url.searchParams.has('error')`), leaving the
+discrimination to the assertions that follow, which is where it belongs. Note that the error
+redirect keeps `/register`'s pathname, so "left the page" alone would not have worked either — the
+query is the discriminator. Same polarity as this suite's third spec-maintenance rule
+([`e2e-spec-maintenance.md`](e2e-spec-maintenance.md#rule-3)): an assertion that can only be
+satisfied one way is not an assertion. *(#1426)*

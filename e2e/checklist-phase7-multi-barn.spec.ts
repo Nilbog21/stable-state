@@ -296,15 +296,13 @@ function acceptInviteButton(page: Page) {
  * early click submits on its own. The `waitForURL` is a real sync point rather than fact 3's
  * no-op — the click starts on `/register`, which neither branch of the predicate matches.
  *
- * THE PREDICATE ADMITS BOTH OUTCOMES, AND THAT IS WHAT MAKES THE TWO CHECKS BELOW FALSIFIABLE.
- * The obvious spelling — waiting on `/barn/<slug>/?$` — is `$`-anchored against the whole URL, so
- * `acceptInvite`'s failure redirect (`/barn/<slug>/register?token=…&error=1`) could never satisfy
- * it. Every URL this returned would then carry an empty query *by construction*, and
- * `the_second_barn_claim_produced_no_error_redirect` would be asserting a property of this
- * helper rather than one of the app — a checklist line reading as covered while asserting
- * nothing, which is what e2e/CLAUDE.md's third spec-maintenance rule exists to prevent. The
- * error redirect keeps `/register`'s pathname, so "left the page" alone will not do it either:
- * the query is the discriminator, and both are read below.
+ * THE PREDICATE ADMITS BOTH OUTCOMES, AND THAT IS WHAT MAKES THE TWO CHECKS BELOW FALSIFIABLE —
+ * e2e/CLAUDE.md fact 17, which this helper is the reference implementation for. The obvious
+ * spelling, waiting on `/barn/<slug>/?$`, could never be satisfied by `acceptInvite`'s failure
+ * redirect (`/barn/<slug>/register?token=…&error=1`), so
+ * `the_second_barn_claim_produced_no_error_redirect` would be asserting a property of this helper
+ * rather than one of the app. Locally: the error redirect keeps `/register`'s pathname, so "left
+ * the page" alone will not do it either — the query is the discriminator, and both are read below.
  */
 async function claimInvite(page: Page, slug: string, token: string): Promise<string> {
   const registerPath = `/barn/${slug}/register`

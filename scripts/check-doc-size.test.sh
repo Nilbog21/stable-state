@@ -17,11 +17,14 @@ assert_fail() {
 }
 
 # Creates a temp git repo with ARCHITECTURE.md, docs/architecture/*.md, a nested
-# docs/architecture/dal/lessons.md, the per-file-budgeted CLAUDE.md set, and
-# docs/e2e-framework-facts.md (the second pairwise anchor's sub-doc), at given byte sizes.
+# docs/architecture/dal/lessons.md, the per-file-budgeted CLAUDE.md set, and both of
+# e2e/CLAUDE.md's pairwise sub-docs — docs/e2e-framework-facts.md and
+# docs/e2e-spec-maintenance.md — at given byte sizes. Every path in the script's PAIRS has to
+# exist here: a missing one makes `find` print to stderr and the pair check run zero times, so
+# that entry would be silently unexercised by every test below rather than failing one.
 make_repo() {
   local main_size="$1" sub_size="$2" budget_file_size="${3:-1000}" nested_size="${4:-100}"
-  local facts_size="${5:-100}"
+  local facts_size="${5:-100}" spec_maint_size="${6:-100}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
@@ -32,6 +35,7 @@ make_repo() {
   done
   head -c "$nested_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/dal/lessons.md"
   head -c "$facts_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-framework-facts.md"
+  head -c "$spec_maint_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-spec-maintenance.md"
   for f in CLAUDE.md scripts/CLAUDE.md e2e/CLAUDE.md src/components/ui/CLAUDE.md; do
     head -c "$budget_file_size" /dev/zero | tr '\0' 'a' > "$dir/$f"
   done
@@ -116,9 +120,10 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 8: everything under pairwise limit and all per-file budgets — exits 0 (7000 is under the
-# smallest budget in the set, which since #1420 is e2e/CLAUDE.md's rather than the 8000 one)
-REPO="$(make_repo 15000 5000 7000)"
+# Test 8: everything under pairwise limit and all per-file budgets — exits 0 (6000 is under the
+# smallest budget in the set, which since #1420 is e2e/CLAUDE.md's rather than the 8000 one; this
+# size tracks that budget down every time it is lowered, and #1433's split to 6600 is the second)
+REPO="$(make_repo 15000 5000 6000)"
 if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "all files under budgets: exits 0"
 else
@@ -148,6 +153,19 @@ if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.m
   assert_pass "e2e pairwise anchor over limit: exits non-zero, names the sub-doc"
 else
   assert_fail "e2e pairwise anchor over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 11: e2e/CLAUDE.md's *second* sub-doc (#1433) is a pair in its own right, not a free rider on
+# test 10's. Same anchor, same backstop, so only the spec-maintenance sub-doc is oversized here —
+# the facts doc stays at its default 100 and cannot be what produces the failure. Without this,
+# adding a PAIRS entry whose file the fixture never creates reads as covered by test 10.
+REPO="$(make_repo 15000 5000 1000 100 100 149000)"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.md .* docs/e2e-spec-maintenance.md"; then
+  assert_pass "e2e spec-maintenance pair over limit: exits non-zero, names the sub-doc"
+else
+  assert_fail "e2e spec-maintenance pair over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"
 fi
 rm -rf "$REPO"
 

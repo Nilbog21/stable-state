@@ -179,12 +179,10 @@ function desktopNavLinks(page: Page) {
 
 /**
  * The same anchors, located by tag rather than by role — the one form that can count them while
- * the container is collapsed. `getByRole` resolves against the **accessibility tree**, and a
- * `display:none` subtree is absent from it, so the role query returns 0 below the breakpoint even
- * though all nine anchors are attached. Measured, not inferred: the hidden-links check below read
- * `linksInDom: 0` against a container demonstrably carrying nine, which would have made its
- * positive control unsatisfiable — the same class of hazard as read.ts's visibility ceiling
- * (note 3), reached through the a11y tree instead of through `waitFor`.
+ * the container is collapsed (e2e/CLAUDE.md fact 16, which this file is the reference
+ * implementation for). The role query returns 0 below the breakpoint even though all nine anchors
+ * are attached, which is why the hidden-links check below counts through here and everything
+ * asserting against a *visible* container keeps using the role query.
  */
 function desktopNavAnchors(page: Page) {
   return desktopNavContainer(page).locator('a')

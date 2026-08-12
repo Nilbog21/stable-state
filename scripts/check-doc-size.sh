@@ -6,12 +6,14 @@ cd "$(git rev-parse --show-toplevel)"
 LIMIT=150000
 
 # Pairwise anchor:sub-doc caps. An auto-loaded doc that delegates detail to sub-docs gets one
-# entry; the sub-doc path may be a directory (every *.md beneath it is paired separately) or a
-# single file. This is a backstop against one doc going enormous, not a per-turn diet — the
+# entry per sub-doc path; that path may be a directory (every *.md beneath it is paired
+# separately) or a single file, so an anchor splitting into loose files carries one row each
+# (e2e/CLAUDE.md, below). This is a backstop against one doc going enormous, not a per-turn diet — the
 # per-file budgets below are what hold the per-turn cost down.
 PAIRS=(
   "ARCHITECTURE.md:docs/architecture"
   "e2e/CLAUDE.md:docs/e2e-framework-facts.md"
+  "e2e/CLAUDE.md:docs/e2e-spec-maintenance.md"
 )
 
 # Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
@@ -28,7 +30,11 @@ BUDGETS=(
   # docs/e2e-framework-facts.md. Two prior raises (#1354 to 14000, #1409 to 15500) each restored
   # headroom the file then spent within days, and the second left 335 characters — not enough to
   # record the next measured fact in. Splitting is the answer; the number follows the file.
-  "e2e/CLAUDE.md:7400"
+  # Lowered again from 7400 by #1433, which split the spec-maintenance rules out to
+  # docs/e2e-spec-maintenance.md — the same shape, one section later. Measured: the split freed
+  # 1317 characters and #1433 spent 475 of them on facts 16/17 and their index entries, for a net
+  # 7146 -> 6304. The budget follows the file down rather than banking the slack, per the rule above.
+  "e2e/CLAUDE.md:6600"
   "src/components/ui/CLAUDE.md:8000"
 )
 
