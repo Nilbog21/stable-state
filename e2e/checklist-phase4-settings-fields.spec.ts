@@ -1116,3 +1116,26 @@ test.describe.serial('Manage Barn — unsaved-changes nav guard', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Save confirmation — the #1417 checklist line ("Save → the section stays open and shows a
+// Saved badge")
+// ---------------------------------------------------------------------------
+
+test.describe('Manage Barn — save confirmation', () => {
+  test('saving_a_settings_field_leaves_its_section_open_with_a_saved_badge @manager', async ({
+    page,
+  }) => {
+    // Submits the stored value unchanged rather than a new one. The claim is about the round
+    // trip, not about persistence — and this file's other blocks are `.serial` around the
+    // values they leave behind, so writing a fresh one here would reach into them.
+    const sec = await openSection(page, 'Schedule Buffer')
+    await saveSection(page, sec)
+
+    // Both halves of the line, and both are needed: the badge lives in the `<summary>`, which
+    // is visible whether or not the section is open, so badge-alone would pass on the very
+    // collapse this fixes.
+    await expect(sec).toHaveJSProperty('open', true)
+    await expect(sec.locator('summary').getByText('Saved', { exact: true })).toBeVisible()
+  })
+})

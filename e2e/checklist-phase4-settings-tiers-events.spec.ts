@@ -479,3 +479,30 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     expect(await eventTitles(page)).toEqual([SURVIVING_EVENT.title])
   })
 })
+
+// ---------------------------------------------------------------------------
+// Sub-page round trip — the #1417 checklist line ("Add Tier → Save → back on Manage Barn with
+// Lesson Tiers open and the new tier in sight")
+// ---------------------------------------------------------------------------
+
+// Declared last on purpose: it adds a tier, and the Lesson Tiers block above asserts the new
+// lesson form's tier list by exact equality. `fullyParallel` is false, so declaration order is
+// run order and those equalities keep their pre-state.
+test.describe.serial('Manage Barn — Add Tier round trip', () => {
+  const ROUND_TRIP_TIER = 'Round Trip'
+
+  test('adding_a_tier_returns_to_settings_with_lesson_tiers_open @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}/settings/tiers/new`)
+    await page.locator('#tier-name').fill(ROUND_TRIP_TIER)
+    await page.locator('#tier-price').fill('65')
+    await save(page)
+
+    // One read covering the whole line: a `<td>` inside a closed `<details>` is never visible,
+    // so a visible cell proves the section reopened *and* that the tier just created is the
+    // thing in sight — which is the round trip the issue is about.
+    const section = page
+      .locator('details')
+      .filter({ has: page.getByRole('heading', { name: 'Lesson Tiers', exact: true }) })
+    await expect(section.getByRole('cell', { name: ROUND_TRIP_TIER, exact: true })).toBeVisible()
+  })
+})

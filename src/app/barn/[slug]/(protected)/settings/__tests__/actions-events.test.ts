@@ -148,7 +148,7 @@ describe('createEventAction', () => {
       createEventAction('green-acres', { error: null }, makeFormData({ title: 'Costume Party', event_at: '2026-10-31T22:00:00.000Z' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=events')
   })
 })
 
@@ -200,7 +200,7 @@ describe('updateEventAction', () => {
       updateEventAction('green-acres', 'event-1', { error: null }, makeFormData({ title: 'Costume Party', event_at: '2026-10-31T22:00:00.000Z' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?saved=events')
   })
 })
 
@@ -229,10 +229,10 @@ describe('deleteEventAction', () => {
     expect(deleteEvent).toHaveBeenCalledWith('event-1', mockBarn.id)
   })
 
-  it('should_redirect_to_settings_after_delete', async () => {
+  it('should_redirect_to_settings_with_the_events_section_open_after_delete', async () => {
     await expect(deleteEventAction('green-acres', 'event-1')).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings?open=events')
   })
 })
 
