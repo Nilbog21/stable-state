@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest'
+import { getMonthGrid, computeDayDecorations } from '@/lib/month-calendar'
+import { calendarDate } from '@/lib/local-day'
+import type { ScheduleItem } from '@/lib/db/types'
 import {
   buildLessonDates,
   getLessonVariation,
@@ -13,6 +16,8 @@ import {
   computeExhaustionWindowTotals,
   EXHAUSTION_PAST_BOUNDARY_INDEX,
   EXHAUSTION_FUTURE_BOUNDARY_INDEX,
+  buildCalendarBandLessons,
+  DEV_CALENDAR_BAND_THRESHOLDS,
 } from './seed-barn'
 
 describe('buildLessonDates', () => {
@@ -365,5 +370,56 @@ describe('expenseDateFor', () => {
 
   it('should_shift_the_date_forward_for_a_positive_offset', () => {
     expect(expenseDateFor(NOW, 10)).toBe('2026-07-14')
+  })
+})
+
+// The two dark-mode `(manual)` lines in `checklists/pre-release/phase-3-manager-lesson-entry.md`
+// are walked by hand forever while every line around them gets automated away (#1413), so the
+// amber day and the red day they compare have to come from the seed rather than from a
+// neighbouring checkbox nobody performs. The guarantee is checked against the real production
+// path — `getMonthGrid` + `computeDayDecorations` — not a restatement of it, and across every
+// hour because the ±3-day exertion window is centred on the form's Start Time, not on midnight.
+describe('buildCalendarBandLessons', () => {
+  const HORSE_ID = 'juniper'
+
+  function bandsOnVisibleDays(now: Date, hour: number): Set<string> {
+    const items: ScheduleItem[] = buildCalendarBandLessons(now).map((lesson, i) => ({
+      id: `band-${i}`,
+      itemType: 'lesson',
+      start: lesson.at.toISOString().slice(0, 19),
+      durationMinutes: 60,
+      instructorId: null,
+      horseIds: [HORSE_ID],
+      riderIds: [],
+      exertionByHorseId: { [HORSE_ID]: lesson.exertionLevel },
+      appliesToAllHorses: false,
+      label: null,
+    }))
+    const todayStr = calendarDate(now.toISOString().slice(0, 10))
+    const decorations = computeDayDecorations(getMonthGrid(todayStr.slice(0, 7)), items, {
+      selectedHorseIds: [HORSE_ID],
+      selectedRiderIds: [],
+      hour,
+      thresholdsByHorseId: { [HORSE_ID]: DEV_CALENDAR_BAND_THRESHOLDS },
+      todayStr,
+    })
+    return new Set(Object.values(decorations).filter((d) => !d.past && d.band).map((d) => d.band as string))
+  }
+
+  // Every day of a 31-day month, a 28-day one, and a leap February — the tightest case is
+  // "today is the last day of the month", where the grid reaches only a few days past it.
+  const days: Date[] = []
+  for (const [year, month, length] of [[2026, 0, 31], [2026, 1, 28], [2028, 1, 29]] as const) {
+    for (let d = 1; d <= length; d++) {
+      for (const hour of [0, 9, 17, 23]) days.push(new Date(Date.UTC(year, month, d, hour)))
+    }
+  }
+
+  it('should_put_a_moderate_day_on_the_visible_grid_from_every_today_and_hour', () => {
+    expect(days.filter((now) => !bandsOnVisibleDays(now, now.getUTCHours()).has('moderate'))).toEqual([])
+  })
+
+  it('should_put_a_high_day_on_the_visible_grid_from_every_today_and_hour', () => {
+    expect(days.filter((now) => !bandsOnVisibleDays(now, now.getUTCHours()).has('high'))).toEqual([])
   })
 })
