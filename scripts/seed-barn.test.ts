@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getMonthGrid, computeDayDecorations } from '@/lib/month-calendar'
+import { getMonthGrid, computeDayDecorations, type DayDecoration } from '@/lib/month-calendar'
 import { calendarDate } from '@/lib/local-day'
 import type { ScheduleItem } from '@/lib/db/types'
 import {
@@ -382,7 +382,8 @@ describe('expenseDateFor', () => {
 describe('buildCalendarBandLessons', () => {
   const HORSE_ID = 'juniper'
 
-  function bandsOnVisibleDays(now: Date, hour: number): Set<string> {
+  /** The current month's grid as the New Lesson form draws it, with only this horse checked. */
+  function decorate(now: Date, hour: number): [string, DayDecoration][] {
     const items: ScheduleItem[] = buildCalendarBandLessons(now).map((lesson, i) => ({
       id: `band-${i}`,
       itemType: 'lesson',
@@ -403,7 +404,25 @@ describe('buildCalendarBandLessons', () => {
       thresholdsByHorseId: { [HORSE_ID]: DEV_CALENDAR_BAND_THRESHOLDS },
       todayStr,
     })
-    return new Set(Object.values(decorations).filter((d) => !d.past && d.band).map((d) => d.band as string))
+    return Object.entries(decorations)
+  }
+
+  function bandsOnVisibleDays(now: Date, hour: number): Set<string> {
+    return new Set(decorate(now, hour).filter(([, d]) => !d.past && d.band).map(([, d]) => d.band as string))
+  }
+
+  /** A tinted day carried into the grid from a neighbouring month — the state the second
+   *  dark-mode line reads the date number on. Those cells are dimmed, so they are the one
+   *  place the tint and the day number compete.
+   *
+   *  `band !== 'low'` rather than a truthiness check: every day with a horse selected carries
+   *  a band, and 'low' is deliberately painted with no background at all (`BAND_TINT_CLASS`),
+   *  so a truthy test here passes on a grid with nothing tinted anywhere. */
+  function hasTintedNeighbouringMonthDay(now: Date, hour: number): boolean {
+    const month = now.toISOString().slice(0, 7)
+    return decorate(now, hour).some(
+      ([date, d]) => !d.past && d.band !== null && d.band !== 'low' && date.slice(0, 7) !== month
+    )
   }
 
   // Every day of a 31-day month, a 28-day one, and a leap February — the tightest case is
@@ -421,5 +440,9 @@ describe('buildCalendarBandLessons', () => {
 
   it('should_put_a_high_day_on_the_visible_grid_from_every_today_and_hour', () => {
     expect(days.filter((now) => !bandsOnVisibleDays(now, now.getUTCHours()).has('high'))).toEqual([])
+  })
+
+  it('should_tint_a_neighbouring_month_day_from_every_today_and_hour', () => {
+    expect(days.filter((now) => !hasTintedNeighbouringMonthDay(now, now.getUTCHours()))).toEqual([])
   })
 })
