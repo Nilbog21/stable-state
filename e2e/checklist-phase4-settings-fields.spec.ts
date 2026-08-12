@@ -453,12 +453,13 @@ function sectionHeading(page: Page, sec: Locator, title: string) {
 /**
  * Submits one section's form and waits for the server action to answer.
  *
- * The wait is on the action's own POST response, not on `waitForURL`. Every settings action
- * redirects to `/barn/[slug]/settings` — the URL the form is already on — so a `waitForURL`
- * for it resolves on its first poll whether or not anything happened, which is #1202's
- * tautological-wait finding in its purest form. The POST response is the one signal that
- * distinguishes "the action ran" from "nothing happened yet", and it is what makes the
- * reload-and-read on the far side of every persistence item a real read.
+ * The wait is on the action's own POST response, not on `waitForURL`. Since #1417 each settings
+ * action redirects to `/barn/[slug]/settings?saved=<slug>`, so a `waitForURL` for it is no longer
+ * strictly tautological — but it is still the wrong signal here: this helper is called from every
+ * section, so it would need the caller's slug threaded through it to say anything, and #1202's
+ * finding is that a wait which can resolve against the pre-state buys nothing. The POST response
+ * is the one signal that distinguishes "the action ran" from "nothing happened yet", and it is
+ * what makes the reload-and-read on the far side of every persistence item a real read.
  *
  * No explicit timeout: `actionTimeout: 0` makes every `waitFor*` unbounded, so passing one
  * would tighten the budget rather than loosen it.

@@ -1053,7 +1053,7 @@ test.describe.serial("A barn event's time renders in the barn's zone", () => {
     // plain native date input and whole-hour select asserted here.
     await page.locator('#dh-date').fill(EVENT_DAY)
     await page.locator('#dh-hour').selectOption(String(BARN_HOUR))
-    await submitForm(page, 'Save', new RegExp(`/barn/${barn.slug}/settings$`))
+    await submitForm(page, 'Save', new RegExp(`/barn/${barn.slug}/settings\\?saved=events$`))
 
     await requireEventStoredBarnLocal()
 

@@ -490,6 +490,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: clicking_a_section_heading_opens_that_section) Clicking a section's heading opens that section
 - [ ] (e2e: clicking_an_open_section_heading_closes_it) Clicking it again closes the section
 - [ ] (e2e: opening_a_second_section_leaves_the_first_open) Opening one section leaves the other sections' open/closed state unchanged
+- [ ] (e2e: saving_a_settings_field_leaves_its_section_open_with_a_saved_badge) (#1417) Save a section's field → that section stays open and shows a green **Saved** badge beside its heading
+- [ ] (e2e: adding_a_tier_returns_to_settings_with_lesson_tiers_open) (#1417) **Add Tier** → Save → back on Manage Barn with **Lesson Tiers** open and the new tier listed
 - [ ] (e2e: settings_page_has_no_active_members_section) There is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
 - [ ] (e2e: instructor_cut_field_shows_the_barns_current_value) **Default Instructor Cut** field shows the current value (default `25`)
 - [ ] (e2e: saving_a_new_instructor_cut_persists_it_across_a_reload) Change it and **Save** → the value persists on reload

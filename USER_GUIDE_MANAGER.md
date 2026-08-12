@@ -116,7 +116,7 @@ In the **By Paid To** tab, tap any recipient name to open a drill-down page list
 
 ## Settings
 
-Each part of Settings is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed.
+Each part of Settings is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed. When you save a section, the page stays on that section with it still open and a green **Saved** badge next to its heading, so you can see the change landed. The same holds for the pages a section sends you to: add a tier or an event, and you come back with that section open and the new row in front of you.
 
 Go to **Settings** to set the barn's **Default Instructor Cut** — a flat amount used only to pre-fill a new lesson tier's own cut, and to set the instructor take for a Custom (untiered) lesson. Changing it never affects past lessons or tiers already created.
 

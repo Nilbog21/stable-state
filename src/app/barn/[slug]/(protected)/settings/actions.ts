@@ -80,7 +80,7 @@ export async function createTierAction(
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
   await createTier(barn.id, name!, price!, false, defaultExertionLevel, defaultJumping, instructorCut!)
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=tiers`)
 }
 
 export async function updateTierAction(
@@ -107,7 +107,7 @@ export async function updateTierAction(
     await setDefaultTier(tierId, barn.id)
   }
 
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=tiers`)
 }
 
 export async function deactivateTierAction(
@@ -145,7 +145,7 @@ export async function updateDefaultBoardFeeAction(barnSlug: string, formData: Fo
   if (fee === null) return
 
   await updateBarnDefaultBoardFee(barn.id, fee)
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=board-fee`)
 }
 
 export async function updateInstructorCutAction(barnSlug: string, formData: FormData): Promise<void> {
@@ -155,7 +155,7 @@ export async function updateInstructorCutAction(barnSlug: string, formData: Form
   if (value === null) return
 
   await setInstructorCut(barn.id, value)
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=instructor-cut`)
 }
 
 export async function updateExhaustionThresholdsAction(
@@ -174,7 +174,7 @@ export async function updateExhaustionThresholdsAction(
   }
 
   await updateExhaustionThresholds(barn.id, { moderate, high })
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=exhaustion-thresholds`)
 }
 
 export async function updateScheduleBufferMinutesAction(barnSlug: string, formData: FormData): Promise<void> {
@@ -184,7 +184,7 @@ export async function updateScheduleBufferMinutesAction(barnSlug: string, formDa
   if (minutes === null) return
 
   await updateScheduleBufferMinutes(barn.id, minutes)
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=schedule-buffer`)
 }
 
 export async function updateBarnTimezoneAction(barnSlug: string, formData: FormData): Promise<void> {
@@ -194,7 +194,7 @@ export async function updateBarnTimezoneAction(barnSlug: string, formData: FormD
   if (!BARN_TIMEZONES.some((tz) => tz.value === timezone)) return
 
   await updateBarnTimezone(barn.id, timezone)
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=timezone`)
 }
 
 function validateEventFields(title: string | undefined, eventAt: string | undefined): string | null {
@@ -227,7 +227,7 @@ export async function createEventAction(
   const visibleToRoles = parseVisibleToRoles(formData)
 
   await createEvent(barn.id, { title: title!, eventAt: eventAt!, notes, visibleToRoles })
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=events`)
 }
 
 export async function updateEventAction(
@@ -248,13 +248,15 @@ export async function updateEventAction(
   const visibleToRoles = parseVisibleToRoles(formData)
 
   await updateEvent(eventId, barn.id, { title: title!, eventAt: eventAt!, notes, visibleToRoles })
-  redirect(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings?saved=events`)
 }
 
 export async function deleteEventAction(barnSlug: string, eventId: string): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await deleteEvent(eventId, barn.id)
-  redirect(`/barn/${barnSlug}/settings`)
+  // `open=` rather than `saved=`: the section reopens, but the row being gone is its own
+  // confirmation and a "Saved" badge after a delete reads wrong.
+  redirect(`/barn/${barnSlug}/settings?open=events`)
 }
 
 export async function downloadAllDocumentsAction(

@@ -318,7 +318,7 @@ test('by_tier_expenses_column_mixes_old_and_new_instructor_cut_rates @manager', 
   await page.goto(`/barn/${barn.slug}/settings/tiers/${seeded.mixed.id}`)
   await page.locator('#tier-instructor-cut').fill(String(REVISED_INSTRUCTOR_CUT))
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings$`), { waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/settings\\?saved=tiers$`), { waitUntil: 'commit' })
 
   const { supabase, barn: barnRow, members } = barn.data
   await addPaidLesson(supabase, barnRow, {
