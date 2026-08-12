@@ -35,11 +35,12 @@ async function fetchPaymentTypes(
 // exertion_level has no column-level GRANT restriction on lesson_horses for
 // authenticated (#937 review follow-up), so it can't be trimmed from the select
 // string per role -- a rider's own session could still read it directly via
-// PostgREST. get_lesson_horse_exertion_levels is a SECURITY DEFINER RPC that's
-// the only way to read it now, at both the app layer and via a direct call --
-// manager/trainer see every row; a rider sees a row only for a horse they hold
-// lesson_read_privileges for (#999; get_horse_exertion_summary, barn-wide, stays
-// manager/trainer-only).
+// PostgREST. get_lesson_horse_exertion_levels and its #1019 batch sibling
+// get_lesson_horse_exertion_levels_batch (schedule.ts) are SECURITY DEFINER RPCs
+// that are now the only way to read it for a lesson, at both the app layer and via
+// a direct call -- manager/trainer see every row; a rider sees a row only for a
+// horse they hold lesson_read_privileges for (#999; get_horse_exertion_summary,
+// barn-wide, stays manager/trainer-only).
 async function fetchExertionLevels(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessonId: string,
