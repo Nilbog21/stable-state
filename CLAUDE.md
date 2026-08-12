@@ -7,7 +7,7 @@
 
 ### Test-First Rules
 Guideposts, not a gate.
-- Write tests first, and confirm they FAIL before implementing
+- Write tests first, confirm they FAIL, then implement the minimum that passes
 - AAA (Arrange-Act-Assert); one assertion per test when possible
 - Test names describe behavior: "should_return_empty_when_no_items"
 - **A test-only PR** — one characterizing shipped behaviour, or reworking existing tests — has no red state to produce, so it skips the failing-tests commit (precedent: `bd4e8a3a`, `c771a7da`). Instead run a **mutation pass** and report the kill count in the PR body: each new or changed assertion must fail when the behaviour it claims is broken. Mutate an *ordered* spec one mutant per run, or re-establish its ordered state in `beforeAll` — a whole-file batch measures the Playwright worker restart, and its survivors are false reassurance (`docs/e2e-framework-facts.md` fact 15)
