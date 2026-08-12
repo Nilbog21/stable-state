@@ -117,6 +117,23 @@ Checks that are **initiated** during this pass but whose result lands on an exte
 
 > **An unconfirmed deferred check does not block POST sign-off.** The release is signed off on the sections above. A failure found later is filed as a patch against the released version (see `CLAUDE.md`'s Patch Workflow), not as a hold on a release that has already shipped.
 
+### The demo-reaper cron actually fires
+
+> **Why this is prod-only:** Vercel executes `vercel.json`'s `crons` entry on **production deployments only** — never on a preview, never locally. PRE and the e2e suite drive `/api/cron/reset-demo` by direct `POST`, which proves the route's auth and reap logic but says nothing about whether Vercel's scheduler ever calls it. `main` carried no `crons` block before #1438, so the first real invocation is the release that ships it. Clears the **demo/cron/prod-config** bar.
+
+> **Why deferred:** the sweep runs at **08:00 UTC daily** (#1438 — the Hobby plan allows a cron at most one run per day), so the confirmation lands whenever the next 08:00 UTC comes around, not during this pass.
+
+Initiate now:
+
+- [ ] Vercel dashboard → the production deployment's **Cron Jobs** tab lists `/api/cron/reset-demo` at `0 8 * * *` (a schedule the Hobby plan rejects fails the deployment outright, so a deployed-and-listed cron is also the AC-3 check)
+- [ ] Visit `/demo` on prod in a fresh/incognito browser → you land in a `demo-{8 hex}` barn. Note its slug; it needs to be >6h old at 08:00 UTC to be eligible, which any barn created before ~02:00 UTC is
+
+Confirm later — none of these block sign-off:
+
+- [ ] After the next 08:00 UTC, the Vercel dashboard's cron log shows the run with a `200`
+- [ ] That run's response body is `{"reaped": <n>}` with `n` ≥ 1
+- [ ] Visiting `/barn/<the noted slug>` returns a 404 — the barn was actually torn down, not just counted
+
 ### Calendar subscription from a real calendar app
 
 > **Why this is prod-only:** `/calendar.ics` (#1018) is polled by an external calendar service, so it needs an externally-reachable URL — localhost isn't reachable off-machine and a Vercel preview auth-gates non-team viewers, so neither can be subscribed from. That URL requirement is the whole reason this check is here: it fits **none** of the five bars in `CLAUDE.md`'s Post-Release Checklist section, and is the deliberate exception to them. Everything verified before release covers `?token=` handling, `Content-Type`, and VEVENT body content only — never a real client's parse-and-poll behavior.

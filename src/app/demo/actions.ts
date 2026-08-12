@@ -81,7 +81,8 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   // the cap boundary can both reap the same barn and both insert, overshooting the cap by
   // one. Self-healing on the next request; upgrade to a `pg_advisory_xact_lock`-backed RPC
   // if the cap ever needs to be a hard bound. `/api/cron/reset-demo` (#506) runs the same
-  // unlocked reap pattern on an hourly timer, racing this check too — still safe, since
+  // unlocked reap pattern on a daily timer (#1438 — Vercel's Hobby plan allows a cron at
+  // most one run per day), racing this check too — still safe, since
   // every delete involved is a plain `WHERE barn_id = ...` with no existence check, so a
   // barn reaped by one caller mid-race is just a no-op for the other.
   if (DEMO_BARN_CAP > 0 && (await countDemoBarns(serviceClient)) >= DEMO_BARN_CAP) {

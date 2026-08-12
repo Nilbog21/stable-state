@@ -35,8 +35,10 @@ export async function POST(request: NextRequest) {
 
     // ponytail: a teardown/delete failure on the oldest barn would otherwise throw
     // uncaught, 500ing the whole run with no {reaped} count and re-hitting the same
-    // barn first next hour — stop the run and report partial progress instead. If a
-    // barn ever gets permanently stuck here, that needs its own alerting, not this loop.
+    // barn first on the next run — stop the run and report partial progress instead.
+    // That next run is a day out since #1438 (Vercel's Hobby plan allows a cron at most
+    // one run per day), so a stuck barn now blocks this loop for ~24h rather than ~1h.
+    // If a barn ever gets permanently stuck here, that needs its own alerting, not this loop.
     try {
       await teardownBarnData(oldest.id, client)
       await deleteBarn(oldest.id, client)
