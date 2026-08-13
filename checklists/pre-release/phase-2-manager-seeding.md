@@ -6,15 +6,15 @@
 
 Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/settings/tiers/new`):
 
-- [ ] (e2e-candidate) Create tier **Beginner** — $60, default exertion level 2, jumping off
-- [ ] (e2e-candidate) Create tier **Advanced** — $120, default jumping on
-- [ ] (e2e-candidate) Create tier **Group Special** — $90, no defaults
-- [ ] (e2e-candidate) All three appear in the Lesson Tiers list on the settings page
-- [ ] (e2e-candidate) Try saving a tier with a blank price — rejected with "Price is required"
-- [ ] (e2e-candidate) Try saving a tier with a $0 price — accepted
-- [ ] (e2e-candidate) Try saving a tier with a blank or whitespace-only name — rejected with "Name is required"
-- [ ] (e2e-candidate) Edit an existing tier to a blank or whitespace-only name — rejected the same way
-- [ ] (e2e-candidate) Try saving a tier with both name and price blank — rejected with both errors shown together ("Name is required, Price is required")
+- [ ] (e2e: creating_a_tier_stores_its_price_exertion_default_and_jumping_off) Create tier **Beginner** — $60, default exertion level 2, jumping off
+- [ ] (e2e: creating_a_tier_stores_its_price_and_jumping_on_default) Create tier **Advanced** — $120, default jumping on
+- [ ] (e2e: creating_a_tier_with_no_defaults_stores_neither_default) Create tier **Group Special** — $90, no defaults
+- [ ] (e2e: every_created_tier_appears_in_the_lesson_tiers_list) All three appear in the Lesson Tiers list on the settings page
+- [ ] (e2e: saving_a_tier_with_a_blank_price_is_rejected_as_price_required) Try saving a tier with a blank price — rejected with "Price is required"
+- [ ] (e2e: saving_a_tier_with_a_zero_price_stores_the_tier) Try saving a tier with a $0 price — accepted
+- [ ] (e2e: saving_a_tier_with_a_whitespace_only_name_is_rejected_as_name_required) Try saving a tier with a blank or whitespace-only name — rejected with "Name is required"
+- [ ] (e2e: editing_a_tier_to_a_whitespace_only_name_is_rejected_as_name_required) Edit an existing tier to a blank or whitespace-only name — rejected the same way
+- [ ] (e2e: saving_a_tier_with_a_blank_name_and_price_reports_both_errors) Try saving a tier with both name and price blank — rejected with both errors shown together ("Name is required, Price is required")
 
 Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
