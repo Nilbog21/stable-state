@@ -131,7 +131,7 @@ CI enforces 100% branch coverage via `scripts/check-coverage.sh`. Handle all bra
 
 ## Workflow skills
 
-`.claude/commands/*.md` — the Claude Code skills this project's development process runs on, each invoked as a slash command named after its filename. Tracked in-repo so a convention change and the skill text encoding it land in the same reviewed PR; editing rules in `CLAUDE.md`'s Workflow Skills section, developer-setup assumptions (shell, `gh`, worktree layout, ports, `.env.local`) in `README.md`.
+`.claude/commands/*.md` — the Claude Code skills this project's development process runs on, each invoked as a slash command named after its filename. Tracked in-repo so a convention change and the skill text encoding it land in the same reviewed PR; editing rules in `.claude/commands/CLAUDE.md`, developer-setup assumptions (shell, `gh`, worktree layout, ports, `.env.local`) in `README.md`.
 
 Main sequence, one issue from selection to merge (`/continueIssue {N}` routes an in-flight issue to the right next step):
 

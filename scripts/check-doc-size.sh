@@ -24,24 +24,31 @@ PAIRS=(
 # in two days. A raise carries its reason on the line.
 BUDGETS=(
   "ARCHITECTURE.md:20000"
-  # Raised from 10000 by #1439: #1436's Test-First carve-out took the file 9634 -> 10009 and left
-  # release/release-4 red for three merges, so this is an unblock, not headroom. The follow-up that
-  # trims it back under 10000 lowers this line again — do not spend the margin.
-  "CLAUDE.md:12500"
-  "scripts/CLAUDE.md:10000"
+  # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
+  # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
+  # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was
+  # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
+  # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
+  "CLAUDE.md:6500"
+  "scripts/CLAUDE.md:9300"
   # Lowered from 15500 by #1420, which split the framework facts out to
-  # docs/e2e-framework-facts.md. Two prior raises (#1354 to 14000, #1409 to 15500) each restored
-  # headroom the file then spent within days, and the second left 335 characters — not enough to
-  # record the next measured fact in. Splitting is the answer; the number follows the file.
-  # Lowered again from 7400 by #1433, which split the spec-maintenance rules out to
-  # docs/e2e-spec-maintenance.md — the same shape, one section later. Measured: the split freed
-  # 1317 characters and #1433 spent 475 of them on facts 16/17 and their index entries, for a net
-  # 7146 -> 6304. The budget follows the file down rather than banking the slack, per the rule above.
-  # Raised from 6600 by #1434: two legitimate index entries (fact 18, rule 4) took the file
-  # 6304 -> 6868, and #1433 had left only 296 characters of margin. This is an unblock, not
-  # headroom — the next split lowers it again. Do not spend the margin.
-  "e2e/CLAUDE.md:6900"
-  "src/components/ui/CLAUDE.md:8000"
+  # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
+  # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each
+  # restored headroom the file spent within days. #1434 then raised it to 6900 for two legitimate
+  # index entries, leaving 32 characters. #1468 lowered it to 6150 by capping every index entry at
+  # one line — headline, [full] link, issue refs — since both sub-docs already carry the
+  # elaboration: 6868 -> 5831. Ceiling: never above 6600, the pre-#1434 value.
+  #
+  # This index is append-only by design (a fact's number is cited from 29 files, so no number ever
+  # moves), so it grows with every fact and no fixed cap survives that: a raise accompanying a
+  # genuinely new fact is legitimate. An entry that elaborates rather than points is not — that is
+  # what spent the last two raises, and it belongs in the sub-doc.
+  "e2e/CLAUDE.md:6150"
+  # Both added by #1468 alongside the sections moved out of root CLAUDE.md, sized the same way.
+  "supabase/CLAUDE.md:2550"
+  ".claude/commands/CLAUDE.md:1450"
+  # Lowered from 8000 by #1468: the file is 5145 and had been banking 2855 (55% slack).
+  "src/components/ui/CLAUDE.md:5400"
 )
 
 fail=0

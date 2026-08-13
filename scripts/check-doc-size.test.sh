@@ -28,7 +28,8 @@ make_repo() {
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
-  mkdir -p "$dir/docs/architecture/dal" "$dir/scripts" "$dir/e2e" "$dir/src/components/ui"
+  mkdir -p "$dir/docs/architecture/dal" "$dir/scripts" "$dir/e2e" "$dir/src/components/ui" \
+    "$dir/supabase" "$dir/.claude/commands"
   head -c "$main_size" /dev/zero | tr '\0' 'a' > "$dir/ARCHITECTURE.md"
   for f in schema dal routes rpc rls; do
     head -c "$sub_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/$f.md"
@@ -36,7 +37,8 @@ make_repo() {
   head -c "$nested_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/dal/lessons.md"
   head -c "$facts_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-framework-facts.md"
   head -c "$spec_maint_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-spec-maintenance.md"
-  for f in CLAUDE.md scripts/CLAUDE.md e2e/CLAUDE.md src/components/ui/CLAUDE.md; do
+  for f in CLAUDE.md scripts/CLAUDE.md e2e/CLAUDE.md src/components/ui/CLAUDE.md \
+    supabase/CLAUDE.md .claude/commands/CLAUDE.md; do
     head -c "$budget_file_size" /dev/zero | tr '\0' 'a' > "$dir/$f"
   done
   echo "$dir"
@@ -81,15 +83,17 @@ fi
 rm -rf "$REPO"
 
 # Test 5: a file over its per-file budget fails and is named; a file under its own budget is not.
-# The two roles are the opposite way round from #1354's cut: e2e/CLAUDE.md's budget was the set's
-# largest until #1420 split its framework facts out and lowered it, and is now the smallest — so
-# 9000 is over e2e/CLAUDE.md's and under CLAUDE.md's, testing the same two directions inverted.
-REPO="$(make_repo 15000 5000 9000)"
+# The pair has been re-anchored twice as the set's ordering moved — on e2e/CLAUDE.md once #1420
+# made it the smallest, and now on .claude/commands/CLAUDE.md, which #1468 added at 1450 while
+# lowering CLAUDE.md's to 6500. 3000 is over both new nested budgets and under CLAUDE.md's own,
+# testing both directions in one run; the assertions name .claude/commands/CLAUDE.md as the over
+# case, so re-anchor them if a smaller budget joins the set.
+REPO="$(make_repo 15000 5000 3000)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
-if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.md "; then
-  assert_pass "e2e/CLAUDE.md over budget: exits non-zero, names e2e/CLAUDE.md"
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: .claude/commands/CLAUDE.md "; then
+  assert_pass ".claude/commands/CLAUDE.md over budget: exits non-zero, names it"
 else
-  assert_fail "e2e/CLAUDE.md over budget: exits non-zero, names e2e/CLAUDE.md" "exit=$script_exit output=$err_output"
+  assert_fail ".claude/commands/CLAUDE.md over budget: exits non-zero, names it" "exit=$script_exit output=$err_output"
 fi
 if echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
   assert_fail "CLAUDE.md under its larger budget: not flagged" "was flagged: $err_output"
@@ -101,8 +105,8 @@ rm -rf "$REPO"
 # Test 6: exactly at a per-file budget boundary — treated as failing (>=), matching the pairwise
 # rule. Asserts on the message too: at this size e2e/CLAUDE.md is over its own budget as well, so
 # an exit status alone can't tell the boundary rule from that unrelated failure. The size is
-# CLAUDE.md's budget and tracks it: #1439 raised that to 12500, so this moved with it.
-REPO="$(make_repo 15000 5000 12500)"
+# CLAUDE.md's budget and tracks it: #1439 raised that to 12500 and #1468 lowered it to 6500.
+REPO="$(make_repo 15000 5000 6500)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
   assert_pass "exactly at per-file budget: treated as failing"
@@ -121,10 +125,10 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 8: everything under pairwise limit and all per-file budgets — exits 0 (6000 is under the
-# smallest budget in the set, which since #1420 is e2e/CLAUDE.md's rather than the 8000 one; this
-# size tracks that budget down every time it is lowered, and #1433's split to 6600 is the second)
-REPO="$(make_repo 15000 5000 6000)"
+# Test 8: everything under pairwise limit and all per-file budgets — exits 0 (1300 is under the
+# smallest budget in the set, which is .claude/commands/CLAUDE.md's 1450 since #1468 added it; this
+# size tracks whichever budget is smallest, and has followed it down through #1420, #1433 and #1468)
+REPO="$(make_repo 15000 5000 1300)"
 if (cd "$REPO" && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "all files under budgets: exits 0"
 else

@@ -52,7 +52,7 @@ Check Supabase migration status, rename pending migrations to the current timest
      ```
      `--untracked` is load-bearing: the migrations being renamed are pending and usually untracked, so a plain `git grep` would miss exactly the sibling-cites-sibling case this is here to fix. Untracked-but-ignored paths (`node_modules/`, `specs/`) are correctly skipped. `-lz`/`-0` pair a NUL-delimited file list with a NUL-delimited `xargs` so a path containing a space is rewritten rather than silently split into arguments that match nothing. This is GNU sed; the BSD/macOS equivalent needs an explicit empty backup suffix: `sed -i '' 's/{old}/{new}/g'`. Record which files each pass rewrote — step 6 reports them.
 
-     Some of the files this rewrites are migrations that have already been applied. That is fine and is the documented exception to the never-edit-an-applied-migration rule — a header comment is inert (see `CLAUDE.md`'s Schema/RLS/RPC verification section).
+     Some of the files this rewrites are migrations that have already been applied. That is fine and is the documented exception to the never-edit-an-applied-migration rule — a header comment is inert (see `supabase/CLAUDE.md`).
 
 6. Display the planned renames clearly, followed by any files the sweep rewrote:
    ```
@@ -77,7 +77,7 @@ Check Supabase migration status, rename pending migrations to the current timest
    bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push
    ```
 
-   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the seven seed/teardown call sites and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`CLAUDE.md`'s Schema/RLS/RPC verification section); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
+   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the seven seed/teardown call sites and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`supabase/CLAUDE.md`); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
 
    The guard checks two separate things because `db push` selects its target differently from everything else in this repo: the CLI writes to whatever project `npx supabase link` recorded in `supabase/.temp/project-ref`, while the seed/teardown scripts read `.env.local`. Checking only `NEXT_PUBLIC_SUPABASE_URL` against `DEV_SUPABASE_URL` would leave a re-link free to push schema to another project with a dev-pointed `.env.local` sitting right there.
 
