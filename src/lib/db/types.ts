@@ -477,6 +477,16 @@ export interface AgreementCharge {
   created_at: string
 }
 
+/** An `agreement_charges` row exactly as the DB holds it — and exactly what the three
+ *  charge-writing RPCs (`update_agreement_charge_fee`, `mark_agreement_charge_paid`,
+ *  `generate_agreement_charge`, all `RETURNS agreement_charges`) hand back. The rowtype has
+ *  had no `payment_type` column since #831; payment type lives on the paired `transactions`
+ *  row, which is what `getChargesForAgreement` joins back on to produce a full
+ *  `AgreementCharge`. Casting those RPC results to `AgreementCharge` claimed a field the row
+ *  never carries, so the first caller to read it would have got `undefined` with no compile
+ *  error (#1441). */
+export type AgreementChargeRow = Omit<AgreementCharge, 'payment_type'>
+
 /** An `appointments` row exactly as the DB holds it (#1148) — the barn-visible half, with
  *  no money on it. This is what the expense-writing RPCs return. */
 export interface Appointment {
