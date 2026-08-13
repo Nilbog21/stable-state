@@ -86,6 +86,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { test, expect, serviceClient } from './support/test'
 import { formatBarnTime } from '@/lib/format-date'
 import { mustSucceed, teardownBarnData } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { deleteBarn } from '@/lib/db/barns'
 
 /** `createDemoBarn` slugs every demo barn `demo-<8 hex>`; nothing else in the app does. */
@@ -550,27 +551,23 @@ test.describe.serial('the demo reaper', () => {
       )
     }
 
-    // The row count is checked, not just the error. `mustSucceed` throws only on `result.error`,
-    // and an UPDATE matching no row is `data: []` with `error: null` — so a barn already gone
-    // (a concurrent reap, or `/demo`'s own cap-reap on a project sitting at DEMO_BARN_CAP) would
-    // make this a silent no-op. The route would then reap some *other* expired barn, `reaped >= 1`
-    // would hold, and the "no longer resolves" check below would pass because the barn was absent
-    // before the reap ran rather than because of it — two checklist lines green having exercised
-    // neither the backdate nor the route's effect on their own barn.
-    const backdated = mustSucceed(
+    // The row count is checked, not just the error (spec-maintenance rule 5, whose reference
+    // implementation this is). `mustSucceed` throws only on `result.error`, and an UPDATE matching
+    // no row is `data: []` with `error: null` — so a barn already gone (a concurrent reap, or
+    // `/demo`'s own cap-reap on a project sitting at DEMO_BARN_CAP) would make this a silent no-op.
+    // The route would then reap some *other* expired barn, `reaped >= 1` would hold, and the "no
+    // longer resolves" check below would pass because the barn was absent before the reap ran
+    // rather than because of it — two checklist lines green having exercised neither the backdate
+    // nor the route's effect on their own barn.
+    mustAffect(
       await supabase
         .from('barns')
         .update({ created_at: new Date(Date.now() - BACKDATE_MS).toISOString() })
         .eq('id', barn.id)
         .select('id'),
-      'backdate the demo barn'
+      `backdate the demo barn ${barn.slug}`,
+      1
     )
-    if (backdated.length !== 1) {
-      throw new Error(
-        `backdating ${barn.slug} matched ${backdated.length} rows, not 1 — the barn this check is ` +
-          'about is already gone, so nothing below would be measuring the reaper against it'
-      )
-    }
 
     const { status, body } = await postResetDemo(playwright, { Authorization: `Bearer ${secret}` })
 

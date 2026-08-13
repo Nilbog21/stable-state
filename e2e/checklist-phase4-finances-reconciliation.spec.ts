@@ -4,6 +4,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SeededAppointment, SeededBarn } from './support/fixtures'
@@ -81,9 +82,14 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   // resolveFinancesMonth clamps any requested month up to the barn's creation month, an
   // explicit ?month= included, and withBarn creates this barn now — without backdating, every
   // previous-month navigation below would silently resolve to this month instead.
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(2, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   const tier = await addTier(supabase, barn.id, {
@@ -176,18 +182,25 @@ async function markExpensePaid(
   barn: SeededBarn,
   expense: SeededAppointment
 ): Promise<SeededAppointment> {
-  mustSucceed(
-    await supabase.from('appointment_costs').update({ payment_type: 'venmo' }).eq('appointment_id', expense.id),
-    'mark expense paid'
+  mustAffect(
+    await supabase
+      .from('appointment_costs')
+      .update({ payment_type: 'venmo' })
+      .eq('appointment_id', expense.id)
+      .select('id'),
+    'mark expense paid',
+    1
   )
-  mustSucceed(
+  mustAffect(
     await supabase
       .from('transactions')
       .update({ collected: true, payment_type: 'venmo' })
       .eq('barn_id', barn.id)
       .eq('expense_id', expense.id)
-      .eq('kind', 'expense'),
-    'collect expense transaction'
+      .eq('kind', 'expense')
+      .select('id'),
+    'collect expense transaction',
+    1
   )
   return expense
 }

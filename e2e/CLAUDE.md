@@ -74,7 +74,7 @@ to catch.** [full](../docs/e2e-framework-facts.md#fact-17) *(#1426)*
 
 ## Spec maintenance
 
-Four rules about what a spec is allowed to leave behind. Same index conventions as the facts above;
+Five rules about what a spec may leave behind, and what it may take for granted. Same conventions;
 the full worked statement and each rule's reference implementation are the same-numbered section of
 [`docs/e2e-spec-maintenance.md`](../docs/e2e-spec-maintenance.md).
 
@@ -92,6 +92,10 @@ so an assertion accepting `[]` passes on nothing.
 
 **4. Every absence assertion needs a positive anchor in the same test** proving the page region
 rendered (fact 18). [full](../docs/e2e-spec-maintenance.md#rule-4) *(#1434)*
+
+**5. A fixture mutation whose assertions depend on it having matched rows uses `mustAffect`** — a
+mutation pass is blind to setup that did nothing. [full](../docs/e2e-spec-maintenance.md#rule-5)
+*(#1424, #1435)*
 
 ## The rest of the e2e rules
 

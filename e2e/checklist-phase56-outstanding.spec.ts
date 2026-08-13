@@ -49,7 +49,7 @@ import {
   cancelLessonRider,
   daysFromNow,
 } from './support/fixtures'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatFee } from '@/lib/format-currency'
 import type { Lesson } from '@/lib/db/types'
 
@@ -378,7 +378,9 @@ test('rider_reminder_cards_link_to_the_outstanding_page @rider', async ({ page }
 // below anyway, but says nothing about why. This test still carries exactly one assertion.
 test('rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outstanding @rider', async ({ page }) => {
   const { supabase, barn: seededBarn } = barn.data
-  const collected = mustSucceed<{ id: string }[]>(
+  // Exactly two, same as addPaidLesson's: sync_lesson_transactions writes both the lesson_fee and
+  // the instructor_payout row for every lesson, whatever the tier's cut.
+  mustAffect(
     await supabase
       .from('transactions')
       .update({ collected: true, payment_type: 'venmo' })
@@ -386,9 +388,9 @@ test('rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outst
       .eq('lesson_id', seeded.riderLesson.id)
       .in('kind', ['lesson_fee', 'instructor_payout'])
       .select('id'),
-    'collect the rider lesson fee'
+    'collect the rider lesson fee',
+    2
   )
-  if (!collected.length) throw new Error('collecting the rider lesson fee matched no transaction rows')
 
   await page.goto(dashboardPath())
   await expect(remindersSection(page).getByRole('link', { name: '1 unpaid lesson', exact: true })).toBeVisible()

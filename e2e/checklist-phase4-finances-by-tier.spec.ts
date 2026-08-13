@@ -4,7 +4,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { settledTextContents } from './support/read'
 import { headersShowing, sortControl, sortControls, tapSort, tapSortAndSettle } from './support/sort'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import type { Agreement, LessonTier } from '@/lib/db/types'
@@ -34,9 +34,14 @@ const barn = withBarn('phase4-finances-by-tier', async ({ supabase, barn, member
   // resolveFinancesMonth clamps any `?month=` older than the barn's own creation month up to
   // it, and withBarn creates this barn *now* — so without backdating, the empty month and the
   // charge-only month below would both silently resolve to the current month instead.
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(2, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   const advanced = await addTier(supabase, barn.id, { name: 'Advanced', price: 100, instructorCut: 30 })
@@ -79,13 +84,15 @@ const barn = withBarn('phase4-finances-by-tier', async ({ supabase, barn, member
   // auth_is_barn_manager, which reads auth.uid() and so always fails for a service-role
   // client. getChargesForSummary reads the charge's *transaction*, not the charge row, so
   // this is the one write that makes the charge count as collected income for that month.
-  mustSucceed(
+  mustAffect(
     await supabase
       .from('transactions')
       .update({ collected: true, payment_type: 'venmo' })
       .eq('barn_id', barn.id)
-      .not('agreement_charge_id', 'is', null),
-    'collect the charge-only month charge'
+      .not('agreement_charge_id', 'is', null)
+      .select('id'),
+    'collect the charge-only month charge',
+    1
   )
 
   seeded = { advanced, beginner, mixed, novice, chargeOnlyMonthCharge }

@@ -28,6 +28,7 @@ import {
   waitForEditFormHydrated,
 } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 
 // ---------------------------------------------------------------------------
 // Seed inputs
@@ -190,9 +191,15 @@ const barn = withBarn('phase5-lessons-cancel', async ({ supabase, barn, members 
         .single(),
       'insert lesson series'
     )
-    mustSucceed(
-      await supabase.from('lessons').update({ series_id: series.id }).eq('id', lessonIds[key]).eq('barn_id', barn.id),
-      'attach lesson to series'
+    mustAffect(
+      await supabase
+        .from('lessons')
+        .update({ series_id: series.id })
+        .eq('id', lessonIds[key])
+        .eq('barn_id', barn.id)
+        .select('id'),
+      'attach lesson to series',
+      1
     )
   }
 

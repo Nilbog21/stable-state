@@ -3,6 +3,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { E2E_USERS, addHorse, addManagedMember, addTier } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 
 // The two button labels InstructorAccess renders, written out rather than imported from the
 // component: an expectation derived from the code under test agrees with any bug in it, which is
@@ -77,13 +78,14 @@ const barn = withBarn('phase4-members-access', async ({ supabase, barn, members 
   // This writes a barn_memberships row, not a profile. That distinction is what keeps it outside
   // the fleet rule against touching the three shared logins' state: memberships are per-barn and
   // die with the barn in teardownBarnData, where profiles are global to the Supabase project.
-  mustSucceed(
+  mustAffect(
     await supabase
       .from('barn_memberships')
       .update({ can_instruct: false })
       .eq('id', members.manager.membershipId)
       .select('id'),
-    'seed the manager without instructor access'
+    'seed the manager without instructor access',
+    1
   )
 
   // can_instruct defaults to true for a trainer stub, matching create_managed_member — which is
@@ -347,9 +349,13 @@ test.describe.serial('removing a member', () => {
       `look up memberships still referencing ${REMOVABLE_NAME}`
     )
     if (remaining.length > 0) return
-    mustSucceed(
+    // The guard above proves the row is unreferenced, not that it is still there — so a zero here
+    // means rule 2's hand-back never ran on the row it was written for, which is the leak this
+    // hook exists to prevent rather than evidence it was already cleaned up.
+    mustAffect(
       await supabase.from('profiles').delete().eq('id', removableProfileId).select('id'),
-      `delete the orphaned ${REMOVABLE_NAME} profile`
+      `delete the orphaned ${REMOVABLE_NAME} profile`,
+      1
     )
   })
 
