@@ -47,6 +47,13 @@ const barn = withBarn('phase4-members-list', async ({ supabase, barn }) => {
   )
 })
 
+// The Contact Info save awaits a server action round trip before its indicator flashes (the
+// router.refresh() fires after, unawaited, and gates nothing), which is well past `expect`'s 5s
+// default on a cold dev server. Kept file-local on purpose (#1469): a shared export is what
+// invites writing the number where a sync point is the real fix — and here the sync point is the
+// point, so the number only widens its budget.
+const SETTLE_AFTER_WRITE = 15_000
+
 /** The <section> owning a given h2 — the page's Members list and detail page are both h2-partitioned. */
 function section(page: Page, heading: string) {
   return page.locator('section').filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
@@ -192,9 +199,12 @@ test('managed_rider_contact_info_values_persist_after_save_and_reload @manager',
   await form.getByRole('button', { name: 'Save' }).click()
 
   // The form saves via a server action and router.refresh() rather than a navigation, so there
-  // is no URL change to wait on — waiting for the button to leave its loading state is the
-  // signal that the action resolved before the reload throws the state away.
-  await expect(form.getByRole('button', { name: 'Save' })).toBeEnabled()
+  // is no URL change to wait on, and the reload two lines down would otherwise race the write.
+  // The ✓ Saved indicator renders only from the action's success continuation, so it is the
+  // sync point. This wait used to be `toBeEnabled()` on the Save button, which was vacuous —
+  // `saving` initialises to false, so the button *starts* enabled and the matcher was satisfied
+  // on its first poll, before React had flipped it into the loading state (#1477).
+  await expect(form.getByText('✓ Saved', { exact: true })).toBeVisible({ timeout: SETTLE_AFTER_WRITE })
   await page.reload()
 
   await expect(form.getByLabel('Phone', { exact: true })).toHaveValue(phone)
