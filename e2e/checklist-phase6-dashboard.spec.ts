@@ -42,5 +42,9 @@ const barn = withBarn('phase6-dashboard', async ({ supabase, barn, members }) =>
 
 test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
+
+  // The dashboard's other section, which renders for every member regardless of reminders —
+  // so it proves the page drew while the Reminders heading is genuinely absent.
+  await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Reminders' })).toHaveCount(0)
 })

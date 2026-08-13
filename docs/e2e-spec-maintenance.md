@@ -1,14 +1,14 @@
 # E2E spec maintenance
 
-Three rules about what a spec is allowed to leave behind. Each is about *shared state the suite
+Four rules about what a spec is allowed to leave behind. Each is about *shared state the suite
 cannot clean up for you* — a `profiles` row global to the Supabase project, a row `teardownBarnData`
 can no longer reach, or an assertion that silently accepts nothing — and each was found by a spec
 that had already shipped looking correct.
 
 The index — headlines only — is `e2e/CLAUDE.md`'s `## Spec maintenance`, which is auto-loaded
 whenever `e2e/` is touched. Rules are numbered so a spec comment can cite one (rule 3 already is,
-in `checklist-phase7-multi-barn.spec.ts`); as with the framework facts, **numbering is
-append-only**.
+in `checklist-phase7-multi-barn.spec.ts`, and rule 4 in four of the specs it changed); as with the
+framework facts, **numbering is append-only**.
 
 Reference implementations are cited by **file and test or block name, never by line number** — a
 rename is greppable and a line-number drift is not.
@@ -64,3 +64,35 @@ as the non-empty assertion. `evaluateAll` has the same hazard but keeps an inlin
 
 Reference implementation: `e2e/support/read.ts`'s `settledInnerTexts`/`settledTextContents`, and
 its ceiling section for what a settled read cannot reach (framework fact 2).
+
+## Rule 4
+
+**Every absence assertion must be preceded, in the same test, by a positive assertion proving the
+page region rendered.** `toHaveCount(0)`, `not.toBeVisible`, `not.toBeAttached` and their
+equivalents are all satisfied on the matcher's **first** poll (framework fact 18), so one run
+straight after a `page.goto` can be read before the page has drawn the thing whose absence it
+claims — green in exactly the scenario the check exists to catch.
+
+The anchor has to be on the **same page state**, between the navigation and the absence. A
+`waitForURL` is not one: it resolves on commit, before the new document renders, so a URL sync
+point proves the navigation and nothing about the render. Two of this suite's sites were reached
+through a helper ending that way rather than through a bare `goto`, which is the form that hides
+best.
+
+**A paired positive test does not satisfy this rule.** A sibling test asserting the *identical*
+locator is visible under the opposite condition is genuinely worth having — it is what turns a
+typo'd locator into a failure instead of a silent pass — but it is a different page load and can
+say nothing about whether *this* one rendered. The two holes are separate; only the same-test
+anchor closes both at once. `checklist-phase4-dashboard.spec.ts`'s `todayLink` comment states the
+pairing's own half and points here for the rest.
+
+Prefer an anchor the file already defines and already asserts positively elsewhere, or one whose
+presence makes the absence a real discrimination — the same recipient in the section it *does*
+belong to, the other manager in the same roster section — over a bare page heading. A heading is
+sufficient and is the right answer for a helper that spans many routes
+(`smoke.spec.ts`'s `assertPageClean` uses the single `<h1>` every route renders, which
+`app/error.tsx` renders too, leaving the assertion itself to say which page arrived).
+
+Reference implementation: `checklist-phase56-horses-notes.spec.ts`'s
+`trainer_unowned_horse_notes_render_as_read_only_text`, which asserts the read-only note values
+before asserting the editable controls are absent.

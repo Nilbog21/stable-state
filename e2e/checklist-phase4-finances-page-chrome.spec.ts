@@ -179,6 +179,8 @@ test('pending_income_line_has_no_month_year_suffix @manager', async ({ page }) =
 // start-anchored, so no ancestor element can match by concatenating its descendants' text.
 test('no_gross_expenses_net_summary_boxes_remain_on_the_page @manager', async ({ page }) => {
   await page.goto(financesUrl())
+
+  await expect(page.getByRole('heading', { name: 'Finances', level: 1 })).toBeVisible()
   await expect(page.getByText(new RegExp(`^(${REMOVED_SUMMARY_BOX_LABELS.join('|')})`))).toHaveCount(0)
 })
 

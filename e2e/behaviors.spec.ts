@@ -57,6 +57,8 @@ test('rider_lesson_detail_has_no_private_notes_section @rider', async ({ page })
   const href = await firstLesson.getAttribute('href')
   if (!href) throw new Error(`no lesson link found on /barn/${barn.slug}/lessons — is seed data present?`)
   await page.goto(href)
+
+  await expect(page.getByRole('heading', { name: 'Lesson Detail' })).toBeVisible()
   await expect(page.getByText('Private', { exact: true })).toHaveCount(0)
 })
 

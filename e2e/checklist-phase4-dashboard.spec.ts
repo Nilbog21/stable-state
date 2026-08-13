@@ -327,6 +327,12 @@ test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager',
 // the no-scheduled-time exclusion itself, not just that it's absent from an unrelated day.
 test('dashboard_date_only_planned_expense_not_shown @manager', async ({ page }) => {
   await goToDaysAhead(page, barn.slug, 4)
+
+  // goToDaysAhead ends on waitForURL(..., { waitUntil: 'commit' }), which resolves before the
+  // new document renders — so without this the absence below can be read off a page that has
+  // not drawn anything yet (spec-maintenance rule 4). The Calendar <h2> is the day-independent
+  // half of the section the expense card would have rendered into.
+  await expect(page.getByRole('heading', { name: 'Calendar' })).toBeVisible()
   await expect(page.getByText('Feed Supplier')).toHaveCount(0)
 })
 
@@ -429,6 +435,13 @@ const dayCards = (page: Page) => page.locator('a[href*="/lessons/"], a[href*="/e
  * *identical* locator is visible one day over, which is what turns that typo into a failure
  * instead of a silent pass. Two similar-looking locators would not do that — they have to be
  * the same one.
+ *
+ * That reasoning still holds, and it closes the *typo'd-locator* hole only. It does nothing
+ * about the **timing** hole — `toHaveCount(0)` is satisfied on its first poll (framework fact
+ * 18), so the absence test could pass off a document that had not rendered yet, and the paired
+ * test one day over is a different page load that cannot speak to it. Spec-maintenance rule 4
+ * is explicit that a paired positive test does not satisfy it. The `dayHeading` assertion
+ * inside the absence test is what closes the second hole; the pairing keeps closing the first.
  */
 const todayLink = (page: Page) => page.getByRole('link', { name: 'Today', exact: true })
 
@@ -509,6 +522,8 @@ test('dashboard_today_link_returns_to_todays_calendar @manager', async ({ page }
 // unscoped text check would never fail. See todayLink's own note on why it is shared.
 test('dashboard_no_today_link_while_viewing_today @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
+
+  await expect(dayHeading(page)).toBeVisible()
   await expect(todayLink(page)).toHaveCount(0)
 })
 

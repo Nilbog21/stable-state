@@ -5,7 +5,7 @@ The Playwright checklist suite. Harness, seeding and isolation live in `support/
 
 ## Framework facts (#1279)
 
-Seventeen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
+Eighteen measured things about `@playwright/test`, Chromium and React 19 that are not obvious, are
 not in the places you would look for them, and each of which cost a batch at least one round. This
 is the index: headline only, and the full worked statement is the same-numbered section of
 [`docs/e2e-framework-facts.md`](../docs/e2e-framework-facts.md), which also carries their
@@ -75,9 +75,13 @@ the accessibility tree, not the DOM. Locate by tag to count what a collapsed con
 to catch** — and a mutation pass is structurally blind to it.
 [full](../docs/e2e-framework-facts.md#fact-17) *(#1426)*
 
+**18. A web-first matcher whose expectation is "nothing" is satisfied on its first poll** —
+`toHaveCount(0)`/`not.toBeVisible` get no retry budget, so one run straight after a `goto` can be
+decided before the page renders. [full](../docs/e2e-framework-facts.md#fact-18) *(#1425, #1434)*
+
 ## Spec maintenance
 
-Three rules about what a spec is allowed to leave behind. This is the index: headline only, and
+Four rules about what a spec is allowed to leave behind. This is the index: headline only, and
 the full worked statement is the same-numbered section of
 [`docs/e2e-spec-maintenance.md`](../docs/e2e-spec-maintenance.md), which also carries each rule's
 reference implementation. Numbering is append-only, same as the facts above.
@@ -93,6 +97,10 @@ rows *through* memberships. Hand it back in a `describe`-scoped `afterAll`.
 **3. Never call `allInnerTexts()`/`allTextContents()` on a bare locator** — they don't auto-retry,
 so an assertion accepting `[]` passes on nothing. Read through `support/read.ts`.
 [full](../docs/e2e-spec-maintenance.md#rule-3) *(#1243)*
+
+**4. Every absence assertion needs a positive anchor in the same test** proving the page region
+rendered (fact 18). A paired positive *test* on the identical locator does not satisfy it, and
+neither does a `waitForURL`. [full](../docs/e2e-spec-maintenance.md#rule-4) *(#1434)*
 
 ## The rest of the e2e rules
 

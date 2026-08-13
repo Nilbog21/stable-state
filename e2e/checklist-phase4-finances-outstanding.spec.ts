@@ -412,6 +412,11 @@ test('outstanding_expenses_lists_past_due_planned_expense_as_one_line @manager',
 
 test('past_due_planned_expense_absent_from_outstanding_income_table @manager', async ({ page }) => {
   await page.goto(financesUrl())
+  // The same recipient, present in the section it *does* belong to. A render proof that also
+  // makes the absence below a real discrimination rather than a page that never drew a table.
+  await expect(
+    outstandingExpenses(page).getByRole('link', { name: new RegExp(seeded.plannedExpense.recipient) })
+  ).toBeVisible()
   await expect(
     outstandingIncome(page).locator('tbody tr').filter({ hasText: seeded.plannedExpense.recipient })
   ).toHaveCount(0)
@@ -485,11 +490,15 @@ test.describe.serial('cancellation fee', () => {
 test('late_cancelled_paid_lesson_raises_no_cancellation_fee @manager', async ({ page }) => {
   await lateCancelByRider(page, seeded.paidLateCancelLesson.id, seeded.riderMembershipId)
   await page.goto(`/barn/${barn.slug}/finances/outstanding`)
+
+  await expect(page.getByRole('heading', { name: 'Outstanding Payments', level: 1 })).toBeVisible()
   await expect(page.locator(`a[href="${lessonHref(seeded.paidLateCancelLesson.id)}"]`)).toHaveCount(0)
 })
 
 test('outstanding_page_omits_outstanding_expenses @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/finances/outstanding`)
+
+  await expect(page.getByRole('heading', { name: 'Outstanding Payments', level: 1 })).toBeVisible()
   await expect(page.getByText(seeded.plannedExpense.recipient)).toHaveCount(0)
 })
 
@@ -574,6 +583,12 @@ test.describe.serial('resolving a past-due planned expense', () => {
     await saveExpenseForm(page)
 
     await page.goto(financesUrl())
+    // The *other* seeded expense, still outstanding for want of a payment type of its own. It
+    // proves the section rendered and still holds entries, so the absence below is this
+    // expense leaving rather than the list never arriving.
+    await expect(
+      outstandingExpenses(page).getByRole('link', { name: new RegExp(seeded.pricedExpense.recipient) })
+    ).toBeVisible()
     await expect(
       outstandingExpenses(page).getByRole('link', { name: new RegExp(seeded.plannedExpense.recipient) })
     ).toHaveCount(0)
