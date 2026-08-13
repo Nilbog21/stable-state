@@ -66,7 +66,9 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (manual — same source edit as the line above) That page shows no raw stack trace
 - [ ] (manual — same source edit as the line above) That error boundary's **Try again** button works (then revert the thrown error)
 
-**Doc review.** Both pages render their repo-root markdown file through `ReactMarkdown` (`src/app/privacy/page.tsx:13`), so the file you read and the page it serves are the same content by construction — read either. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+Doc review — read either the page or its repo-root markdown file; they are the same content by construction:
+
+Both pages read that file at request time and render it through `ReactMarkdown` (`src/app/privacy/page.tsx:14,31`). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) `/terms` still describes what the app does — `TERMS_OF_SERVICE.md`
 - [ ] (manual — same judgement, and `CLAUDE.md`'s Privacy Policy section names the change classes that most often invalidate it) `/privacy` still describes what the app collects, stores and shares — `PRIVACY_POLICY.md`

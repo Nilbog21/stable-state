@@ -14,8 +14,9 @@
 // to reach a rider holding agreements, and an e2e run seeds them on the rider persona's own
 // membership instead. It is tagged with the name of the test its seeding serves, the precedent
 // checklist-phase56-horses-notes.spec.ts set for its own three Setup lines — which records a #1251
-// verdict rather than reversing one. The "Those cards carry no hover state" line, immediately
-// below this file's last line, stays `(manual)`: it is a hover-affordance judgement, untouched here.
+// verdict rather than reversing one. The hover-affordance judgement that once sat as its own
+// `(manual)` line below this file's last one is now a bullet in phase-6's `Visual sweep` rubric
+// (#1414) — still manual, still not something a click path asserts, just asked once per area.
 //
 // ## A paired slice
 //

@@ -6,9 +6,10 @@ Paths in the phase files are relative — prepend your app origin (local `npm ru
 
 To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` line from one `scripts/run-checklist-suite.sh` run, walks the rest with you one checkbox at a time, and records the result in `specs/checklist-run-{YYYY-MM-DD}.md` rather than in this file.
 
-> **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with one exception:
+> **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with two exceptions:
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
+> - A **whole-area visual judgement** — the `Visual sweep` blocks at the end of Phases 2–6 (#1414) — where the "one assertion" is the single verdict *does this area read cleanly*, applied to a feature area rather than a clause. The pages listed on such a line scope the walk; they are not separate assertions to mark off, and splitting per page roughly doubles the count for a judgement a human forms in one pass anyway. This exception is for that shared-rubric case only: an area's line still fails as a whole, so a reviewer records which page let it down in the run file's notes.
 
 > **Phases are partitioned by the role doing the *asserting*, not the role the data is about.** A manager reading a page *about* riders is a Phase 4 line; a rider reading their own page is a Phase 6 line. That distinction is load-bearing — read it the other way and all 141 Finances lines look like Phase 6 material.
 >

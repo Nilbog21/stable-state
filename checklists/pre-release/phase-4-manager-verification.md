@@ -633,14 +633,17 @@ Calendar feed (#1018):
 - [ ] (e2e: regenerating_the_calendar_link_issues_a_different_token) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
 - [ ] (e2e: the_pre_regenerate_calendar_url_stops_working) Open the pre-regenerate URL — it now 404s
 
-**Visual sweep.** One pass per feature area, walked at the end of the phase with everything it just created (#1414). A suite run proves behaviour; it cannot prove the app reads well. The Finances line below is the one that used to sit at the top of that section, and the no-hover-only rubric bullet is the line that used to sit inside Mobile spot-check — each is asked once here rather than twice.
+Visual sweep — one pass per feature area, walked at the end of the phase with everything it just created (#1414):
 
-> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. Each line below asks the same question of one feature area: does it read cleanly?
+The Finances line below is the one that used to sit at the top of that section, and the no-hover-only rubric bullet is the line that used to sit inside Mobile spot-check — each is asked once here rather than twice.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. A suite run proves behaviour; it cannot prove the app reads well. Each line below asks the same question of one feature area: does it read cleanly?
 >
 > - spacing, alignment and typography are consistent with the rest of the app
 > - it is correct in **both light and dark mode**
 > - it is readable at ~390px wide
 > - nothing in it is reachable or dismissible only by hover
+> - nothing non-interactive carries a hover state implying it is clickable
 
 - [ ] (manual) **Dashboard** — Day and Week views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the edit form, and the cancel/delete confirmation pages (`/barn/dev-barn/lessons` and below)
@@ -652,6 +655,8 @@ Calendar feed (#1018):
 - [ ] (manual) **Notifications and profile** — the bell dropdown, the avatar menu, `/profile`, `/about` and `/changelog`
 - [ ] (manual) **Calendar feed** — the Calendar Feed section on `/profile?barn=dev-barn` and its Get link / Copy Link / Regenerate controls
 
-**Doc review.** The guide page renders a repo-root markdown file through `ReactMarkdown`, picked by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13`, so the file you read and the page it serves are the same content by construction — read either. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
+
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The manager guide at `/barn/dev-barn/guide` still describes what a manager can actually do — `USER_GUIDE_MANAGER.md`
