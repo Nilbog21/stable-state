@@ -42,6 +42,18 @@
 //     write one: per call site, named, with the reason on it (see
 //     checklist-phase4-finances-outstanding.spec.ts's SETTLE_AFTER_WRITE).
 //
+//     BUT PREFER A SYNC POINT TO A NUMBER WHEN THERE IS ONE TO WAIT ON (#1469). Before asserting
+//     an absence or a count after a write, `.waitFor()` on something the write *creates* — see
+//     checklist-phase4-horses-documents.spec.ts's document delete, which waits on the empty state
+//     before counting rows to zero, and has never flaked while the twin that omitted it did. Being
+//     unbounded, that wait cannot be sized wrong at any worker count, where a number is a guess a
+//     slower box invalidates. Reach for the number only when a `waitFor` would absorb the very
+//     thing under assertion, which happens two ways: the assertion's own target is the only thing
+//     to wait on, so the wait is tautological (the photo-placeholder tests in
+//     checklist-phase4-members-media/horses-photos.spec.ts), or the file's settle helper waits on
+//     exactly the signal the test exists to check, so the test must decline it
+//     (checklist-phase4-horses-detail.spec.ts, which opts out of saveAndSettle three times).
+//
 // ## Asserting on the URL, suite-wide (#1009, #1140, #1152)
 //
 // After a *click*, use page.waitForURL(pattern, { waitUntil: 'commit' }) — expect(page).toHaveURL

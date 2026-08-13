@@ -34,6 +34,14 @@ const APPLE = 'Apple'
 const BUTTER = 'Butter'
 const DAISY = 'Daisy'
 
+// The one assertion here that waits on a server action plus its revalidate with nothing else to
+// synchronise on. `toBeVisible` is a web-first matcher, so it runs on expect's 5s default and
+// `test.slow()` cannot raise it — the third tier in support/test.ts's Timeouts block, and the one
+// place a number *loosens*. Widened here rather than globally, where it would slow every genuine
+// failure in the suite down. Kept file-local on purpose (#1469): a shared export is what invites
+// writing the number where a sync point is the real fix.
+const SETTLE_AFTER_WRITE = 15_000
+
 // The one non-image asset here — the upload the unsupported-file-type line rejects. The four photo
 // filenames it used to sit beside, and the rationale for their reuse across entities, moved to
 // support/horse-pages.ts with the consts themselves.
@@ -358,13 +366,17 @@ test.describe.serial('the horse photo lifecycle', () => {
     }).toEqual({ displayed: BUTTER_PHOTO, oldObjectStillStored: false, currentObjectStored: true })
   })
 
-  // deleteHorsePhotoAction revalidates rather than redirecting, so the section re-renders in place
-  // and the placeholder's own auto-waiting is the whole wait.
+  // deleteHorsePhotoAction revalidates rather than redirecting, so there is no navigation to
+  // synchronise on and the assertion waits out the action *and* the re-render. `toBeVisible` is
+  // web-first, so that wait is expect's 5s default, not unbounded — hence the number (#1469). A
+  // `waitFor` on the placeholder instead would be tautological here: it is the assertion's own
+  // target, unlike a delete-then-assert-absence pair, where the two are distinct (see
+  // checklist-phase4-horses-documents.spec.ts's document delete).
   test('removing_the_horse_photo_restores_the_placeholder_icon @manager', async ({ page }) => {
     await page.goto(horseUrl(cloverId))
     await photoSection(page).getByRole('button', { name: 'Remove Photo' }).click()
 
-    await expect(photoSection(page).locator('svg[aria-hidden="true"]')).toBeVisible()
+    await expect(photoSection(page).locator('svg[aria-hidden="true"]')).toBeVisible({ timeout: SETTLE_AFTER_WRITE })
   })
 
   test('removing_the_horse_photo_restores_the_set_photo_button @manager', async ({ page }) => {
