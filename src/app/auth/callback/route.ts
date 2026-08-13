@@ -87,12 +87,17 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const user = await getAuthenticatedUser()
 
-      if (inviteToken && user) {
+      // barnSlug is required alongside the token, not merely preferred: the only
+      // emitter of `&token=` is actions/auth.ts's signInWithGoogleForBarn, which
+      // always appends it to a `?barn=` URL. A slugless token can't occur, so the
+      // guard folds the branch away rather than leaving a route with no error screen.
+      if (inviteToken && barnSlug && user) {
         try {
           await claimManagedMember(inviteToken, user.id, user.email ?? null)
         } catch {
-          const base = barnSlug ? `${origin}/barn/${barnSlug}/login` : `${origin}/login`
-          return redirect(`${base}?error=invite_claim_failed`)
+          // The register page renders its InvalidInvite screen on `?error=`, ahead of
+          // its own auth check — the login page it used to land on reads no error param.
+          return redirect(`${origin}/barn/${barnSlug}/register?error=invite_claim_failed`)
         }
       }
 
