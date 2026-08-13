@@ -23,7 +23,7 @@ How a migration is verified, and why an applied one is never edited: `supabase/C
 
 Whenever a migration or role change is committed, update the detail file **and** its index entry:
 - schema → `docs/architecture/schema.md`; RPC → `docs/architecture/rpc/`; route → `docs/architecture/routes/`; DAL (`src/lib/db/`) → `docs/architecture/dal/`; a new/changed RLS helper's rationale → `docs/architecture/rls.md`
-- the RPC, route and DAL directories each carry their own index (`docs/architecture/{rpc,routes,dal}.md`); update it, and the matching one-line entry in `ARCHITECTURE.md`, when something is **added or removed**. A new/changed RLS helper always gets its `ARCHITECTURE.md` line
+- the RPC, route and DAL directories each carry their own index (`docs/architecture/{rpc,routes,dal}.md`); update it, and the matching one-line entry in `ARCHITECTURE.md`, when something is **added or removed**. an added/removed table, and a new/changed RLS helper, always gets its `ARCHITECTURE.md` line
 - a new role or a change to the permissions matrix goes straight to `ARCHITECTURE.md`'s Role system section
 
 ## Barn Data Backup

@@ -85,8 +85,9 @@ rm -rf "$REPO"
 # Test 5: a file over its per-file budget fails and is named; a file under its own budget is not.
 # The pair has been re-anchored twice as the set's ordering moved — on e2e/CLAUDE.md once #1420
 # made it the smallest, and now on .claude/commands/CLAUDE.md, which #1468 added at 1450 while
-# lowering CLAUDE.md's to 6500. 3000 is over the smallest budget in the set and under the largest
-# of the nested ones, testing both directions in one run.
+# lowering CLAUDE.md's to 6500. 3000 is over both new nested budgets and under CLAUDE.md's own,
+# testing both directions in one run; the assertions name .claude/commands/CLAUDE.md as the over
+# case, so re-anchor them if a smaller budget joins the set.
 REPO="$(make_repo 15000 5000 3000)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: .claude/commands/CLAUDE.md "; then

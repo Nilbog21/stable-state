@@ -26,7 +26,7 @@ BUDGETS=(
   "ARCHITECTURE.md:20000"
   # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
   # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
-  # sections restating a rule stated in full in the doc they point at: 10009 -> 6174. The 12500 was
+  # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was
   # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
   # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
   "CLAUDE.md:6500"
