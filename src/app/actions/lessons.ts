@@ -2,10 +2,10 @@
 
 /**
  * Global lesson Server Actions, all guarded by `requireMembership` (manager/trainer):
- * form submission (`submitLesson` — parse via `./lesson-form-parsing`, optional
- * manager-only inline new-horse create, then `createLessonWithParticipants` or, when
- * recurring, `createLessonSeries`, then best-effort nearby-instructor notification
- * fan-out that must never surface as a submission error), edit (`updateLessonAction` —
+ * form submission (`submitLesson` — parse via `./lesson-form-parsing`, then
+ * `createLessonWithParticipants` or, when recurring, `createLessonSeries`, then
+ * best-effort nearby-instructor notification fan-out that must never surface as a
+ * submission error), edit (`updateLessonAction` —
  * same parse, then the participant update plus a second, deliberately non-atomic phase
  * saving per-horse/per-rider/cancellation notes), post-creation lifecycle
  * (`deleteLessonAction` — manager-only; `updatePaymentTypeAction` — a trainer only for
