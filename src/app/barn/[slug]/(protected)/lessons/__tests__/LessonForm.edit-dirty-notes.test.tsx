@@ -234,7 +234,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 
-  it('should_set_dirty_when_new_horse_name_entered', async () => {
+  it('should_not_render_add_new_horse_input_in_edit_mode_for_manager', async () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
@@ -242,9 +242,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
-    const newHorseInput = container.querySelector('input[name="new_horse_name"]') as HTMLInputElement
-    fireEvent.change(newHorseInput, { target: { value: 'Star' } })
-    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    expect(container.querySelector('input[name="new_horse_name"]')).toBeNull()
   })
 
   it('should_not_set_dirty_in_new_mode_when_horse_checked', async () => {

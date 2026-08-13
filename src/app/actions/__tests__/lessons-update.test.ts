@@ -387,32 +387,10 @@ describe('updateLessonAction', () => {
     )
   })
 
-  it('should_create_new_horse_when_new_horse_name_is_submitted', async () => {
-    vi.mocked(createHorse).mockResolvedValue(createMockHorse({ id: 'new-horse-1', name: 'Midnight', created_at: '', updated_at: '' }))
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
-    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Midnight', mockManagerMembership.id)
-  })
-
-  it('should_call_updateLessonWithParticipants_with_new_horse_id', async () => {
-    vi.mocked(createHorse).mockResolvedValue(createMockHorse({ id: 'new-horse-1', name: 'Midnight', created_at: '', updated_at: '' }))
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
-    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ horseIds: ['new-horse-1'] })
-    )
-  })
-
-  it('should_not_call_createHorse_when_existing_horse_id_is_submitted', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+  it('should_not_call_createHorse_when_a_manager_submits_a_new_horse_name', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Midnight', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(createHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_return_error_when_both_new_horse_name_and_existing_horse_id_are_submitted', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Midnight', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
-    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
   })
 
   it('should_call_updateLessonWithParticipants_when_trainer_submits_valid_lesson', async () => {
@@ -431,11 +409,11 @@ describe('updateLessonAction', () => {
     )
   })
 
-  it('should_return_error_when_trainer_tries_to_add_new_horse', async () => {
+  it('should_return_horse_required_when_a_trainer_submits_only_a_new_horse_name', async () => {
     guardAs(mockTrainerMembership)
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(result).toEqual({ error: 'not authorized to add horses' })
+    expect(result).toEqual({ error: 'horse required' })
   })
 
   it('should_save_horse_notes_when_noteHorseId_present', async () => {

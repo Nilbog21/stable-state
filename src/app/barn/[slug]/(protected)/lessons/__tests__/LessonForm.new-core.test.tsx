@@ -381,28 +381,9 @@ describe('LessonForm', () => {
     expect(exertionInput.value).toBe('4')
   })
 
-  it('should_default_new_horse_exertion_to_4_when_jumping_is_on_before_name_entered', () => {
+  it('should_not_render_add_new_horse_input_for_manager', () => {
     render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
-    expect(exertionInput.value).toBe('4')
-  })
-
-  it('should_snap_new_horse_exertion_to_4_when_jumping_toggled_on_with_name_already_entered', () => {
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
-    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
-    expect(exertionInput.value).toBe('4')
-  })
-
-  it('should_update_new_horse_exertion_when_changed_by_user', () => {
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
-    fireEvent.change(exertionInput, { target: { value: '5' } })
-    expect(exertionInput.value).toBe('5')
+    expect(screen.queryByPlaceholderText(/Add new horse/i)).toBeNull()
   })
 
   it('should_show_exertion_label_when_existing_horse_is_checked', () => {
@@ -416,12 +397,6 @@ describe('LessonForm', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
-  })
-
-  it('should_show_exertion_label_for_new_horse_when_name_is_entered', () => {
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_show_blocked_state_when_tiers_is_empty', () => {
@@ -543,53 +518,6 @@ describe('LessonForm', () => {
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     expect(screen.getByRole('alert').textContent).toContain('a rider is required')
-  })
-
-  it('should_not_show_horse_error_when_new_horse_name_entered_without_existing_horse_in_normal_mode', () => {
-    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} riders={[rider]} />)
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(screen.queryByText(/normal lesson requires exactly 1 horse/i)).toBeNull()
-  })
-
-  it('should_show_conflict_error_when_new_horse_name_and_existing_horse_both_submitted_in_normal_mode', () => {
-    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} horses={[horse]} riders={[rider]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(screen.getByRole('alert').textContent).toContain('select a horse or add a new one, not both')
-  })
-
-  it('should_not_call_action_when_new_horse_name_and_existing_horse_both_submitted_in_normal_mode', () => {
-    const action = vi.fn().mockResolvedValue({ error: null })
-    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} action={action} isManager={true} horses={[horse]} riders={[rider]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(action).not.toHaveBeenCalled()
-  })
-
-  it('should_not_show_horse_error_when_new_horse_name_entered_without_existing_horse_in_group_mode', () => {
-    const riders = [
-      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
-      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
-    ]
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} riders={riders} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
-    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
-    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
-    fireEvent.click(checkboxes[0])
-    fireEvent.click(checkboxes[1])
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(screen.queryByText(/group lesson requires at least 1 horse/i)).toBeNull()
   })
 
 })
