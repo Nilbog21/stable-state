@@ -378,7 +378,8 @@ test('rider_reminder_cards_link_to_the_outstanding_page @rider', async ({ page }
 // below anyway, but says nothing about why. This test still carries exactly one assertion.
 test('rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outstanding @rider', async ({ page }) => {
   const { supabase, barn: seededBarn } = barn.data
-  // No exact count: one row without an instructor cut on the tier, two with it.
+  // Exactly two, same as addPaidLesson's: sync_lesson_transactions writes both the lesson_fee and
+  // the instructor_payout row for every lesson, whatever the tier's cut.
   mustAffect(
     await supabase
       .from('transactions')
@@ -387,7 +388,8 @@ test('rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outst
       .eq('lesson_id', seeded.riderLesson.id)
       .in('kind', ['lesson_fee', 'instructor_payout'])
       .select('id'),
-    'collect the rider lesson fee'
+    'collect the rider lesson fee',
+    2
   )
 
   await page.goto(dashboardPath())

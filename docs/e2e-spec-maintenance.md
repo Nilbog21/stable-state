@@ -118,17 +118,21 @@ that — the demo-reaper's `barns.created_at` backdate updated zero rows, so bot
 passing against nothing, through a 15/15 mutation pass. A review agent caught it. **The check belongs
 on the setup call's row count, not on the assertion.**
 
-Pass an exact count only when the target is a single row by primary key. Omit it — "at least one" —
-whenever the count varies with the fixture: collecting a lesson's transactions is one row without an
-instructor cut on the tier and two with it, and an over-tight exact count is a flake that catches
-nothing at-least-one wouldn't.
+Pass an exact count whenever the fixture pins one — a single row by primary key, but also a count
+the schema fixes: collecting a lesson's transactions is always **two** rows, because
+`sync_lesson_transactions` upserts a `lesson_fee` and an `instructor_payout` row unconditionally,
+whatever the tier's cut. Omit it — "at least one" — only where the count genuinely varies with the
+fixture, as cancelling a lesson's riders does: one row per uncancelled rider, which the seeds don't
+pin. There an exact count would be a flake catching nothing at-least-one wouldn't.
 
-Two sites need nothing. A mutation already ending `.select(...).single()` is **already guarded** —
-PostgREST fails a `.single()` matching zero rows with `PGRST116`, which `mustSucceed` throws on; 22
-of the suite's 46 mutation sites are of this shape. And a mutation whose zero-row result is
-**legitimate** stays on `mustSucceed` **and says why in a comment** — `support/fixtures.ts`'s
-`deleteThrowawayAuthUser` deletes a profile that exists only once the throwaway login claimed an
-invite, so matching nothing is the ordinary shape of a run that failed before the claim.
+Two kinds of site need no `mustAffect`. A mutation already ending `.select(...).single()` is
+**already guarded** — PostgREST fails a `.single()` matching zero rows with `PGRST116`, which
+`mustSucceed` throws on; 22 of the suite's 46 mutation sites are of this shape. And a mutation whose
+zero-row result is **legitimate** stays on `mustSucceed` **and says why in a comment** — the suite
+has exactly two, both in `support/fixtures.ts`: `deleteThrowawayAuthUser` deletes a profile that
+exists only once the throwaway login claimed an invite, so matching nothing is the ordinary shape of
+a run that failed before the claim; and `teardownBarn`'s barn delete wants the row gone, so a
+concurrent teardown of the same slug having got there first is the desired end state.
 
 That last case is why the check is opt-in at the call site and is **never** folded into
 `mustSucceed`: a blanket check would fire on correct code, and a gate that fires on correct code is

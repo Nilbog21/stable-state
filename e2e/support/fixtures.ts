@@ -670,9 +670,9 @@ export async function addPaidLesson(
   opts: LessonOptions
 ): Promise<Lesson> {
   const lesson = await addUnpaidLesson(supabase, barn, opts)
-  // No exact count: this is one row when the lesson's tier carries no instructor cut and two when
-  // it does, and pinning either would break the other's callers. A zero, though, means the lesson
-  // is still unpaid — which every caller's assertions are the exact opposite of.
+  // Exactly two: sync_lesson_transactions upserts a lesson_fee row *and* an instructor_payout row
+  // unconditionally, whatever the tier's instructor cut (a zero cut still writes the payout row at
+  // amount 0), and each is unique per lesson. A one here means the payout row stopped being written.
   mustAffect(
     await supabase
       .from('transactions')
@@ -681,7 +681,8 @@ export async function addPaidLesson(
       .eq('lesson_id', lesson.id)
       .in('kind', ['lesson_fee', 'instructor_payout'])
       .select('id'),
-    'mark lesson paid'
+    'mark lesson paid',
+    2
   )
   return lesson
 }
