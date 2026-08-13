@@ -17,6 +17,14 @@ const EMERY_PHOTO = 'emery-photo.jpg'
 const CLOVER_PHOTO = 'clover-photo.png'
 const TEST_PDF = 'test_1_kb.pdf'
 
+// The one assertion here that waits on a server action plus its revalidate with nothing else to
+// synchronise on. `toBeVisible` is a web-first matcher, so it runs on expect's 5s default and
+// `test.slow()` cannot raise it — the third tier in support/test.ts's Timeouts block, and the one
+// place a number *loosens*. Widened here rather than globally, where it would slow every genuine
+// failure in the suite down. Kept file-local on purpose (#1469): a shared export is what invites
+// writing the number where a sync point is the real fix.
+const SETTLE_AFTER_WRITE = 15_000
+
 const fullName = (who: { firstName: string; lastName: string }) => `${who.firstName} ${who.lastName}`
 /** `emery-photo.jpg` → `jpg`. replaceProfilePhoto names the stored object `${Date.now()}.${ext}`. */
 const extensionOf = (assetName: string) => assetName.slice(assetName.lastIndexOf('.') + 1)
@@ -127,12 +135,15 @@ test.describe.serial('a managed rider photo', () => {
     )
   })
 
-  // deleteProfilePhotoAction revalidates rather than redirecting, so the section re-renders in
-  // place — the placeholder's own auto-waiting is the whole wait.
+  // deleteProfilePhotoAction revalidates rather than redirecting, so there is no navigation to
+  // synchronise on and the assertion waits out the action *and* the re-render. `toBeVisible` is
+  // web-first, so that wait is expect's 5s default, not unbounded — hence the number (#1469). A
+  // `waitFor` on the placeholder instead would be tautological here: it is the assertion's own
+  // target, unlike the document test above, where the empty state and the absent row are distinct.
   test('removing_the_member_photo_restores_the_no_photo_placeholder @manager', async ({ page }) => {
     await page.goto(memberUrl(managedRiderId))
     await section(page, 'Photo').getByRole('button', { name: 'Remove' }).click()
-    await expect(section(page, 'Photo').getByText('No photo yet')).toBeVisible()
+    await expect(section(page, 'Photo').getByText('No photo yet')).toBeVisible({ timeout: SETTLE_AFTER_WRITE })
   })
 
   test('removing_the_member_photo_restores_the_set_photo_button @manager', async ({ page }) => {
@@ -340,6 +351,14 @@ test.describe.serial('a managed rider document', () => {
     await expect(formWithButton('Revoke').locator('input[name^="$ACTION_REF"]')).toHaveCount(1)
 
     await section(page, 'Documents').getByRole('button', { name: 'Delete' }).click()
+    // The sync point, and the reason this test's horse-document twin has never flaked while this
+    // one did (#1469): the empty state exists only *after* the delete, so waiting on it cannot be
+    // satisfied early, and `.waitFor()` is unbounded where the count assertion below runs on
+    // expect's 5s budget — which a server action plus its revalidate has been observed to overrun
+    // under full-suite load. Full rationale, including why the assertion stays a count of zero,
+    // sits on checklist-phase4-horses-documents.spec.ts's copy of this pair.
+    await section(page, 'Documents').getByText('No documents yet', { exact: true }).waitFor()
+
     await expect(section(page, 'Documents').getByRole('link', { name: TEST_PDF })).toHaveCount(0)
   })
 })
