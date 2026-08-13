@@ -27,6 +27,9 @@ on expect's 5s default, which `test.slow()` does not raise. So a number on the f
 *tightens* and a number on the third *loosens*. Full statement: `support/test.ts`'s Timeouts
 block.
 
+A test spending more than about half its warm budget is already failing on a cold server, where
+`next dev` compiles the routes it visits inside that same budget — declare `test.slow()`. *(#1482)*
+
 ## Fact 2
 
 **`support/read.ts`'s settled reads only reach what can become *visible*.** On an
