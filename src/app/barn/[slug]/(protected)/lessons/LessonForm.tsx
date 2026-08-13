@@ -134,8 +134,6 @@ export function LessonForm({
   const [clientError, setClientError] = useState<string | null>(null)
   const [jumping, setJumping] = useState(initialJumping)
   const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
-  const [newHorseName, setNewHorseName] = useState('')
-  const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
   const [fee, setFee] = useState<string>(initialFee)
@@ -170,7 +168,7 @@ export function LessonForm({
     Number(initialLesson?.fee) > 0
   const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
   const feeDirty = fee !== initialFee
-  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds) || newHorseName.trim() !== ''
+  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds)
   const ridersDirty = lessonType === 'normal'
     ? normalRiderId !== initialNormalRiderId
     : !setsEqual(checkedRiderIds, initialRiderIds)
@@ -224,7 +222,6 @@ export function LessonForm({
         for (const key of next.keys()) next.set(key, 3)
         return next
       })
-      setNewHorseExertionLevel(3)
       flash([...(jumping ? ['jumping'] : []), ...(fee !== '' ? ['fee'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
@@ -243,7 +240,6 @@ export function LessonForm({
           for (const key of next.keys()) next.set(key, lvl)
           return next
         })
-        setNewHorseExertionLevel(lvl)
         affectedKeys.push(...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`))
       }
       flash(affectedKeys)
@@ -318,10 +314,6 @@ export function LessonForm({
         }
         return next
       })
-      if (newHorseExertionLevel < 4) {
-        setNewHorseExertionLevel(4)
-        bumped.push('new_horse_exertion')
-      }
       if (bumped.length > 0) flash(bumped)
     }
   }
@@ -341,13 +333,7 @@ export function LessonForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
-    const hasNewHorse = newHorseName.trim() !== ''
-    if (hasNewHorse && checkedHorseIds.size > 0) {
-      e.preventDefault()
-      setClientError('select a horse or add a new one, not both')
-      return
-    }
-    if (lessonType === 'normal' && !hasNewHorse && checkedHorseIds.size !== 1) {
+    if (lessonType === 'normal' && checkedHorseIds.size !== 1) {
       e.preventDefault()
       setClientError('normal lesson requires exactly 1 horse')
       return
@@ -357,7 +343,7 @@ export function LessonForm({
       setClientError('a rider is required')
       return
     }
-    if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
+    if (lessonType === 'group' && checkedHorseIds.size < 1) {
       e.preventDefault()
       setClientError('group lesson requires at least 1 horse')
       return
@@ -544,39 +530,6 @@ export function LessonForm({
           </div>
           )
         })}
-        {isManager && (
-          <>
-            <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
-            <div className="flex items-center gap-3">
-              <input
-                id="new_horse_name"
-                type="text"
-                name="new_horse_name"
-                placeholder="Add new horse…"
-                value={newHorseName}
-                onChange={(e) => setNewHorseName(e.target.value)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-              {newHorseName && (
-                <>
-                  <label htmlFor="new_horse_exertion_level" className="text-xs text-zinc-500">Exertion (1–5)</label>
-                  <input
-                    id="new_horse_exertion_level"
-                    type="number"
-                    name="new_horse_exertion_level"
-                    aria-label="Exertion level for new horse"
-                    min="1"
-                    max="5"
-                    value={newHorseExertionLevel}
-                    onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
-                    required
-                    className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('new_horse_exertion') ? 'ring-2 ring-blue-400' : ''}`}
-                  />
-                </>
-              )}
-            </div>
-          </>
-        )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">

@@ -183,20 +183,6 @@ describe('LessonNewPage', () => {
     expect(select.value).toBe(mockManagerMembership.id)
   })
 
-  it('should_show_new_horse_input_when_user_is_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByPlaceholderText(/add new horse/i)).toBeDefined()
-  })
-
-  it('should_not_show_new_horse_input_when_user_is_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.queryByPlaceholderText(/add new horse/i)).toBeNull()
-  })
-
   it('should_not_render_exertion_input_when_horse_is_unchecked', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
