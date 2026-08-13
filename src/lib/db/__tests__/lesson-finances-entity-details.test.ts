@@ -16,6 +16,7 @@ import {
   getRiderIncomeDetail,
   getRiderIncomeSummary,
   getTrainerIncomeDetail,
+  getTrainerIncomeSummary,
 } from '../lesson-finances'
 import {
   getLessonFeeRows,
@@ -23,7 +24,7 @@ import {
 } from '../lesson-finance-queries'
 import { resolveMemberNames } from '../member-names'
 import { resolveHorseNames } from '../horses'
-import { getPaidCharges } from '../agreement-finances'
+import { getChargesForSummary, getPaidCharges } from '../agreement-finances'
 import { calendarDate } from '@/lib/local-day'
 
 describe('getHorseIncomeDetail', () => {
@@ -668,6 +669,25 @@ describe('getTrainerIncomeDetail', () => {
     const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(-25)
+  })
+
+  // #1439: the invariant `routes/finances.md` states — this page's bottom Total row
+  // matches that trainer's Net on the By Instructor tab. A deleted lesson's orphaned
+  // instructor_payout was the one path where it didn't: the summary attributed the
+  // −cut to the named trainer while `hasLesson` dropped it from these rows.
+  it('should_match_the_by_instructor_summarys_net_for_the_same_trainer', async () => {
+    vi.mocked(getLessonFeeRows).mockResolvedValue([
+      { lessonId: 'lesson-16', fee: 100, instructorCut: 20, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' },
+      { lessonId: null, fee: 0, instructorCut: 25, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-11T10:00:00Z', tierName: 'Deleted Lesson' },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+    vi.mocked(getChargesForSummary).mockResolvedValue([])
+    const [summary, detail] = await Promise.all([
+      getTrainerIncomeSummary('barn-1', startDate, endDate),
+      getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York'),
+    ])
+
+    expect(detail.total).toBe(summary.find((t) => t.trainerId === 'mem-trainer-1')!.totalIncome)
   })
 
   it('should_throw_on_lessons_error', async () => {
