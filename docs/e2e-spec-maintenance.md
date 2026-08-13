@@ -7,7 +7,7 @@ that had already shipped looking correct.
 
 The index — headlines only — is `e2e/CLAUDE.md`'s `## Spec maintenance`, which is auto-loaded
 whenever `e2e/` is touched. Rules are numbered so a spec comment can cite one (rule 3 already is,
-in `checklist-phase7-multi-barn.spec.ts`, and rule 4 in four of the specs it changed); as with the
+in `checklist-phase7-multi-barn.spec.ts`, and rule 4 in three of the specs it changed); as with the
 framework facts, **numbering is append-only**.
 
 Reference implementations are cited by **file and test or block name, never by line number** — a
@@ -74,10 +74,12 @@ straight after a `page.goto` can be read before the page has drawn the thing who
 claims — green in exactly the scenario the check exists to catch.
 
 The anchor has to be on the **same page state**, between the navigation and the absence. A
-`waitForURL` is not one: it resolves on commit, before the new document renders, so a URL sync
-point proves the navigation and nothing about the render. Two of this suite's sites were reached
-through a helper ending that way rather than through a bare `goto`, which is the form that hides
-best.
+`waitForURL` is not one, at either setting: under this suite's `{ waitUntil: 'commit' }` convention
+it resolves before the new document renders at all, and on Playwright's default `'load'` the event
+still fires before React has drawn the route's client subtree. Either way a URL sync point proves
+the navigation and nothing about the render. Two of this suite's sites were reached that way rather
+than through a bare `goto` — one inline, one inherited from a helper ending on it — which is the
+form that hides best.
 
 **A paired positive test does not satisfy this rule.** A sibling test asserting the *identical*
 locator is visible under the opposite condition is genuinely worth having — it is what turns a
@@ -86,12 +88,15 @@ say nothing about whether *this* one rendered. The two holes are separate; only 
 anchor closes both at once. `checklist-phase4-dashboard.spec.ts`'s `todayLink` comment states the
 pairing's own half and points here for the rest.
 
-Prefer an anchor the file already defines and already asserts positively elsewhere, or one whose
-presence makes the absence a real discrimination — the same recipient in the section it *does*
-belong to, the other manager in the same roster section — over a bare page heading. A heading is
-sufficient and is the right answer for a helper that spans many routes
-(`smoke.spec.ts`'s `assertPageClean` uses the single `<h1>` every route renders, which
-`app/error.tsx` renders too, leaving the assertion itself to say which page arrived).
+A bare page heading is a legitimate anchor and is the ordinary case — it proves the route rendered,
+which is exactly what this rule asks for, and it is the only right answer for a helper spanning
+many routes (`smoke.spec.ts`'s `assertPageClean` uses the single `<h1>` every route renders, which
+`app/error.tsx` renders too, leaving the assertion itself to say which page arrived). Reach past a
+heading when a sharper anchor is already to hand: one the file defines and asserts positively
+elsewhere, or one whose presence makes the absence a real discrimination — the same recipient in
+the section it *does* belong to, the other manager in the same roster section. That buys a second
+thing the heading does not, catching a typo'd absence locator, but it is a bonus rather than the
+bar.
 
 Reference implementation: `checklist-phase56-horses-notes.spec.ts`'s
 `trainer_unowned_horse_notes_render_as_read_only_text`, which asserts the read-only note values
