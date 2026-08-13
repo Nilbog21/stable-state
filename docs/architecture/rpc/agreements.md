@@ -29,3 +29,4 @@ Removed; `RETURN v_charge` now returns the row without that field, which is fine
 Same shape and authorization as `mark_agreement_charge_paid` above.
 `EXECUTE` revoked from `PUBLIC` and granted to `authenticated`.
 Used by `updateCharge` in `agreements.ts`.
+**#1441**: the `UPDATE transactions` now raises `charge_transaction_not_found` on zero rows affected, matching the guard `mark_agreement_charge_paid` has had since #885 — it shipped without one, so a charge missing its paired transaction took the fee edit successfully and left the agreement detail page and the income reports disagreeing, silently. `CREATE OR REPLACE` in `20260813002801_agreement_charge_fee_transaction_guard.sql`; signature unchanged, so the grants survived and no companion RLS migration was needed.
