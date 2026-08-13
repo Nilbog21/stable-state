@@ -139,7 +139,8 @@ test.describe.serial('a managed rider photo', () => {
   // synchronise on and the assertion waits out the action *and* the re-render. `toBeVisible` is
   // web-first, so that wait is expect's 5s default, not unbounded — hence the number (#1469). A
   // `waitFor` on the placeholder instead would be tautological here: it is the assertion's own
-  // target, unlike the document test above, where the empty state and the absent row are distinct.
+  // target, unlike the document delete below, where the empty state and the absent row are
+  // distinct.
   test('removing_the_member_photo_restores_the_no_photo_placeholder @manager', async ({ page }) => {
     await page.goto(memberUrl(managedRiderId))
     await section(page, 'Photo').getByRole('button', { name: 'Remove' }).click()

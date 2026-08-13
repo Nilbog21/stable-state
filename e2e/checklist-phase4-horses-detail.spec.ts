@@ -45,6 +45,16 @@ const REJECTED_THRESHOLD = 9
 // `exhaustion` prop.
 const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
 
+// The three assertions here that are their own wait on a Server Action plus its revalidate.
+// Web-first matchers run on expect's 5s default and `test.slow()` cannot raise it — the third tier
+// in support/test.ts's Timeouts block, and the one place a number *loosens*. Each of the three
+// deliberately declines its `saveAndSettle`-style helper because that helper's `waitFor` would
+// absorb the thing being asserted, so a sync point is not available to them the way it is to the
+// rest of this file. Widened here rather than globally, where it would slow every genuine failure
+// in the suite down. Kept file-local on purpose (#1469): a shared export is what invites writing
+// the number where a sync point is the real fix.
+const SETTLE_AFTER_WRITE = 15_000
+
 let appleId: string
 let cloverId: string
 let barnDefaults: { moderate: number; high: number }
@@ -259,12 +269,14 @@ test('threshold_overrides_update_from_the_same_save @manager', async ({ page }) 
 })
 
 // Deliberately not routed through saveAndSettle: that helper's own waitFor would absorb the
-// thing this checkbox is about, leaving the test asserting nothing that can fail.
+// thing this checkbox is about, leaving the test asserting nothing that can fail. Which is what
+// leaves the assertion as its own wait on the action, on the 5s expect budget — hence the number
+// (#1469).
 test('saved_confirmation_appears_next_to_the_save_button @manager', async ({ page }) => {
   await gotoHorseSettings(page, appleId)
   await saveButton(page).click()
 
-  await expect(savedIndicator(page)).toBeVisible()
+  await expect(savedIndicator(page)).toBeVisible({ timeout: SETTLE_AFTER_WRITE })
 })
 
 // Three assertions, same ratified exception as threshold_overrides_update_from_the_same_save.
@@ -449,8 +461,10 @@ test('a_document_access_choice_survives_a_reload @manager', async ({ page }) => 
   await readButton.click()
   // A wait, not the assertion: the row refreshes through the action's own revalidatePath with no
   // navigation to wait on, and `aria-pressed` moving is the signal the action resolved (fact 8 —
-  // the POST landing and the DOM reflecting it are separate events).
-  await expect(readButton).toHaveAttribute('aria-pressed', 'true')
+  // the POST landing and the DOM reflecting it are separate events). Being a web-first matcher it
+  // is bounded at 5s, which is the whole budget the reload below is guarded by — hence the number
+  // (#1469).
+  await expect(readButton).toHaveAttribute('aria-pressed', 'true', { timeout: SETTLE_AFTER_WRITE })
 
   await page.reload()
   await openSection(page, 'Access')
@@ -498,12 +512,17 @@ test('re_checking_use_barn_defaults_reverts_thresholds_on_reload @manager', asyn
 // The app renders one form-level <p role="alert"> rather than a per-field message, so that is
 // what "rejected with a field error" is asserted as. Matching the exact message rather than
 // mere presence is what distinguishes this rejection from any other error the action can return.
+// Not routed through saveAndSettleRejected for the same reason the success case above declines
+// saveAndSettle, and it carries the number for the same reason too (#1469).
 test('moderate_not_below_high_is_rejected_with_an_error @manager', async ({ page }) => {
   await gotoHorseSettings(page, appleId)
   await overrideThresholds(page, REJECTED_THRESHOLD, REJECTED_THRESHOLD)
   await saveButton(page).click()
 
-  await expect(sharedForm(page).getByRole('alert')).toHaveText('Moderate threshold must be less than high threshold')
+  await expect(sharedForm(page).getByRole('alert')).toHaveText(
+    'Moderate threshold must be less than high threshold',
+    { timeout: SETTLE_AFTER_WRITE },
+  )
 })
 
 test('no_saved_confirmation_appears_for_a_rejected_save @manager', async ({ page }) => {
