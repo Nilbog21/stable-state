@@ -136,7 +136,7 @@ Confirm later — none of these block sign-off:
 
 ### Calendar subscription from a real calendar app
 
-> **Why this is prod-only:** `/calendar.ics` (#1018) is polled by an external calendar service, so it needs an externally-reachable URL — localhost isn't reachable off-machine and a Vercel preview auth-gates non-team viewers, so neither can be subscribed from. That URL requirement is the whole reason this check is here: it fits **none** of the five bars in `CLAUDE.md`'s Post-Release Checklist section, and is the deliberate exception to them. Everything verified before release covers `?token=` handling, `Content-Type`, and VEVENT body content only — never a real client's parse-and-poll behavior.
+> **Why this is prod-only:** `/calendar.ics` (#1018) is polled by an external calendar service, so it needs an externally-reachable URL — localhost isn't reachable off-machine and a Vercel preview auth-gates non-team viewers, so neither can be subscribed from. That URL requirement is the whole reason this check is here: it fits **none** of the five bars in this file's header, and is the deliberate exception to them. Everything verified before release covers `?token=` handling, `Content-Type`, and VEVENT body content only — never a real client's parse-and-poll behavior.
 
 > **Which barn:** a prod barn you manage that outlives this pass — **not** `post-release-test` or `post-release-test-2`, which Cleanup above has already torn down. The poll step below lands hours or days after sign-off, so the barn has to still exist then. Its lesson data is real, hence the revert step at the end.
 
