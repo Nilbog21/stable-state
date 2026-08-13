@@ -18,8 +18,12 @@
 // Not an oversight. Spec-maintenance rule 5 binds a fixture `.update(`/`.delete(` whose zero-row
 // result would go unnoticed; this file's seed callback contains neither. Its one write is
 // `addTier`, which bottoms out in lesson-tiers.ts's `createTier` — a pure
-// `.insert(...).select().single()`, which PostgREST fails with `PGRST116` on zero rows and
-// `mustSucceed` already throws on. That is the "already guarded" shape rule 5 names.
+// `.insert(...).select().single()`. PostgREST fails a `.single()` matching zero rows with
+// `PGRST116`, so the insert raises rather than returning empty, which is the "already guarded"
+// shape rule 5 names. Note the guard here is `createTier`'s own `if (error) throw error`, not
+// `mustSucceed`: that helper is `service-role.ts`'s and is never in this DAL function's call
+// path, so rule 5's wording ("which `mustSucceed` throws on") describes the fixture-layer sites
+// rather than this one. Same outcome, different thrower.
 //
 // ## Why nothing here needs a positive anchor (#1434)
 //
@@ -179,9 +183,15 @@ async function openTierEditForm(page: Page, name: string) {
  *
  * Measured, not reasoned: this spec's first run failed here with the pair spelled out, having
  * rendered `<p role="alert">Price is required</p>` exactly as claimed. Every other spec in the
- * suite already scopes its alert to a container (`sharedForm`/`uploadForm`/`main`/section), so
- * the convention was real but stated nowhere; see this file's `## Follow-ups` entry in the work
- * log.
+ * suite already scopes its alert to a container (`sharedForm`/`uploadForm`/`main`/section).
+ *
+ * Not a new discovery, though, and the first draft of this comment wrongly said it was:
+ * `checklist-phase4-horses-photos.spec.ts`'s `the photo upload screen` block already states the
+ * mechanism ("Next's own __next-route-announcer__ div carries role="alert" on every App Router
+ * page, so a page-wide alert lookup is a strict-mode violation that never reaches the
+ * assertion"), as does PR #1266's body. What it is *not* is a numbered framework fact, so it is
+ * reachable only by having already read that one spec — which is why it still cost this slice a
+ * round. See this file's `## Follow-ups` entry in the work log.
  *
  * Scoped by `:has(#tier-name)` rather than by position: the edit page carries a second `<form>`
  * (`DeactivateButton`'s), and `deactivateState.error` renders its own `role="alert"` as that
