@@ -1,7 +1,10 @@
--- Bypasses RLS for notification upserts. Postgres requires INSERT ... ON CONFLICT
--- DO UPDATE to satisfy the table's UPDATE policy (notifications_update_own,
--- user_id = auth.uid()) even when no conflicting row exists, which blocks every
--- notification created for a user other than the caller. This function is the
+-- Bypasses RLS for notification upserts. The ON CONFLICT clause makes Postgres
+-- check the row proposed for insertion against the table's SELECT policy
+-- (notifications_select_own, user_id = auth.uid()) and throw rather than silently
+-- skip, which blocks every notification created for a user other than the caller
+-- on the first send, before any conflicting row exists; on a re-send the DO UPDATE
+-- path additionally fails the UPDATE policy's USING (notifications_update_own).
+-- See docs/architecture/rpc/notifications.md and #1445. This function is the
 -- sole write path for createNotification; no additional authorization checks are
 -- added since notifications_insert_authenticated is already permissive by design
 -- (WITH CHECK true) -- the calling server action has already authorized the
