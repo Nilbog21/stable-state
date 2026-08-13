@@ -27,7 +27,7 @@ BUDGETS=(
   # Raised from 10000 by #1439: #1436's Test-First carve-out took the file 9634 -> 10009 and left
   # release/release-4 red for three merges, so this is an unblock, not headroom. The follow-up that
   # trims it back under 10000 lowers this line again — do not spend the margin.
-  "CLAUDE.md:12500"
+  "CLAUDE.md:10000"
   "scripts/CLAUDE.md:10000"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md. Two prior raises (#1354 to 14000, #1409 to 15500) each restored
@@ -40,7 +40,7 @@ BUDGETS=(
   # Raised from 6600 by #1434: two legitimate index entries (fact 18, rule 4) took the file
   # 6304 -> 6868, and #1433 had left only 296 characters of margin. This is an unblock, not
   # headroom — the next split lowers it again. Do not spend the margin.
-  "e2e/CLAUDE.md:6900"
+  "e2e/CLAUDE.md:6600"
   "src/components/ui/CLAUDE.md:8000"
 )
 
