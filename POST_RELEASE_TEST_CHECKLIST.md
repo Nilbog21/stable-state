@@ -57,6 +57,7 @@ Barn: `post-release-test`. The second person joins here as a **rider**.
 - [ ] As Casey Test, they open their own member detail page → the document you uploaded **before** they claimed still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must stay readable, not just the manager's — and a rider is read-only on their own documents since #864, so this exercises `rider_documents` RLS specifically)
 - [ ] Back as manager, Casey Test's row on `/barn/post-release-test/members` no longer shows the amber **Unlinked** badge
 - [ ] Casey Test's detail page no longer shows the **Manage Member** section
+- [ ] The second person signs out, opens that same now-spent invite URL again and signs in with Google → they land on the register page's **"This invite link to *{barn}* is invalid or has expired"** screen, not a bare sign-in form (#1440 — the spent-token claim failure is only reachable through a real OAuth round trip; signed out is required, since `register/page.tsx` short-circuits an already-active member straight to the barn home)
 
 ### Self photo upload as a second real person
 
