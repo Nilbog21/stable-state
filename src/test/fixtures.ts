@@ -1,4 +1,4 @@
-import type { Agreement, Appointment, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
+import type { Agreement, Appointment, AgreementCharge, AgreementChargeRow, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
 import { calendarDate } from '@/lib/local-day'
 
 export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
@@ -38,15 +38,25 @@ export function createMockAgreement(overrides: Partial<Agreement> = {}): Agreeme
   }
 }
 
-export function createMockAgreementCharge(overrides: Partial<AgreementCharge> = {}): AgreementCharge {
+// A bare `agreement_charges` row as the DB returns it (#1441) — no payment_type, that lives
+// on the paired transactions row and is overlaid back on by getChargesForAgreement. This is
+// what the three charge-writing RPCs hand back.
+export function createMockAgreementChargeRow(overrides: Partial<AgreementChargeRow> = {}): AgreementChargeRow {
   return {
     id: 'charge-1',
     barn_id: 'barn-1',
     agreement_id: 'agreement-1',
     period: calendarDate('2026-07-01'),
     fee: 200,
-    payment_type: null,
     created_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockAgreementCharge(overrides: Partial<AgreementCharge> = {}): AgreementCharge {
+  return {
+    ...createMockAgreementChargeRow(),
+    payment_type: null,
     ...overrides,
   }
 }

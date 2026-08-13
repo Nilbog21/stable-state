@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockAgreement, createMockAgreementCharge } from '@/test/fixtures'
+import { createMockAgreement, createMockAgreementCharge, createMockAgreementChargeRow } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -26,10 +26,9 @@ import {
 
 const mockAgreement = createMockAgreement()
 const mockCharge = createMockAgreementCharge()
-// #1441: what the three charge-writing RPCs actually return — `agreement_charges` has had no
-// `payment_type` column since #831. `getChargesForAgreement` keeps `mockCharge`, since that
-// reader really does overlay the field back on from `transactions`.
-const { payment_type: _payment_type, ...mockChargeRow } = mockCharge
+// #1441: what the three charge-writing RPCs actually return. `getChargesForAgreement` keeps
+// `mockCharge`, since that reader really does overlay `payment_type` back on from `transactions`.
+const mockChargeRow = createMockAgreementChargeRow()
 
 describe('createAgreement', () => {
   beforeEach(() => {
