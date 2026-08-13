@@ -84,3 +84,14 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e-candidate) Willow's bar disappears once unchecked
 
 *(Dropped the manual "create a Custom-tier lesson" step from the original goals — that's now covered by #950's seed addition instead.)*
+
+**Visual sweep.** One pass per feature area, walked at the end of the phase (#1414). A suite run proves behaviour; it cannot prove the app reads well. This phase visits one route, so it gets one line — the two `(manual)` colour lines above stay where they are, since each is a specific colour-separation judgement rather than this general one.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. Each line below asks the same question of one feature area: does it read cleanly?
+>
+> - spacing, alignment and typography are consistent with the rest of the app
+> - it is correct in **both light and dark mode**
+> - it is readable at ~390px wide
+> - nothing in it is reachable or dismissible only by hover
+
+- [ ] (manual) **New Lesson form** — the whole form, its month conflict calendar and day panel, and the exhaustion bars under the horse picker (`/barn/dev-barn/lessons/new`)

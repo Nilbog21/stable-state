@@ -103,3 +103,17 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 - [ ] (e2e-candidate) On Harper Test's detail page, click **Revoke** → click **Copy Invite** again → the copied URL contains a **different** token than before
 - [ ] (e2e-candidate) On Indigo Test's detail page, click **Revoke** then immediately click **Copy Invite** (as fast as possible, before the button re-enables) — Copy Invite is disabled/unclickable until the new token has loaded, so it never copies the just-revoked stale token (#939 regression check)
+
+**Visual sweep.** One pass per feature area, walked at the end of the phase with the data it just created (#1414). A suite run proves behaviour; it cannot prove the app reads well.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. Each line below asks the same question of one feature area: does it read cleanly?
+>
+> - spacing, alignment and typography are consistent with the rest of the app
+> - it is correct in **both light and dark mode**
+> - it is readable at ~390px wide
+> - nothing in it is reachable or dismissible only by hover
+
+- [ ] (manual) **Lesson Tiers** — the settings section and the tier form (`/barn/dev-barn/settings`, `/settings/tiers/new`)
+- [ ] (manual) **Horses** — the list's Available/Unavailable sections and a horse's detail page including its Access table (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Agreements** — both kind-scoped lists, the add form, and a detail page with its charges table (`/barn/dev-barn/agreements`, `/agreements/new`, `/agreements/[id]`)
+- [ ] (manual) **Members** — the roster's four sections, the inline add forms, and a managed stub's detail page with its Manage Member notice (`/barn/dev-barn/members`, `/members/[membership_id]`)

@@ -104,3 +104,24 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
+
+**Visual sweep.** One pass per feature area, walked at the end of the phase while still acting as the trainer (#1414). A suite run proves behaviour; it cannot prove the app reads well. This phase is a flat list rather than sectioned, so the areas below are the pages it actually visits.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. Each line below asks the same question of one feature area: does it read cleanly?
+>
+> - spacing, alignment and typography are consistent with the rest of the app
+> - it is correct in **both light and dark mode**
+> - it is readable at ~390px wide
+> - nothing in it is reachable or dismissible only by hover
+
+- [ ] (manual) **Dashboard** — Day and Week views and the Reminders section, as the trainer sees them (`/barn/dev-barn`)
+- [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the New Lesson form with its month calendar, and the cancel pages (`/barn/dev-barn/lessons` and below)
+- [ ] (manual) **Appointments** — the read-only appointment detail page reached from the dashboard card (`/barn/dev-barn/expenses/[id]`)
+- [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable sections and a detail page's header and sections, in both the owned and unowned forms (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Members** — the roster and a member detail page's read-only Contact Info and Documents sections (`/barn/dev-barn/members`, `/members/[membership_id]`)
+- [ ] (manual) **Outstanding** — the trainer-scoped outstanding page reached from the Reminders card (`/barn/dev-barn/finances/outstanding`)
+- [ ] (manual) **Profile and nav** — the 4-link trainer nav bar, the avatar menu, and `/profile?barn=dev-barn` with its Calendar Feed section
+
+**Doc review.** The guide page renders a repo-root markdown file through `ReactMarkdown`, picked by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13`, so the file you read and the page it serves are the same content by construction — read either. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+
+- [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The trainer guide at `/barn/dev-barn/guide` still describes what a trainer can actually do — `USER_GUIDE_TRAINER.md`
