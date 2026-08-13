@@ -6,9 +6,10 @@ Paths in the phase files are relative — prepend your app origin (local `npm ru
 
 To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` line from one `scripts/run-checklist-suite.sh` run, walks the rest with you one checkbox at a time, and records the result in `specs/checklist-run-{YYYY-MM-DD}.md` rather than in this file.
 
-> **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with one exception:
+> **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with two exceptions:
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
+> - A **whole-area visual judgement** — the `Visual sweep` blocks at the end of Phases 2–6 (#1414) — where the "one assertion" is the single verdict *does this area read cleanly*, applied to a feature area rather than a clause. The pages listed on such a line scope the walk; they are not separate assertions to mark off, and splitting per page roughly doubles the count for a judgement a human forms in one pass anyway. This exception is for that shared-rubric case only: an area's line still fails as a whole, so a reviewer records which page let it down in the run file's notes.
 
 > **Phases are partitioned by the role doing the *asserting*, not the role the data is about.** A manager reading a page *about* riders is a Phase 4 line; a rider reading their own page is a Phase 6 line. That distinction is load-bearing — read it the other way and all 141 Finances lines look like Phase 6 material.
 >
@@ -25,7 +26,7 @@ To run this checklist, invoke `/runChecklist` — it derives every `(e2e: …)` 
 >
 > Sections with no tags on their checkboxes have not been audited yet.
 >
-> **A line a PR adds is born automated or justified-manual** — `(e2e: <test name>)` with the covering spec written in that same PR, or `(manual)` with the reason stated on the line. Leaving an added line untagged is the same violation as tagging it `(e2e-candidate)`; both are barred for *added* lines only, and both stay correct for the pre-existing untagged lines an audit is converting — the "not audited yet" note above is about those, not licence to add more. The stated-reason requirement likewise binds added lines, not the older `(manual)` ones. Legitimate `(manual)` grounds, in full: a **human judgment call** — does this flow read well, cross-device look-and-feel, any visual check — or an external dependency a spec cannot drive. "Would take a while to automate" is not one; neither is needing a separate real person or prod configuration, which belongs in `POST_RELEASE_TEST_CHECKLIST.md` rather than tagged `(manual)` here.
+> **A line a PR adds is born automated or justified-manual** — `(e2e: <test name>)` with the covering spec written in that same PR, or `(manual)` with the reason stated on the line. Leaving an added line untagged is the same violation as tagging it `(e2e-candidate)`; both are barred for *added* lines only, and both stay correct for the pre-existing untagged lines an audit is converting — the "not audited yet" note above is about those, not licence to add more. The stated-reason requirement likewise binds added lines, not the older `(manual)` ones. **It may be satisfied per subsection rather than per line** where every checkbox in that subsection shares one verdict and one rubric — the reason then goes once in the subsection's header blockquote, and the lines carry a bare `(manual)`. The **Visual sweep** blocks at the end of Phases 2–6 are the case this exists for (#1414): thirty-odd lines each repeating the same visual-judgement clause is noise, not a reason. Per-line remains the rule everywhere else, including a one- or two-line block, which shares no rubric with anything. Legitimate `(manual)` grounds, in full: a **human judgment call** — does this flow read well, cross-device look-and-feel, any visual check — or an external dependency a spec cannot drive. "Would take a while to automate" is not one; neither is needing a separate real person or prod configuration, which belongs in `POST_RELEASE_TEST_CHECKLIST.md` rather than tagged `(manual)` here.
 
 > **Hedges:** a checklist note asserting a capability *doesn't exist yet* — "until #N lands", "#N-blocked", "not yet assignable via UI" — goes stale the moment #N merges, silently suppressing coverage of a feature that now works. **The PR closing #N removes every hedge on #N from this file and `POST_RELEASE_TEST_CHECKLIST.md` in that same PR**, and replaces each one with the check the hedge was standing in for. Grep both files for the issue number before opening the PR. This is a convention, not a CI check — both checklists legitimately cite closed issues as history ("since #864", "#969 — a manager can no longer…"), and no grep separates those from a hedge reliably.
 
@@ -100,7 +101,7 @@ Run them in order. Each file carries its own asserting role — the partitioning
 | `/barn/[slug]/settings/events/new` | Phase 4 |
 | `/barn/[slug]/settings/events/[id]` | Phase 4 |
 | `/barn/[slug]/settings/events/[id]/delete` | Phase 4 |
-| `/barn/[slug]/guide` | Phase 4 |
+| `/barn/[slug]/guide` | Phases 4, 5, 6 |
 | `/profile` | Phase 4 |
 | `/profile/complete` | Phases 1, 2 |
 | `/calendar.ics` | Phases 4, 5, 6 — fetched directly at the tokenized URL copied from the Profile page's Calendar Feed section |

@@ -97,7 +97,31 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_own_member_page_renders_their_active_agreement_cards) Setup — switch to Emery (`change-user.sh dev-barn` → Emery), who holds the Active Agreements from Phase 4, and switch back to Dana once the next three lines are done. An e2e run seeds those agreements on the rider persona's own membership instead, so no switch is needed
 - [ ] (e2e: rider_own_member_page_renders_their_active_agreement_cards) Her own member detail page renders the same Active Agreements cards from Phase 4
 - [ ] (e2e: rider_active_agreement_cards_are_not_links) Those cards do not navigate on tap — they are not links to the manager-only agreement detail page
-- [ ] (manual) Those cards carry no hover state — a visual affordance judgement, not a behavior a click path can assert
 - [ ] (e2e: rider_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: rider_calendar_feed_carries_only_lessons_they_are_enrolled_in) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
+
+Visual sweep — one pass per feature area, walked at the end of the phase while still acting as the rider (#1414):
+
+The no-hover-state rubric bullet is the line that used to sit under Active Agreements — it is asked once here rather than twice. This phase is a flat list rather than sectioned, so the areas below are the pages it actually visits.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. A suite run proves behaviour; it cannot prove the app reads well. Each line below asks the same question of one feature area: does it read cleanly?
+>
+> - spacing, alignment and typography are consistent with the rest of the app
+> - it is correct in **both light and dark mode**
+> - it is readable at ~390px wide
+> - nothing in it is reachable or dismissible only by hover
+> - nothing non-interactive carries a hover state implying it is clickable
+
+- [ ] (manual) **Dashboard** — Day and Week views and the Reminders section, as the rider sees them (`/barn/dev-barn`)
+- [ ] (manual) **Lessons** — the list and its filter pills, an enrolled lesson's detail page, and the cancel page (`/barn/dev-barn/lessons` and below)
+- [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable cards and a detail page's header, Feed & Medication, Documents and Upcoming Lessons sections (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Members** — the roster, your own member page's Documents and Active Agreements cards, and another member's detail page (`/barn/dev-barn/members`, `/members/[membership_id]`)
+- [ ] (manual) **Outstanding** — the rider-scoped outstanding page reached from the Reminders cards (`/barn/dev-barn/finances/outstanding`)
+- [ ] (manual) **Profile and nav** — the 4-link rider nav bar, the avatar menu, and `/profile?barn=dev-barn` with its Calendar Feed section
+
+Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
+
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+
+- [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The rider guide at `/barn/dev-barn/guide` still describes what a rider can actually do — `USER_GUIDE_RIDER.md`

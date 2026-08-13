@@ -342,7 +342,6 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 Finances (`/barn/dev-barn/finances`):
 
-- [ ] (manual) The Finances page as a whole — Outstanding sections, tab pills, and every tab's table/footer — looks clean and visually consistent (spacing, alignment, typography) with the rest of the app
 - [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
 - [ ] (e2e: outstanding_income_row_leaves_list_once_payment_type_set) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
 - [ ] (e2e: outstanding_income_lesson_date_renders_in_barn_timezone) A lesson row's date in **Outstanding Income** is the barn-local date of the time you entered for that lesson, not shifted by your own machine's UTC offset
@@ -619,7 +618,6 @@ Mobile spot-check (resize the browser to ~390px wide, or use your browser's devi
 
 - [ ] (e2e: at_mobile_width_the_avatar_menu_opens_and_dismisses_by_tap) At this width the avatar menu opens and dismisses by tap
 - [ ] (e2e: at_mobile_width_the_notification_bell_dropdown_opens_and_dismisses_by_tap) At this width the notification bell dropdown opens and dismisses by tap
-- [ ] (manual) Nothing in the nav bar or its dropdowns relies on hover to be reachable or dismissible
 - [ ] (e2e: the_lessons_list_has_no_horizontal_overflow_at_mobile_width) The Lessons list stays readable without horizontal scrolling
 - [ ] (e2e: the_horses_list_has_no_horizontal_overflow_at_mobile_width) The Horses list stays readable without horizontal scrolling
 
@@ -634,3 +632,31 @@ Calendar feed (#1018):
 - [ ] (e2e: the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn) Those entries cover lessons across the whole barn (manager sees everything), not just your own
 - [ ] (e2e: regenerating_the_calendar_link_issues_a_different_token) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
 - [ ] (e2e: the_pre_regenerate_calendar_url_stops_working) Open the pre-regenerate URL — it now 404s
+
+Visual sweep — one pass per feature area, walked at the end of the phase with everything it just created (#1414):
+
+The Finances line below is the one that used to sit at the top of that section, and the no-hover-only rubric bullet is the line that used to sit inside Mobile spot-check — each is asked once here rather than twice.
+
+> **(manual) — one verdict, one rubric, stated here instead of on every line** — the section-scoped reason [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)'s Automation tags convention permits. A suite run proves behaviour; it cannot prove the app reads well. Each line below asks the same question of one feature area: does it read cleanly?
+>
+> - spacing, alignment and typography are consistent with the rest of the app
+> - it is correct in **both light and dark mode**
+> - it is readable at ~390px wide
+> - nothing in it is reachable or dismissible only by hover
+> - nothing non-interactive carries a hover state implying it is clickable
+
+- [ ] (manual) **Dashboard** — Day and Week views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
+- [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the edit form, and the cancel/delete confirmation pages (`/barn/dev-barn/lessons` and below)
+- [ ] (manual) **Expenses** — the list, the new/edit form with its month conflict calendar, and the delete confirmation page (`/barn/dev-barn/expenses` and below)
+- [ ] (manual) **Horses** — the list's sections and exhaustion bars, and a detail page's header and five collapsible sections (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Members** — the roster, a member detail page's Contact Info, Documents, Active Agreements and Instructor Access sections, and the document upload page (`/barn/dev-barn/members` and below, `/documents/new`)
+- [ ] (manual) **Finances** — the Outstanding sections, the tab pills, every tab's table and footer, and the four drill-downs (`/barn/dev-barn/finances` and below)
+- [ ] (manual) **Manage Barn** — the collapsible sections, the tier and event forms, and the Data Backup section (`/barn/dev-barn/settings` and below)
+- [ ] (manual) **Notifications and profile** — the bell dropdown, the avatar menu, `/profile`, `/about` and `/changelog`
+- [ ] (manual) **Calendar feed** — the Calendar Feed section on `/profile?barn=dev-barn` and its Get link / Copy Link / Regenerate controls
+
+Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
+
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+
+- [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The manager guide at `/barn/dev-barn/guide` still describes what a manager can actually do — `USER_GUIDE_MANAGER.md`

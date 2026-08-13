@@ -79,7 +79,7 @@ grep -nE '^[^-#>| ].*:$' checklists/pre-release/phase-{n}-*.md
 
 That grep lists **candidates** — it matches the colon line but can't express the "has checkboxes under it" half of the rule, and a lead-in doesn't have to be followed *immediately* by one (Phase 2's `Managed rider stubs (…):` has a blockquote in between). So check each hit for a checkbox before the next hit and drop the ones with none, or an empty section gets announced; today that drops exactly `Cleanup (optional):` at the end of Phase 7, which introduces a teardown command and nothing else.
 
-The rest give a flush point every 5–15 checks rather than every 40, so an interrupted session loses little. **A phase with no such lead-in is one section — the whole phase**, which today is Phases 1, 3 and 7's opening run plus the Prerequisites. Those flush once at the end, and an interrupt inside one loses its answered checks; that is the accepted cost of not inventing an arbitrary sub-grouping the file doesn't have.
+The rest give a flush point every 5–15 checks rather than every 40, so an interrupted session loses little. **Checkboxes before a phase's first lead-in are one section — the phase's opening run**, which today is Phases 1, 3 and 7 (Phases 1 and 3 carry no lead-in until #1414's `Visual sweep`/`Doc review` blocks at the end) plus the Prerequisites. Those flush once at the end, and an interrupt inside one loses its answered checks; that is the accepted cost of not inventing an arbitrary sub-grouping the file doesn't have.
 
 Count the section's checkboxes before starting it — total, and how many the suite already covered:
 

@@ -66,4 +66,11 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (manual — same source edit as the line above) That page shows no raw stack trace
 - [ ] (manual — same source edit as the line above) That error boundary's **Try again** button works (then revert the thrown error)
 
+Doc review — read either the page or its repo-root markdown file; they are the same content by construction:
+
+Both pages read that file at request time and render it through `ReactMarkdown` (`src/app/privacy/page.tsx:14,31`). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+
+- [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) `/terms` still describes what the app does — `TERMS_OF_SERVICE.md`
+- [ ] (manual — same judgement, and `CLAUDE.md`'s Privacy Policy section names the change classes that most often invalidate it) `/privacy` still describes what the app collects, stores and shares — `PRIVACY_POLICY.md`
+
 **Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
