@@ -74,10 +74,10 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({ error: 'horse required' })
   })
 
-  it('should_return_error_when_both_horse_id_and_new_horse_name_are_provided', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+  it('should_return_error_when_only_a_new_horse_name_is_provided', async () => {
+    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
+    expect(result).toEqual({ error: 'horse required' })
   })
 
   it('should_return_error_when_manager_submits_invalid_instructor_id', async () => {
@@ -157,8 +157,6 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({
       data: {
         horseIds: ['horse-1'],
-        newHorseName: null,
-        newHorseExertionLevel: 3,
         exertionLevels: new Map([['horse-1', 3]]),
         riderIds: ['mem-1'],
         lessonAt: '2026-05-17T10:00',
@@ -170,18 +168,6 @@ describe('parseLessonFormData', () => {
         instructorId: mockTrainerMembership.id,
       },
     })
-  })
-
-  it('should_include_new_horse_name_in_parsed_data', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
-    expect('data' in result && result.data.newHorseName).toBe('Blaze')
-  })
-
-  it('should_include_new_horse_exertion_level_in_parsed_data', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
-    expect('data' in result && result.data.newHorseExertionLevel).toBe(4)
   })
 
   it('should_return_rider_required_when_both_horse_and_rider_are_missing', async () => {

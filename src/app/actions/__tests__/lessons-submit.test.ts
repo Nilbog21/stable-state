@@ -302,26 +302,6 @@ describe('submitLesson', () => {
     )
   })
 
-  it('should_create_new_horse_and_add_to_lesson_when_new_horse_name_is_provided', async () => {
-    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    vi.mocked(createHorse).mockResolvedValue(newHorse)
-    guardAs(mockManagerMembership)
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze', mockManagerMembership.id)
-  })
-
-  it('should_include_new_horse_id_in_lesson_participants', async () => {
-    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    vi.mocked(createHorse).mockResolvedValue(newHorse)
-    guardAs(mockManagerMembership)
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ horseIds: ['horse-new'], exertionLevels: [3] })
-    )
-  })
-
   it('should_pass_exertion_level_when_provided', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', 'exertion_horse-1': '5', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -338,31 +318,15 @@ describe('submitLesson', () => {
     )
   })
 
-  it('should_pass_exertion_level_for_newly_created_horse', async () => {
-    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    vi.mocked(createHorse).mockResolvedValue(newHorse)
-    guardAs(mockManagerMembership)
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ exertionLevels: [4] })
-    )
-  })
-
-  it('should_return_error_when_no_horse_ids_and_no_new_horse_name', async () => {
+  it('should_return_error_when_no_horse_ids_are_submitted', async () => {
     const fd = makeFormData({ fee: '50', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'horse required' })
   })
 
-  it('should_return_error_when_non_manager_tries_to_create_new_horse', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
-    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(result).toEqual({ error: 'not authorized to add horses' })
-  })
-
-  it('should_not_call_createHorse_when_trainer_submits_new_horse', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
+  it('should_not_call_createHorse_when_a_manager_submits_a_new_horse_name', async () => {
+    guardAs(mockManagerMembership)
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createHorse).not.toHaveBeenCalled()
   })
@@ -371,12 +335,6 @@ describe('submitLesson', () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'rider required' })
-  })
-
-  it('should_return_error_when_both_horse_id_and_new_horse_name_are_provided', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
   })
 
   it('should_return_error_when_horse_does_not_belong_to_barn', async () => {
@@ -465,26 +423,6 @@ describe('submitLesson', () => {
 
   it('should_not_call_createLessonWithParticipants_when_group_lesson_has_fewer_than_two_riders', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createLessonWithParticipants).not.toHaveBeenCalled()
-  })
-
-  it('should_return_error_when_rider_does_not_belong_to_barn_on_new_horse_path', async () => {
-    guardAs(mockManagerMembership)
-    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
-    ])
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(result).toEqual({ error: 'rider not found in this barn' })
-  })
-
-  it('should_not_call_createLessonWithParticipants_when_rider_not_in_barn_on_new_horse_path', async () => {
-    guardAs(mockManagerMembership)
-    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
-    ])
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).not.toHaveBeenCalled()
   })

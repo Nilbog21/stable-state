@@ -69,7 +69,7 @@ Pre-filled edit form;
 instructor field hidden entirely for trainers (value still submitted/locked server-side, DB enforces via RLS) instead of shown read-only;
 group→normal downgrade shows warning and requires manager to select one rider/horse to keep;
 updates are atomic via `update_lesson_with_participants` RPC;
-only managers can add a new horse inline — the form's only remaining inline-create path (#332 removed the matching new-rider input when standalone riders became `barn_memberships` rows); the manager gate is both the form's render condition and re-checked server-side in `submitLesson`/`updateLessonAction`;
+the form has no inline-create path for a horse or a rider in any role (#332 removed the new-rider input when standalone riders became `barn_memberships` rows; #1470 removed the manager-only new-horse input — two ways to create a horse was confusing, so the Horses page is the only one);
 notes editing is embedded inside `LessonForm` via `initialNotes` prop and saved by `updateLessonAction` via the single Save button;
 when the lesson being edited is already cancelled (`initialLesson.cancelled_at !== null`), the Notes section also gains a Cancellation Notes textarea (#797, replacing the old inline-editable field on the detail page), pre-filled from `initialLesson.cancellation_notes` and persisted by `updateLessonAction` alongside the horse/rider notes writes, under the same manager/instructing-trainer authorization already enforced by this page — not shown at all for a non-cancelled lesson;
 navigating away with unsaved notes shows a confirmation prompt;

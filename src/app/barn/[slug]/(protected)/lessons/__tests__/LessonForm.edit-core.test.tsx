@@ -391,11 +391,6 @@ describe('LessonForm (edit mode)', () => {
     expect((screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement).required).toBe(true)
   })
 
-  it('should_render_add_new_horse_input_for_managers_in_edit_mode', () => {
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
-    expect(screen.queryByPlaceholderText(/add new horse/i)).not.toBeNull()
-  })
-
   it('should_show_save_button_in_edit_mode', () => {
     render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeNull()

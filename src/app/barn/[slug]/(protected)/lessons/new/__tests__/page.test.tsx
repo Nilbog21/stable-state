@@ -183,20 +183,6 @@ describe('LessonNewPage', () => {
     expect(select.value).toBe(mockManagerMembership.id)
   })
 
-  it('should_show_new_horse_input_when_user_is_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByPlaceholderText(/add new horse/i)).toBeDefined()
-  })
-
-  it('should_not_show_new_horse_input_when_user_is_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.queryByPlaceholderText(/add new horse/i)).toBeNull()
-  })
-
   it('should_not_render_exertion_input_when_horse_is_unchecked', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -230,19 +216,11 @@ describe('LessonNewPage', () => {
     expect(input.max).toBe('5')
   })
 
-  it('should_not_render_new_horse_exertion_input_when_name_is_empty', async () => {
+  it('should_not_render_add_new_horse_input_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('spinbutton', { name: 'Exertion level for new horse' })).toBeNull()
-  })
-
-  it('should_render_new_horse_exertion_input_for_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    fireEvent.change(screen.getByPlaceholderText(/add new horse/i), { target: { value: 'Blaze' } })
-    expect(screen.getByRole('spinbutton', { name: 'Exertion level for new horse' })).toBeDefined()
+    expect(screen.queryByPlaceholderText(/add new horse/i)).toBeNull()
   })
 
   it('should_call_getHorsesByBarn_with_barn_id', async () => {

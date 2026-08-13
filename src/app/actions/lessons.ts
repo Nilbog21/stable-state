@@ -2,10 +2,10 @@
 
 /**
  * Global lesson Server Actions, all guarded by `requireMembership` (manager/trainer):
- * form submission (`submitLesson` — parse via `./lesson-form-parsing`, optional
- * manager-only inline new-horse create, then `createLessonWithParticipants` or, when
- * recurring, `createLessonSeries`, then best-effort nearby-instructor notification
- * fan-out that must never surface as a submission error), edit (`updateLessonAction` —
+ * form submission (`submitLesson` — parse via `./lesson-form-parsing`, then
+ * `createLessonWithParticipants` or, when recurring, `createLessonSeries`, then
+ * best-effort nearby-instructor notification fan-out that must never surface as a
+ * submission error), edit (`updateLessonAction` —
  * same parse, then the participant update plus a second, deliberately non-atomic phase
  * saving per-horse/per-rider/cancellation notes), post-creation lifecycle
  * (`deleteLessonAction` — manager-only; `updatePaymentTypeAction` — a trainer only for
@@ -26,7 +26,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, Lesson, NotificationType, PaymentType, ScheduleItem } from '@/lib/db/types'
 import { wallClockToInstant } from '@/lib/barn-timezone'
-import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 import type { ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { parseLessonFormData } from './lesson-form-parsing'
@@ -86,20 +86,10 @@ export async function submitLesson(
   const parsed = await parseLessonFormData(formData, barnId, membership)
   if ('error' in parsed) return parsed
 
-  let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
+  const { horseIds, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   let lesson: Lesson
   try {
-    if (newHorseName) {
-      if (membership?.role !== 'manager') {
-        return { error: 'not authorized to add horses' }
-      }
-      const horse = await createHorse(barnId, newHorseName, membership.id)
-      horseIds = [...horseIds, horse.id]
-      exertionLevels.set(horse.id, newHorseExertionLevel)
-    }
-
     const createLesson = isRecurring ? createLessonSeries : createLessonWithParticipants
     lesson = await createLesson({
       barnId,
@@ -141,8 +131,7 @@ export async function updateLessonAction(
   const parsed = await parseLessonFormData(formData, barnId, membership, attachedHorseIds)
   if ('error' in parsed) return parsed
 
-  let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
+  const { horseIds, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
 
@@ -152,13 +141,6 @@ export async function updateLessonAction(
     // having already committed participant edits.
     if (cancellationNotesRaw !== null && (!currentLesson || currentLesson.cancelled_at === null)) {
       return { error: 'lesson is not cancelled' }
-    }
-
-    if (newHorseName) {
-      if (membership.role !== 'manager') return { error: 'not authorized to add horses' }
-      const horse = await createHorse(barnId, newHorseName, membership.id)
-      horseIds = [...horseIds, horse.id]
-      exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
     await updateLessonWithParticipants({

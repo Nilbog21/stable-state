@@ -25,8 +25,6 @@ function parseExertionLevel(raw: FormDataEntryValue | null): number {
 
 export type ParsedLessonFormData = {
   horseIds: string[]
-  newHorseName: string | null
-  newHorseExertionLevel: number
   exertionLevels: Map<string, number>
   riderIds: string[]
   lessonAt: string
@@ -45,7 +43,6 @@ export async function parseLessonFormData(
   attachedHorseIds: string[] = []
 ): Promise<{ error: string } | { data: ParsedLessonFormData }> {
   const horseIds = formData.getAll('horse_id') as string[]
-  const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
   const riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
@@ -62,8 +59,7 @@ export async function parseLessonFormData(
   if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
-  if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
-  if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
+  if (horseIds.length === 0) return { error: 'horse required' }
 
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
@@ -77,7 +73,6 @@ export async function parseLessonFormData(
   const exertionLevels = new Map<string, number>(
     horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
   )
-  const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
 
   const [barnHorses, barnRiders] = await Promise.all([
     getHorsesByBarn(barnId),
@@ -104,8 +99,6 @@ export async function parseLessonFormData(
   return {
     data: {
       horseIds,
-      newHorseName,
-      newHorseExertionLevel,
       exertionLevels,
       riderIds,
       lessonAt,
