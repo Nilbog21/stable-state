@@ -45,7 +45,7 @@ export function ByInstructorTable({
       expenses={expenses}
       net={net}
       outsideInfoText="Leases and boarding aren't tied to an instructor (Gross); horse expenses aren't tied to an instructor (Expenses)."
-      unattributedInfoText="A paid lesson with no instructor recorded, an instructor payout whose instructor was removed from the barn, or an expense record whose original entry was deleted after being marked paid."
+      unattributedInfoText="A paid lesson with no instructor recorded, an instructor payout whose instructor was removed from the barn, an instructor payout whose lesson was deleted after being marked paid, or an expense record whose original entry was deleted after being marked paid."
       columns={[
         {
           sortKey: 'trainerName',
