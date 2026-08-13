@@ -460,6 +460,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: removed_instructors_lesson_fee_folds_into_by_instructor_unattributed) Back on Finances, that lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row
 - [ ] (e2e: by_instructor_has_no_no_instructor_body_row_after_the_removal) By Instructor no longer shows a "No instructor" body row for that lesson
 - [ ] (e2e: by_instructor_unattributed_info_icon_explains_a_removed_instructor) Tap the **Unattributed** row's ⓘ on By Instructor → the explanation covers a removed instructor
+- [ ] (e2e: by_instructor_unattributed_info_icon_explains_a_deleted_lesson) That same ⓘ explanation also covers an instructor payout whose lesson was deleted after being marked paid (#1439 — the payout keeps its instructor, so none of the other three causes describe it)
 - [ ] (e2e: by_paid_to_tab_shows_recipient_gross_expenses_net_columns) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
 - [ ] (e2e: by_paid_to_gross_and_net_are_always_a_dash) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
 - [ ] (e2e: by_paid_to_expenses_column_is_the_recipients_combined_total) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total

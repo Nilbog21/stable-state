@@ -43,6 +43,7 @@ const RIDER_NAME = 'Test Rider'
 // The clause of ByInstructorTable's Unattributed InfoPopover text that this slice's
 // checkbox is about — the other clauses are other tabs' / other slices' concerns.
 const REMOVED_INSTRUCTOR_EXPLANATION = 'an instructor payout whose instructor was removed from the barn'
+const DELETED_LESSON_EXPLANATION = 'an instructor payout whose lesson was deleted after being marked paid'
 
 // Column positions, uniform across every breakdown tab: label, Gross, Expenses, Net.
 const GROSS_COL = 1
@@ -467,5 +468,17 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
     await page.goto(financesUrl('trainer'))
     await footerRow(page, UNATTRIBUTED_ROW).getByRole('button', { name: 'Info' }).click()
     await expect(page.getByText(REMOVED_INSTRUCTOR_EXPLANATION)).toBeVisible()
+  })
+
+  // Same static-prop caveat as the test above, and the same reason for sitting here. #1439
+  // routed a fourth cause into this bucket — an orphaned instructor_payout left behind when a
+  // paid lesson is deleted with its transactions retained — which none of the other three
+  // clauses describe: that row has an instructor recorded, that instructor is still in the
+  // barn, and it isn't an expense. Asserted as its own test rather than folded into the one
+  // above so a copy edit that drops either clause names which one it dropped.
+  test('by_instructor_unattributed_info_icon_explains_a_deleted_lesson @manager', async ({ page }) => {
+    await page.goto(financesUrl('trainer'))
+    await footerRow(page, UNATTRIBUTED_ROW).getByRole('button', { name: 'Info' }).click()
+    await expect(page.getByText(DELETED_LESSON_EXPLANATION)).toBeVisible()
   })
 })

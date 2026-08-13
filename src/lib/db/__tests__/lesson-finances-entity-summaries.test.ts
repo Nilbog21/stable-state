@@ -731,6 +731,46 @@ describe('getTrainerIncomeSummary', () => {
       expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 75, grossIncome: 100 }])
     })
 
+    // #1439: a lesson deleted with its transactions retained nulls lesson_id on both
+    // rows, so getLessonFeeRows stops merging them — the fee half (no instructorId)
+    // already folded here, but the payout half still carried its own membership_id and
+    // landed on the named trainer as a bare negative cut.
+    const orphanedPayoutRows = () => [
+      { lessonId: 'lesson-16', fee: 100, instructorCut: 20, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' },
+      { lessonId: null, fee: 0, instructorCut: 25, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-11T10:00:00Z', tierName: 'Deleted Lesson' },
+    ]
+
+    it('should_exclude_orphaned_payout_from_named_trainer_total', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue(orphanedPayoutRows())
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result.find((r) => r.trainerId === 'mem-trainer-1')!.totalIncome).toBe(80)
+    })
+
+    it('should_fold_orphaned_payout_into_no_instructor_row', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue(orphanedPayoutRows())
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result.find((r) => r.trainerId === NO_INSTRUCTOR_LABEL)).toEqual({
+        trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: -25, grossIncome: 0,
+      })
+    })
+
+    // Invariant guard, not a red-first case: the fix moves the −cut between buckets, so
+    // this sum held before it too. It's here to catch a future "fix" that drops the row.
+    it('should_keep_the_barn_wide_total_unchanged_when_the_orphan_folds', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue(orphanedPayoutRows())
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result.reduce((sum, r) => sum + r.totalIncome, 0)).toBe(55)
+    })
+
     it('should_not_append_no_instructor_row_when_all_lessons_have_a_trainer', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-14', fee: 100, instructorCut: 0, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))

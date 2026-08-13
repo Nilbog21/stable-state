@@ -100,8 +100,9 @@ rm -rf "$REPO"
 
 # Test 6: exactly at a per-file budget boundary — treated as failing (>=), matching the pairwise
 # rule. Asserts on the message too: at this size e2e/CLAUDE.md is over its own budget as well, so
-# an exit status alone can't tell the boundary rule from that unrelated failure.
-REPO="$(make_repo 15000 5000 10000)"
+# an exit status alone can't tell the boundary rule from that unrelated failure. The size is
+# CLAUDE.md's budget and tracks it: #1439 raised that to 12500, so this moved with it.
+REPO="$(make_repo 15000 5000 12500)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: CLAUDE.md "; then
   assert_pass "exactly at per-file budget: treated as failing"
