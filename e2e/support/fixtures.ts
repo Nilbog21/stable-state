@@ -13,6 +13,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { mustSucceed, teardownBarnData } from '@/lib/db/service-role'
+import { mustAffect } from './must-affect'
 import { createTier } from '@/lib/db/lesson-tiers'
 import { createHorse, replaceHorsePhoto } from '@/lib/db/horses'
 import { replaceProfilePhoto } from '@/lib/db/profiles'
@@ -373,7 +374,9 @@ export async function createThrowawayAuthUser(supabase: SupabaseClient, email: s
  * that hooks run in registration order, not reversed).
  *
  * The profile delete matches nothing when the login never claimed an invite, which is the
- * ordinary shape of a run that failed before the claim; a zero-row delete is not an error.
+ * ordinary shape of a run that failed before the claim; a zero-row delete is not an error. That is
+ * why it stays on `mustSucceed` rather than `mustAffect` (spec-maintenance rule 5) — and it is the
+ * case that keeps the row-count check opt-in at the call site instead of folded into `mustSucceed`.
  */
 export async function deleteThrowawayAuthUser(supabase: SupabaseClient, userId: string): Promise<void> {
   mustSucceed(
@@ -429,6 +432,9 @@ export async function teardownBarn(supabase: SupabaseClient, slug: string): Prom
     throw new Error(`barn "${slug}" is not marked as a test barn (is_test_barn=false) — refusing to delete`)
   }
   await teardownBarnData(barn.id, supabase)
+  // Stays on mustSucceed (spec-maintenance rule 5): the row's absence is this call's whole goal,
+  // so a concurrent teardown of the same slug having got there first is the desired end state and
+  // not a defect — nothing downstream depends on *this* call being the one that removed it.
   mustSucceed(await supabase.from('barns').delete().eq('id', barn.id), 'delete barn')
 }
 
@@ -664,13 +670,17 @@ export async function addPaidLesson(
   opts: LessonOptions
 ): Promise<Lesson> {
   const lesson = await addUnpaidLesson(supabase, barn, opts)
-  mustSucceed(
+  // No exact count: this is one row when the lesson's tier carries no instructor cut and two when
+  // it does, and pinning either would break the other's callers. A zero, though, means the lesson
+  // is still unpaid — which every caller's assertions are the exact opposite of.
+  mustAffect(
     await supabase
       .from('transactions')
       .update({ collected: true, payment_type: 'venmo' })
       .eq('barn_id', barn.id)
       .eq('lesson_id', lesson.id)
-      .in('kind', ['lesson_fee', 'instructor_payout']),
+      .in('kind', ['lesson_fee', 'instructor_payout'])
+      .select('id'),
     'mark lesson paid'
   )
   return lesson
@@ -699,17 +709,21 @@ export async function cancelLesson(
 
   const lessonUpdate: Record<string, unknown> = { cancelled_at: new Date().toISOString(), cancellation_notes: opts.notes ?? null }
   if (!isLate) lessonUpdate.fee = 0
-  mustSucceed(
-    await supabase.from('lessons').update(lessonUpdate).eq('id', opts.lessonId).eq('barn_id', barn.id),
-    'cancel lesson'
+  mustAffect(
+    await supabase.from('lessons').update(lessonUpdate).eq('id', opts.lessonId).eq('barn_id', barn.id).select('id'),
+    'cancel lesson',
+    1
   )
-  mustSucceed(
+  // No exact count: a normal lesson has one rider and a group lesson has several, and the
+  // `cancelled_at IS NULL` filter narrows it further on a lesson a spec already part-cancelled.
+  mustAffect(
     await supabase
       .from('lesson_riders')
       .update({ cancelled_at: new Date().toISOString(), cancellation_notes: opts.notes ?? null })
       .eq('lesson_id', opts.lessonId)
       .eq('barn_id', barn.id)
-      .is('cancelled_at', null),
+      .is('cancelled_at', null)
+      .select('id'),
     'cancel lesson riders'
   )
   await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
@@ -754,9 +768,14 @@ export async function cancelLessonRider(
   )
   const cascaded = remaining.length === 0
   if (cascaded) {
-    mustSucceed(
-      await supabase.from('lessons').update({ cancelled_at: new Date().toISOString() }).eq('id', opts.lessonId),
-      'cascade lesson cancellation'
+    mustAffect(
+      await supabase
+        .from('lessons')
+        .update({ cancelled_at: new Date().toISOString() })
+        .eq('id', opts.lessonId)
+        .select('id'),
+      'cascade lesson cancellation',
+      1
     )
   }
 
@@ -766,7 +785,11 @@ export async function cancelLessonRider(
   // any lesson type, wiping the fee of a group lesson the remaining riders still rode).
   if (lesson.lesson_type === 'normal' || cascaded) {
     if (!isLate) {
-      mustSucceed(await supabase.from('lessons').update({ fee: 0 }).eq('id', opts.lessonId), 'zero cancelled lesson fee')
+      mustAffect(
+        await supabase.from('lessons').update({ fee: 0 }).eq('id', opts.lessonId).select('id'),
+        'zero cancelled lesson fee',
+        1
+      )
     }
     await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
   }
@@ -894,12 +917,14 @@ export async function addLeaseCharge(
     // income breakdowns bucket by occurred_at while getOutstandingCharges filters on period
     // — leaving occurred_at behind would make this charge read as outstanding in the month
     // it was backdated to but land in the *current* month's income once collected.
-    mustSucceed(
+    mustAffect(
       await supabase
         .from('transactions')
         .update({ occurred_at: `${period}T00:00:00Z` })
-        .eq('agreement_charge_id', charge.id),
-      'backdate board charge transaction'
+        .eq('agreement_charge_id', charge.id)
+        .select('id'),
+      'backdate board charge transaction',
+      1
     )
   }
 
@@ -910,12 +935,14 @@ export async function addLeaseCharge(
       await supabase.from('agreement_charges').select('id').eq('agreement_id', agreement.id).single(),
       'look up agreement charge to mark paid'
     )
-    mustSucceed(
+    mustAffect(
       await supabase
         .from('transactions')
         .update({ collected: true, payment_type: 'venmo' })
-        .eq('agreement_charge_id', charge.id),
-      'mark agreement charge paid'
+        .eq('agreement_charge_id', charge.id)
+        .select('id'),
+      'mark agreement charge paid',
+      1
     )
   }
 

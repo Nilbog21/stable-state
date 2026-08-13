@@ -1,9 +1,10 @@
 # E2E spec maintenance
 
-Four rules about what a spec is allowed to leave behind. Each is about *shared state the suite
-cannot clean up for you* — a `profiles` row global to the Supabase project, a row `teardownBarnData`
-can no longer reach, or an assertion that silently accepts nothing — and each was found by a spec
-that had already shipped looking correct.
+Five rules about what a spec is allowed to leave behind, and what it is allowed to take for granted.
+Each is about *state the suite cannot check for you* — a `profiles` row global to the Supabase
+project, a row `teardownBarnData` can no longer reach, an assertion that silently accepts nothing, or
+a setup write that silently did nothing — and each was found by a spec that had already shipped
+looking correct.
 
 The index — headlines only — is `e2e/CLAUDE.md`'s `## Spec maintenance`, which is auto-loaded
 whenever `e2e/` is touched. Rules are numbered so a spec comment can cite one (rule 3 already is,
@@ -101,3 +102,38 @@ bar.
 Reference implementation: `checklist-phase56-horses-notes.spec.ts`'s
 `trainer_unowned_horse_notes_render_as_read_only_text`, which asserts the read-only note values
 before asserting the editable controls are absent.
+
+## Rule 5
+
+**A fixture mutation whose later assertions depend on it having matched rows uses `mustAffect`**
+(`e2e/support/must-affect.ts`), which takes the mutation's `.select('id')` result and throws when the
+affected-row count is wrong. `mustSucceed` throws only on `result.error`, and a PostgREST
+`.update().eq(...)` matching **no row** is `data: []`, `error: null` — so a setup write whose filter
+has drifted off its target succeeds loudly and does nothing.
+
+**A mutation pass cannot find this**, which is what makes it worth a rule. Mutation testing scores
+*assertions* against a live fixture; when the assertion is correct and the setup produced nothing,
+every mutant still dies and the pass goes green having measured an empty set. #1424 shipped exactly
+that — the demo-reaper's `barns.created_at` backdate updated zero rows, so both reaper checks were
+passing against nothing, through a 15/15 mutation pass. A review agent caught it. **The check belongs
+on the setup call's row count, not on the assertion.**
+
+Pass an exact count only when the target is a single row by primary key. Omit it — "at least one" —
+whenever the count varies with the fixture: collecting a lesson's transactions is one row without an
+instructor cut on the tier and two with it, and an over-tight exact count is a flake that catches
+nothing at-least-one wouldn't.
+
+Two sites need nothing. A mutation already ending `.select(...).single()` is **already guarded** —
+PostgREST fails a `.single()` matching zero rows with `PGRST116`, which `mustSucceed` throws on; 22
+of the suite's 46 mutation sites are of this shape. And a mutation whose zero-row result is
+**legitimate** stays on `mustSucceed` **and says why in a comment** — `support/fixtures.ts`'s
+`deleteThrowawayAuthUser` deletes a profile that exists only once the throwaway login claimed an
+invite, so matching nothing is the ordinary shape of a run that failed before the claim.
+
+That last case is why the check is opt-in at the call site and is **never** folded into
+`mustSucceed`: a blanket check would fire on correct code, and a gate that fires on correct code is
+one people route around.
+
+Reference implementation: `checklist-phase1-demo.spec.ts`'s
+`the_reset_demo_cron_route_reaps_a_backdated_demo_barn`, whose backdate is the write #1424 found, and
+whose comment states what the two checks below it would otherwise be measuring.

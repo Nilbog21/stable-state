@@ -13,7 +13,7 @@ import {
   type SeededAppointment,
 } from './support/fixtures'
 import { settledInnerTexts } from './support/read'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
@@ -87,9 +87,14 @@ const barn = withBarn('phase4-finances-outstanding', async ({ supabase, barn, me
   // resolveFinancesMonth clamps `prevMonthUrl` to null once the viewed month is the barn's
   // own creation month, and withBarn creates this barn *now* — so without backdating,
   // Finances has no reachable previous month and the `←` control never renders at all.
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(2, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })

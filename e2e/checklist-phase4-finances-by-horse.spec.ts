@@ -4,7 +4,7 @@ import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor, type SeededAppointment } from './support/fixtures'
 import { settledInnerTexts } from './support/read'
 import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import type { Horse } from '@/lib/db/types'
@@ -49,9 +49,14 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
   // an explicit ?month= included, and withBarn creates this barn now — so without
   // backdating, the previous-month check below would silently resolve to this month and
   // pass against the wrong table.
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(2, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   const tier = await addTier(supabase, barn.id, {

@@ -36,6 +36,7 @@ import {
 import { settledTextContents } from './support/read'
 import { CANCELLED_BADGE, detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 
 // ---------------------------------------------------------------------------
 // Seed inputs
@@ -244,12 +245,16 @@ const barn = withBarn('phase4-lessons-delete', async ({ supabase, barn, members 
   // is the lesson-level `<dt>` — which is what lets "the **Cancellation Notes** row disappears
   // entirely from the detail page" assert the honest, whole-page reading
   // of "the row disappears entirely" rather than a `<dt>`-scoped near-miss of it.
-  mustSucceed(
+  // No exact count: each of the three lessons carries at least one rider row, but the seeds don't
+  // pin how many. A zero would mean the per-rider "Cancellation Notes" heading is still on the
+  // page, which is precisely what the whole-page reading below claims is gone.
+  mustAffect(
     await supabase
       .from('lesson_riders')
       .update({ cancellation_notes: null })
       .eq('barn_id', barn.id)
-      .in('lesson_id', [ids.notesTextarea, ids.notesEdit, ids.notesClear]),
+      .in('lesson_id', [ids.notesTextarea, ids.notesEdit, ids.notesClear])
+      .select('id'),
     'clear seeded per-rider cancellation notes',
   )
 

@@ -3,7 +3,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { settledInnerTexts } from './support/read'
 import { sortControl, tapSort, tapSortAndSettle } from './support/sort'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 
 // Seed constants. Every figure this file asserts is built from these, from a builder return
@@ -58,9 +58,14 @@ const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, membe
   // resolveFinancesMonth clamps the viewable range to the barn's creation month, and withBarn
   // creates this barn *now* — without backdating, the previous month the month-param check
   // navigates to isn't reachable at all.
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(2, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(2, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   const tier = await addTier(supabase, barn.id, {

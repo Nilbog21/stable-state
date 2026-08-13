@@ -4,7 +4,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
-import { mustSucceed } from '@/lib/db/service-role'
+import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
 import { settledInnerTexts } from './support/read'
 import { formatCurrency } from '@/lib/format-currency'
@@ -75,9 +75,14 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
   // reading every table below as empty. Backdating removes the ordering dependency outright.
   // (Both sides resolve through barnToday since #1360, so there is no longer a standing skew
   // between them for this to paper over.)
-  mustSucceed(
-    await supabase.from('barns').update({ created_at: monthAnchor(1, barn.timezone).toISOString() }).eq('id', barn.id),
-    'backdate barn created_at'
+  mustAffect(
+    await supabase
+      .from('barns')
+      .update({ created_at: monthAnchor(1, barn.timezone).toISOString() })
+      .eq('id', barn.id)
+      .select('id'),
+    'backdate barn created_at',
+    1
   )
 
   await addTier(supabase, barn.id, {
