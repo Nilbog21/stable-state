@@ -79,6 +79,11 @@ test('managers_section_lists_other_manager @manager', async ({ page }) => {
 
 test('managers_section_excludes_your_own_entry @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/members`)
+
+  // The second manager, through the same locator factory and the same section. A page that
+  // never rendered reports zero for both, so this is what makes the absence below the
+  // exclusion rule rather than an unrendered roster.
+  await expect(memberLink(page, 'Managers', secondManagerId)).toHaveCount(1)
   await expect(memberLink(page, 'Managers', barn.data.members.manager.membershipId)).toHaveCount(0)
 })
 

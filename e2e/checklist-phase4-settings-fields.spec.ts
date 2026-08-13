@@ -1113,7 +1113,11 @@ test.describe.serial('Manage Barn — unsaved-changes nav guard', () => {
 
     // The URL changing is the claim: the guard disarmed, so the click navigated. Not a no-op
     // wait (fact 3) — /lessons differs from the /settings URL the click happens on.
-    await page.waitForURL(`**/barn/${barn.slug}/lessons`)
+    await page.waitForURL(`**/barn/${barn.slug}/lessons`, { waitUntil: 'commit' })
+    // waitForURL resolves on commit, before /lessons has rendered — so it sync-points the
+    // navigation without proving anything drew, and toHaveCount(0) is satisfied on its first
+    // poll (framework fact 18). The heading is the render proof (spec-maintenance rule 4).
+    await expect(page.getByRole('heading', { name: 'Lessons', level: 1 })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 })

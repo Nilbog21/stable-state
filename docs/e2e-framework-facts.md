@@ -1,11 +1,12 @@
 # E2E framework facts
 
-Seventeen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
+Eighteen things about `@playwright/test`, Chromium and React 19 that are not obvious, are not in
 the places you would look for them, and each of which cost a batch at least one round — several
 rediscovered independently by two or three slices. Facts 1–11 come from the #1187–#1252 batch,
 12 and 13 from the 2026-08-04 backlog run, 14 from #1409's flake reproduction, 15 from #1426's
 mutation pass, 16 and 17 from the #1422–#1426 fleet batch (16 found by #1423, 17 by #1426's review
-fan-out, both harvested into this file by #1433); fact 10 was later
+fan-out, both harvested into this file by #1433), 18 from the same batch by way of a #1425 mutant
+that survived, harvested by #1434; fact 10 was later
 sharpened by #1385, which found its original unconditional form too broad, and again by 14, which
 found its multipart observation load-bearing in the other direction. Every one is measured, not
 inferred. The spec named after each fact carries the worked example, with fact 12 the exception by
@@ -269,3 +270,30 @@ redirect keeps `/register`'s pathname, so "left the page" alone would not have w
 query is the discriminator. Same polarity as this suite's third spec-maintenance rule
 ([`e2e-spec-maintenance.md`](e2e-spec-maintenance.md#rule-3)): an assertion that can only be
 satisfied one way is not an assertion. *(#1426)*
+
+## Fact 18
+
+**A web-first matcher whose expectation is "nothing" is satisfied on its first poll.**
+`toHaveCount(0)`, `not.toBeVisible` and `not.toBeAttached` all have the empty page as a passing
+state, so unlike every other matcher in the suite they get no retry budget working for them: the
+one poll that decides them can land while the document is still committing, and it reads zero
+because nothing has rendered yet — not because the thing under assertion is gone.
+
+Measured, not inferred, and measured by accident. #1425 planted a `toHaveCount(0)` as a mutant on
+a link that demonstrably renders on that page, expecting it to die. It **survived**. The mutant was
+at fault rather than the test: re-run against the expected value it died immediately. A mutant that
+survives on a locator you can watch render is the clearest possible statement that the assertion is
+being decided before the page exists.
+
+What makes this worth a numbered fact is how ordinary the vulnerable shape is — `goto`, then assert
+absent, two lines, nothing about it looks like a race — and that the shape is exactly what an
+absence check naturally wants to be. The audit in #1434 found 13 of the suite's 41 executable
+absence assertions in it, including two reached through a `waitForURL` sync point rather than a
+bare `goto` — one inherited from a helper ending on `{ waitUntil: 'commit' }` — which pins the
+navigation and proves nothing about the render.
+
+Same family as fact 16 (an assertion that cannot tell "correctly hidden" from "the page failed to
+render") and fact 17 (a predicate satisfiable only one way), reached through the matcher's polling
+contract instead. The fix is a same-test positive anchor, which is
+[`e2e-spec-maintenance.md`](e2e-spec-maintenance.md#rule-4)'s fourth rule; that rule also carries
+why a paired positive *test* does not substitute for one. *(#1425, #1434)*

@@ -37,7 +37,10 @@ BUDGETS=(
   # docs/e2e-spec-maintenance.md — the same shape, one section later. Measured: the split freed
   # 1317 characters and #1433 spent 475 of them on facts 16/17 and their index entries, for a net
   # 7146 -> 6304. The budget follows the file down rather than banking the slack, per the rule above.
-  "e2e/CLAUDE.md:6600"
+  # Raised from 6600 by #1434: two legitimate index entries (fact 18, rule 4) took the file
+  # 6304 -> 6868, and #1433 had left only 296 characters of margin. This is an unblock, not
+  # headroom — the next split lowers it again. Do not spend the margin.
+  "e2e/CLAUDE.md:6900"
   "src/components/ui/CLAUDE.md:8000"
 )
 

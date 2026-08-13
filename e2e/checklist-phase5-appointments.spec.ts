@@ -56,6 +56,8 @@ test('trainer_appointment_page_shows_the_notes @trainer', async ({ page }) => {
 // label — a trainer must not receive the figure in any rendering.
 test('trainer_appointment_page_never_shows_the_amount @trainer', async ({ page }) => {
   await page.goto(appointmentPath())
+
+  await expect(page.getByText(RECIPIENT)).toBeVisible()
   await expect(page.getByText(String(APPOINTMENT_AMOUNT), { exact: false })).toHaveCount(0)
 })
 

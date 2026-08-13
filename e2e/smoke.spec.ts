@@ -33,6 +33,13 @@ async function assertPageClean(page: Page, url: string) {
     if (res.status() >= 500) fivexx.push(`${res.url()} → ${res.status()}`)
   })
   await page.goto(url)
+  // One site serving every route below, so it is the one worth stating in full. `not.toBeVisible`
+  // is satisfied on its first poll (framework fact 18), and the poll right after a goto can land
+  // before anything has rendered — a page that never drew would read as clean. Every route here
+  // renders exactly one <h1>, and so does app/error.tsx ("Something went wrong"), which is what
+  // makes this a *render* proof rather than a second copy of the claim: it settles either page,
+  // and the assertion below is left to say which one arrived (spec-maintenance rule 4).
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByText('Something went wrong')).not.toBeVisible()
   expect(fivexx, `5xx on ${url}: ${fivexx.join(', ')}`).toHaveLength(0)
 }
