@@ -47,10 +47,11 @@ const barn = withBarn('phase4-members-list', async ({ supabase, barn }) => {
   )
 })
 
-// The Contact Info save round-trips a server action and a router.refresh() before its indicator
-// flashes, which is well past `expect`'s 5s default on a cold dev server. Kept file-local on
-// purpose (#1469): a shared export is what invites writing the number where a sync point is the
-// real fix — and here the sync point is the point, so the number only widens its budget.
+// The Contact Info save awaits a server action round trip before its indicator flashes (the
+// router.refresh() fires after, unawaited, and gates nothing), which is well past `expect`'s 5s
+// default on a cold dev server. Kept file-local on purpose (#1469): a shared export is what
+// invites writing the number where a sync point is the real fix — and here the sync point is the
+// point, so the number only widens its budget.
 const SETTLE_AFTER_WRITE = 15_000
 
 /** The <section> owning a given h2 — the page's Members list and detail page are both h2-partitioned. */
