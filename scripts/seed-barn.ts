@@ -48,6 +48,69 @@ export const DEV_RETIRED_HORSE = 'Willow'
 export const DEV_UNAVAILABLE_HORSE = 'Hazel'
 export const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
+// #1413: the two dark-mode lines in `checklists/pre-release/phase-3-manager-lesson-entry.md`'s
+// (#1019) block stay `(manual)` — they compare an amber day against a red one by eye — while
+// every line around them becomes an `(e2e:)` a human never performs. So the amber day and the
+// red day have to exist in the seed rather than fall out of the checkboxes above them.
+//
+// Its own horse rather than a cluster bolted onto Apple/Butter/Clover: those three carry the
+// low/moderate/high *total-exertion* spread the horses-list checks read, and adding future
+// lessons to any of them moves that spread. Here nothing else contributes, so the two days are
+// exactly the two lessons below.
+export const DEV_CALENDAR_BAND_HORSE = 'Juniper'
+
+// Below the barn defaults (5 / 11), which is what lets four lessons do the job of the eleven it
+// would otherwise take — exertion_level is capped at 5. Both bands render from the same
+// `BAND_TINT_CLASS` regardless of how the total got there, so a low pair is not a weaker fixture
+// for a colour comparison, just a cheaper one. The gap between them is the headroom that keeps
+// the moderate day moderate when a neighbouring cluster leaks into its window (see below).
+export const DEV_CALENDAR_BAND_THRESHOLDS = { moderate: 3, high: 8 }
+
+// Day +1 and day +5, and the 4-day gap is load-bearing rather than aesthetic:
+// `computeDayDecorations` centres its ±3-day window on the form's *Start Time*, not on midnight,
+// so two lessons 4 days apart fall inside one window at some hours and not others. At 5 days
+// apart the nearest approach is 3d13h — outside it at every hour, which is what keeps day +1
+// moderate instead of flipping high. Day +5 is also the furthest day guaranteed to be on the
+// grid at all: a 31-day month starting Saturday grids only to day 36, so from its last day
+// there are exactly 5 days of grid left.
+export const DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET = 1
+export const DEV_CALENDAR_BAND_HIGH_DAY_OFFSET = 5
+
+// The third cluster serves the *other* dark-mode line — the date number on a **tinted
+// neighbouring-month** day. Anchored to the next month's 3rd rather than to an offset from
+// today, because the two above are neighbouring-month days only when today happens to fall in
+// the last few days of a month. Days 1–5 of the next month are always carried into the current
+// grid (42 cells from the Sunday on or before the 1st leaves at least 5), so the 3rd always
+// lands there, always dimmed, always in the future.
+export const DEV_CALENDAR_BAND_NEXT_MONTH_DAY = 3
+
+/**
+ * The four lessons behind #1413's two `(manual)` dark-mode checks. Exported so
+ * `seed-barn.test.ts` can put them through the real `computeDayDecorations` and prove the
+ * guarantee holds from every "today" and every Start Time, rather than restating these offsets.
+ *
+ * The exertion levels are chosen so no cluster can push another out of its band when the two
+ * windows overlap — the moderate day tops out at 4 + 4 = 8, exactly its own `high` threshold,
+ * and the high day floors at 5 + 5 = 10.
+ */
+export function buildCalendarBandLessons(now: Date, timezone: string): { at: Date; exertionLevel: number }[] {
+  // #1361's lesson, and every offset here hangs off it: the form's grid is anchored on
+  // `barnToday()`, so "today" has to be the barn's day and not the host's. In the last hours of
+  // the barn's day the host's UTC clock has already rolled over — `dayOffset(now, 5)` is then
+  // barn-day +6, and on the tightest grid (a 31-day month starting Saturday, viewed from its
+  // last day) that is one day past the edge and the red day vanishes. Same rollover a month up
+  // for the next-month anchor. Noon UTC keeps every one of these the day it says in every zone
+  // the barn picker offers.
+  const [barnYear, barnMonth, barnDate] = barnDay(now, timezone).split('-').map(Number)
+  const fromBarnToday = (offset: number) => new Date(Date.UTC(barnYear, barnMonth - 1, barnDate + offset, 12))
+  return [
+    { at: fromBarnToday(DEV_CALENDAR_BAND_MODERATE_DAY_OFFSET), exertionLevel: 4 },
+    { at: fromBarnToday(DEV_CALENDAR_BAND_HIGH_DAY_OFFSET), exertionLevel: 5 },
+    { at: fromBarnToday(DEV_CALENDAR_BAND_HIGH_DAY_OFFSET), exertionLevel: 5 },
+    { at: new Date(Date.UTC(barnYear, barnMonth, DEV_CALENDAR_BAND_NEXT_MONTH_DAY, 12)), exertionLevel: 4 },
+  ]
+}
+
 // #1390: the seed set `owning_member_id` and one privilege row but never these three columns,
 // so nothing on `dev-barn` or `/demo` ever showed a registered name or a note — which is why a
 // rider's horse detail page could not be walked by hand at all. Deliberately partial, so the
@@ -411,6 +474,18 @@ export async function seedBarn(
     'mark seed horse unavailable'
   )
 
+  // #1413 — see the DEV_CALENDAR_BAND_* constants above. Available and active, unlike the two
+  // horses either side of it: the manual line selects it on the New Lesson form, which offers
+  // neither an unavailable nor a retired horse.
+  const calendarBandHorse = await createHorse(barnId, DEV_CALENDAR_BAND_HORSE, undefined, supabase)
+  mustSucceed(
+    await supabase.from('horses').update({
+      exhaustion_threshold_moderate: DEV_CALENDAR_BAND_THRESHOLDS.moderate,
+      exhaustion_threshold_high: DEV_CALENDAR_BAND_THRESHOLDS.high,
+    }).eq('id', calendarBandHorse.id),
+    'set calendar-band seed horse thresholds'
+  )
+
   // See the DEV_BUTTER_* constants above for why only this horse gets the full set.
   mustSucceed(
     await supabase.from('horses').update({
@@ -504,6 +579,30 @@ export async function seedBarn(
     jumping: false,
     tierName: tier1.name,
   }, supabase)
+
+  const { timezone } = mustSucceed<{ timezone: string }>(
+    await supabase.from('barns').select('timezone').eq('id', barnId).single(),
+    'select barn timezone'
+  )
+
+  // #1413: the two lessons that put one amber day and one red day on the New Lesson form's
+  // month calendar for DEV_CALENDAR_BAND_HORSE. `buildCalendarBandLessons` is the shared
+  // definition so `seed-barn.test.ts` can check the guarantee against the real
+  // `computeDayDecorations` rather than against a restatement of these offsets.
+  for (const { at, exertionLevel } of buildCalendarBandLessons(now, timezone)) {
+    await createLessonWithParticipants({
+      barnId,
+      instructorId: trainerRowIds[0],
+      lessonAt: at.toISOString(),
+      fee: tier1.price,
+      horseIds: [calendarBandHorse.id],
+      exertionLevels: [exertionLevel],
+      riderIds: [riderRowIds[0]],
+      lessonType: 'normal',
+      jumping: false,
+      tierName: tier1.name,
+    }, supabase)
+  }
 
   await createLessonSeries({
     barnId,
@@ -706,10 +805,6 @@ export async function seedBarn(
   }
 
   const defaultBoardFee = await getBarnDefaultBoardFee(barnId, supabase)
-  const { timezone } = mustSucceed<{ timezone: string }>(
-    await supabase.from('barns').select('timezone').eq('id', barnId).single(),
-    'select barn timezone'
-  )
   // #1361: generateChargeForMonth resolves the month in the barn's frame, so these anchors
   // have to be instants that fall inside the intended month *there* — both the month counted
   // back from and the day within it. The month comes from the barn's own calendar, since in

@@ -1,4 +1,8 @@
 import { describe, it, expect } from 'vitest'
+import { getMonthGrid, computeDayDecorations, type DayDecoration } from '@/lib/month-calendar'
+import { calendarDate } from '@/lib/local-day'
+import { barnDay } from '@/lib/barn-timezone'
+import type { ScheduleItem } from '@/lib/db/types'
 import {
   buildLessonDates,
   getLessonVariation,
@@ -13,6 +17,8 @@ import {
   computeExhaustionWindowTotals,
   EXHAUSTION_PAST_BOUNDARY_INDEX,
   EXHAUSTION_FUTURE_BOUNDARY_INDEX,
+  buildCalendarBandLessons,
+  DEV_CALENDAR_BAND_THRESHOLDS,
 } from './seed-barn'
 
 describe('buildLessonDates', () => {
@@ -365,5 +371,101 @@ describe('expenseDateFor', () => {
 
   it('should_shift_the_date_forward_for_a_positive_offset', () => {
     expect(expenseDateFor(NOW, 10)).toBe('2026-07-14')
+  })
+})
+
+// The two dark-mode `(manual)` lines in `checklists/pre-release/phase-3-manager-lesson-entry.md`
+// are walked by hand forever while every line around them gets automated away (#1413), so the
+// amber day and the red day they compare have to come from the seed rather than from a
+// neighbouring checkbox nobody performs. The guarantee is checked against the real production
+// path — `getMonthGrid` + `computeDayDecorations` — not a restatement of it, and across every
+// hour because the ±3-day exertion window is centred on the form's Start Time, not on midnight.
+// Past the 5s default because each of the three cases below runs the real `computeDayDecorations`
+// over a 42-cell grid 4384 times, and `barnDay` builds a fresh `Intl.DateTimeFormat` per call.
+describe('buildCalendarBandLessons', { timeout: 30_000 }, () => {
+  const HORSE_ID = 'juniper'
+
+  // A real barn zone rather than UTC, and one west of it: the form's grid is anchored on
+  // `barnToday()`, so at hour 0 the barn is still on the previous day — and on the 1st of a
+  // month, still in the previous month. Sweeping in UTC would check the seed's month arithmetic
+  // against its own frame and never notice the two disagreeing.
+  const BARN_TZ = 'America/New_York'
+
+  // Indices into `buildCalendarBandLessons`' return, so each assertion names the lesson it is
+  // actually about rather than asking the whole grid whether *some* day carries the band.
+  const MODERATE_LESSON = 0
+  const HIGH_LESSON = 1
+  const NEXT_MONTH_LESSON = 3
+
+  /** One case: the month grid the New Lesson form draws for this "today" and Start Time with
+   *  only this horse checked, and what it paints on the day each seeded lesson lands on.
+   *
+   *  `paintedOn` reports `band: null` when the day is off the grid or already past — both are
+   *  the same failure to the checks below. It is pinned to that one lesson's day rather than
+   *  asked of the grid as a whole because the neighbouring-month cluster is exertion 4 as well,
+   *  so a grid-wide `has('moderate')` stays true whether or not day +1 does its job: dropping
+   *  day +1 to exertion 1 fails 4168 of the 4384 cases this way and only 152 the other. */
+  function paintCase(now: Date, hour: number) {
+    const today = barnDay(now, BARN_TZ)
+    const lessons = buildCalendarBandLessons(now, BARN_TZ)
+    const items: ScheduleItem[] = lessons.map((lesson, i) => ({
+      id: `band-${i}`,
+      itemType: 'lesson',
+      start: lesson.at.toISOString().slice(0, 19),
+      durationMinutes: 60,
+      instructorId: null,
+      horseIds: [HORSE_ID],
+      riderIds: [],
+      exertionByHorseId: { [HORSE_ID]: lesson.exertionLevel },
+      appliesToAllHorses: false,
+      label: null,
+    }))
+    const todayStr = calendarDate(today)
+    const decorations = computeDayDecorations(getMonthGrid(todayStr.slice(0, 7)), items, {
+      selectedHorseIds: [HORSE_ID],
+      selectedRiderIds: [],
+      hour,
+      thresholdsByHorseId: { [HORSE_ID]: DEV_CALENDAR_BAND_THRESHOLDS },
+      todayStr,
+    })
+    const paintedOn = (lessonIndex: number): { date: string; band: string | null } => {
+      const date = lessons[lessonIndex].at.toISOString().slice(0, 10)
+      const decoration: DayDecoration | undefined = decorations[date]
+      return { date, band: decoration && !decoration.past ? decoration.band : null }
+    }
+    return { today, paintedOn }
+  }
+
+  // Every day of a three-year span, at four hours each — enough to cover every (month length,
+  // weekday the 1st falls on) pair, including the leap February. The tightest case is "today is
+  // the last day of a 31-day month starting on a Saturday", where the grid reaches exactly 5
+  // days past month end and both the high day and the neighbouring-month day sit on that edge.
+  const days: Date[] = []
+  for (let d = new Date(Date.UTC(2026, 0, 1)); d < new Date(Date.UTC(2029, 0, 1)); d.setUTCDate(d.getUTCDate() + 1)) {
+    for (const hour of [0, 9, 17, 23]) days.push(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hour)))
+  }
+
+  it('should_put_a_moderate_day_on_the_visible_grid_from_every_today_and_hour', () => {
+    expect(days.filter((now) => paintCase(now, now.getUTCHours()).paintedOn(MODERATE_LESSON).band !== 'moderate')).toEqual([])
+  })
+
+  it('should_put_a_high_day_on_the_visible_grid_from_every_today_and_hour', () => {
+    expect(days.filter((now) => paintCase(now, now.getUTCHours()).paintedOn(HIGH_LESSON).band !== 'high')).toEqual([])
+  })
+
+  /** The tinted day carried into the grid from a neighbouring month — the state the second
+   *  dark-mode line reads the date number on. Those cells are dimmed, so they are the one place
+   *  the tint and the day number compete.
+   *
+   *  `band !== 'low'` rather than a truthiness check: every day with a horse selected carries a
+   *  band, and 'low' is deliberately painted with no background at all (`BAND_TINT_CLASS`), so a
+   *  truthy test here passes on a grid with nothing tinted anywhere. The month is compared in the
+   *  barn's frame, which is the frame the grid itself is drawn in. */
+  it('should_tint_a_neighbouring_month_day_from_every_today_and_hour', () => {
+    expect(days.filter((now) => {
+      const { today, paintedOn } = paintCase(now, now.getUTCHours())
+      const { date, band } = paintedOn(NEXT_MONTH_LESSON)
+      return band === null || band === 'low' || date.slice(0, 7) === today.slice(0, 7)
+    })).toEqual([])
   })
 })
