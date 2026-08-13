@@ -124,7 +124,10 @@ function foldChargesCollected(charges: Pick<ChargeSummaryRow, 'fee' | 'payment_t
  * rows left to attribute to a specific horse/rider/trainer drill-down — its income
  * still counts in the summary totals above (via NO_HORSE_LABEL/NO_RIDER_LABEL/
  * NO_INSTRUCTOR_LABEL) but is excluded from these per-entity detail pages, since
- * there's no lesson left to link the row to.
+ * there's no lesson left to link the row to. #1439 made that true of the trainer path
+ * too: `participantKey` had keyed an orphaned instructor_payout off the membership_id
+ * still on the row, so the summary attributed a −cut this filter then dropped from the
+ * drill-down — the one path where the two disagreed.
  */
 function hasLesson(row: LessonFeeRow): row is LessonFeeRow & { lessonId: string } {
   return row.lessonId !== null
@@ -370,7 +373,11 @@ function participantKey(descriptor: EntityIncomeDescriptor, junctionRows: { less
     if (descriptor.junctionTable) {
       return junctionRows.filter((j) => j.lesson_id === l.lessonId).map((j) => j[descriptor.participantColumn!])
     }
-    return l.instructorId ? [l.instructorId] : []
+    // #1439: an orphaned instructor_payout still carries the membership_id it was
+    // written with, but with its lesson gone there's nothing left to attribute the cut
+    // to — folding it into the fallback bucket puts it alongside its own fee half
+    // instead of showing the named trainer a bare negative Net.
+    return l.lessonId && l.instructorId ? [l.instructorId] : []
   }
 }
 
