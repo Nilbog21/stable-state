@@ -23,7 +23,11 @@ PAIRS=(
 # file shrinks — banking the slack is how #1354's 14000 (set when the file was 10081) got spent
 # in two days. A raise carries its reason on the line.
 BUDGETS=(
-  "ARCHITECTURE.md:20000"
+  # Raised from 20000 by #1511, which moved /overnightRefactor and /overnightRefactorWrapup into
+  # .claude/commands/ and added them to the Workflow skills index: 19937 -> 20257. Two genuinely
+  # new skills entering the index, not elaboration of an existing entry — the raise the e2e/CLAUDE.md
+  # note below calls legitimate. The file was at 63 characters of headroom, so no trim was available.
+  "ARCHITECTURE.md:20500"
   # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
   # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
   # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was

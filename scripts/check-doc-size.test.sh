@@ -115,8 +115,9 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 7: ARCHITECTURE.md has its own per-file budget, separate from the pairwise check
-REPO="$(make_repo 20000 5000)"
+# Test 7: ARCHITECTURE.md has its own per-file budget, separate from the pairwise check. The size
+# is that budget and tracks it, same as tests 6 and 8 track theirs: #1511 raised it to 20500.
+REPO="$(make_repo 20500 5000)"
 err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: ARCHITECTURE.md "; then
   assert_pass "ARCHITECTURE.md over its own budget: exits non-zero, names it"
