@@ -34,7 +34,8 @@ If you have past lessons with unpaid balances, an "N unpaid lessons" card appear
 
 Tap the bell icon in the nav bar to view your notifications.
 
-- **Lesson cancelled** — a lesson you instructed was cancelled by a manager. Tap the notification to open the lesson.
+- **Lesson cancelled** — a lesson you instructed was cancelled by a manager, or cancelling the last remaining rider's spot in one of your group lessons cancelled the whole lesson (whether a manager or the rider themselves did it). Tap the notification to open the lesson.
+- **Lesson participation cancelled** — a rider cancelled their own spot in a lesson you instruct. Tap the notification to open the lesson.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
 - **Recurring series stopped** — a weekly recurring series you instruct stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review your lessons.
 - **Recurring lesson generated with an unavailable horse** — the nightly job generated the next occurrence of a recurring series, but the horse assigned to it is currently marked unavailable or inactive. Tap the notification to review the lesson and reassign the horse if needed.
