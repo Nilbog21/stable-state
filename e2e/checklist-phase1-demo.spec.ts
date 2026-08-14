@@ -377,12 +377,14 @@ test('the_reset_demo_cron_route_rejects_a_wrong_authorization_header @manager', 
 test.describe.serial('the demo barn', () => {
   test('visiting_demo_in_a_fresh_browser_renders_a_spinner @manager', async () => {
     // 22.5s warm — 75% of the 30s default, the largest margin in the suite. The visit drives
-    // `/demo` through a barn create-and-seed and out to `/barn/[slug]`, so on a cold server it
-    // additionally pays `next dev`'s compile of both routes inside the same budget and times out
-    // outright (#1435's full-suite run). This test opens a `describe.serial`, so that timeout
-    // takes the nine tests after it and strands the reaper block on `liveDemoBarn()` (fact 15).
-    // Per-test rather than inside `startDemoVisit`: the three other callers are cheap only
-    // because this test already compiled the routes for them.
+    // `/demo` through a barn create-and-seed and out to `/barn/[slug]`, so a cold server adds
+    // `next dev`'s compile of both routes inside the same budget. Cold alone is not what breaks
+    // it: measured at 19.0s cold and unloaded, which still passed under the old 30s budget. It
+    // timed out in #1435's full-suite run, where that compile is paid while four workers
+    // contend — the two costs compound (fact 1). This test opens a `describe.serial`, so that
+    // timeout takes the ten tests after it and strands the reaper block's two more on
+    // `liveDemoBarn()` (fact 15). Per-test rather than inside `startDemoVisit`: the three other
+    // callers are cheap only because this test already compiled the routes for them.
     test.slow()
     await startDemoVisit()
 
