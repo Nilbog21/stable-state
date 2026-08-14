@@ -12,12 +12,33 @@
 // a day loaded for either horse takes the heavier of the two shadings"): the grid itself, the
 // greyed past, the flat rider tint, the exertion shading that replaces it, and the conflict dot.
 //
-// Adjacent prior art, not a duplicate of it: checklist-phase5-lessons-new.spec.ts drives the
-// same calendar as a *trainer* and owns phase 5's claims about it (one exertion-shading day, one
-// appointment dot, the locked instructor field, the nearby-instructor notification). Everything
-// here is a manager-side claim about how the grid *shades and dots*, and the two files seed
-// different barns. The month-navigation, day-panel and start-time-shift lines of this same
-// checklist block belong to two later slices (#1463, #1464) and are deliberately untouched.
+// Adjacent prior art. checklist-phase5-lessons-new.spec.ts drives the same calendar as a
+// *trainer* and owns phase 5's claims about it (one exertion-shading day, one appointment dot,
+// the locked instructor field, the nearby-instructor notification); the two files seed different
+// barns. The month-navigation, day-panel and start-time-shift lines of this same checklist block
+// belong to two later slices (#1463, #1464) and are deliberately untouched.
+//
+// THREE TESTS ELSEWHERE OVERLAP, and it is worth naming them rather than claiming this file is
+// disjoint — an earlier draft of this comment did claim that, and it was wrong:
+//
+//   - phase 5's `trainer_new_lesson_form_renders_the_month_calendar_as_its_date_field` makes the
+//     same 42-cells-and-no-native-input equality as the grid test below. Phase 5's own header
+//     explains why it can only assert the *trainer's* rendering: one spec file runs as one role,
+//     so neither file can observe the other's. The duplication is the price of that, not an
+//     oversight, and phase 3's checklist line is a separate claim about the manager's form.
+//   - checklist-phase4-settings-fields.spec.ts's `new_lesson_calendar_greys_out_the_devices_day_as_past`
+//     drives this very form and also asserts the greyed past, and
+//     checklist-phase4-expenses-form.spec.ts's `days_before_today_are_greyed_out` asserts it on
+//     `MonthCalendarPicker` via the expense form. The greyed-past test below is deliberately
+//     stronger than either — it reads two grids so the partition cannot hold vacuously, and it
+//     compares *computed colours* rather than class tokens.
+//
+// That last point is not stylistic. checklist-phase4-expenses-form.spec.ts's `PAST_DAY_TINT`
+// records the trap a class-token check walks into here: `text-zinc-300` is the past cell's light
+// value AND the *outside-month* cell's dark value, so matching tokens conflates two states that
+// the light/dark pair inverts. Reading the computed colour sidesteps it in both schemes, which is
+// why `distinctGreyedColours: 1` and `coloursSharedWithLiveDays: []` hold either way. Do not
+// "simplify" that test to a className check.
 //
 // `src/components/ui/date-nav.ts` is NOT declared above even though the month arrows are clicked
 // here. Phase 5's spec owns the claim that those arrows share the Finances page's class and is
@@ -36,10 +57,12 @@
 // ## Why nothing here uses `mustAffect` (#1435)
 //
 // Spec-maintenance rule 5 binds a fixture `.update(`/`.delete(` whose zero-row result would go
-// unnoticed. The seed callback below contains neither directly: its writes are `addTier`,
-// `addHorse` and `addUnpaidLesson`, each of which bottoms out in an insert whose `.single()`
-// raises on zero rows. `addHorse`'s threshold write is an `.update(` — but it lives inside the
-// builder, is guarded there by `mustSucceed`, and matches the row `createHorse` just returned.
+// unnoticed. The seed callback below contains neither directly, and its three builders each
+// raise rather than return empty by a different route: `addTier` and `addHorse` bottom out in
+// inserts whose `.single()` fails a zero-row match with PGRST116, while `addUnpaidLesson` bottoms
+// out in the `create_lesson_with_participants` RPC, which raises server-side. `addHorse`'s
+// threshold write IS an `.update(` — but it lives inside the builder, is guarded there by
+// `mustSucceed`, and matches the row `createHorse` just returned.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
@@ -127,6 +150,10 @@ const SCHEDULE_FETCH_BUDGET = 30_000
  * keyword rather than a palette entry, so no theme change routes it through `oklch()`.
  */
 const UNTINTED = 'rgba(0, 0, 0, 0)'
+
+/** `getMonthGrid`'s fixed 6 rows × 7 days. Named because `readGrid` guards on it as well as the
+ *  month-grid test asserting it. */
+const GRID_CELLS = 42
 
 // "YYYY-MM" of the month every fixture sits in, and the days within it. Next month, for the
 // reason checklist-phase5-lessons-new.spec.ts states: the current month's grid can hold as few
@@ -246,8 +273,12 @@ function dayCell(page: Page, date: string) {
  * `className` is carried alongside so the shading tests can additionally bind the painted colour
  * to `BAND_TINT_CLASS`'s own entry rather than to a hex written here.
  *
- * The `waitFor` is support/read.ts's rule 3 reaching `evaluateAll`, which carries the identical
- * hazard: without it an unrendered grid reads `[]` and every assertion over it passes on nothing.
+ * The count guard is support/read.ts's rule 3 reaching `evaluateAll`, which carries the identical
+ * hazard — but it pins the FULL grid rather than rule 3's "first match is visible", because a
+ * short read is as dangerous here as an empty one and three assertions accept one. The two
+ * `toEqual([])` absences are satisfied by a 7-cell read, and the greyed-past test compares two
+ * projections of this same array, so a 7-cell read there compares 7 against 7 and passes. 42 is
+ * fixed by `getMonthGrid`'s `GRID_DAYS`, so there is no run in which a partial grid is correct.
  */
 type GridCell = {
   date: string
@@ -263,7 +294,7 @@ type GridCell = {
 
 async function readGrid(page: Page): Promise<GridCell[]> {
   const cells = dayCells(page)
-  await cells.first().waitFor()
+  await expect(cells).toHaveCount(GRID_CELLS)
   return cells.evaluateAll((nodes: HTMLElement[]) =>
     nodes.map((node) => {
       const style = getComputedStyle(node)
@@ -390,22 +421,35 @@ async function openNewLessonForm(page: Page): Promise<void> {
 }
 
 /**
- * Pages the grid one month in `direction`.
+ * Pages the grid one month in `direction`, and settles on `target`'s heading.
  *
  * A plain click, deliberately NOT `hydrateByDriving`: the month buttons are *monotonic*, not
  * idempotent, so a retry loop whose read merely lagged one successful click would advance a
  * second month and then never satisfy its own predicate. `openNewLessonForm`'s barrier has
  * already proved React is listening, which is what makes one click enough.
+ *
+ * `target` IS A PARAMETER, and must stay one. Deriving it here as "one month either side of
+ * `barnToday`" — which is what this did first — silently assumes the grid is sitting on the
+ * barn's current month, and breaks two ways once it isn't. A second call in one test would
+ * click through to month+2 while waiting on month+1's heading, and `waitFor` is unbounded, so
+ * it burns the whole `test.slow()`-tripled budget instead of failing fast. And it re-reads the
+ * barn's day per test while `fixtureMonth` is frozen at `beforeAll`, so a run that crosses
+ * midnight into a new month would wait on a heading that IS displayed and fail much later, in
+ * `cellFor`, as a confusing "day … is not on the rendered grid". Passing the month the caller
+ * actually means keeps the failure at the navigation that caused it.
+ *
+ * `exact: true` on the arrows to match every other spec that drives them
+ * (checklist-phase4-barn-timezone / -expenses-form / -settings-fields).
  */
-async function goToMonth(page: Page, direction: 'Previous' | 'Next'): Promise<void> {
-  const target = shiftMonth(barnToday(barn.data.barn.timezone).slice(0, 7), direction === 'Next' ? 1 : -1)
-  await page.getByRole('button', { name: `${direction} month` }).click()
+async function goToMonth(page: Page, direction: 'Previous' | 'Next', target: string): Promise<void> {
+  await page.getByRole('button', { name: `${direction} month`, exact: true }).click()
   await page.getByText(formatMonthHeading(target), { exact: true }).waitFor()
 }
 
-/** Pages forward onto the month every fixture sits in. */
+/** Pages forward onto the month every fixture sits in, settling on the month they were seeded
+ *  against rather than on one recomputed from the clock. */
 async function goToFixtureMonth(page: Page): Promise<void> {
-  await goToMonth(page, 'Next')
+  await goToMonth(page, 'Next', fixtureMonth)
 }
 
 /**
@@ -502,10 +546,12 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   // is today", because the mask says both things at once: today is not greyed, and every day
   // before it is.
   test('manager_calendar_greys_out_every_day_before_today @manager', async ({ page }) => {
+    // One `barnToday` read feeds both the navigation target and the expectation below, so a run
+    // that crossed midnight could not leave the two disagreeing about which month is "previous".
     const today = barnToday(barn.data.barn.timezone)
     await openNewLessonForm(page)
     const currentMonth = await readGrid(page)
-    await goToMonth(page, 'Previous')
+    await goToMonth(page, 'Previous', shiftMonth(today.slice(0, 7), -1))
     const previousMonth = await readGrid(page)
 
     // Greyed-out is a text colour (`text-zinc-300 dark:text-zinc-600`), so the visual half of
@@ -720,6 +766,12 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
         band: cell.band,
         // Bound to BAND_TINT_CLASS's own entries rather than to a colour written here, so the
         // rendered shading is asserted without this spec owning the palette.
+        //
+        // `moderate` and `high` ONLY — never `BAND_TINT_CLASS.low`, which is deliberately `''`
+        // (band-colors.ts paints no background for `low`). `className.includes('')` is true of
+        // every cell, so admitting it here would turn this filter into a tautology that reports
+        // a `low` tint on all 42 days. Any future band added to the record has to be checked for
+        // an empty value before it joins this list.
         tintClass: [BAND_TINT_CLASS.moderate, BAND_TINT_CLASS.high].filter((c) =>
           cell.className.includes(c)
         ),
