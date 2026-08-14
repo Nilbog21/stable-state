@@ -29,18 +29,18 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] (e2e: the_identity_header_owner_line_names_the_new_owner) Refresh the page → the identity header's owner line beside the photo now reads "Dana Rider" (it named the manager who created the horse before)
 - [ ] (e2e: the_identity_header_owner_line_links_to_the_owners_member_detail_page) That owner line links to Dana's member detail page
 - [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
-- [ ] (e2e-candidate) Grant access to rider Emery → Emery appears in the grants list
-- [ ] (e2e-candidate) Emery's row shows Documents set to **None**
-- [ ] (e2e-candidate) Emery's row shows lesson access **Cannot View**
+- [ ] (e2e: granting_a_second_rider_adds_them_to_the_grants_list) Grant access to rider Emery → Emery appears in the grants list
+- [ ] (e2e: a_new_grants_document_access_starts_at_none) Emery's row shows Documents set to **None**
+- [ ] (e2e: a_new_grants_lesson_access_starts_at_cannot_view) Emery's row shows lesson access **Cannot View**
 - [ ] (e2e: a_document_access_choice_survives_a_reload) Tap **Read** in Emery's **Documents** column → refresh the page → **Read** is still the selected one
-- [ ] (e2e-candidate) Tap Emery's **Cannot View** button → it flips to **Can View**
-- [ ] (e2e-candidate) Refresh the page → Emery's **Can View** selection persists
-- [ ] (e2e-candidate) Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**
-- [ ] (e2e-candidate) Refresh the page → the "Owner:" line above the photo is gone
-- [ ] (e2e-candidate) Tap **Set as Owner** on Dana's row again, then tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list
-- [ ] (e2e-candidate) Refresh the page → the "Owner:" line above the photo is still gone (revoking the owner cleared ownership)
-- [ ] (e2e-candidate) Tap **Revoke** on Emery's row (confirm the browser prompt) → Emery no longer appears in the grants list
-- [ ] (e2e-candidate) Emery is selectable again in the add-member dropdown
+- [ ] (e2e: tapping_cannot_view_flips_a_grant_to_can_view) Tap Emery's **Cannot View** button → it flips to **Can View**
+- [ ] (e2e: a_lesson_access_choice_survives_a_reload) Refresh the page → Emery's **Can View** selection persists
+- [ ] (e2e: an_owner_button_taps_back_to_set_as_owner) Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**
+- [ ] (e2e: clearing_the_owner_leaves_the_identity_header_reading_no_owner_set) Refresh the page → the identity header's owner line beside the photo now reads "No owner set" and no longer links to a member (there is no literal "Owner:" prefix in the app, and the line itself always renders — as the owner's name, or as this)
+- [ ] (e2e: revoking_the_owners_grant_removes_them_from_the_grants_list) Tap **Set as Owner** on Dana's row again, then tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list
+- [ ] (e2e: revoking_the_owners_grant_leaves_the_horse_with_no_owner) Refresh the page → that owner line still reads "No owner set" — revoking the owner's grant cleared ownership
+- [ ] (e2e: revoking_a_grant_empties_the_grants_list) Tap **Revoke** on Emery's row (confirm the browser prompt) → Emery no longer appears in the grants list
+- [ ] (e2e: a_revoked_member_is_offered_in_the_grant_dropdown_again) Emery is selectable again in the add-member dropdown
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
