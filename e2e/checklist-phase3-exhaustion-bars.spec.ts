@@ -1,12 +1,23 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/ExhaustionBar.tsx
 // covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/lib/month-calendar.ts
 // covers: src/app/actions/lessons.ts
+// covers: src/app/actions/lesson-form-parsing.ts
 // covers: src/lib/db/horses.ts
 // covers: src/lib/db/lessons.ts
+// covers: src/lib/db/lesson-participants.ts
 // covers: src/lib/db/schedule.ts
 // covers: src/lib/barn-timezone.ts
 // covers: src/lib/local-day.ts
+//
+// `src/lib/db/schedule.ts` is declared even though no assertion here reads schedule data, and
+// that is deliberate rather than an oversight: `LessonForm` fires `getScheduleRangeForBarn` on
+// every displayed month, so a throw in there takes down the form every test below drives. #1461
+// names it as required for this spec's header too. `src/lib/db/lesson-participants.ts` is the
+// other direction — nothing imports it here, but `create_lesson_with_participants` and
+// `update_lesson_with_participants` are what test 1's create and save actually persist through,
+// and that test asserts every field they wrote.
 //
 // Phase 3's exhaustion-bar block (checklists/pre-release/phase-3-manager-lesson-entry.md, from
 // "Create a **current-month paid lesson**" through "Open a **future-dated** lesson's edit page"):
@@ -84,7 +95,7 @@
 // *next* one, so it can never enter a ±3-day window read below.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { hydrateByDriving, waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
@@ -190,9 +201,15 @@ let dayB: string
  *
  * The clamp is why this is not a bare `addDays(today, -3)`. On the first three days of a month
  * an unclamped offset lands in the *previous* month, which breaks the half of that checkbox that
- * actually matters — "**current-month** paid lesson". Nothing below asserts the lesson is
- * strictly before today, so the clamp costs the line nothing; it is stated in the checklist
- * line's own parentheses.
+ * actually matters — "**current-month** paid lesson".
+ *
+ * WHAT THE CLAMP COSTS, stated plainly because the checklist line no longer says "before today"
+ * and a reader is owed the reason: on the **first** of a month it resolves to today itself, and
+ * `openNewLessonForm` fills BARRIER_TIME, so on that one day the created lesson can even be a
+ * few hours in the *future*. No assertion here depends on the lesson being past — the checkbox's
+ * content is what was stored and that it took a payment type — so nothing below is affected. The
+ * two are genuinely irreconcilable: on the first of a month no day is both in the current month
+ * and before today, and "current-month" is the adjective the rest of the checklist leans on.
  *
  * Barn-framed via `barnToday`, and the arithmetic is `local-day.ts`'s `addDays` on a branded
  * `CalendarDate` — never a host-zone `new Date()`, which `eslint.config.mjs` bans outside the
@@ -281,8 +298,18 @@ const barn = withBarn('phase3-exhaustion', async ({ supabase, barn: seeded, memb
 // The window sums the table above derives, named once so no test retypes one.
 const DAY_A = { apple: { points: 7, lessons: 2 }, butter: { points: 3, lessons: 1 }, clover: { points: 6, lessons: 2 } }
 const DAY_B = { apple: { points: 0, lessons: 0 }, butter: { points: 4, lessons: 1 }, clover: { points: 0, lessons: 0 } }
-/** Clover's dayA window with the day-08 lesson itself taken out — 6 minus its own 2. */
-const CLOVER_EXCLUDING_ITSELF = { points: 4, lessons: 1 }
+/**
+ * Clover's dayA window with the day-08 lesson itself taken out.
+ *
+ * DERIVED rather than written as `{ points: 4, lessons: 1 }`, because the subtraction *is* the
+ * claim test 7 makes: "the same window, minus this lesson" is stated here as arithmetic instead
+ * of being asserted in a comment and retyped as a literal. It also means a change to the seeded
+ * exertion cannot leave this constant quietly describing a window the barn no longer has.
+ */
+const CLOVER_EXCLUDING_ITSELF = {
+  points: DAY_A.clover.points - CLOVER_DAY_A_EXERTION,
+  lessons: DAY_A.clover.lessons - 1,
+}
 
 /** The exertion `LessonForm` assigns a horse the moment it is checked, when the selected tier
  *  sets no `default_exertion_level` and Jumping is off — neither seeded tier does. */
@@ -369,7 +396,9 @@ type BarShape = {
  * count guard checklist-phase3-calendar-shading.spec.ts's `readGrid` carries.
  *
  * `null` for all three members is a horse whose bar is not rendered at all, which is a legitimate
- * answer rather than a failure — the no-start-time test is about exactly that state.
+ * answer rather than a failure. No test currently reads a bar in that state — the no-start-time
+ * test counts `solidBars` instead, because its claim is about the whole fieldset rather than one
+ * horse — but a per-horse read that threw there would be the wrong shape for this helper.
  */
 async function readBar(page: Page, horse: Horse): Promise<BarShape> {
   const raw = await horseRow(page, horse).evaluate((row: HTMLElement) => {
@@ -492,8 +521,19 @@ async function selectHorse(page: Page, horse: Horse): Promise<void> {
   await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
-/** Sets a checked horse's exertion, settling on the field's own value so the read that follows
- *  cannot race React's commit. The bar's response is the claim, so it is never the settle. */
+/**
+ * Sets a checked horse's exertion.
+ *
+ * THE `toHaveValue` SETTLE IS WEAK, and calling it a barrier would be a lie: `fill()` writes the
+ * input's DOM value directly and React never reverts a controlled input to a *stale* value, so
+ * the settle is satisfied whether or not `setExertionMap` has committed. It is here to fail
+ * loudly if the fill was rejected outright (the field is `min=1 max=5`), not to order what
+ * follows.
+ *
+ * The bar's own response is never the settle — it is the claim in both callers. What actually
+ * orders the read is each caller's assertion: test 4 asserts the ghost moved, and test 5 carries
+ * Apple in both snapshots for exactly that reason (see there).
+ */
 async function setExertion(page: Page, horse: Horse, level: number): Promise<void> {
   const field = page.locator(`#exertion_${horse.id}`)
   await field.fill(String(level))
@@ -551,6 +591,11 @@ async function openCreatedLessonEditForm(page: Page): Promise<void> {
   await page.getByRole('link', { name: BEGINNER.name, exact: true }).click()
   await page.waitForURL((url) => url.searchParams.get('id') === BEGINNER.name, { waitUntil: 'commit' })
 
+  // Settles on the filtered list before the click, and doubles as the addressing claim: exactly
+  // one card carries BEGINNER's tier name. `waitUntil: 'commit'` resolves before React has
+  // swapped the list, so a bare strict-mode click here could resolve against the seven unfiltered
+  // cards and fail as a strict-mode violation rather than as the count being wrong.
+  await expect(lessonCards(page)).toHaveCount(1)
   await lessonCards(page).click()
   await page.waitForURL(/\/lessons\/[0-9a-f-]{36}$/, { waitUntil: 'commit' })
   await openEditFromDetail(page)
@@ -576,6 +621,13 @@ async function openEditFromDetail(page: Page): Promise<void> {
  * one-shot. `inputValue()` and `getAttribute()` do not retry once they have an element, and
  * `evaluateAll` does not retry at all — it yields `[]` on an unsettled page, which is
  * spec-maintenance rule 3's pass-on-nothing hazard. The poll re-reads the whole object instead.
+ *
+ * NO INLINE `first().waitFor()` GUARD, unlike rule 3's reference implementation in
+ * support/lesson-pages.ts, and the difference is the poll rather than laziness. That guard is
+ * unbounded (fact 1), so inside `expect.poll` it would convert this helper's fast, legible
+ * failure into a hang that eats the whole test budget and reports nothing about which member was
+ * wrong. The poll supplies the retry the guard exists for, and `[]` cannot equal `[clover.id]`,
+ * so the pass-on-nothing hole the rule protects is closed here by construction.
  *
  * `aria-pressed` is safe to read here — the server and the client compute it from the same
  * `initialLesson` prop, so fact 7's non-reconciliation has no mismatch to preserve, and nothing
@@ -606,12 +658,24 @@ test.describe('New Lesson — the current-month paid lesson', () => {
   // **paid**". One test rather than two because the line is one checkbox and its two halves are
   // one lesson: "mark it paid" has no subject without the creation above it.
   //
-  // The barrier before the payment-type change is `hydrateByDriving` rather than
-  // support/lesson-pages.ts's `waitForEditFormHydrated`, and that is not a style choice.
-  // `waitForEditFormHydrated`'s signal is an exhaustion bar, and this lesson is dated on or
-  // before today, so `isPastLesson` gates every bar on its edit form off — the barrier would
-  // never resolve. The `<select>` is React-controlled and re-dispatching a selection is
-  // harmless, which is exactly what `hydrateByDriving` wants.
+  // THE BARRIER HERE IS THE NAV BAR'S, NOT THIS PAGE'S, and neither obvious alternative works.
+  //
+  // support/lesson-pages.ts's `waitForEditFormHydrated` waits on an exhaustion bar, and this
+  // lesson is dated at or before today on all but one calendar day a month (see `pastDay`), so
+  // `isPastLesson` gates every bar on its edit form off and that barrier would simply never
+  // resolve — a silent 30-second timeout whose cause is nowhere near where it fails.
+  //
+  // `hydrateByDriving` on `#payment_type` was the first replacement and is also wrong, subtly:
+  // its predicate would be the select's own `inputValue()`, which a *pre-hydration*
+  // `selectOption` already satisfies. The barrier would resolve having proved nothing, React
+  // would then reconcile the controlled `<select>` back to `''` (LessonForm.tsx's `paymentType`
+  // state), and the save would store no payment type at all. Loud rather than silent — the
+  // assertion below would fail — but flaky, and for a reason no one would look for here.
+  //
+  // `waitForBarnPageHydrated` has neither problem: the nav bar renders into the *same* React
+  // root as the page, and its avatar popover is `useState`-gated markup that cannot exist before
+  // that root hydrates. It is fact 13's own prescribed workaround for a page whose own controls
+  // all either write or render identically either side of hydration, which is this page exactly.
   test('creating_a_current_month_lesson_then_marking_it_paid_stores_its_details_and_payment_type @manager', async ({
     page,
   }) => {
@@ -625,11 +689,10 @@ test.describe('New Lesson — the current-month paid lesson', () => {
     await submitNewLesson(page)
 
     await openCreatedLessonEditForm(page)
+    await waitForBarnPageHydrated(page)
     const paymentType = page.locator('#payment_type')
-    await hydrateByDriving(
-      () => paymentType.selectOption(PAID_VIA),
-      async () => (await paymentType.inputValue()) === PAID_VIA
-    )
+    await paymentType.selectOption(PAID_VIA)
+    await expect(paymentType).toHaveValue(PAID_VIA)
     await saveLessonForm(page)
     await page.waitForURL(/\/lessons\/[0-9a-f-]{36}$/, { waitUntil: 'commit' })
 
@@ -742,6 +805,14 @@ test.describe('New Lesson — live exhaustion bars', () => {
   // — every bar moving together — completely undetected. `ghostPct: null` is the "solid" half
   // stated structurally: an unchecked horse gets `ghostValue={undefined}`, so `ExhaustionBar`
   // renders no ghost element at all rather than a zero-width one.
+  //
+  // APPLE IS IN BOTH SNAPSHOTS, AND IS THE REASON THIS TEST CAN FAIL AT ALL. Without it the whole
+  // assertion is "two bars that should not move did not move", which a run where the exertion
+  // edit never landed satisfies perfectly — `setExertion`'s `toHaveValue` settle cannot rule that
+  // out, because `fill()` writes the input's DOM value directly and React never reverts it, so
+  // the settle is satisfied whether or not `setExertionMap` committed. Apple's ghost moving from
+  // LOW to HIGH inside the same object is the same-test positive anchor (spec-maintenance rule 4)
+  // that proves the change the other two are being held still across actually happened.
   test('an_unchecked_horses_bar_stays_solid_and_unchanged_while_another_horses_exertion_changes @manager', async ({
     page,
   }) => {
@@ -750,15 +821,23 @@ test.describe('New Lesson — live exhaustion bars', () => {
     await selectHorse(page, apple)
     await setExertion(page, apple, LOW_EXERTION)
 
-    const before = { butter: await readBar(page, butter), clover: await readBar(page, clover) }
+    const before = await readAllBars(page)
     await setExertion(page, apple, HIGH_EXERTION)
-    const after = { butter: await readBar(page, butter), clover: await readBar(page, clover) }
+    const after = await readAllBars(page)
 
     const untouched = {
       butter: { label: exhaustionLabel(DAY_A.butter), solidPct: trackPct(DAY_A.butter.points), ghostPct: null },
       clover: { label: exhaustionLabel(DAY_A.clover), solidPct: trackPct(DAY_A.clover.points), ghostPct: null },
     }
-    expect({ before, after }).toEqual({ before: untouched, after: untouched })
+    const appleAt = (exertion: number) => ({
+      label: exhaustionLabel(DAY_A.apple),
+      solidPct: trackPct(DAY_A.apple.points),
+      ghostPct: trackPct(exertion),
+    })
+    expect({ before, after }).toEqual({
+      before: { ...untouched, apple: appleAt(LOW_EXERTION) },
+      after: { ...untouched, apple: appleAt(HIGH_EXERTION) },
+    })
   })
 
   // "Change the date — the bars refresh."
