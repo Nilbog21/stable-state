@@ -367,6 +367,22 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     await page.goto(leaseDetailUrl())
 
     await paymentTypeSelect(page).selectOption(FIRST_PAYMENT_TYPE)
+
+    // A settle point, not the assertion — the next test owns the ✓ Saved claim.
+    //
+    // `selectOption` resolves when React's onChange has been dispatched, not when the Server
+    // Action it fires has reached the database, and `page.reload()` tears the document down
+    // mid-flight: measured here as a ~1-in-5 failure where the reloaded select came back "" (the
+    // mutation pass's mutant-04 run caught it). The indicator is the narrowest available signal
+    // that the write actually landed — `handlePaymentTypeChange` calls `flash()` only *after*
+    // awaiting the action and only on the non-error branch, so waiting for it cannot be
+    // satisfied by an in-flight or failed save the way waiting for the select to re-enable
+    // could. Not tautological with the assertion below either: this is client state saying the
+    // action returned, that is the server's own answer read back through a fresh request.
+    await expect(savedIndicator(paymentTypeCell(page))).toBeVisible({
+      timeout: SETTLE_AFTER_WRITE,
+    })
+
     await page.reload()
 
     await expect(paymentTypeSelect(page)).toHaveValue(FIRST_PAYMENT_TYPE, {
@@ -402,6 +418,12 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
 
     await feeInput(page).fill(String(PERSISTED_FEE))
     await feeInput(page).blur()
+
+    // The same settle point as the payment-type test above, for the same measured reason — see
+    // the comment there. `handleFeeBlur` awaits the action before calling `flash()`, so this
+    // cannot resolve while the write is still in flight.
+    await expect(savedIndicator(feeCell(page))).toBeVisible({ timeout: SETTLE_AFTER_WRITE })
+
     await page.reload()
 
     await expect(feeInput(page)).toHaveValue(String(PERSISTED_FEE), { timeout: SETTLE_AFTER_WRITE })
