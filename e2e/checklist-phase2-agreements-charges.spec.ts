@@ -92,30 +92,26 @@
 // bind here. Stated rather than left silent, since "no mustAffect in the file" otherwise reads
 // identically to having forgotten it.
 //
-// Rule 4 (#1434) does bind, at one test: `the_member_detail_boarding_link_lands_with_neither_
-// leases_nor_boarding_highlighted` claims an absence. Its anchor is in the same test on the same
-// page state — the highlight read returns a two-row map of both nav entries, so a nav that
-// failed to render yields no rows and fails, rather than satisfying the absence vacuously.
+// Rule 4 (#1434) does bind, at one test: `the_member_detail_boarding_link_lands_with_boarding_
+// highlighted` claims an absence on its Leases half — that entry stays inert. Its anchor is in
+// the same read on the same page state: the map's other row must be HIGHLIGHTED('Boarding'), and
+// the highlight read returns a two-row map of both nav entries, so a nav that failed to render
+// yields no rows and fails, rather than satisfying the absence vacuously.
 // Nothing here locates a `role="alert"`: the ✓ Saved indicator is an `aria-live="polite"` span,
 // located by text and scoped to its own `<td>`, so Next's permanent `__next-route-announcer__`
 // can never join a match set.
 //
-// ## One narrowed line and one corrected quote (both stated in the PR body)
+// ## One restored line and one corrected quote (both stated in the PR body)
 //
-// 1. **Narrowed, and weaker than what it replaced.** "**Boarding** is still highlighted in the
-//    nav on that page" is false against shipped behaviour. `members/[membership_id]/page.tsx`
-//    links its agreement card at `/barn/${slug}/agreements/${agreement.id}` with no `?kind=`.
-//    `isNavLinkActive` first requires the *path* to match (exactly, or as a `/`-prefix — which
-//    this URL does satisfy for both entries), and only then returns
-//    `hrefQuery === undefined || currentQuery === hrefQuery`. Both nav entries carry a query, so
-//    with an empty current query the path check passes and the query check fails, and
-//    **neither** highlights. A nav entry with no query of its own is unaffected. The line
-//    now characterises that, and names the mechanism so a reader does not mistake it for
-//    endorsement. **This documents a suspected UI defect, not intended behaviour**; the fix is
-//    `?kind=${agreement.kind}` on that href, and it is filed as a follow-up rather than made
-//    here, since this slice modifies no `src/` file. Landing that fix will fail the test below
-//    and require the line to be rewritten again — correct behaviour for a characterisation test,
-//    not a regression.
+// 1. **Restored, after one release as a characterisation.** "**Boarding** is still highlighted
+//    in the nav on that page" was false against shipped behaviour until #1502: the member-detail
+//    card's href carried no `?kind=`, `isNavLinkActive` requires query equality when the nav
+//    entry's href has one (both agreement entries do), so **neither** entry highlighted. #1458's
+//    slice was barred from touching `src/`, so its line characterised that defect instead of
+//    endorsing it ("Neither **Leases** nor **Boarding** is highlighted … Suspected UI defect,
+//    characterised here rather than endorsed"). #1502 put `?kind=${agreement.kind}` on the href
+//    and restored the line's original, stronger claim — failing the characterisation test it
+//    replaced was that fix's intended outcome, not a regression.
 //
 // 2. **Corrected, and stronger than what it replaced.** "the **Boarding: $X/month** link" names
 //    a label the app does not render; the card renders `Boarding · <horse> · $900.00/month`. The
@@ -363,7 +359,7 @@ const memberCard = (page: Page, agreementId: string) =>
   page
     .locator('section')
     .filter({ has: page.getByRole('heading', { name: 'Active Agreements', exact: true }) })
-    .locator(`a[href="${memberCardHref(agreementId)}"]`)
+    .locator(`a[href="${memberCardHref(agreementId)}?kind=board"]`)
 
 /**
  * The label the member detail card renders for a monthly agreement, derived from the seeded fee
@@ -542,30 +538,38 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     await expect(page.getByRole('heading', { name: BOARD_DETAIL_HEADING, exact: true })).toBeVisible()
   })
 
-  // "Neither **Leases** nor **Boarding** is highlighted in the nav on that page — the
-  // member-detail card's link carries no `?kind=`, which is what the nav's highlight rule matches
-  // on"
+  // "**Boarding** is still highlighted in the nav on that page"
   //
-  // The narrowed line; see the header for what it replaced and why. This characterises a
-  // suspected UI defect rather than endorsing it — landing `?kind=${agreement.kind}` on that
-  // href will fail this test, which is correct.
+  // The restored line; see the header for the release it spent as a characterisation and why.
   //
-  // The absence claim's positive anchor (rule 4, #1434) is the map itself, in this test and on
-  // this page state: `navHighlightMap` waits for the first link before reading, so a nav that
-  // did not render fails rather than returning `[]` for the expectation to accept. Both rows
-  // being present is also what distinguishes "neither is highlighted" from "the nav is missing".
-  test('the_member_detail_boarding_link_lands_with_neither_leases_nor_boarding_highlighted @manager', async ({
+  // The barrier is on the ORIGIN page, before the click — a barrier added after arrival does
+  // not help, because there is nothing left to reconcile. A nav click dispatched before React
+  // has hydrated is not lost: the card is a real `<a href>` (`BlockingLink`), so the browser
+  // performs a plain document navigation and the page that loads is server-rendered — and
+  // `aria-current` is an attribute, which React 19 does not reconcile on a hydration mismatch
+  // (fact 7), so whatever value the server rendered persists for the rest of the test.
+  //
+  // Origin/destination discrimination: `/members/[id]` has neither nav entry highlighted, so
+  // "Boarding highlighted" already differs from the origin's state and cannot be satisfied by
+  // the origin's markup.
+  //
+  // The Leases half is an absence claim; its positive anchor (rule 4, #1434) is the
+  // HIGHLIGHTED('Boarding') row in the same read. `navHighlightMap` also waits for the first
+  // link before reading, so a nav that did not render fails rather than returning `[]` for the
+  // expectation to accept.
+  test('the_member_detail_boarding_link_lands_with_boarding_highlighted @manager', async ({
     page,
   }) => {
     test.slow()
     await page.goto(riderDetailUrl())
+    await waitForBarnPageHydrated(page)
 
     await memberCard(page, linkedBoardAgreement.id).click()
     await page.waitForURL(atAgreementPage(linkedBoardAgreement.id), { waitUntil: 'commit' })
 
     await expect
       .poll(() => navHighlightMap(page), { timeout: SETTLE_AFTER_WRITE })
-      .toEqual([INERT('Leases'), INERT('Boarding')])
+      .toEqual([INERT('Leases'), HIGHLIGHTED('Boarding')])
   })
 
   // "**End Agreement** (confirm the browser prompt) → it now shows **Ended** in the Boarding
