@@ -441,15 +441,23 @@ test.describe('New Lesson — the Recurring (weekly) checkbox and the date field
   // picker's label `<span>` and its month nav, so a wrapper or a field inserted between the two
   // fails here. *Above*: the checkbox's box ends before the field's begins, which is a geometric
   // reading DOM order alone cannot give.
+  //
+  // Both `boundingBox()` reads are preceded by a `waitFor` on their own locator, which is the
+  // guard checklist-phase4-lessons-list.spec.ts states for this API: `boundingBox()` is a one-shot
+  // read like `evaluate()`, so an unguarded one can measure an element that has not laid out yet
+  // and hand back a degenerate box — an `above` comparison against a zero-height box would be
+  // decided by nothing.
   test('the_recurring_checkbox_sits_directly_above_the_date_field @manager', async ({ page }) => {
     await openNewLessonForm(page)
 
+    const checkbox = recurringCheckbox(page)
     const field = recurringLabel(page).locator('xpath=following-sibling::*[1]')
+    await checkbox.waitFor()
     await field.waitFor()
 
     const label = await field.locator('xpath=./span[1]').textContent()
     const monthNav = await field.locator('button[aria-label="Previous month"]').count()
-    const checkboxBox = (await recurringCheckbox(page).boundingBox())!
+    const checkboxBox = (await checkbox.boundingBox())!
     const fieldBox = (await field.boundingBox())!
 
     expect({ label, monthNav, above: checkboxBox.y + checkboxBox.height <= fieldBox.y }).toEqual({
@@ -571,6 +579,13 @@ test.describe.serial('The recurring lesson — badges, series indicator and Stop
   // full statement is `checklist-phase5-lessons-cancel.spec.ts`'s stop test. The discriminator is
   // the 303: `stopLessonSeriesAction` ends in `redirect()`, both hydration actions return data and
   // answer 200.
+  //
+  // No hydration barrier in front of the click, and that is deliberate rather than an omission:
+  // `StopSeriesButton` is a `<form action={serverAction}>`, which fact 10 exempts from the
+  // lost-click hazard — a click landing before React is listening submits the form natively and
+  // the action runs regardless. Hydration only decides whether the `window.confirm` is raised
+  // first, and driving the button through `hydrateByDriving` would be actively wrong, since it is
+  // both the mutation under test and one a retry would re-issue.
   //
   // The `dialog` handler answers `StopSeriesButton`'s `window.confirm` — the "Confirm and click"
   // half of this line. It is registered before the click and left in place: an unanswered dialog
