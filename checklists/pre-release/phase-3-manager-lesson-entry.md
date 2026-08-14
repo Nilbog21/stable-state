@@ -6,13 +6,13 @@
 
 All via `/barn/dev-barn/lessons/new`. Times entered here should display later in 12-hour AM/PM format. `reset-db.ts` seeds ~43 varied lessons across past/current/future dates, tiers, jumping, and exertion — only create the purpose-built lessons below; verify everything else against seeded data (including the seeded Custom-tier lesson).
 
-- [ ] (e2e-candidate) Create a **past lesson** (dated ~5 weeks ago, previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
-- [ ] (e2e-candidate) Try saving a lesson with a blank fee (Custom tier, no tier selected) — rejected with "fee is required"
-- [ ] (e2e-candidate) In edit mode, a blank fee is rejected too
-- [ ] (e2e-candidate) Select a named tier (e.g. Beginner) — the fee field stays visible and editable
-- [ ] (e2e-candidate) That fee field is pre-filled with the tier's price
-- [ ] (e2e-candidate) Change the fee and save — the lesson saves with the edited fee
-- [ ] (e2e-candidate) That lesson keeps the tier's name (not "Custom")
+- [ ] (e2e: creating_a_past_lesson_stores_its_date_tier_instructor_horse_and_rider) Create a **past lesson** (dated ~5 weeks ago, previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
+- [ ] (e2e: saving_a_new_lesson_with_a_blank_fee_is_rejected_by_the_fee_field) Try saving a lesson with a blank fee (Custom tier, no tier selected) — the Fee field itself rejects the save
+- [ ] (e2e: editing_a_lesson_to_a_blank_fee_is_rejected_by_the_fee_field) In edit mode, a blank fee is rejected too
+- [ ] (e2e: selecting_a_named_tier_leaves_the_fee_field_visible_and_editable) Select a named tier (e.g. Beginner) — the fee field stays visible and editable
+- [ ] (e2e: selecting_a_named_tier_prefills_the_fee_with_that_tiers_price) That fee field is pre-filled with the tier's price
+- [ ] (e2e: an_edited_fee_is_stored_on_the_created_lesson) Change the fee and save — the lesson saves with the edited fee
+- [ ] (e2e: an_edited_fee_leaves_the_lesson_on_the_selected_tier) That lesson keeps the tier's name (not "Custom")
 - [ ] (e2e-candidate) Create a **current-month paid lesson** (dated a few days ago, before today): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
 - [ ] (e2e-candidate) While creating it, before a date is picked no exhaustion bars render
 - [ ] (e2e-candidate) Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar
