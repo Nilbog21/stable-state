@@ -25,7 +25,7 @@
 //
 // ## What ONE horse picker is, in two sort orders
 //
-// `LessonForm`'s picker sorts on `horseSortBucket(h) - horseSortBucket(b) || horseTotalExertion(a)
+// `LessonForm`'s picker sorts on `horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a)
 // - horseTotalExertion(b)`, where the bucket is `checked -> 0`, `unavailable or inactive -> 2`,
 // everything else `1`. That single comparator is what makes the checklist's two headline claims
 // look contradictory and be the same rule: an *unavailable* horse sorts to the bottom (bucket 2),
@@ -36,18 +36,20 @@
 //
 // ## Why the horse locators are CSS, not `getByRole`
 //
-// `horseCheckbox` addresses `input[type="checkbox"][name="horse_id"][value="{id}"]`, and both
-// halves of that are load-bearing in exactly the states these tests are about:
+// `horseCheckbox` addresses `input[type="checkbox"][name="horse_id"][value="{id}"]`. The two halves
+// of that carry different weight, and saying which is which is the honest version:
 //
-//   - the picker renders a **second, hidden** `input[name="horse_id"]` for a horse that is checked
-//     *and* unavailable, so a locator not pinned to `type="checkbox"` is ambiguous in the one state
-//     an unavailable-horse test cares about;
-//   - an unavailable horse's accessible name carries its reason ("Daisy — Thrown shoe"), and the
-//     edit page renames an inactive horse to "Willow (inactive)" — so a `getByRole` name would have
-//     to be spelled differently per page for the same horse.
-//
-// Addressing by the builder-returned id sidesteps both and keeps the expected values on the
-// "comes from a builder return value" side of the convention.
+//   - **`[value="{id}"]` is what carries this file.** The same horse's accessible name differs by
+//     page: an unavailable horse's carries its reason ("Daisy — Thrown shoe"), and the edit route
+//     renames an inactive horse to "Willow (inactive)". A `getByRole` name would have to be spelled
+//     two ways for one horse, while the builder-returned id is one expression on both pages — and
+//     keeps the expected values on the "comes from a builder return value" side of the convention.
+//   - **`[type="checkbox"]` is defensive, not load-bearing here.** The picker does render a second,
+//     *hidden* `input[name="horse_id"]` for a horse that is checked **and** unavailable — but no
+//     test in this file reaches that state. Daisy is disabled and so is never checked, and the edit
+//     route hardcodes `is_available: true` on the inactive row it re-adds, so Willow is never
+//     `isUnavailable`. The pin costs nothing and closes the ambiguity for anyone who later drives a
+//     checked unavailable horse; it is not what makes today's assertions correct.
 //
 // ## Why this file mutates almost nothing, and needs no `describe.serial`
 //
@@ -271,8 +273,11 @@ const barn = withBarn('phase3-horse-picker', async ({ supabase, barn: seeded, me
   // injected into it. What is left is the write `scripts/seed-barn.ts` itself performs to retire
   // its own Willow, mirrored here including `deactivated_at`.
   //
-  // Last because `create_lesson_with_participants` runs against a live horse; retiring Willow first
-  // would seed the two lessons above into a state the app never produces.
+  // Last for the standing mid-chain reason, and not for a constraint that does not exist:
+  // `create_lesson_with_participants` never looks at `is_active`, so seeding these two lessons
+  // after the retirement would have succeeded. It would have planted a midpoint the app itself
+  // cannot produce, since the picker never offers a retired horse — retiring after the lessons is
+  // the order a real barn reaches this state in.
   //
   // `mustAffect` with an exact 1 rather than `mustSucceed` (rule 5): every assertion in the second
   // checklist run depends on this row having been matched, and a PostgREST update that matches
@@ -380,7 +385,7 @@ async function pickDay(page: Page, day: CalendarDate): Promise<void> {
   let current = displayedMonth.get(page)!
   while (current !== target) {
     const forward = target > current
-    await page.getByRole('button', { name: forward ? 'Next month' : 'Previous month' }).click()
+    await page.getByRole('button', { name: forward ? 'Next month' : 'Previous month', exact: true }).click()
     current = shiftMonth(current, forward ? 1 : -1)
     await page.getByText(formatMonthHeading(current), { exact: true }).waitFor()
   }
@@ -407,6 +412,31 @@ function horseFieldset(page: Page): Locator {
  *  own totals, so this needs no test id and no class. */
 function bars(page: Page): Locator {
   return page.getByRole('button', { name: /^Exhaustion: / })
+}
+
+/**
+ * Blocks until the projection for the day just picked has actually replaced the one for the day
+ * just left.
+ *
+ * A bar *count* cannot do this, and that is the whole reason this exists. `pickDay` settles on the
+ * calendar's own day-panel heading, but `lessonAt` is not updated in that commit — it is written
+ * one commit later by `LessonStartTime`'s `onChange` effect, and `exhaustionByHorseId` is keyed on
+ * `lessonAt`, so until the effect flushes the *previous* instant's projection is still on screen.
+ * Three bars render in every future window this file selects, so `toHaveCount(3)` is satisfied by
+ * the stale render and by the fresh one alike — a shared signal, which is exactly what fact 11's
+ * settle clause warns against, and the read it guards (`renderedHorseOrder`) is one-shot.
+ *
+ * Apple's total discriminates them: its single seeded lesson sits inside the +4..+10 window the
+ * TARGET_OFFSET day is read through and outside every other window this file selects, so this name
+ * can only be produced by the projection for that day. Both numbers come from the seed.
+ */
+function settleProjection(page: Page): Promise<void> {
+  return expect(
+    page.getByRole('button', {
+      name: `Exhaustion: ${APPLE_EXERTION} points from 1 lessons`,
+      exact: true,
+    })
+  ).toBeVisible({ timeout: EXHAUSTION_FETCH_BUDGET })
 }
 
 /**
@@ -511,6 +541,10 @@ test('setting_the_fee_to_zero_removes_the_payment_type_field @manager', async ({
 
 test('raising_the_fee_above_zero_restores_the_payment_type_field @manager', async ({ page }) => {
   await openNewLessonForm(page)
+  // The guard below is itself an absence assertion, so rule 4 binds it too — it gets its own
+  // same-page-state anchor on the identical locator, exactly as the sibling test's claim does.
+  await expect(page.locator('#payment_type')).toBeVisible()
+
   await page.locator('#fee').fill(ZERO_FEE)
   // A guard, not the claim: without it a Payment Type field that had never gone away would satisfy
   // the assertion below.
@@ -537,7 +571,7 @@ test('an_unavailable_horse_renders_disabled_in_the_horse_picker @manager', async
 test('an_unavailable_horse_sorts_below_every_available_horse @manager', async ({ page }) => {
   await openNewLessonForm(page)
   await pickDay(page, barnDayOffset(TARGET_OFFSET))
-  await expect(bars(page)).toHaveCount(AVAILABLE_BAR_COUNT, { timeout: EXHAUSTION_FETCH_BUDGET })
+  await settleProjection(page)
 
   const order = await renderedHorseOrder(page)
 
@@ -552,7 +586,7 @@ test('an_unavailable_horse_sorts_below_every_available_horse @manager', async ({
 test('checking_a_horse_moves_it_above_the_unchecked_available_horses @manager', async ({ page }) => {
   await openNewLessonForm(page)
   await pickDay(page, barnDayOffset(TARGET_OFFSET))
-  await expect(bars(page)).toHaveCount(AVAILABLE_BAR_COUNT, { timeout: EXHAUSTION_FETCH_BUDGET })
+  await settleProjection(page)
 
   // The "(ordered least-to-most worked)" half of the same checkbox, and the precondition that makes
   // the other half a real transition: Apple is the *most* worked of the three, so it starts last of
@@ -582,17 +616,29 @@ test('checking_a_horse_moves_it_above_the_unchecked_available_horses @manager', 
 test('a_past_start_instant_renders_no_exhaustion_bars @manager', async ({ page }) => {
   await openNewLessonForm(page)
   await pickDay(page, barnDayOffset(TARGET_OFFSET))
-  await expect(bars(page)).toHaveCount(AVAILABLE_BAR_COUNT, { timeout: EXHAUSTION_FETCH_BUDGET })
+  await settleProjection(page)
+  await expect(bars(page)).toHaveCount(AVAILABLE_BAR_COUNT)
 
   await pickDay(page, barnDayOffset(PAST_OFFSET))
 
   await expect(bars(page)).toHaveCount(0)
 })
 
+// The future day is selected explicitly before the past one, rather than the test leaning on the
+// form's opening state, and that is not ceremony: `openNewLessonForm` pins the start time to
+// BARRIER_TIME on the barn's *today*, so on any run after that hour the form opens already-past
+// and renders no bars at all. Anchoring on the opening state would therefore assert nothing for
+// most of the day, and the zero-guard below — itself an absence assertion, so bound by rule 4 —
+// would be satisfied without a bar ever having been drawn. Going future → past → future makes the
+// round trip the checklist line names the thing actually asserted.
 test('returning_the_start_instant_to_the_future_restores_the_exhaustion_bars @manager', async ({
   page,
 }) => {
   await openNewLessonForm(page)
+  await pickDay(page, barnDayOffset(TARGET_OFFSET))
+  await settleProjection(page)
+  await expect(bars(page)).toHaveCount(AVAILABLE_BAR_COUNT)
+
   await pickDay(page, barnDayOffset(PAST_OFFSET))
   // A guard, not the claim: without it the assertion below would be equally green on a form whose
   // bars had never gone away.
