@@ -972,7 +972,10 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
 // checklist line is #1413's call and not this slice's — see this issue's `## Follow-ups`.
 test('manager_checking_recurring_relabels_the_month_calendars_own_field_label @manager', async ({ page }) => {
   await openNewLessonForm(page)
-  const label = page.locator('button[aria-label="Previous month"]').locator('xpath=../../preceding-sibling::span')
+  // `span[1]` rather than a bare `preceding-sibling::span`: unambiguous today, since the picker's
+  // outer flex column holds exactly the label span and then the bordered box — but a second span
+  // added ahead of the box would turn this into a strict-mode violation rather than a clean miss.
+  const label = page.locator('button[aria-label="Previous month"]').locator('xpath=../../preceding-sibling::span[1]')
   await expect(label).toHaveText('Date')
 
   await page.getByRole('checkbox', { name: 'Recurring (weekly)', exact: true }).check()
