@@ -13,13 +13,13 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: selecting_a_named_tier_prefills_the_fee_with_that_tiers_price) That fee field is pre-filled with the tier's price
 - [ ] (e2e: an_edited_fee_is_stored_on_the_created_lesson) Change the fee and save — the lesson saves with the edited fee
 - [ ] (e2e: an_edited_fee_leaves_the_lesson_on_the_selected_tier) That lesson keeps the tier's name (not "Custom")
-- [ ] (e2e-candidate) Create a **current-month paid lesson** (dated a few days ago, before today): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
-- [ ] (e2e-candidate) While creating it, before a date is picked no exhaustion bars render
-- [ ] (e2e-candidate) Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar
-- [ ] (e2e-candidate) Adjust a checked horse's exertion level — its ghost segment moves live
-- [ ] (e2e-candidate) Unchecked horses' bars stay solid while that exertion level changes
-- [ ] (e2e-candidate) Change the date — the bars refresh
-- [ ] (e2e-candidate) Open this lesson's edit page afterward and confirm Clover's bar still renders (excluding the lesson itself from its own window)
+- [ ] (e2e: creating_a_current_month_lesson_then_marking_it_paid_stores_its_details_and_payment_type) Create a **current-month paid lesson** (dated a few days ago — three days back, or the 1st when today is nearer than that to it, so the lesson stays in the current month): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
+- [ ] (e2e: with_no_start_time_entered_the_new_lesson_form_renders_no_exhaustion_bars) While creating it, with the **Start Time** cleared — so no lesson instant is selected — no exhaustion bars render. (Not "before a date is picked": since #1019 the calendar opens on today, so a day is always selected. Clearing the start time is the reachable way to have no instant.)
+- [ ] (e2e: picking_a_day_gives_apple_butter_and_clover_each_an_exhaustion_bar_for_that_days_window) Pick a **future** date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar summing that horse's own ±3-day window
+- [ ] (e2e: raising_a_checked_horses_exertion_widens_its_ghost_segment_without_moving_its_solid_segment) Adjust a checked horse's exertion level — its ghost segment moves live, and its solid segment does not
+- [ ] (e2e: an_unchecked_horses_bar_stays_solid_and_unchanged_while_another_horses_exertion_changes) Unchecked horses' bars stay solid while that exertion level changes
+- [ ] (e2e: changing_the_selected_day_refreshes_every_bar_to_the_new_days_window) Change the date — the bars refresh to the new day's window
+- [ ] (e2e: the_edit_form_renders_the_lessons_own_horses_bar_excluding_that_lesson_from_its_window) Open a **future-dated** lesson's edit page and confirm its horse's bar still renders, excluding the lesson itself from its own window. (Not the paid lesson above: a lesson dated on or before today renders no bars on either form at all — `isPastLesson` gates them off, as `LessonForm.edit-exhaustion-prefill.test.tsx` already pins.)
 
 **#1019 — month conflict calendar on the Date field.** All on `/barn/dev-barn/lessons/new` unless stated.
 
