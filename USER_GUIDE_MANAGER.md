@@ -148,7 +148,7 @@ From your Profile page (opened from a specific barn), a **Calendar Feed** sectio
 
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
 
-- **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn. You also receive this when cancelling the last remaining rider's spot in a group lesson cancels the whole lesson, whether a manager, a trainer, or the rider themselves did it.
+- **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn. You also receive this when cancelling the last remaining rider's spot in a group lesson cancels the whole lesson — barn-wide if a trainer did it, and for a lesson you instructed if a manager or the rider themselves did it.
 - **Lesson participation cancelled** — a rider cancelled their own spot in a lesson, or a trainer cancelled a rider's spot on their behalf. Tap the notification to open the lesson.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.
