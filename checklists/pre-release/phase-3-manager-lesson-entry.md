@@ -25,16 +25,16 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 > The two `(manual)` lines in this block compare colours by eye, so the days they compare come from the seed rather than from the checkboxes above them (#1413): `reset-db.ts` gives **Juniper** low exhaustion thresholds and four lessons, which put an amber day, a red day and a tinted neighbouring-month day on its calendar from any date the checklist is walked on. Selecting Juniper is the setup for both.
 
-- [ ] (e2e-candidate) (#1019) The Date field renders as a month calendar grid, not a native date box
-- [ ] (e2e-candidate) (#1019) Days before today are greyed out, making today the first fully-coloured day on the grid
-- [ ] (e2e-candidate) (#1019) With neither a horse nor a rider selected, no day is tinted
-- [ ] (e2e-candidate) (#1019) With neither a horse nor a rider selected, no day shows a dot
-- [ ] (e2e-candidate) (#1019) Select rider Dana and no horse — days where Dana already has a lesson are tinted
-- [ ] (e2e-candidate) (#1019) Still rider-only, no day shows a dot
-- [ ] (e2e-candidate) (#1019) Now also check horse Apple — the flat rider tint is replaced by exertion shading
-- [ ] (e2e-candidate) (#1019) A day where Apple already has a lesson shows a small red dot below the date number
-- [ ] (e2e-candidate) (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
-- [ ] (e2e-candidate) (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
+- [ ] (e2e: manager_new_lesson_date_field_renders_a_month_grid_not_a_native_date_input) (#1019) The Date field renders as a month calendar grid, not a native date box
+- [ ] (e2e: manager_calendar_greys_out_every_day_before_today) (#1019) Days before today are greyed out, making today the first fully-coloured day on the grid
+- [ ] (e2e: manager_no_day_is_tinted_before_a_horse_or_rider_is_selected) (#1019) With neither a horse nor a rider selected, no day is tinted
+- [ ] (e2e: manager_no_day_shows_a_conflict_dot_before_a_horse_or_rider_is_selected) (#1019) With neither a horse nor a rider selected, no day shows a dot
+- [ ] (e2e: manager_rider_only_selection_tints_exactly_the_days_that_rider_already_rides) (#1019) Select rider Dana and no horse — days where Dana already has a lesson are tinted
+- [ ] (e2e: manager_rider_only_selection_shows_no_conflict_dot) (#1019) Still rider-only, no day shows a dot
+- [ ] (e2e: manager_checking_a_horse_replaces_the_flat_rider_tint_with_exertion_shading) (#1019) Now also check horse Apple — the flat rider tint is replaced by exertion shading
+- [ ] (e2e: manager_a_day_the_selected_horse_already_works_shows_a_conflict_dot) (#1019) A day where Apple already has a lesson shows a small red dot below the date number
+- [ ] (e2e: manager_a_day_shaded_only_by_a_neighbouring_days_lesson_shows_no_conflict_dot) (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
+- [ ] (e2e: manager_two_checked_horses_resolve_each_day_to_the_heavier_shading) (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
 - [ ] (e2e-candidate) (#1019, #1021) Change the **Start Time** field in the day panel from an early hour to a late one — at least one day's shading shifts
 - [ ] (e2e-candidate) (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks in `phase-5-trainer.md` need both) — then reopen this form with Apple selected — that day shows a dot
 - [ ] (e2e-candidate) (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
