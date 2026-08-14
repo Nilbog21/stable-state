@@ -441,17 +441,18 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }
     })
   }
 
-  // Carries a payment type despite having no amount yet, which is the only reason to state it on
-  // an otherwise-planned fixture: the test below fills the amount in and then asserts the amount
-  // <p> with full-string equality, and an expense missing *either* half is outstanding (#1481). At
-  // day 0 that turns Past Due the moment the run crosses the barn's midnight. Seeded rather than
-  // set through the form, so the assertion stays about the amount.
+  // Future-dated, which is both what "planned" means and what keeps the test below readable: it
+  // fills the amount in through the form and then asserts the amount <p> with full-string
+  // equality, and the row that save produces has no payment type — outstanding, and an outstanding
+  // expense whose moment has passed badges into that very <p> (#1481). A seeded `paymentType`
+  // cannot close that instead: `sync_expense_transaction` deletes the cost row whole when the
+  // amount is null, so a payment type on an unamounted fixture never reaches the DB. Staying
+  // untimed keeps it off the conflict calendar however its date moves.
   plannedFillable = await addExpense(supabase, barn, {
-    at: daysFromNow(0, barn.timezone),
+    at: daysFromNow(5, barn.timezone),
     recipient: PLANNED_FILLABLE_RECIPIENT,
     expenseType: 'Hay',
     horseIds: [apple.id],
-    paymentType: 'check',
   })
 
   // Two unamounted expenses rather than one, so the test that *reads* the confirmation page and
@@ -494,8 +495,9 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }
     horseIds: [apple.id],
     amount: RECIPIENT_EDIT_AMOUNT,
   })
-  // Paid, for plannedFillable's reason: its edited amount is asserted with full-string equality,
-  // and a day-0 expense with no payment type badges once the barn's midnight passes (#1481).
+  // Paid, and seeded amounted so the payment type actually persists: this fixture's edited amount
+  // is asserted with full-string equality, and a day-0 expense holding only half of what makes an
+  // expense settled badges into that same <p> once the barn's midnight passes (#1481).
   amountEdit = await addExpense(supabase, barn, {
     at: daysFromNow(0, barn.timezone),
     recipient: AMOUNT_EDIT_RECIPIENT,
