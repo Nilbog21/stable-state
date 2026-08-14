@@ -65,7 +65,7 @@
 // `mustSucceed`, and matches the row `createHorse` just returned.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { openNewLessonForm, selectHorse } from './support/lesson-form'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
@@ -99,24 +99,10 @@ const MODERATE_EXERTION = 3
 const FIRST_LESSON_TIME = '10:00'
 const SECOND_LESSON_TIME = '11:00'
 
-/**
- * The time `openNewLessonForm` fills to prove React has taken the form over.
- *
- * ITS MINUTES MUST NOT BE `:00`, and that is the whole reason for the odd-looking value —
- * measured by #1372 and stated at length on checklist-phase5-lessons-new.spec.ts's own barrier.
- * `LessonStartTime` initialises `time` to the top of the barn's CURRENT hour (`${HH}:00`) and
- * runs that initialiser on the server too, so the hidden `lesson_at` input already carries
- * today at `HH:00` in the server-rendered HTML. A barrier time of `10:00` would therefore
- * *already match* whenever the suite happens to run during the barn's 10:00–10:59 hour:
- * `isLive()` returns true on its first pre-drive call, the fill is never dispatched, and the
- * barrier resolves having proved nothing — leaving every click after it exposed to the
- * lost-click hazard (e2e/CLAUDE.md facts 9 and 10) for one hour a day. Non-zero minutes cannot
- * be produced by that default at any hour, so a match can only come from this spec's own fill.
- *
- * Do not "simplify" this to `10:00` to match FIRST_LESSON_TIME. The two are unrelated: the band
+/*
+ * Do not "simplify" BARRIER_TIME to `10:00` to match FIRST_LESSON_TIME. The two are unrelated: the band
  * arithmetic below does not depend on the form's hour at all (see the fixture-day table).
  */
-const BARRIER_TIME = '10:37'
 
 /**
  * `expect.poll` and web-first matchers run on expect's own 5s default, which `test.slow()` does
@@ -381,45 +367,6 @@ async function dotShape(page: Page, date: string) {
   })
 }
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
-/**
- * Opens the form and blocks until React has taken it over.
- *
- * Waiting for `#lesson-start-time` to appear would prove nothing: since #1021 the day panel is
- * `dayPanelAlwaysOpen`, so that input is in the SERVER-rendered HTML and every interaction after
- * it would race hydration — a click dispatched before React is listening is simply lost and
- * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
- * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write. See BARRIER_TIME for why those minutes
- * are not `:00`.
- *
- * The drive is a `fill` of a fixed time, so re-entering it is idempotent — the property
- * `hydrateByDriving` needs to retry safely. `isLive` is a single `page.evaluate` with no
- * retrying read inside it, per that helper's contract.
- *
- * `test.slow()` rather than a timeout on any wait: `waitFor*` is unbounded already, so a number
- * could only tighten it (#1211).
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
 /**
  * Pages the grid one month in `direction`, and settles on `target`'s heading.
  *
@@ -463,13 +410,6 @@ async function goToFixtureMonth(page: Page): Promise<void> {
 async function pickDay(page: Page, date: string): Promise<void> {
   await dayCell(page, date).click()
   await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that
- *  cannot exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
 /** Picks the rider from the normal lesson's single-rider `<select>`. */
@@ -526,7 +466,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_new_lesson_date_field_renders_a_month_grid_not_a_native_date_input @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
 
     expect({
       dayCells: await dayCells(page).count(),
@@ -549,7 +489,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
     // One `barnToday` read feeds both the navigation target and the expectation below, so a run
     // that crossed midnight could not leave the two disagreeing about which month is "previous".
     const today = barnToday(barn.data.barn.timezone)
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     const currentMonth = await readGrid(page)
     await goToMonth(page, 'Previous', shiftMonth(today.slice(0, 7), -1))
     const previousMonth = await readGrid(page)
@@ -580,7 +520,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   // having listed `riderDay`'s lesson — see `anchorOnScheduleLoaded` for why nothing weaker
   // will do.
   test('manager_no_day_is_tinted_before_a_horse_or_rider_is_selected @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await anchorOnScheduleLoaded(page)
 
@@ -591,7 +531,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_no_day_shows_a_conflict_dot_before_a_horse_or_rider_is_selected @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await anchorOnScheduleLoaded(page)
 
@@ -607,7 +547,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_rider_only_selection_tints_exactly_the_days_that_rider_already_rides @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectRider(page, RIDER_NAME)
     await expect(dayCell(page, riderDay)).toHaveAttribute('data-scheduled', 'true', {
@@ -622,7 +562,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   // state has the rider selected AND the schedule loaded, which is exactly the state the absence
   // is claimed of.
   test('manager_rider_only_selection_shows_no_conflict_dot @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectRider(page, RIDER_NAME)
     await expect(dayCell(page, riderDay)).toHaveAttribute('data-scheduled', 'true', {
@@ -649,7 +589,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_checking_a_horse_replaces_the_flat_rider_tint_with_exertion_shading @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectRider(page, RIDER_NAME)
     await expect(dayCell(page, riderDay)).toHaveAttribute('data-scheduled', 'true', {
@@ -691,7 +631,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_a_day_the_selected_horse_already_works_shows_a_conflict_dot @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectHorse(page, apple)
     await waitForScheduleShading(page, riderDay, 'high')
@@ -717,7 +657,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_a_day_shaded_only_by_a_neighbouring_days_lesson_shows_no_conflict_dot @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectHorse(page, apple)
     await waitForScheduleShading(page, riderDay, 'high')
@@ -750,7 +690,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
   test('manager_two_checked_horses_resolve_each_day_to_the_heavier_shading @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectHorse(page, apple)
     await waitForScheduleShading(page, appleHeavierDay, 'high')

@@ -9,8 +9,8 @@
 
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
 import { visibleLessonIds } from './support/lesson-pages'
+import { openNewLessonForm, selectHorse } from './support/lesson-form'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
@@ -72,17 +72,6 @@ const TIER_PRICE = 80
 
 // Barn-local wall clocks. The barrier time is re-entered on every form open (it is idempotent,
 // which is what makes it safe inside `hydrateByDriving`); the rest pin fixture placement.
-//
-// ITS MINUTES MUST NOT BE `:00`, and that is the whole reason for the odd-looking value.
-// `LessonStartTime` defaults `time` to the top of the barn's CURRENT hour — `${HH}:00` — and it
-// runs that initializer on the server too, so the hidden `lesson_at` input is already in the
-// server-rendered HTML carrying today at `HH:00`. A barrier time of `10:00` therefore *already
-// matches* whenever the suite happens to run during the barn's 10:00-10:59 hour: `isLive()`
-// returns true on its first pre-drive call, the fill is never dispatched, and the barrier
-// resolves having proved nothing — leaving every click after it exposed to the lost-click hazard
-// (e2e/CLAUDE.md facts 9 and 10) for a one-hour window once a day. Non-zero minutes cannot be
-// produced by that default at any hour, so the match can only come from this spec's own fill.
-const BARRIER_TIME = '10:37'
 const SHADED_LESSON_TIME = '10:00'
 const APPOINTMENT_TIME = '09:00'
 const OTHER_INSTRUCTOR_TIME = '14:00'
@@ -192,10 +181,6 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
 // Locators, barriers and drivers
 // ---------------------------------------------------------------------------
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
 /** Every day button in the month grid — `data-past` is unique to `MonthCalendarPicker`'s cells. */
 function dayCells(page: Page) {
   return page.locator('button[aria-label][data-past]')
@@ -204,40 +189,6 @@ function dayCells(page: Page) {
 /** One day button, by the "YYYY-MM-DD" that is its own accessible name. */
 function dayCell(page: Page, date: string) {
   return page.getByRole('button', { name: date, exact: true })
-}
-
-/**
- * Opens the form and blocks until React has taken it over.
- *
- * Waiting for `#lesson-start-time` to appear would prove nothing: since #1021 the day panel is
- * `dayPanelAlwaysOpen`, so that input is in the SERVER-rendered HTML and every interaction after
- * it would race hydration — a click dispatched before React is listening is simply lost and
- * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
- * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write.
- *
- * The drive is a `fill` of a fixed time, so re-entering it is idempotent — the property
- * `hydrateByDriving` needs to retry safely. `isLive` is a single `page.evaluate` with no
- * retrying read inside it, per that helper's contract.
- *
- * `test.slow()` rather than a timeout on any wait: `waitFor*` is unbounded already, so a number
- * could only tighten it (#1211).
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
 }
 
 /**
@@ -264,13 +215,6 @@ async function goToNextMonth(page: Page): Promise<void> {
 async function pickDay(page: Page, date: string): Promise<void> {
   await dayCell(page, date).click()
   await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that
- *  cannot exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
 /** The `data-band` each named day currently carries — `null` when the attribute is absent. */
@@ -304,7 +248,7 @@ async function dotsOn(page: Page, dates: string[]): Promise<Record<string, boole
  * excludes the `/lessons/new` this is called from.
  */
 async function createLesson(page: Page, opts: { day: string; time: string }): Promise<{ instructorPickers: number }> {
-  await openNewLessonForm(page)
+  await openNewLessonForm(page, barn)
   const instructorPickers = await page.locator('#instructor_id').count()
 
   await goToNextMonth(page)
@@ -369,7 +313,7 @@ test.describe("the trainer's New Lesson form", () => {
   // reader is not. Either half alone is satisfiable by the wrong page — a form with both controls,
   // or a form with neither.
   test('trainer_new_lesson_form_renders_the_month_calendar_as_its_date_field @trainer', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
 
     expect({
       dayCells: await dayCells(page).count(),
@@ -384,7 +328,7 @@ test.describe("the trainer's New Lesson form", () => {
   // here rather than confirming server-rendered markup — specifically on the post-pick
   // projected-exhaustion Server Action round trip, which is why it carries the budget (#1372).
   test('trainer_picking_a_date_renders_an_exhaustion_bar_below_every_horse @trainer', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToNextMonth(page)
     await pickDay(page, shadedDay)
 
@@ -398,7 +342,7 @@ test.describe("the trainer's New Lesson form", () => {
   // fail on exactly the claim the line makes. The quiet day is the control that keeps 'high' from
   // being true of every cell.
   test('trainer_exertion_shading_counts_another_instructors_lesson_for_the_selected_horse @trainer', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToNextMonth(page)
     await selectHorse(page, seededHorses[0])
 
@@ -411,7 +355,7 @@ test.describe("the trainer's New Lesson form", () => {
   // have come from Apple's vet appointment — which is the line's claim, that the dot fires on
   // appointments for a trainer and not only on lessons.
   test('trainer_conflict_dot_fires_on_the_selected_horses_appointment_day @trainer', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToNextMonth(page)
     await selectHorse(page, seededHorses[0])
 

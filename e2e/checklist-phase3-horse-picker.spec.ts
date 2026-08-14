@@ -65,6 +65,7 @@ import { addHorse, addTier, addUnpaidLesson, daysFromNow } from './support/fixtu
 import { mustAffect } from './support/must-affect'
 import { hydrateByDriving } from './support/hydration'
 import { waitForEditFormHydrated } from './support/lesson-pages'
+import { BARRIER_TIME, editPath, newLessonPath, submitNewLesson } from './support/lesson-form'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { addDays, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
@@ -150,18 +151,6 @@ const WILLOW_HISTORY_EXERTION = 4
 /** Barn-local wall clock for every seeded lesson. Pinned rather than inherited from the runner's
  *  clock, per LessonOptions.time's note (#1150). */
 const SEEDED_LESSON_TIME = '09:00'
-
-/**
- * The time `openNewLessonForm` fills to prove React has taken the form over.
- *
- * ITS MINUTES MUST NOT BE `:00`. `LessonStartTime` initialises `time` to the top of the barn's
- * current hour and runs that initialiser on the server too, so the hidden `lesson_at` input already
- * carries today at `HH:00` in the server-rendered HTML — a `HH:00` barrier would already match for
- * one hour a day, the fill would never be dispatched, and the barrier would resolve having proved
- * nothing. Measured by #1372; stated at length on checklist-phase3-lesson-fees.spec.ts's copy of
- * this constant, from which this one is taken.
- */
-const BARRIER_TIME = '10:37'
 
 /** Typed into the Fee field to make `feeIsZero` true. `LessonForm` reads it as `fee !== '' &&
  *  Number(fee) === 0`, so the empty string is a different state and is not what this drives. */
@@ -299,14 +288,6 @@ const barn = withBarn('phase3-horse-picker', async ({ supabase, barn: seeded, me
 // Page helpers
 // ---------------------------------------------------------------------------
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
-function editPath(lessonId: string): string {
-  return `/barn/${barn.slug}/lessons/${lessonId}/edit`
-}
-
 /** The barn's calendar day `delta` days from its today. Barn-framed and branded, never host-zone
  *  arithmetic on a Date — the fence `eslint.config.mjs` enforces. */
 function barnDayOffset(delta: number): CalendarDate {
@@ -316,7 +297,7 @@ function barnDayOffset(delta: number): CalendarDate {
 /**
  * Opens the New Lesson form and blocks until React has taken it over.
  *
- * Copied in shape from checklist-phase3-lesson-fees.spec.ts's helper of the same name, whose
+ * Copied in shape from e2e/support/lesson-form.ts's shared helper of the same name, whose
  * docstring reasons the choice of signal: every control touched afterwards is React-controlled, and
  * waiting on `#lesson-start-time` to merely *exist* proves nothing, since `dayPanelAlwaysOpen` puts
  * it in the server-rendered HTML. The barrier is the hidden `lesson_at` input carrying the
@@ -329,7 +310,7 @@ function barnDayOffset(delta: number): CalendarDate {
 async function openNewLessonForm(page: Page): Promise<void> {
   test.slow()
   const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
+  await page.goto(newLessonPath(barn))
   await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
 
   const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
@@ -355,7 +336,7 @@ async function openNewLessonForm(page: Page): Promise<void> {
  */
 async function openWillowEditForm(page: Page): Promise<void> {
   test.slow()
-  await page.goto(editPath(willowLesson.id))
+  await page.goto(editPath(barn, willowLesson.id))
   await waitForEditFormHydrated(page)
 }
 
@@ -479,25 +460,6 @@ async function checkHorse(page: Page, horse: Horse): Promise<void> {
   await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
-/**
- * Submits the New Lesson form and waits out the redirect to the Lessons list.
- *
- * Keyboard activation rather than a pointer click: the submit sits at the bottom of a long
- * scrollable form, the shape #501 (04c64505) diagnosed, where Chromium's scroll-into-view animation
- * races Playwright's actionability check. `exact: true` because `getByRole`'s name match is a
- * case-insensitive substring and the button relabels itself to "Submitting…" while pending.
- *
- * The `waitForURL` cannot no-op (fact 3) — the pattern excludes the `/lessons/new` it is called
- * from — and it doubles as the "the save succeeded" half: `submitLesson` re-renders the form with a
- * `role="alert"` and no navigation on every failure path, and only redirects on success.
- */
-async function submitNewLesson(page: Page): Promise<void> {
-  const submit = page.getByRole('button', { name: 'Submit', exact: true })
-  await submit.focus()
-  await submit.press('Enter')
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
-}
-
 // ---------------------------------------------------------------------------
 // The group lesson, and the fee-driven Payment Type field
 // ---------------------------------------------------------------------------
@@ -521,7 +483,7 @@ test('group_lesson_horse_picker_legend_reads_select_at_least_one @manager', asyn
     await page.locator(`input[type="checkbox"][name="rider_id"][value="${riderId}"]`).check()
   }
   await pickDay(page, barnDayOffset(GROUP_LESSON_OFFSET))
-  await submitNewLesson(page)
+  await submitNewLesson(page, barn)
 })
 
 // Absence, so it carries a same-page-state positive anchor on the identical locator (rule 4): the

@@ -61,9 +61,16 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, daysFromNow, resolveWhen } from './support/fixtures'
-import { hydrateByDriving, waitForBarnPageHydrated } from './support/hydration'
+import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
-import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
+import {
+  editFormSelection,
+  editPath,
+  openNewLessonForm,
+  selectHorse,
+  selectTier,
+  submitNewLesson,
+} from './support/lesson-form'
 import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
 import type { Horse, Lesson, LessonTier } from '@/lib/db/types'
 
@@ -96,12 +103,7 @@ const EDITED_FEE = '75'
 /** Typed into the fee field to prove "editable" as a round trip rather than as an attribute. */
 const TYPED_FEE_PROBE = '123'
 
-// Barn-local wall clocks. BARRIER_TIME's minutes must not be `:00`: `LessonStartTime` defaults
-// `time` to the top of the barn's current hour and runs that initializer on the server too, so a
-// `HH:00` barrier already matches for one hour a day, the fill is never dispatched, and the
-// barrier resolves having proved nothing — leaving every click after it exposed to the lost-click
-// hazard (facts 9 and 10). Non-zero minutes cannot be produced by that default at any hour.
-const BARRIER_TIME = '10:37'
+// Barn-local wall clocks.
 const SEEDED_LESSON_TIME = '09:15'
 
 let beginner: LessonTier
@@ -169,61 +171,6 @@ const barn = withBarn('phase3-lesson-fees', async ({ supabase, barn: seeded, mem
 // Page helpers
 // ---------------------------------------------------------------------------
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
-function editPath(lessonId: string): string {
-  return `/barn/${barn.slug}/lessons/${lessonId}/edit`
-}
-
-/**
- * Opens the New Lesson form and blocks until React has taken it over.
- *
- * Every control this file touches afterwards is React-controlled — the tier `<select>`, the fee
- * input, the horse checkboxes, the rider `<select>`, and the calendar's day buttons all read from
- * `useState` — so a click or a fill landing before hydration is either lost outright or is
- * overwritten the moment React reconciles (facts 9 and 10). Waiting on `#lesson-start-time` to
- * merely *exist* would prove nothing: since #1021 the day panel is `dayPanelAlwaysOpen`, so that
- * input is in the server-rendered HTML. The barrier therefore waits on the hidden `lesson_at`
- * input carrying the combination of the barn's today and the time just entered, which only
- * client-side `LessonStartTime` can write.
- *
- * `test.slow()` rather than a number on any wait: every `waitFor*` is unbounded already, so a
- * number could only tighten it (fact 1).
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(
-    `${barnToday(timezone)}T${BARRIER_TIME}:00`,
-    timezone
-  ).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
-/**
- * Picks a named tier, settling on the `<select>`'s own value.
- *
- * The settle is on the select rather than on the fee it cascades into, because the fee is what
- * two of the checkboxes below actually claim — settling on it would make those assertions wait
- * for themselves.
- */
-async function selectTier(page: Page, tierId: string): Promise<void> {
-  await page.locator('#tier_name').selectOption(tierId)
-  await expect(page.locator('#tier_name')).toHaveValue(tierId)
-}
-
 /**
  * Picks Custom, settling on the fee field clearing — which is `handleTierChange`'s Custom branch
  * doing its work, and the precondition (not the claim) of the blank-fee rejection test below.
@@ -253,32 +200,6 @@ async function pickPastDay(page: Page): Promise<void> {
 
   await page.getByRole('button', { name: pastDay, exact: true }).click()
   await page.getByText(formatCalendarDate(calendarDate(pastDay)), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that cannot
- *  exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
-}
-
-/**
- * Submits the New Lesson form and waits out the redirect to the Lessons list.
- *
- * Keyboard activation rather than a pointer click: the submit sits at the bottom of a long
- * scrollable form, the shape #501 (04c64505) diagnosed, where Chromium's scroll-into-view
- * animation races Playwright's actionability check. `exact: true` because `getByRole`'s name match
- * is a case-insensitive substring and the button relabels itself to "Submitting…" while pending.
- *
- * The `waitForURL` cannot no-op (fact 3) — the pattern excludes the `/lessons/new` it is called
- * from — and it doubles as the "the save succeeded" half: `submitLesson` re-renders the form with
- * a `role="alert"` and no navigation on every failure path, and only redirects on success.
- */
-async function submitNewLesson(page: Page): Promise<void> {
-  const submit = page.getByRole('button', { name: 'Submit', exact: true })
-  await submit.focus()
-  await submit.press('Enter')
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 }
 
 /**
@@ -354,42 +275,6 @@ async function openEditFormForHorse(page: Page, horseName: string, past: boolean
 }
 
 /**
- * What a stored lesson's edit form holds, as one object.
- *
- * Read together and asserted as a single `toEqual` because the checkbox is a conjunction —
- * "Beginner tier, trainer Alex, horse Apple, rider Dana" on a day in the previous calendar month
- * is five claims about one lesson, and splitting them would let four pass while the fifth silently
- * named a different lesson.
- *
- * Called inside `expect.poll`, which is what makes the composite safe: every member read here is
- * **one-shot**. `inputValue()` and `getAttribute()` do not retry once they have an element, and
- * `evaluateAll` does not retry at all — it yields `[]` on an unsettled page, which is rule 3's
- * pass-on-nothing hazard. A bare `expect(await …)` would freeze whatever the first read happened
- * to see; the poll re-reads the whole object instead, so `[]` simply fails and is retried rather
- * than being compared against. Same shape, and the same reason, as
- * checklist-phase4-expenses-form.spec.ts's `the_edit_form_opens_prefilled_with_the_expenses_stored_values`.
- *
- * `aria-pressed` is safe to read here — the server and the client compute it from the same
- * `initialLesson` prop, so fact 7's non-reconciliation has no mismatch to preserve, and nothing on
- * this page ever changes the selected day.
- */
-async function editFormSelection(page: Page) {
-  return {
-    day: await page.locator('button[data-past][aria-pressed="true"]').getAttribute('aria-label'),
-    tier: await page.locator('#tier_name').inputValue(),
-    instructor: await page.locator('#instructor_id').inputValue(),
-    horses: await page
-      .locator('input[name="horse_id"]')
-      .evaluateAll((els) =>
-        els
-          .filter((el) => (el as HTMLInputElement).checked)
-          .map((el) => (el as HTMLInputElement).value)
-      ),
-    rider: await page.locator('#rider_id').inputValue(),
-  }
-}
-
-/**
  * Arms the browser's own rejection signal on a field.
  *
  * The `invalid` event fires on a field whose constraint blocks a submit attempt. That event *is*
@@ -425,13 +310,13 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   test('creating_a_past_lesson_stores_its_date_tier_instructor_horse_and_rider @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectTier(page, beginner.id)
     await pickPastDay(page)
     await page.locator('#instructor_id').selectOption(trainerMembershipId)
     await selectHorse(page, apple)
     await page.locator('#rider_id').selectOption(riderMembershipId)
-    await submitNewLesson(page)
+    await submitNewLesson(page, barn)
 
     await openEditFormForHorse(page, apple.name, true)
 
@@ -451,7 +336,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   test('saving_a_new_lesson_with_a_blank_fee_is_rejected_by_the_fee_field @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectHorse(page, apple)
     await page.locator('#rider_id').selectOption(riderMembershipId)
 
@@ -471,7 +356,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
 
   test('editing_a_lesson_to_a_blank_fee_is_rejected_by_the_fee_field @manager', async ({ page }) => {
     test.slow()
-    await page.goto(editPath(seededLesson.id))
+    await page.goto(editPath(barn, seededLesson.id))
     // The fill has to reach React, not just the DOM: `#fee` is `value={fee}` over a `useState`, so
     // a pre-hydration clear is overwritten with the stored 40 the moment React reconciles — and
     // the submit would then be rejected by nothing at all.
@@ -491,7 +376,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   test('selecting_a_named_tier_leaves_the_fee_field_visible_and_editable @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectTier(page, beginner.id)
 
     const fee = page.locator('#fee')
@@ -511,7 +396,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   test('selecting_a_named_tier_prefills_the_fee_with_that_tiers_price @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectTier(page, beginner.id)
 
     // `beginner.price` off `addTier`'s return, never a literal — and discriminating, because the
@@ -520,14 +405,14 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   })
 
   test('an_edited_fee_is_stored_on_the_created_lesson @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     // Tier first, then the fee: `handleTierChange` overwrites the fee, so filling in the other
     // order would submit the tier's price and the item would assert nothing.
     await selectTier(page, beginner.id)
     await page.locator('#fee').fill(EDITED_FEE)
     await selectHorse(page, willow)
     await page.locator('#rider_id').selectOption(riderMembershipId)
-    await submitNewLesson(page)
+    await submitNewLesson(page, barn)
 
     editedLessonId = await openEditFormForHorse(page, willow.name, false)
 
@@ -535,7 +420,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
   })
 
   test('an_edited_fee_leaves_the_lesson_on_the_selected_tier @manager', async ({ page }) => {
-    await page.goto(editPath(editedLessonId))
+    await page.goto(editPath(barn, editedLessonId))
     await page.locator('#tier_name').waitFor()
 
     // Equality with the seeded tier, not `not('Custom')`, which is the item's actual claim and is

@@ -25,10 +25,12 @@
 // checklist-phase3-calendar-shading.spec.ts (#1462) owns the first half of this same checklist
 // block — the grid, the greyed past, the rider tint, the exertion shading and the conflict dot
 // on a *lesson* day — and every locator, barrier and driver below is copied from it rather than
-// re-derived. Copied file-locally on purpose: `e2e/support/**` is in `scripts/select-specs.sh`'s
-// `ALWAYS_FULL`, so hoisting a shared helper there would force `mode=full` on every future diff
-// that touched it. Two of those copies carry corrections that were paid for the hard way and
-// must not be "simplified" back — see `goToMonth` and `readGrid`.
+// re-derived. The New Lesson form's shared drive vocabulary (`openNewLessonForm`, `selectHorse`,
+// `BARRIER_TIME`) was hoisted into `e2e/support/lesson-form.ts` on 2026-08-14, accepting that
+// `e2e/support/**` is in `scripts/select-specs.sh`'s `ALWAYS_FULL` and that a diff touching it
+// forces `mode=full`; everything else below stays file-local. Two of the file-local copies carry
+// corrections that were paid for the hard way and must not be "simplified" back — see `goToMonth`
+// and `readGrid`.
 //
 // checklist-phase5-lessons-new.spec.ts's `trainer_conflict_dot_fires_on_the_selected_horses_
 // appointment_day` makes the horse-specific-appointment-dot claim already, as a *trainer*, on a
@@ -80,7 +82,7 @@
 // is guarded there by `mustSucceed`, and matches the row `createHorse` just returned.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { openNewLessonForm, selectHorse } from './support/lesson-form'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
@@ -128,20 +130,11 @@ const BARN_WIDE_APPOINTMENT_AMOUNT = 90
 const VET_RECIPIENT = 'Ridgefield Equine Vet'
 const FARRIER_RECIPIENT = 'Ridgefield Hoofcare'
 
-/**
- * The time `openNewLessonForm` fills to prove React has taken the form over.
- *
- * ITS MINUTES MUST NOT BE `:00`, for the reason #1372 measured and
- * checklist-phase3-calendar-shading.spec.ts states in full: `LessonStartTime` initialises `time`
- * to the top of the barn's *current* hour on the server too, so a barrier time of `10:00` would
- * already match whenever the suite runs during the barn's 10:00–10:59 hour, and the barrier
- * would resolve having proved nothing.
- *
- * Its HOUR is separately load-bearing here, unlike there: every test that does not drive the
+/*
+ * BARRIER_TIME's HOUR is separately load-bearing in this file: every test that does not drive the
  * start-time field runs the grid at hour 10, and the fixture-day table below is written against
  * that. Changing `10` breaks the two `earlyHourBarrierDay` transitions in the first test.
  */
-const BARRIER_TIME = '10:37'
 
 /** The start-time field's two ends for the shift test — "an early hour" and "a late one" in the
  *  checklist line's own words. Both are well clear of any DST transition hour. */
@@ -417,43 +410,6 @@ function shadingOf(cell: GridCell): DayShading {
   }
 }
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
-/**
- * Opens the form and blocks until React has taken it over.
- *
- * Waiting for `#lesson-start-time` to appear would prove nothing: since #1021 the day panel is
- * `dayPanelAlwaysOpen`, so that input is in the SERVER-rendered HTML and every interaction after
- * it would race hydration — a click dispatched before React is listening is simply lost and
- * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
- * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write.
- *
- * The drive is a `fill` of a fixed time, so re-entering it is idempotent — the property
- * `hydrateByDriving` needs to retry safely.
- *
- * `test.slow()` rather than a timeout on any wait: `waitFor*` is unbounded already, so a number
- * could only tighten it (#1211).
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
 /**
  * Pages the grid one month in `direction`, and settles on `target`'s heading.
  *
@@ -495,13 +451,6 @@ async function goToBarnWideMonth(page: Page): Promise<void> {
 async function pickDay(page: Page, date: string): Promise<void> {
   await dayCell(page, date).click()
   await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that
- *  cannot exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
 /**
@@ -583,7 +532,7 @@ test.describe('#1021 start time shifts the shading', () => {
   test('manager_shifting_the_start_time_from_an_early_hour_to_a_late_one_shifts_a_days_shading @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     // A day with nothing within 3 days of it in either direction, so the day the form has
     // *selected* is provably not the day whose shading moves.
@@ -642,7 +591,7 @@ test.describe('#1019 appointment dots', () => {
   test('manager_a_future_day_with_the_selected_horses_own_appointment_shows_a_conflict_dot @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await selectHorse(page, apple)
     await waitForScheduleShading(page, shiftLessonDay, 'high')
@@ -693,7 +642,7 @@ test.describe.serial('#1147 barn-wide appointment', () => {
   test('manager_a_barn_wide_appointment_dots_a_day_for_a_horse_it_never_names @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToBarnWideMonth(page)
     await selectHorse(page, apple)
     await waitForScheduleShading(page, barnWideNeighbourDay, 'moderate')
@@ -713,7 +662,7 @@ test.describe.serial('#1147 barn-wide appointment', () => {
       // No `horseIds` — addExpense reads that as `appliesToAllHorses: true`.
     })
 
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToBarnWideMonth(page)
     await selectHorse(page, apple)
     await conflictDot(page, barnWideDay).waitFor()
@@ -749,7 +698,7 @@ test.describe.serial('#1147 barn-wide appointment', () => {
     const captured = shadingBeforeBarnWideAppointment
     if (!captured) throw new Error('the preceding test did not capture the pre-booking shading')
 
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToBarnWideMonth(page)
     await selectHorse(page, apple)
     await conflictDot(page, barnWideDay).waitFor()
@@ -800,7 +749,7 @@ test.describe.serial('#1147 barn-wide appointment', () => {
  * rider names — built from the fixtures rather than transcribed.
  */
 async function openPastMonthWithAppleSelected(page: Page): Promise<GridCell[]> {
-  await openNewLessonForm(page)
+  await openNewLessonForm(page, barn)
   await goToMonth(page, 'Previous', pastMonth)
   await selectHorse(page, apple)
   await pickDay(page, pastDay)

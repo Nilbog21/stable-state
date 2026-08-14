@@ -32,10 +32,11 @@
 // checklist-phase3-calendar-shading.spec.ts (#1462) owns the grid, the greyed past, the rider
 // tint, the exertion shading and the conflict dot; checklist-phase3-calendar-appointments.spec.ts
 // (#1463) owns the start-time shift, the appointment dots and the past day. Every locator,
-// barrier and driver below is copied from those two rather than re-derived, file-locally and on
-// purpose: `e2e/support/**` is in `scripts/select-specs.sh`'s `ALWAYS_FULL`, so hoisting a shared
-// helper there would force `mode=full` on every future diff touching it and take the fleet-wide
-// suite mutex for nothing.
+// barrier and driver below is copied from those two rather than re-derived. The New Lesson form's
+// shared drive vocabulary (`openNewLessonForm`, `selectHorse`, `BARRIER_TIME`) was hoisted into
+// `e2e/support/lesson-form.ts` on 2026-08-14, accepting that `e2e/support/**` is in
+// `scripts/select-specs.sh`'s `ALWAYS_FULL` and that a diff touching it forces `mode=full` and
+// takes the fleet-wide suite mutex; everything else below stays file-local.
 //
 // THREE OF THOSE COPIES CARRY CORRECTIONS PAID FOR THE HARD WAY. Do not "simplify" them back:
 //
@@ -93,7 +94,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
+import { BARRIER_TIME, openNewLessonForm, selectHorse } from './support/lesson-form'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { getMonthGrid, shiftMonth } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
@@ -141,20 +142,10 @@ function panelLineFor(horseName: string, riderName: string): RegExp {
   return new RegExp(`^${PANEL_LESSON_TIME_12H}\\s*Lesson — ${horseName}, ${riderName}$`)
 }
 
-/**
- * The time `openNewLessonForm` fills to prove React has taken the form over.
- *
- * ITS MINUTES MUST NOT BE `:00`: `LessonStartTime` initialises `time` to the top of the barn's
- * *current* hour on the server too, so a barrier time of `10:00` would already match whenever the
- * suite runs during the barn's 10:00–10:59 hour and the barrier would resolve having proved
- * nothing. Stated in full by checklist-phase3-calendar-shading.spec.ts, which is where the chain
- * of citations bottoms out — #1372 itself is about a *timeout tier* (a bare `toHaveCount` running
- * on expect's 5s default) and did not measure this.
- *
- * Its HOUR is separately load-bearing: `computeDayDecorations` centres its ±3-day exertion window
+/*
+ * BARRIER_TIME's HOUR is separately load-bearing: `computeDayDecorations` centres its ±3-day exertion window
  * on `${date}T${hour}`, and the fixture table below is written against hour 10.
  */
-const BARRIER_TIME = '10:37'
 
 /**
  * `expect.poll` and web-first matchers run on expect's own 5s default, which `test.slow()` does
@@ -352,10 +343,6 @@ function exhaustionBarButton(page: Page, horse: Horse): Locator {
   return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
 }
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
 // ---------------------------------------------------------------------------
 // Reading the grid
 // ---------------------------------------------------------------------------
@@ -509,36 +496,6 @@ function luminanceOf({ r, g, b }: Painted): number {
 // ---------------------------------------------------------------------------
 
 /**
- * Opens the form and blocks until React has taken it over.
- *
- * Waiting for `#lesson-start-time` to appear would prove nothing: since #1021 the day panel is
- * `dayPanelAlwaysOpen`, so that input is in the SERVER-rendered HTML and every interaction after
- * it would race hydration — a click dispatched before React is listening is simply lost and
- * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
- * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write.
- *
- * The drive is a `fill` of a fixed time, so re-entering it is idempotent — the property
- * `hydrateByDriving` needs to retry safely.
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
-/**
  * Pages the grid one month in `direction`, and settles on `target`'s heading.
  *
  * A plain click, deliberately NOT `hydrateByDriving`: the month buttons are *monotonic*, not
@@ -569,13 +526,6 @@ async function goToFixtureMonth(page: Page): Promise<void> {
 async function pickDay(page: Page, date: string): Promise<void> {
   await dayCell(page, date).click()
   await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that cannot
- *  exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
 /**
@@ -662,7 +612,7 @@ test.describe('The day panel below the grid', () => {
   test('manager_tapping_a_day_with_a_lesson_lists_that_days_items_in_the_day_panel @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await pickDay(page, panelDay)
 
@@ -677,7 +627,7 @@ test.describe('The day panel below the grid', () => {
   test('manager_the_day_panel_shows_each_items_time_in_12_hour_am_pm_format @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await pickDay(page, panelDay)
 
@@ -698,7 +648,7 @@ test.describe('The day panel below the grid', () => {
   // first and breaking the rider name fails the second — but neither catches anything the other
   // misses, so do not read the pair as two independent guarantees.
   test('manager_the_day_panel_shows_each_items_horse_names @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await pickDay(page, panelDay)
 
@@ -708,7 +658,7 @@ test.describe('The day panel below the grid', () => {
   })
 
   test('manager_the_day_panel_shows_each_items_rider_names @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await pickDay(page, panelDay)
 
@@ -734,7 +684,7 @@ test.describe('The day panel below the grid', () => {
   test('manager_tapping_a_day_with_nothing_on_it_reads_nothing_scheduled_for_this_day @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     await pickDay(page, highLessonDay)
     await expect(dayPanelItems(page)).toHaveCount(1, { timeout: SCHEDULE_FETCH_BUDGET })
@@ -761,7 +711,7 @@ test.describe('Selecting a day and paging the grid', () => {
   // The post-tap form is an equality over the whole grid, so a ring left behind on the previously
   // selected day fails here too.
   test('manager_tapping_a_day_rings_it_and_takes_it_as_the_lessons_date @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     expect(ringedDates(await readGrid(page))).not.toContain(selectDay)
 
@@ -776,7 +726,7 @@ test.describe('Selecting a day and paging the grid', () => {
   // at. Both expectations come from `month-calendar.ts`/`local-day.ts` applied to the month the
   // form opened on, so neither is a transcription.
   test('manager_tapping_next_month_advances_the_grid_one_month @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     const openingMonth = barnToday(barn.data.barn.timezone).slice(0, 7)
     // `fixtureMonth` is frozen at seed time while this is read per test, so a suite run that
     // crosses barn-local midnight on a month's last day would leave every other test in this file
@@ -801,7 +751,7 @@ test.describe('Selecting a day and paging the grid', () => {
   // The settle is `highLessonDay` at `high`: `low` is what every day reads before the fetch lands,
   // so waiting on it would be satisfied by the un-fetched state (`waitForScheduleShading`).
   test('manager_the_advanced_months_grid_is_shaded_by_that_months_lessons @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectHorse(page, apple)
     await goToFixtureMonth(page)
     await waitForScheduleShading(page, highLessonDay, 'high')
@@ -833,7 +783,7 @@ test.describe('Selecting a day and paging the grid', () => {
   // default holds and this is correct today — and if a dark project is ever added it FAILS rather
   // than passing vacuously, which is the safe direction for a fragility to point.
   test('manager_a_day_carried_in_from_the_neighbouring_month_renders_dimmed @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     const cells = await readGrid(page)
 
@@ -852,7 +802,7 @@ test.describe('Selecting a day and paging the grid', () => {
   // page the grid — `handleDayTap` never touches `month` — so the same cell is still at index 41
   // when the post-tap grid is read.
   test('manager_a_dimmed_neighbouring_month_day_is_still_selectable @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     const before = await readGrid(page)
     const outside = before[GRID_CELLS - 1]
@@ -884,7 +834,7 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
   test('manager_the_day_panel_does_not_cover_the_first_row_day_that_opened_it @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await goToFixtureMonth(page)
     const cells = await readGrid(page)
     const firstRowDay = cells.findIndex((c) => !c.outside)
@@ -919,7 +869,7 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
   test('manager_a_horses_exhaustion_bar_and_its_calendar_shading_share_one_hue_per_band @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await selectHorse(page, apple)
     await page.locator(`#exertion_${apple.id}`).fill('1')
     await expect(page.locator(`#exertion_${apple.id}`)).toHaveValue('1')
@@ -971,7 +921,7 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
 // file. The two lines are near-duplicates and one of them should probably go, but re-verdicting a
 // checklist line is #1413's call and not this slice's — see this issue's `## Follow-ups`.
 test('manager_checking_recurring_relabels_the_month_calendars_own_field_label @manager', async ({ page }) => {
-  await openNewLessonForm(page)
+  await openNewLessonForm(page, barn)
   // `span[1]` rather than a bare `preceding-sibling::span`: unambiguous today, since the picker's
   // outer flex column holds exactly the label span and then the bordered box — but a second span
   // added ahead of the box would turn this into a strict-mode violation rather than a clean miss.

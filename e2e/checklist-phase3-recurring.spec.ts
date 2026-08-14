@@ -60,10 +60,16 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier } from './support/fixtures'
-import { hydrateByDriving } from './support/hydration'
 import { detailHeader, lessonCards } from './support/lesson-pages'
+import {
+  editFormSelection,
+  openNewLessonForm,
+  selectHorse,
+  selectTier,
+  submitNewLesson,
+} from './support/lesson-form'
 import { mustSucceed } from '@/lib/db/service-role'
-import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
+import { barnToday } from '@/lib/barn-timezone'
 import { addDays, calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
 import type { CalendarDate, Horse, LessonTier } from '@/lib/db/types'
 
@@ -107,14 +113,6 @@ const STOP_SERIES_BUTTON = 'Stop Recurring Lessons'
  * stop test's comment; the full statement is framework fact 14.
  */
 const STOP_SERIES_REDIRECT_STATUS = 303
-
-/**
- * Barn-local wall clock typed into the start-time field purely as a hydration barrier. Its minutes
- * must not be `:00`: `LessonStartTime` defaults `time` to the top of the barn's current hour and
- * runs that initializer on the server too, so an `HH:00` barrier already matches for one hour a
- * day, the fill is never dispatched, and the barrier resolves having proved nothing.
- */
-const BARRIER_TIME = '10:37'
 
 let beginner: LessonTier
 let apple: Horse
@@ -160,10 +158,6 @@ const barn = withBarn('phase3-recurring', async ({ supabase, barn: seeded, membe
 // ---------------------------------------------------------------------------
 // Paths and locators
 // ---------------------------------------------------------------------------
-
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
 
 function detailPath(lessonId: string): string {
   return `/barn/${barn.slug}/lessons/${lessonId}`
@@ -236,42 +230,6 @@ function seriesBlock(page: Page): Locator {
 // ---------------------------------------------------------------------------
 
 /**
- * Opens the New Lesson form and blocks until React has taken it over.
- *
- * Every control this file touches afterwards is React-controlled — the recurring checkbox, the
- * tier `<select>`, the horse checkboxes, the rider `<select>` and the calendar's day buttons all
- * read from `useState` — so a click landing before hydration is either lost outright or is
- * overwritten the moment React reconciles (facts 9 and 10). Waiting on `#lesson-start-time` to
- * merely *exist* would prove nothing: since #1021 the day panel is `dayPanelAlwaysOpen`, so that
- * input is in the server-rendered HTML. The barrier therefore waits on the hidden `lesson_at`
- * input carrying the combination of the barn's today and the time just entered, which only
- * client-side `LessonStartTime` can write.
- *
- * `test.slow()` rather than a number on any wait: every `waitFor*` is unbounded already, so a
- * number could only tighten it (fact 1). Body and reasoning from
- * checklist-phase3-lesson-fees.spec.ts's `openNewLessonForm`.
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(
-    `${barnToday(timezone)}T${BARRIER_TIME}:00`,
-    timezone
-  ).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
-/**
  * Ticks **Recurring (weekly)**, settling on the hidden field the form actually submits rather than
  * on the checkbox's own `checked` state — `is_recurring` is what `submitLesson` branches on, so a
  * checkbox whose change handler stopped writing it would still settle if the settle read the box.
@@ -279,12 +237,6 @@ async function openNewLessonForm(page: Page): Promise<void> {
 async function checkRecurring(page: Page): Promise<void> {
   await recurringCheckbox(page).check()
   await expect(page.locator('input[name="is_recurring"]')).toHaveValue('true')
-}
-
-/** Picks a named tier, settling on the `<select>`'s own value. */
-async function selectTier(page: Page, tierId: string): Promise<void> {
-  await page.locator('#tier_name').selectOption(tierId)
-  await expect(page.locator('#tier_name')).toHaveValue(tierId)
 }
 
 /**
@@ -306,33 +258,6 @@ async function pickTargetDay(page: Page): Promise<void> {
   }
   await page.getByRole('button', { name: targetDay, exact: true }).click()
   await page.getByText(formatCalendarDate(targetDay), { exact: true }).waitFor()
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that cannot
- *  exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
-}
-
-/**
- * Submits the New Lesson form and waits out the redirect to the Lessons list.
- *
- * Keyboard activation rather than a pointer click: the submit sits at the bottom of a long
- * scrollable form, the shape #501 (04c64505) diagnosed, where Chromium's scroll-into-view
- * animation races Playwright's actionability check. `exact: true` because `getByRole`'s name match
- * is a case-insensitive substring and the button relabels itself to "Submitting…" while pending.
- *
- * The `waitForURL` cannot no-op (fact 3) — the pattern excludes the `/lessons/new` it is called
- * from — and it doubles as the "it saves" half of the create checkbox: `submitLesson` re-renders
- * the form with a `role="alert"` and no navigation on every failure path, and only redirects on
- * success.
- */
-async function submitNewLesson(page: Page): Promise<void> {
-  const submit = page.getByRole('button', { name: 'Submit', exact: true })
-  await submit.focus()
-  await submit.press('Enter')
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 }
 
 /**
@@ -360,40 +285,6 @@ async function openEditFormForOnlyLesson(page: Page): Promise<string> {
 }
 
 /**
- * What the created lesson's edit form holds, as one object.
- *
- * Read together and asserted as a single `toEqual` because the checkbox is a conjunction — "dated
- * 7 days out … Beginner tier, trainer Alex, horse Apple, rider Dana" is five claims about one
- * lesson, and splitting them would let four pass while the fifth silently named a different
- * lesson.
- *
- * Called inside `expect.poll`, which is what makes the composite safe: every member read here is
- * **one-shot**. `inputValue()` and `getAttribute()` do not retry once they have an element, and
- * `evaluateAll` does not retry at all — it yields `[]` on an unsettled page, which is rule 3's
- * pass-on-nothing hazard. The poll re-reads the whole object instead. Body from
- * checklist-phase3-lesson-fees.spec.ts's `editFormSelection`.
- *
- * `aria-pressed` is safe to read here — the server and the client compute it from the same
- * `initialLesson` prop, so fact 7's non-reconciliation has no mismatch to preserve, and nothing on
- * this page ever changes the selected day.
- */
-async function editFormSelection(page: Page) {
-  return {
-    day: await page.locator('button[data-past][aria-pressed="true"]').getAttribute('aria-label'),
-    tier: await page.locator('#tier_name').inputValue(),
-    instructor: await page.locator('#instructor_id').inputValue(),
-    horses: await page
-      .locator('input[name="horse_id"]')
-      .evaluateAll((els) =>
-        els
-          .filter((el) => (el as HTMLInputElement).checked)
-          .map((el) => (el as HTMLInputElement).value)
-      ),
-    rider: await page.locator('#rider_id').inputValue(),
-  }
-}
-
-/**
  * Whether this barn's one series is still running, read service-role.
  *
  * A **precondition** read and never an expected answer: the badge-kept test asserts what the page
@@ -417,7 +308,7 @@ async function seriesIsActive(): Promise<boolean> {
 
 test.describe('New Lesson — the Recurring (weekly) checkbox and the date field', () => {
   test('checking_recurring_relabels_the_date_field_to_starting_date @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await recurringCheckbox(page).check()
 
     await expect(dateFieldLabel(page)).toHaveText(STARTING_DATE_LABEL)
@@ -427,7 +318,7 @@ test.describe('New Lesson — the Recurring (weekly) checkbox and the date field
   // satisfied by a label that never changed, so without proving the label moved first this would
   // pass against a checkbox whose handler had been dropped entirely.
   test('unchecking_recurring_reverts_the_date_field_label_to_date @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await recurringCheckbox(page).check()
     await expect(dateFieldLabel(page)).toHaveText(STARTING_DATE_LABEL)
 
@@ -448,7 +339,7 @@ test.describe('New Lesson — the Recurring (weekly) checkbox and the date field
   // and hand back a degenerate box — an `above` comparison against a zero-height box would be
   // decided by nothing.
   test('the_recurring_checkbox_sits_directly_above_the_date_field @manager', async ({ page }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
 
     const checkbox = recurringCheckbox(page)
     const field = recurringLabel(page).locator('xpath=following-sibling::*[1]')
@@ -483,14 +374,14 @@ test.describe.serial('The recurring lesson — badges, series indicator and Stop
   test('creating_a_recurring_lesson_stores_its_day_tier_instructor_horse_and_rider @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await checkRecurring(page)
     await selectTier(page, beginner.id)
     await pickTargetDay(page)
     await page.locator('#instructor_id').selectOption(trainerMembershipId)
     await selectHorse(page, apple)
     await page.locator('#rider_id').selectOption(riderMembershipId)
-    await submitNewLesson(page)
+    await submitNewLesson(page, barn)
 
     createdLessonId = await openEditFormForOnlyLesson(page)
 
