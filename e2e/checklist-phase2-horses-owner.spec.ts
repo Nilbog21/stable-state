@@ -8,23 +8,29 @@
 // of Eclipse's Access section — granting Dana, promoting her to owner, and #1069's
 // auto-elevation of her Documents and lesson-access columns as a consequence of that promotion.
 //
-// The second `covers:` glob is not decoration: the Add Horse form is `NavigationBlocker`'s
-// `GuardedForm`, so a change there breaks the first test in this file and nothing else in it.
-// The grant/owner writes go through `horses/[id]/actions.ts`, which the first glob already
-// names.
+// The second `covers:` glob is not decoration: the inline Add Horse form is `NavigationBlocker`'s
+// `GuardedForm`, and `HorseManagerForm` reaches into the same module for
+// `useUnsavedChangesGuard` — a guard regressed to always-dirty would intercept the card click in
+// `openHorse` and take every test here with it. The grant/owner writes go through
+// `horses/[id]/actions.ts`, which the first glob already names.
 //
 // **This file is what proves the app produces the state slice 3 (#1454) starts from.** #1454
-// reseeds Dana-as-owner by calling `set_horse_owner` directly; here the promotion is driven
-// through the Access table, which is the only UI-driven path to it in the suite. That is why
-// the two `(#1069)` items below are not narrowed into a `member_horse_privileges` read: their
-// whole claim is that the *page* shows the elevated values without the tester having tapped
-// them.
+// reseeds Dana-as-owner by calling `set_horse_owner` directly; here the whole chain — grant a
+// rider through the Access table, then promote her — is driven through the UI. That is why the
+// two `(#1069)` items below are not narrowed into a `member_horse_privileges` read: their whole
+// claim is that the *page* shows the elevated values without the tester having tapped them.
 //
 // Adjacent prior art, not a duplicate of it: checklist-phase4-horses-detail.spec.ts owns the
 // Horse Settings form's rename/threshold/registered-name round trips and the Access table's
-// progressive-enhancement checks, against horses seeded by `addHorse`. Nothing there creates a
-// horse through the UI, and nothing there promotes an owner. The one overlap is that both files
-// open accordions, which is why each keeps its own local landing helpers.
+// progressive-enhancement checks, against horses seeded by `addHorse`. It *does* tap Set as
+// Owner — `setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list` — so the
+// distinction is not that this file promotes an owner and that one doesn't. It is who, from
+// what, and what is asserted: there, the manager promotes *himself* off a directly-seeded
+// `member_horse_privileges` row, and the claim is that My Horses sorts to the top of the horses
+// list. Here, a *rider* is granted through the Access table's own form first, and the claim is
+// #1069's auto-elevation of the columns nobody tapped. Nothing there creates a horse through the
+// UI at all. The one mechanical overlap is that both files open accordions, which is why each
+// keeps its own local landing helpers.
 //
 // ## Two narrowed checklist lines, and why (#1453)
 //
@@ -112,8 +118,12 @@ const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.las
  * Named rather than inlined because two of the checklist items are *column* claims — "Dana's row
  * carries an **Owner** column showing **Set as Owner**", "**Write** selected in the
  * **Documents** column" — so which cell the value came out of is part of what is being asserted.
- * `accessColumns` reads the header row back in the same test that uses an index, which is what
- * keeps these numbers honest.
+ *
+ * `a_granted_riders_row_offers_set_as_owner` is the one test that reads the header row back
+ * alongside a cell, and it is what pins these numbers to the table: it runs before every other
+ * indexed read in the serial chain, so a column that moved fails there rather than silently
+ * feeding the wrong cell to the tests after it. The tests below it index positionally on that
+ * guarantee rather than re-establishing it.
  */
 const OWNER_COLUMN = 1
 const DOCUMENTS_COLUMN = 2
@@ -288,9 +298,14 @@ async function rowState(row: Locator) {
 //
 // Serial, and ordered: every test below reads state an earlier one produced through the UI, which
 // is what makes this slice the proof that the app *reaches* the state #1454 reseeds. Under
-// `fullyParallel: false` declaration order is run order, and a failure anywhere restarts the
-// worker and re-seeds an empty barn (fact 15) — so the first ✘ here is the finding and every
-// test below it is running against a barn with no horses in it at all.
+// `fullyParallel: false` declaration order is run order.
+//
+// `describe.serial` is what contains fact 15 here rather than merely surviving it, the same way
+// checklist-phase6-cancellation.spec.ts uses it: on a failure Playwright discards the worker and
+// re-runs `beforeAll`, which would re-seed a barn with no horses in it — but a serial block mass-
+// skips its remaining tests instead of running them, so no test below ever executes against that
+// re-seeded barn. A failing run therefore reads as one ✘ plus N "did not run", and the ✘ is the
+// finding.
 
 test.describe.serial('Horses — creation, unavailability, and the Access table', () => {
   test('adding_three_horses_through_the_inline_form_lists_all_three @manager', async ({ page }) => {
@@ -335,16 +350,20 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
   test('the_horses_list_shows_an_unavailable_horse_with_its_reason @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/horses`)
 
-    // One settled read of the card's own text, then three independent claims about it, so a run
-    // that lost only the reason names which of the three went missing rather than failing on an
-    // opaque string comparison. The locator is section-scoped, which is how "under My Horses"
-    // is asserted rather than merely narrated.
+    // One settled read of the card's own text, then the two claims the item makes about it, so a
+    // run that lost only the reason names which one went missing rather than failing on an opaque
+    // string comparison.
+    //
+    // The other two thirds of the item are carried by the locator rather than by a key here: it
+    // is section-scoped, which is how "under My Horses" is asserted rather than merely narrated,
+    // and it filters on the horse's name, which is why there is no `name:` key — a card that
+    // came back from a `hasText: DAISY` filter contains DAISY by construction, so asserting it
+    // would restate the locator and no mutant could ever kill it.
     const card = (await settledInnerTexts(horseCardIn(page, 'My Horses', DAISY)))[0]
     expect({
-      name: card.includes(DAISY),
       badge: card.includes('Unavailable'),
       reason: card.includes(THROWN_SHOE),
-    }).toEqual({ name: true, badge: true, reason: true })
+    }).toEqual({ badge: true, reason: true })
   })
 
   test('granting_a_rider_access_adds_them_to_the_grants_list @manager', async ({ page }) => {
