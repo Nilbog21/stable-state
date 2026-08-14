@@ -57,14 +57,14 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: manager_a_horses_exhaustion_bar_and_its_calendar_shading_share_one_hue_per_band) (#1019) The exhaustion bar under a horse's checkbox is the same amber/red **hue family** as that horse's calendar shading — not the same shade: `src/lib/band-colors.ts` paints a saturated bar (`amber-500`/`red-500`) and a background wash (`amber-200`/`red-300`) and pins only the hue per band
 - [ ] (e2e: manager_checking_recurring_relabels_the_month_calendars_own_field_label) (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
 - [ ] (e2e: manager_add_event_uses_a_plain_native_date_box_and_no_month_calendar) (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
-- [ ] (e2e-candidate) Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
-- [ ] (e2e-candidate) On any lesson form, set the fee to `0` — the Payment Type field disappears
-- [ ] (e2e-candidate) Raise the fee back above `0` — the Payment Type field reappears
-- [ ] (e2e-candidate) Daisy (Unavailable) appears **disabled** in the horse picker
-- [ ] (e2e-candidate) Check one horse — it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked)
-- [ ] (e2e-candidate) Daisy is sorted last in that list
-- [ ] (e2e-candidate) Set the date/start time to the past — no bars render
-- [ ] (e2e-candidate) Set the date/start time back to the future — the bars reappear
+- [ ] (e2e: group_lesson_horse_picker_legend_reads_select_at_least_one) Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
+- [ ] (e2e: setting_the_fee_to_zero_removes_the_payment_type_field) On any lesson form, set the fee to `0` — the Payment Type field disappears
+- [ ] (e2e: raising_the_fee_above_zero_restores_the_payment_type_field) Raise the fee back above `0` — the Payment Type field reappears
+- [ ] (e2e: an_unavailable_horse_renders_disabled_in_the_horse_picker) Daisy (Unavailable) appears **disabled** in the horse picker
+- [ ] (e2e: checking_a_horse_moves_it_above_the_unchecked_available_horses) Check one horse — it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked)
+- [ ] (e2e: an_unavailable_horse_sorts_below_every_available_horse) Daisy sorts below every available horse, in the unavailable group at the bottom (the seed's Hazel shares that group and both carry no lessons, so which of the two is literally last is a tie-break rather than a rule)
+- [ ] (e2e: a_past_start_instant_renders_no_exhaustion_bars) Set the date/start time to the past — no bars render
+- [ ] (e2e: returning_the_start_instant_to_the_future_restores_the_exhaustion_bars) Set the date/start time back to the future — the bars reappear
 - [ ] (e2e: checking_recurring_relabels_the_date_field_to_starting_date) Check **Recurring (weekly)** — the Date field label changes to "Starting Date"
 - [ ] (e2e: unchecking_recurring_reverts_the_date_field_label_to_date) Uncheck **Recurring (weekly)** — the Date field label reverts
 - [ ] (e2e: the_recurring_checkbox_sits_directly_above_the_date_field) The **Recurring (weekly)** checkbox sits directly above the date field
@@ -77,11 +77,11 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: stopping_the_series_removes_the_recurring_series_indicator_on_reload) Confirm and click **Stop Recurring Lessons** — the "part of a recurring series" indicator is gone on reload
 - [ ] (e2e: the_stopped_series_edit_page_shows_no_stop_recurring_lessons_button) The **Stop Recurring Lessons** button is gone on that same reload
 - [ ] (e2e: the_stopped_lesson_keeps_its_recurring_badge_on_its_detail_page) The lesson itself keeps its **Recurring** badge after stopping
-- [ ] (e2e-candidate) Open Willow's seeded upcoming lesson's edit page — Willow (inactive) still appears checked
-- [ ] (e2e-candidate) Willow is sorted first in that list
-- [ ] (e2e-candidate) Willow still shows its exhaustion bar there
-- [ ] (e2e-candidate) Uncheck Willow — it moves to the bottom of the list (grouped with Unavailable)
-- [ ] (e2e-candidate) Willow's bar disappears once unchecked
+- [ ] (e2e: an_inactive_horse_on_its_lessons_edit_page_is_still_checked) Open Willow's seeded upcoming lesson's edit page — Willow (inactive) still appears checked
+- [ ] (e2e: the_checked_inactive_horse_sorts_first_in_the_edit_pages_picker) Willow is sorted first in that list
+- [ ] (e2e: the_checked_inactive_horse_still_renders_its_exhaustion_bar) Willow still shows its exhaustion bar there
+- [ ] (e2e: unchecking_the_inactive_horse_moves_it_to_the_bottom_of_the_picker) Uncheck Willow — it moves to the bottom of the list (grouped with Unavailable)
+- [ ] (e2e: unchecking_the_inactive_horse_removes_its_exhaustion_bar) Willow's bar disappears once unchecked
 
 *(Dropped the manual "create a Custom-tier lesson" step from the original goals — that's now covered by #950's seed addition instead.)*
 
