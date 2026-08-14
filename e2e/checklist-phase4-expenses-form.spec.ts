@@ -207,13 +207,10 @@ let yesterdayStr = ''
  * A comfortably future day, for the planned expense this file creates through the form: **the
  * 5th of the month after the barn's today**.
  *
- * The form defaults its Date to the barn's today, and that is not far enough ahead: the card's
- * own isExpensePastDue builds its due instant as `expense_date + 'T23:59:59.999Z'` — UTC-framed,
- * against a date chosen in the *barn's* frame — so a today-dated unamounted expense already
- * reads Past Due in any barn west of UTC. The 5th of next month is never fewer than five days
- * out (worst case: today is the last day of its month), which clears that gap by a full day
- * either way and is what "planned" means in the first place. (#1194's planned fixture sits at +5
- * for the same reason.)
+ * The form defaults its Date to the barn's today, which is not what "planned" means and is not
+ * far enough ahead either: a today-dated unamounted expense turns Past Due at the barn's own
+ * midnight (#1481), so a run crossing it would put a badge in the very <p> the planned-expense
+ * test reads. Any comfortably future day settles that; which future day is decided below.
  *
  * **Next month rather than today + 5, and that is the point rather than a detail (#1283).** A
  * relative +5 sat inside the picker's own 42-cell window on all but one calendar date — day 31
@@ -241,12 +238,11 @@ let fixtureMonth = ''
 
 /**
  * How the three days above are built, lifted to constants so the guard below can assert them
- * rather than restate them. See each day's own note for why its value is what it is; neither
- * `plannedDayStr`'s next-month framing nor its five-day floor is free.
+ * rather than restate them. See each day's own note for why its value is what it is;
+ * `plannedDayStr`'s next-month framing in particular is not free.
  */
 const YESTERDAY_OFFSET = -1
 const PLANNED_DAY_OF_MONTH = '05'
-const MIN_PLANNED_LEAD_DAYS = 5
 
 /**
  * The days of `fixtureMonth` the calendar fixtures sit on. Spaced two apart rather than packed,
@@ -290,7 +286,7 @@ function calendarDay(key: keyof typeof CALENDAR_DAYS_OF_MONTH): string {
  * `todayStr` would leave `setting_the_date_to_yesterday_hides_the_time_field` asserting the
  * *absence* of a field that was never going to leave — green, and vacuous. Likewise a
  * `plannedDayStr` that stopped being future would put a Past Due badge into the very <p>
- * `leaving_the_amount_blank_saves_a_planned_expense` reads.
+ * `leaving_the_amount_blank_saves_a_planned_expense` reads (#1481).
  *
  * Grid *containment* is deliberately not asserted here, and that is the point of the #1283 fix
  * rather than an omission: `tapDay` now pages the picker to the requested day's own month, so a
@@ -328,12 +324,6 @@ function assertDayPinArithmetic(): void {
       `plannedDayStr is ${plannedDayStr}, expected day ${PLANNED_DAY_OF_MONTH} of the month after ` +
         `${todayStr.slice(0, 7)}. Inside today's own month it stops driving tapDay's month alignment ` +
         'on every run, which is the only thing that keeps that alignment from being dead code.'
-    )
-  }
-  if (new Date(`${plannedDayStr}T00:00:00Z`).getTime() < shift(MIN_PLANNED_LEAD_DAYS)) {
-    problems.push(
-      `plannedDayStr is ${plannedDayStr}, under the ${MIN_PLANNED_LEAD_DAYS}-day lead ${todayStr} needs ` +
-        "to clear ExpenseCard's UTC-framed Past Due window"
     )
   }
   if (!(yesterdayStr < todayStr && todayStr < plannedDayStr)) {
@@ -451,11 +441,17 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }
     })
   }
 
+  // Carries a payment type despite having no amount yet, which is the only reason to state it on
+  // an otherwise-planned fixture: the test below fills the amount in and then asserts the amount
+  // <p> with full-string equality, and an expense missing *either* half is outstanding (#1481). At
+  // day 0 that turns Past Due the moment the run crosses the barn's midnight. Seeded rather than
+  // set through the form, so the assertion stays about the amount.
   plannedFillable = await addExpense(supabase, barn, {
     at: daysFromNow(0, barn.timezone),
     recipient: PLANNED_FILLABLE_RECIPIENT,
     expenseType: 'Hay',
     horseIds: [apple.id],
+    paymentType: 'check',
   })
 
   // Two unamounted expenses rather than one, so the test that *reads* the confirmation page and
@@ -498,12 +494,15 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn, members }
     horseIds: [apple.id],
     amount: RECIPIENT_EDIT_AMOUNT,
   })
+  // Paid, for plannedFillable's reason: its edited amount is asserted with full-string equality,
+  // and a day-0 expense with no payment type badges once the barn's midnight passes (#1481).
   amountEdit = await addExpense(supabase, barn, {
     at: daysFromNow(0, barn.timezone),
     recipient: AMOUNT_EDIT_RECIPIENT,
     expenseType: 'Grain',
     horseIds: [apple.id],
     amount: AMOUNT_EDIT_AMOUNT,
+    paymentType: 'check',
   })
   payEdit = await addExpense(supabase, barn, {
     at: daysFromNow(0, barn.timezone),
@@ -858,7 +857,7 @@ test('the_autofilled_expense_type_field_flashes @manager', async ({ page }) => {
 // date line is /./ because its value belongs to #1194's block, not this one.
 //
 // The date is moved off the form's today default to plannedDayStr — see that constant for why a
-// today-dated unamounted expense renders a Past Due badge into the very <p> this asserts on.
+// today-dated unamounted expense can render a Past Due badge into the very <p> this asserts on.
 test('leaving_the_amount_blank_saves_a_planned_expense @manager', async ({ page }) => {
   await page.goto(newExpensePath())
   await hydrateExpenseForm(page)

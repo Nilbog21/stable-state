@@ -3,8 +3,17 @@ import { Badge } from '@/components/ui/Badge'
 import type { ExpenseWithHorses } from '@/lib/db/types'
 import { formatExpenseDate, formatExpenseTime, formatExpenseAmount, formatExpenseHorses, isExpensePastDue } from '@/lib/format-expense'
 
-export function ExpenseCard({ expense, slug, now }: { expense: ExpenseWithHorses; slug: string; now?: number }) {
-  const pastDue = isExpensePastDue(expense, now ?? new Date().getTime())
+export function ExpenseCard({
+  expense,
+  slug,
+  nowWall,
+}: {
+  expense: ExpenseWithHorses
+  slug: string
+  /** The barn's own wall clock, minted once by the page — see isExpensePastDue (#1481). */
+  nowWall: string
+}) {
+  const pastDue = isExpensePastDue(expense, nowWall)
 
   return (
     <Card href={`/barn/${slug}/expenses/${expense.id}`} className="p-4">

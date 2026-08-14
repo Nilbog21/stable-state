@@ -154,6 +154,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: an_expense_card_shows_its_expense_type) That card shows its expense type
 - [ ] (e2e: an_expense_card_shows_its_horses_or_entire_barn) That card shows its horse(s), or "Entire Barn"
 - [ ] (e2e: an_expense_card_shows_its_amount) That card shows its amount
+- [ ] (e2e: a_past_dated_amounted_expense_with_no_payment_type_shows_past_due) (#1481) A past-dated expense that has an amount but no payment type shows the amber **Past Due** badge beside that amount; one with both shows no badge
 - [ ] (e2e: the_list_splits_recent_expenses_from_older_ones) The list is split into a recent and an older group
 - [ ] (e2e: show_older_expenses_toggle_reveals_the_older_group) The older group is revealed by the **Show older expenses** toggle
 - [ ] (e2e: a_future_dated_planned_expense_with_no_amount_appears_in_the_list) At least one future-dated planned expense with no amount appears in the list

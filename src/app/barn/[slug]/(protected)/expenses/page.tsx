@@ -1,5 +1,6 @@
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpensesByBarn } from '@/lib/db/expenses'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/EmptyState'
 import { ExpenseCard } from './ExpenseCard'
@@ -19,6 +20,11 @@ export default async function ExpensesPage({
 
   // getTime/setTime rather than getDate/setDate: a day offset on a real instant is
   // zone-free, and reading the calendar field would resolve it in the host's zone (#1222).
+  // Minted once here and threaded down: the Past Due badge compares against the *barn's* wall
+  // clock (#1481), and the only other place that could compute it is a client component, where
+  // it would resolve in the viewer's zone instead.
+  const nowWall = instantToLocalWallClock(new Date(), barn.timezone)
+
   const cutoff = new Date()
   cutoff.setTime(cutoff.getTime() - OLDER_EXPENSE_CUTOFF_DAYS * 24 * 60 * 60 * 1000)
   const recentExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) >= cutoff)
@@ -44,11 +50,11 @@ export default async function ExpensesPage({
           {recentExpenses.length > 0 && (
             <div className="mt-6 flex flex-col gap-2">
               {recentExpenses.map((expense) => (
-                <ExpenseCard key={expense.id} expense={expense} slug={slug} />
+                <ExpenseCard key={expense.id} expense={expense} slug={slug} nowWall={nowWall} />
               ))}
             </div>
           )}
-          <OlderExpensesToggle expenses={olderExpenses} slug={slug} />
+          <OlderExpensesToggle expenses={olderExpenses} slug={slug} nowWall={nowWall} />
         </>
       )}
     </main>
