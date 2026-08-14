@@ -102,8 +102,18 @@ const BARRIER_TIME = '10:37'
  * month schedule Server Action behind a `next dev` compile of a route the run may be touching
  * for the first time; 5s is not reliably enough for that under load (#1372 measured exactly
  * that).
+ *
+ * 30s rather than the 20s checklist-phase5-lessons-new.spec.ts uses for the same round trip, and
+ * the extra 10s is #1482's measurement rather than padding: a cold `next dev` compiles the routes
+ * a test visits *inside that test's budget*, measured at ~16.6s of pure compile, and under
+ * full-suite worker contention the two costs compound. This file's every band read settles
+ * through `waitForScheduleShading`, which is doing double duty as the schedule-fetch barrier (see
+ * there), so it is the one assertion here that a cold first paint is positioned to break — and it
+ * is where this spec will eventually run, since a full-suite selection is not this slice's to
+ * choose. Warm, these settles resolve in well under a second, so the headroom costs a passing run
+ * nothing; a genuinely broken fetch never resolves and still fails the test.
  */
-const SCHEDULE_FETCH_BUDGET = 20_000
+const SCHEDULE_FETCH_BUDGET = 30_000
 
 /**
  * Chromium's computed `background-color` for an element with no background painted — the value
