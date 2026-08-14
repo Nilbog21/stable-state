@@ -3,6 +3,7 @@
 // covers: src/app/barn/[slug]/(protected)/nav-active.ts
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 //
 // Phase 2's agreements block, final stretch (checklists/pre-release/phase-2-manager-seeding.md,
 // from "On the lease detail page's charge row, select a **Payment Type**" through "Neither
@@ -10,13 +11,16 @@
 // edits and their transient confirmations, the boarding detail page's nav highlight, End
 // Agreement, and the member-detail agreement card's link.
 //
-// The three nav `covers:` globs are not decoration. Three of the eight checkboxes here are claims
+// The four nav `covers:` globs are not decoration. Three of the eight checkboxes here are claims
 // about which nav entry is highlighted, and that verdict is computed entirely by
 // `nav-active.ts`'s `isNavLinkActive` over `nav-links.ts`'s hrefs, rendered by
-// `DesktopNavLinks`. None of the three sits under the two route globs above — they are files of
+// `DesktopNavLinks` — which renders no anchor itself: it renders `NavigationBlocker.tsx`'s
+// `BlockingLink`, the anchor that carries the `aria-current` this file's `navHighlightMap` reads.
+// None of the four sits under the two route globs above — they are files of
 // `(protected)/` itself — so without their own lines a change to the highlight rule would not
 // select *this* spec. It would still select others: `checklist-phase1-nav-responsive.spec.ts`
-// declares all three, and `smoke.spec.ts`'s `(protected)/**` prefix covers them too. The
+// declares the first three, `checklist-phase2-agreements-detail.spec.ts` all four, and
+// `smoke.spec.ts`'s `(protected)/**` prefix covers them too. The
 // declaration is here because `covers:` states what a spec *drives* — the accuracy rule is
 // per-spec and binds regardless of what any other spec happens to declare.
 //
@@ -262,7 +266,11 @@ const leaseDetailUrl = () => `/barn/${barn.slug}/agreements/${leaseAgreement.id}
 const boardingListUrl = () => `/barn/${barn.slug}/agreements?kind=board`
 const riderDetailUrl = () => `/barn/${barn.slug}/members/${barn.data.members.rider.membershipId}`
 
-/** The href the member detail card renders — deliberately query-less; see the header. */
+/**
+ * The path half of the member detail card's href — since #1502 the card itself carries
+ * `?kind=` (see the header); the card locators below append it, while `atAgreementPage`
+ * matches on the bare path.
+ */
 const memberCardHref = (agreementId: string) => `/barn/${barn.slug}/agreements/${agreementId}`
 
 /** Matched by RegExp rather than a URL glob, the idiom the rest of the suite uses. */
