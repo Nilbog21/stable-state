@@ -326,6 +326,11 @@ test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager',
 // Asserted on the Feed Supplier expense's own day (rather than "today") so this proves
 // the no-scheduled-time exclusion itself, not just that it's absent from an unrelated day.
 test('dashboard_date_only_planned_expense_not_shown @manager', async ({ page }) => {
+  // 15.2s warm — 51% of the 30s default. `goToDaysAhead` walks the day pager four times, and on
+  // a cold server each hop can wait on `next dev` compiling the dashboard route inside the same
+  // budget. Per-test rather than in `goToDaysAhead`: that helper is shared across specs by tests
+  // that run well under 10s, so budgeting it there would over-apply suite-wide (#1482).
+  test.slow()
   await goToDaysAhead(page, barn.slug, 4)
 
   // goToDaysAhead ends on waitForURL(..., { waitUntil: 'commit' }), which resolves before the
@@ -369,6 +374,12 @@ test('dashboard_reminders_header_visible_for_manager @manager', async ({ page })
 })
 
 test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {
+  // 12.9s warm — 43% of the 30s default. This test visits four routes (horses index, horse
+  // detail, the documents section's save round trip, dashboard), so on a cold server it pays
+  // `next dev`'s compile of each inside the same budget. The waitForURL below already documents
+  // that cold-compile lag for one hop; test.slow() is the budget the whole sequence needs. Per
+  // test rather than in `openSection`, which is a shared helper other sub-10s tests call (#1482).
+  test.slow()
   await page.goto(`/barn/${barn.slug}/horses`)
   await page.getByRole('link', { name: /Apollo/ }).first().click()
   // page.waitForURL, not a bare expect(page).toHaveURL: expect's 5s default times out under
@@ -531,6 +542,11 @@ test('dashboard_no_today_link_while_viewing_today @manager', async ({ page }) =>
 // a page-wide text check for "Entire Barn" would pass off any stray copy elsewhere, and
 // "in place of horse names" is a claim about that specific slot.
 test('dashboard_entire_barn_expense_card_shows_entire_barn_instead_of_horses @manager', async ({ page }) => {
+  // 12.8s warm — 43% of the 30s default. `goToDaysAhead` walks the day pager three times, and on
+  // a cold server each hop can wait on `next dev` compiling the dashboard route inside the same
+  // budget. Per-test rather than in `goToDaysAhead`, for the reason given at
+  // dashboard_date_only_planned_expense_not_shown (#1482).
+  test.slow()
   await goToDaysAhead(page, barn.slug, 3)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Barn Supply Co' })
   await expect(expenseLink.locator('p').nth(3)).toHaveText('Entire Barn')
