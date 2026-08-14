@@ -31,9 +31,12 @@ export async function createNotification(params: {
   if (error) throw error
 }
 
-// createNotification goes through the create_or_update_notification RPC, which requires
-// auth.uid() to match an active barn member -- a service-role client has no auth.uid()
-// and would always get rejected. Upsert directly against the table instead, matching
+// createNotification goes through the create_or_update_notification RPC, which a
+// service-role client can't call at all: EXECUTE was never granted to service_role
+// (only authenticated), so the call dies at the ACL with permission denied -- and the
+// body's membership check reads auth.uid() (NULL with no user JWT, no NULL bypass), so
+// it would raise not_authorized even if execution were reached. Upsert directly against
+// the table instead, matching
 // scripts/CLAUDE.md's guidance for RPCs with auth checks that block service-role callers.
 export async function upsertNotification(
   client: SupabaseClient,
