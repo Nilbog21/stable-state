@@ -35,12 +35,12 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: manager_a_day_the_selected_horse_already_works_shows_a_conflict_dot) (#1019) A day where Apple already has a lesson shows a small red dot below the date number
 - [ ] (e2e: manager_a_day_shaded_only_by_a_neighbouring_days_lesson_shows_no_conflict_dot) (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
 - [ ] (e2e: manager_two_checked_horses_resolve_each_day_to_the_heavier_shading) (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
-- [ ] (e2e-candidate) (#1019, #1021) Change the **Start Time** field in the day panel from an early hour to a late one — at least one day's shading shifts
-- [ ] (e2e-candidate) (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks in `phase-5-trainer.md` need both) — then reopen this form with Apple selected — that day shows a dot
-- [ ] (e2e-candidate) (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
-- [ ] (e2e-candidate) (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
-- [ ] (e2e-candidate) (#1019) With Apple selected, a greyed-out past day shows no shading
-- [ ] (e2e-candidate) (#1019) With Apple selected, a greyed-out past day shows no dot
+- [ ] (e2e: manager_shifting_the_start_time_from_an_early_hour_to_a_late_one_shifts_a_days_shading) (#1019, #1021) Change the **Start Time** field in the day panel from an early hour to a late one — at least one day's shading shifts
+- [ ] (e2e: manager_a_future_day_with_the_selected_horses_own_appointment_shows_a_conflict_dot) (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks in `phase-5-trainer.md` need both) — then reopen this form with Apple selected — that day shows a dot
+- [ ] (e2e: manager_a_barn_wide_appointment_dots_a_day_for_a_horse_it_never_names) (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
+- [ ] (e2e: manager_a_barn_wide_appointment_leaves_that_days_exertion_shading_unchanged) (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
+- [ ] (e2e: manager_a_greyed_out_past_day_shows_no_exertion_shading) (#1019) With Apple selected, a greyed-out past day shows no shading
+- [ ] (e2e: manager_a_greyed_out_past_day_shows_no_conflict_dot) (#1019) With Apple selected, a greyed-out past day shows no dot
 - [ ] (e2e-candidate) (#1019, #1021) Tap a day that has a lesson on it — the day panel below the grid lists that day's items
 - [ ] (e2e-candidate) (#1019) That day panel shows each item's time in 12-hour AM/PM format
 - [ ] (e2e-candidate) (#1019) That day panel shows each item's horse names
