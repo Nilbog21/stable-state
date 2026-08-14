@@ -41,22 +41,22 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: manager_a_barn_wide_appointment_leaves_that_days_exertion_shading_unchanged) (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
 - [ ] (e2e: manager_a_greyed_out_past_day_shows_no_exertion_shading) (#1019) With Apple selected, a greyed-out past day shows no shading
 - [ ] (e2e: manager_a_greyed_out_past_day_shows_no_conflict_dot) (#1019) With Apple selected, a greyed-out past day shows no dot
-- [ ] (e2e-candidate) (#1019, #1021) Tap a day that has a lesson on it — the day panel below the grid lists that day's items
-- [ ] (e2e-candidate) (#1019) That day panel shows each item's time in 12-hour AM/PM format
-- [ ] (e2e-candidate) (#1019) That day panel shows each item's horse names
-- [ ] (e2e-candidate) (#1019) That day panel shows each item's rider names
-- [ ] (e2e-candidate) (#1019) Tap a day with nothing on it — the day panel reads "Nothing scheduled for this day."
-- [ ] (e2e-candidate) (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
-- [ ] (e2e-candidate) (#1019) Tap **&gt;** — the grid advances one month
-- [ ] (e2e-candidate) (#1019) After advancing a month, the new grid's shading reflects that month's lessons
-- [ ] (e2e-candidate) (#1019) A day carried in from the neighbouring month renders dimmed
-- [ ] (e2e-candidate) (#1019) That dimmed neighbouring-month day is still selectable
+- [ ] (e2e: manager_tapping_a_day_with_a_lesson_lists_that_days_items_in_the_day_panel) (#1019, #1021) Tap a day that has a lesson on it — the day panel below the grid lists that day's items
+- [ ] (e2e: manager_the_day_panel_shows_each_items_time_in_12_hour_am_pm_format) (#1019) That day panel shows each item's time in 12-hour AM/PM format
+- [ ] (e2e: manager_the_day_panel_shows_each_items_horse_names) (#1019) That day panel shows each item's horse names
+- [ ] (e2e: manager_the_day_panel_shows_each_items_rider_names) (#1019) That day panel shows each item's rider names
+- [ ] (e2e: manager_tapping_a_day_with_nothing_on_it_reads_nothing_scheduled_for_this_day) (#1019) Tap a day with nothing on it — the day panel reads "Nothing scheduled for this day."
+- [ ] (e2e: manager_tapping_a_day_rings_it_and_takes_it_as_the_lessons_date) (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
+- [ ] (e2e: manager_tapping_next_month_advances_the_grid_one_month) (#1019) Tap **&gt;** — the grid advances one month
+- [ ] (e2e: manager_the_advanced_months_grid_is_shaded_by_that_months_lessons) (#1019) After advancing a month, the new grid's shading reflects that month's lessons
+- [ ] (e2e: manager_a_day_carried_in_from_the_neighbouring_month_renders_dimmed) (#1019) A day carried in from the neighbouring month renders dimmed
+- [ ] (e2e: manager_a_dimmed_neighbouring_month_day_is_still_selectable) (#1019) That dimmed neighbouring-month day is still selectable
 - [ ] (manual) (#1019) In **dark mode**, with **Juniper** selected, its amber day and its red day are clearly different colours from each other — a colour-separation judgement by eye, which no assertion on a class name or a computed value can stand in for
 - [ ] (manual) (#1019) In **dark mode**, with **Juniper** selected, the date number on its tinted neighbouring-month day (the 3rd of the next month, dimmed at the end of the grid) is still readable — a contrast judgement by eye, same reason
-- [ ] (e2e-candidate) (#1019) The popup opened by tapping a day in the calendar's first row does not cover that day
-- [ ] (e2e-candidate) (#1019) The exhaustion bar under a horse's checkbox uses the same amber/red as that horse's calendar shading
-- [ ] (e2e-candidate) (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
-- [ ] (e2e-candidate) (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
+- [ ] (e2e: manager_the_day_panel_does_not_cover_the_first_row_day_that_opened_it) (#1019) Tap a day in the calendar's **first row** — the day panel renders below the grid and does not cover the tapped day (on the lesson form the panel is always open, so a tap re-targets it rather than opening it)
+- [ ] (e2e: manager_a_horses_exhaustion_bar_and_its_calendar_shading_share_one_hue_per_band) (#1019) The exhaustion bar under a horse's checkbox is the same amber/red **hue family** as that horse's calendar shading — not the same shade: `src/lib/band-colors.ts` paints a saturated bar (`amber-500`/`red-500`) and a background wash (`amber-200`/`red-300`) and pins only the hue per band
+- [ ] (e2e: manager_checking_recurring_relabels_the_month_calendars_own_field_label) (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
+- [ ] (e2e: manager_add_event_uses_a_plain_native_date_box_and_no_month_calendar) (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
 - [ ] (e2e-candidate) Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
 - [ ] (e2e-candidate) On any lesson form, set the fee to `0` — the Payment Type field disappears
 - [ ] (e2e-candidate) Raise the fee back above `0` — the Payment Type field reappears
