@@ -53,16 +53,16 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] (e2e: the_board_list_url_carries_kind_board) The URL shows `?kind=board`
 - [ ] (e2e: the_add_boarding_form_prefills_the_barns_default_board_fee_and_saves) **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
 - [ ] (e2e: both_agreements_appear_only_in_their_own_kind_scoped_list) Both agreements appear in their respective kind-scoped lists
-- [ ] (e2e-candidate) Each of those cards shows its rider
-- [ ] (e2e-candidate) Each of those cards shows its horse
-- [ ] (e2e-candidate) Each of those cards shows its fee
-- [ ] (e2e-candidate) Each of those cards shows **Active** status
-- [ ] (e2e-candidate) The whole card is the link
-- [ ] (e2e-candidate) No separate View/Edit buttons appear on that card
-- [ ] (e2e-candidate) On the monthly lease's detail page, leave a past month's charge unpaid (Payment Type blank) → back on the Leases list, that agreement's card shows an amber **Unpaid** pill next to its status
-- [ ] (e2e-candidate) Mark that charge paid → refresh the list → the **Unpaid** pill disappears
-- [ ] (e2e-candidate) Add a one-time lease (rider Dana, horse Apple, cadence One time) → its card in the Leases list shows **Complete** instead of Active
-- [ ] (e2e-candidate) That one-time lease's detail page also shows **Complete**
+- [ ] (e2e: each_agreement_card_shows_its_rider) Each of those cards shows its rider
+- [ ] (e2e: each_agreement_card_shows_its_horse) Each of those cards shows its horse
+- [ ] (e2e: each_agreement_card_shows_its_fee) Each of those cards shows its fee
+- [ ] (e2e: each_agreement_card_shows_active_status) Each of those cards shows **Active** status
+- [ ] (e2e: the_whole_agreement_card_is_the_link) The whole card is the link
+- [ ] (e2e: no_view_or_edit_buttons_appear_on_an_agreement_card) No separate View/Edit buttons appear on that card
+- [ ] (e2e: an_unpaid_past_charge_shows_an_amber_unpaid_pill_beside_the_card_status) On the monthly lease's detail page, leave a past month's charge unpaid (Payment Type blank) → back on the Leases list, that agreement's card shows an amber **Unpaid** pill next to its status
+- [ ] (e2e: marking_the_past_charge_paid_removes_the_unpaid_pill) Mark that charge paid → refresh the list → the **Unpaid** pill disappears
+- [ ] (e2e: a_one_time_lease_card_shows_complete_instead_of_active) Add a one-time lease (rider Dana, horse Apple, cadence One time) → its card in the Leases list shows **Complete** instead of Active
+- [ ] (e2e: a_one_time_leases_detail_page_shows_complete) That one-time lease's detail page also shows **Complete**
 - [ ] (e2e: the_lease_card_opens_a_detail_page_showing_its_rider) Click the monthly lease's card → its detail page shows the rider
 - [ ] (e2e: the_lease_detail_page_shows_its_horse) That detail page shows the horse
 - [ ] (e2e: the_lease_detail_page_shows_its_fee) That detail page shows the fee
