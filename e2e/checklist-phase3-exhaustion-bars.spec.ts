@@ -98,9 +98,10 @@ import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { editPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
+import { pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
-import { addDays, calendarDate, firstOfMonth, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
+import { addDays, firstOfMonth, formatMonthHeading } from '@/lib/local-day'
 import type { Horse, Lesson, LessonTier } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -444,18 +445,6 @@ async function waitForBarTotal(page: Page, horse: Horse, total: { points: number
 async function goToFixtureMonth(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Next month', exact: true }).click()
   await page.getByText(formatMonthHeading(fixtureMonth), { exact: true }).waitFor()
-}
-
-/**
- * Taps a day, settling on the day panel's own heading changing to that day.
- *
- * The settle is not `aria-pressed`: React 19 does not reconcile an attribute that mismatched at
- * hydration, and #1252 measured exactly that on these cells. The panel heading is rendered text,
- * so it moves. Copied from checklist-phase3-calendar-shading.spec.ts's `pickDay`.
- */
-async function pickDay(page: Page, date: string): Promise<void> {
-  await page.getByRole('button', { name: date, exact: true }).click()
-  await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
 }
 
 /** Opens the form and lands it on `dayA`, the day every bar fixture is arranged around. */

@@ -66,10 +66,10 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { openNewLessonForm, selectHorse } from './support/lesson-form'
+import { GRID_CELLS, cellFor, dayCell, dayCells, goToMonth, pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
-import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
 import type { Horse } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -136,10 +136,6 @@ const SCHEDULE_FETCH_BUDGET = 30_000
  * keyword rather than a palette entry, so no theme change routes it through `oklch()`.
  */
 const UNTINTED = 'rgba(0, 0, 0, 0)'
-
-/** `getMonthGrid`'s fixed 6 rows × 7 days. Named because `readGrid` guards on it as well as the
- *  month-grid test asserting it. */
-const GRID_CELLS = 42
 
 // "YYYY-MM" of the month every fixture sits in, and the days within it. Next month, for the
 // reason checklist-phase5-lessons-new.spec.ts states: the current month's grid can hold as few
@@ -240,16 +236,6 @@ const barn = withBarn('phase3-calendar', async ({ supabase, barn: seededBarn, me
 // Locators, barriers and drivers
 // ---------------------------------------------------------------------------
 
-/** Every day button in the month grid — `data-past` is unique to `MonthCalendarPicker`'s cells. */
-function dayCells(page: Page) {
-  return page.locator('button[aria-label][data-past]')
-}
-
-/** One day button, by the "YYYY-MM-DD" that is its own accessible name. */
-function dayCell(page: Page, date: string) {
-  return page.getByRole('button', { name: date, exact: true })
-}
-
 /**
  * Everything one grid cell renders, for all 42 cells, in one round trip.
  *
@@ -297,14 +283,6 @@ async function readGrid(page: Page): Promise<GridCell[]> {
       }
     })
   )
-}
-
-/** The cell `readGrid` reported for `date`. Throws rather than returning undefined, so a day
- *  that fell off the grid names itself instead of failing as a mismatched `undefined`. */
-function cellFor(cells: GridCell[], date: string): GridCell {
-  const cell = cells.find((c) => c.date === date)
-  if (!cell) throw new Error(`day ${date} is not on the rendered grid`)
-  return cell
 }
 
 /** The dates, in grid order, whose background is painted at all. */
@@ -367,49 +345,10 @@ async function dotShape(page: Page, date: string) {
   })
 }
 
-/**
- * Pages the grid one month in `direction`, and settles on `target`'s heading.
- *
- * A plain click, deliberately NOT `hydrateByDriving`: the month buttons are *monotonic*, not
- * idempotent, so a retry loop whose read merely lagged one successful click would advance a
- * second month and then never satisfy its own predicate. `openNewLessonForm`'s barrier has
- * already proved React is listening, which is what makes one click enough.
- *
- * `target` IS A PARAMETER, and must stay one. Deriving it here as "one month either side of
- * `barnToday`" — which is what this did first — silently assumes the grid is sitting on the
- * barn's current month, and breaks two ways once it isn't. A second call in one test would
- * click through to month+2 while waiting on month+1's heading, and `waitFor` is unbounded, so
- * it burns the whole `test.slow()`-tripled budget instead of failing fast. And it re-reads the
- * barn's day per test while `fixtureMonth` is frozen at `beforeAll`, so a run that crosses
- * midnight into a new month would wait on a heading that IS displayed and fail much later, in
- * `cellFor`, as a confusing "day … is not on the rendered grid". Passing the month the caller
- * actually means keeps the failure at the navigation that caused it.
- *
- * `exact: true` on the arrows to match every other spec that drives them
- * (checklist-phase4-barn-timezone / -expenses-form / -settings-fields).
- */
-async function goToMonth(page: Page, direction: 'Previous' | 'Next', target: string): Promise<void> {
-  await page.getByRole('button', { name: `${direction} month`, exact: true }).click()
-  await page.getByText(formatMonthHeading(target), { exact: true }).waitFor()
-}
-
 /** Pages forward onto the month every fixture sits in, settling on the month they were seeded
  *  against rather than on one recomputed from the clock. */
 async function goToFixtureMonth(page: Page): Promise<void> {
   await goToMonth(page, 'Next', fixtureMonth)
-}
-
-/**
- * Taps a day, and settles on the day panel's own heading changing to that day.
- *
- * The settle is not `aria-pressed`: React 19 does not reconcile an attribute that mismatched at
- * hydration, and #1252 measured exactly that on these cells — the grid's `aria-pressed` keeps
- * the server's value through hydration and through later re-renders alike. The panel heading is
- * rendered text, so it moves.
- */
-async function pickDay(page: Page, date: string): Promise<void> {
-  await dayCell(page, date).click()
-  await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
 }
 
 /** Picks the rider from the normal lesson's single-rider `<select>`. */

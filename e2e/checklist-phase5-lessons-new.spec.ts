@@ -11,9 +11,10 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { visibleLessonIds } from './support/lesson-pages'
 import { openNewLessonForm, selectHorse } from './support/lesson-form'
+import { dayCell, dayCells, pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
-import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
+import { formatMonthHeading } from '@/lib/local-day'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { Horse } from '@/lib/db/types'
 
@@ -181,16 +182,6 @@ const barn = withBarn('phase5-lessons-new', async ({ supabase, barn, members }) 
 // Locators, barriers and drivers
 // ---------------------------------------------------------------------------
 
-/** Every day button in the month grid — `data-past` is unique to `MonthCalendarPicker`'s cells. */
-function dayCells(page: Page) {
-  return page.locator('button[aria-label][data-past]')
-}
-
-/** One day button, by the "YYYY-MM-DD" that is its own accessible name. */
-function dayCell(page: Page, date: string) {
-  return page.getByRole('button', { name: date, exact: true })
-}
-
 /**
  * Pages the grid forward one month, onto the month every fixture sits in.
  *
@@ -202,19 +193,6 @@ function dayCell(page: Page, date: string) {
 async function goToNextMonth(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Next month' }).click()
   await page.getByText(formatMonthHeading(nextMonth), { exact: true }).waitFor()
-}
-
-/**
- * Taps a day, and settles on the day panel's own heading changing to that day.
- *
- * The settle is not `aria-pressed`: React 19 does not reconcile an attribute that mismatched at
- * hydration, and #1252 measured exactly that on these cells — the grid's `aria-pressed` keeps
- * the server's value through hydration and through later re-renders alike. The panel heading is
- * rendered text, so it moves.
- */
-async function pickDay(page: Page, date: string): Promise<void> {
-  await dayCell(page, date).click()
-  await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
 }
 
 /** The `data-band` each named day currently carries — `null` when the attribute is absent. */

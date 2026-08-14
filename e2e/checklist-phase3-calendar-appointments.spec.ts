@@ -28,9 +28,10 @@
 // re-derived. The New Lesson form's shared drive vocabulary (`openNewLessonForm`, `selectHorse`,
 // `BARRIER_TIME`) was hoisted into `e2e/support/lesson-form.ts` on 2026-08-14, accepting that
 // `e2e/support/**` is in `scripts/select-specs.sh`'s `ALWAYS_FULL` and that a diff touching it
-// forces `mode=full`; everything else below stays file-local. Two of the file-local copies carry
-// corrections that were paid for the hard way and must not be "simplified" back — see `goToMonth`
-// and `readGrid`.
+// forces `mode=full`; the month-grid vocabulary (`dayCells`, `dayCell`, `cellFor`, `goToMonth`,
+// `pickDay`, `GRID_CELLS`) followed into `e2e/support/calendar.ts` on the same date; everything
+// else below stays file-local. Two of those copies carry corrections that were paid for the hard
+// way and must not be "simplified" back — see `goToMonth` and `readGrid`.
 //
 // checklist-phase5-lessons-new.spec.ts's `trainer_conflict_dot_fires_on_the_selected_horses_
 // appointment_day` makes the horse-specific-appointment-dot claim already, as a *trainer*, on a
@@ -83,10 +84,10 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { openNewLessonForm, selectHorse } from './support/lesson-form'
+import { GRID_CELLS, cellFor, dayCell, dayCells, goToMonth, pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
-import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
 import type { Horse } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -159,9 +160,6 @@ const SCHEDULE_FETCH_BUDGET = 30_000
  * rather than a palette entry, so no theme change routes it through Tailwind 4's `oklch()`.
  */
 const UNTINTED = 'rgba(0, 0, 0, 0)'
-
-/** `getMonthGrid`'s fixed 6 rows × 7 days. `readGrid` guards on it. */
-const GRID_CELLS = 42
 
 // The three months every fixture sits in, resolved in the seed callback because the barn's
 // timezone — the only frame `barnToday` may be asked in — is not knowable at module scope.
@@ -309,16 +307,6 @@ const barn = withBarn('phase3-calendar-appointments', async ({ supabase, barn: s
 // Locators, barriers and drivers — copied from checklist-phase3-calendar-shading.spec.ts
 // ---------------------------------------------------------------------------
 
-/** Every day button in the month grid — `data-past` is unique to `MonthCalendarPicker`'s cells. */
-function dayCells(page: Page) {
-  return page.locator('button[aria-label][data-past]')
-}
-
-/** One day button, by the "YYYY-MM-DD" that is its own accessible name. */
-function dayCell(page: Page, date: string) {
-  return page.getByRole('button', { name: date, exact: true })
-}
-
 type GridCell = {
   date: string
   past: boolean
@@ -364,14 +352,6 @@ async function readGrid(page: Page): Promise<GridCell[]> {
   )
 }
 
-/** The cell `readGrid` reported for `date`. Throws rather than returning undefined, so a day
- *  that fell off the grid names itself instead of failing as a mismatched `undefined`. */
-function cellFor(cells: GridCell[], date: string): GridCell {
-  const cell = cells.find((c) => c.date === date)
-  if (!cell) throw new Error(`day ${date} is not on the rendered grid`)
-  return cell
-}
-
 /** The dates, in grid order, showing a conflict dot. */
 function dottedDates(cells: GridCell[]): string[] {
   return cells.filter((c) => c.hasDot).map((c) => c.date)
@@ -410,25 +390,14 @@ function shadingOf(cell: GridCell): DayShading {
   }
 }
 
-/**
- * Pages the grid one month in `direction`, and settles on `target`'s heading.
- *
- * A plain click, deliberately NOT `hydrateByDriving`: the month buttons are *monotonic*, not
- * idempotent, so a retry loop whose read merely lagged one successful click would advance a
- * second month and then never satisfy its own predicate. `openNewLessonForm`'s barrier has
- * already proved React is listening, which is what makes one click enough.
- *
- * `target` IS A PARAMETER, AND MUST STAY ONE — and this file is exactly the case that rule was
- * written for. #1462 first derived it here as "one month either side of `barnToday`", which
- * silently assumes the grid is sitting on the barn's current month. The two barn-wide tests
- * below call this **twice in one test**; under the derived form the second call would click
- * through to month+2 while waiting on month+1's heading, and `waitFor` is unbounded, so it would
- * burn the whole `test.slow()`-tripled budget instead of failing fast.
+/* `goToMonth`'s (e2e/support/calendar.ts) target IS A PARAMETER, AND MUST STAY ONE — and this
+ * file is exactly the case that rule was written for. #1462 first derived it here as "one month
+ * either side of `barnToday`", which silently assumes the grid is sitting on the barn's current
+ * month. The two barn-wide tests below call `goToMonth` **twice in one test**; under the derived
+ * form the second call would click through to month+2 while waiting on month+1's heading, and
+ * `waitFor` is unbounded, so it would burn the whole `test.slow()`-tripled budget instead of
+ * failing fast.
  */
-async function goToMonth(page: Page, direction: 'Previous' | 'Next', target: string): Promise<void> {
-  await page.getByRole('button', { name: `${direction} month`, exact: true }).click()
-  await page.getByText(formatMonthHeading(target), { exact: true }).waitFor()
-}
 
 /** Pages forward onto the month the shift and horse-appointment fixtures sit in. */
 async function goToFixtureMonth(page: Page): Promise<void> {
@@ -439,18 +408,6 @@ async function goToFixtureMonth(page: Page): Promise<void> {
 async function goToBarnWideMonth(page: Page): Promise<void> {
   await goToMonth(page, 'Next', fixtureMonth)
   await goToMonth(page, 'Next', barnWideMonth)
-}
-
-/**
- * Taps a day, and settles on the day panel's own heading changing to that day.
- *
- * The settle is not `aria-pressed`: React 19 does not reconcile an attribute that mismatched at
- * hydration, and #1252 measured exactly that on these cells. The panel heading is rendered text,
- * so it moves.
- */
-async function pickDay(page: Page, date: string): Promise<void> {
-  await dayCell(page, date).click()
-  await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
 }
 
 /**
