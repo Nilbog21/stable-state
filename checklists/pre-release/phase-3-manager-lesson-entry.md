@@ -65,18 +65,18 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e-candidate) Daisy is sorted last in that list
 - [ ] (e2e-candidate) Set the date/start time to the past — no bars render
 - [ ] (e2e-candidate) Set the date/start time back to the future — the bars reappear
-- [ ] (e2e-candidate) Check **Recurring (weekly)** — the Date field label changes to "Starting Date"
-- [ ] (e2e-candidate) Uncheck **Recurring (weekly)** — the Date field label reverts
-- [ ] (e2e-candidate) The **Recurring (weekly)** checkbox sits directly above the date field
-- [ ] (e2e-candidate) Create a **recurring lesson** (dated 7 days out): check **Recurring (weekly)**, Beginner tier, trainer Alex, horse Apple, rider Dana — it saves
-- [ ] (e2e-candidate) The **Recurring (weekly)** checkbox doesn't appear when editing that lesson
-- [ ] (e2e-candidate) The recurring lesson shows a **Recurring** badge on its Lessons list row
-- [ ] (e2e-candidate) The recurring lesson shows a **Recurring** badge on its detail page
-- [ ] (e2e-candidate) Open its edit page — a "part of a recurring series" indicator appears
-- [ ] (e2e-candidate) That edit page also shows a **Stop Recurring Lessons** button
-- [ ] (e2e-candidate) Confirm and click **Stop Recurring Lessons** — the "part of a recurring series" indicator is gone on reload
-- [ ] (e2e-candidate) The **Stop Recurring Lessons** button is gone on that same reload
-- [ ] (e2e-candidate) The lesson itself keeps its **Recurring** badge after stopping
+- [ ] (e2e: checking_recurring_relabels_the_date_field_to_starting_date) Check **Recurring (weekly)** — the Date field label changes to "Starting Date"
+- [ ] (e2e: unchecking_recurring_reverts_the_date_field_label_to_date) Uncheck **Recurring (weekly)** — the Date field label reverts
+- [ ] (e2e: the_recurring_checkbox_sits_directly_above_the_date_field) The **Recurring (weekly)** checkbox sits directly above the date field
+- [ ] (e2e: creating_a_recurring_lesson_stores_its_day_tier_instructor_horse_and_rider) Create a **recurring lesson** (dated 7 days out): check **Recurring (weekly)**, Beginner tier, trainer Alex, horse Apple, rider Dana — it saves
+- [ ] (e2e: the_recurring_checkbox_is_absent_when_editing_the_recurring_lesson) The **Recurring (weekly)** checkbox doesn't appear when editing that lesson
+- [ ] (e2e: the_recurring_lesson_shows_a_recurring_badge_on_its_lessons_list_row) The recurring lesson shows a **Recurring** badge on its Lessons list row
+- [ ] (e2e: the_recurring_lesson_shows_a_recurring_badge_on_its_detail_page) The recurring lesson shows a **Recurring** badge on its detail page
+- [ ] (e2e: the_edit_page_shows_the_part_of_a_recurring_series_indicator) Open its edit page — a "part of a recurring series" indicator appears
+- [ ] (e2e: the_edit_page_also_shows_the_stop_recurring_lessons_button) That edit page also shows a **Stop Recurring Lessons** button
+- [ ] (e2e: stopping_the_series_removes_the_recurring_series_indicator_on_reload) Confirm and click **Stop Recurring Lessons** — the "part of a recurring series" indicator is gone on reload
+- [ ] (e2e: the_stopped_series_edit_page_shows_no_stop_recurring_lessons_button) The **Stop Recurring Lessons** button is gone on that same reload
+- [ ] (e2e: the_stopped_lesson_keeps_its_recurring_badge_on_its_detail_page) The lesson itself keeps its **Recurring** badge after stopping
 - [ ] (e2e-candidate) Open Willow's seeded upcoming lesson's edit page — Willow (inactive) still appears checked
 - [ ] (e2e-candidate) Willow is sorted first in that list
 - [ ] (e2e-candidate) Willow still shows its exhaustion bar there
