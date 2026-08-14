@@ -93,6 +93,18 @@ describe('MemberDetailPage', () => {
     expect(link.textContent).toContain('Bella')
   })
 
+  it('should_carry_the_agreement_kind_as_a_query_on_the_card_href', async () => {
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /450/ }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/agreements/agreement-9?kind=board')
+  })
+
   it('should_show_a_card_per_agreement_for_multiple_simultaneously_active_agreements', async () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
     vi.mocked(getActiveAgreementsForRider).mockResolvedValue([

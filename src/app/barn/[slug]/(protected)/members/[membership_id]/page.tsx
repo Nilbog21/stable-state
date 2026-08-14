@@ -89,7 +89,7 @@ function ActiveAgreements({
           {agreements.map((agreement) => (
             <Card
               key={agreement.id}
-              href={linkable ? `/barn/${slug}/agreements/${agreement.id}` : undefined}
+              href={linkable ? `/barn/${slug}/agreements/${agreement.id}?kind=${agreement.kind}` : undefined}
               className="p-3"
             >
               <p className="text-sm text-zinc-700 dark:text-zinc-300">
