@@ -99,6 +99,7 @@ import type { Locator } from '@playwright/test'
 import { addHorse, addUnpaidLesson, daysFromNow } from './support/fixtures'
 import { settledTextContents } from './support/read'
 import { waitForBarnPageHydrated } from './support/hydration'
+import { ACTIVE_FONT_WEIGHT, INACTIVE_FONT_WEIGHT } from './support/nav'
 import type { Lesson } from '@/lib/db/types'
 
 const HORSE = 'Compass'
@@ -150,10 +151,6 @@ const MANAGER_NAV_LABELS = [
 const LESSONS = 'Lessons'
 /** The link the drawer's link-tap check taps: a section link, never the one under test. */
 const HORSES = 'Horses'
-
-/** Tailwind `font-semibold` / `font-medium`, the two weights the active and inactive classes set. */
-const ACTIVE_FONT_WEIGHT = '600'
-const INACTIVE_FONT_WEIGHT = '500'
 
 /**
  * A point inside the scrim and outside the drawer panel, which is `w-64` (256px) and pinned to the
