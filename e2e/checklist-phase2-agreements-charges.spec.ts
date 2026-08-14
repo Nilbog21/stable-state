@@ -10,13 +10,15 @@
 // edits and their transient confirmations, the boarding detail page's nav highlight, End
 // Agreement, and the member-detail agreement card's link.
 //
-// The three nav `covers:` globs are not decoration. Four of the eight checkboxes here are claims
+// The three nav `covers:` globs are not decoration. Three of the eight checkboxes here are claims
 // about which nav entry is highlighted, and that verdict is computed entirely by
 // `nav-active.ts`'s `isNavLinkActive` over `nav-links.ts`'s hrefs, rendered by
 // `DesktopNavLinks`. None of the three sits under the two route globs above — they are files of
-// `(protected)/` itself — so without their own lines a change to the highlight rule would select
-// no spec at all. (`select-specs.sh`'s ALWAYS_FULL already catches `src/components/**`, but not
-// these; and the accuracy rule binds regardless of what ALWAYS_FULL happens to cover.)
+// `(protected)/` itself — so without their own lines a change to the highlight rule would not
+// select *this* spec. It would still select others: `checklist-phase1-nav-responsive.spec.ts`
+// declares all three, and `smoke.spec.ts`'s `(protected)/**` prefix covers them too. The
+// declaration is here because `covers:` states what a spec *drives* — the accuracy rule is
+// per-spec and binds regardless of what any other spec happens to declare.
 //
 // ## Where this slice opens, and how its predecessor's state is reproduced
 //
@@ -33,18 +35,23 @@
 // `cadence: isBoard ? 'monthly' : 'one_time'`, so every `kind: 'lease'` agreement it produces is
 // one-time, and the checklist's lease is the **monthly** one added two lines earlier in the same
 // chain. Adding a cadence option to that builder is out of the question — `e2e/support/**` is in
-// `select-specs.sh`'s ALWAYS_FULL, so one edit there forces `mode=full` and takes the fleet-wide
-// suite mutex. Importing a DAL function into a spec is precedented: `fixtures.ts` imports this
-// very function, and `checklist-phase4-expenses-form.spec.ts` imports `updateExpense`.
+// `select-specs.sh`'s ALWAYS_FULL, so one edit there forces `mode=full`. The mutex serializes
+// every *multi-spec* run, `mode=scoped` included (`docs/scripts.md`), so what touching only this
+// spec buys is not "scoped instead of full" but a **single-spec** selection, which is the case
+// that runs mutex-free. Importing a DAL function into a spec is precedented: `fixtures.ts`
+// imports this very function, and `checklist-phase4-expenses-form.spec.ts` imports
+// `updateExpense`.
 //
 // ## No dates anywhere, deliberately
 //
 // `create_agreement_with_first_charge` defaults `p_start_date` to
 // `(now() AT TIME ZONE barns.timezone)::date` and derives the charge's `period` from that same
 // barn-frame day (#1361). So omitting `startDate` is not laziness — it is what keeps every date
-// in this file inside the barn's own frame, with no host-zone arithmetic to get wrong and
-// nothing for `eslint.config.mjs`'s date fence to catch. Each agreement gets exactly one charge,
-// in the barn's current month, which is the row the first four tests drive.
+// in this file inside the barn's own frame, with no host-zone arithmetic to get wrong. Note that
+// `eslint.config.mjs`'s date fence would not have caught a mistake here either way: it is scoped
+// to `src/**`, so it never lints an `e2e/` spec — the discipline is the author's, not the
+// linter's. Each agreement gets exactly one charge, in the barn's current month, which is the
+// row the first four tests drive.
 //
 // ## Two board agreements, on two different riders
 //
@@ -58,6 +65,25 @@
 // and the assertion pins one to Ended *and* the other to Active. Against a one-card list, an
 // assertion that the list contains "Ended" would be satisfied by a page rendering that word for
 // any reason at all.
+//
+// ## Why every write-driving test opens with a hydration barrier
+//
+// `ChargeRow` (`agreements/[id]/ChargesTable.tsx`) seeds `useState` from server props and renders
+// markup byte-identical pre- and post-hydration — fact 13's case — and its only controls write.
+// So there is no zero-interaction signal on this page, and a `fill()`/`selectOption()` dispatched
+// before React is listening moves the DOM value and nothing else (fact 9): no `onChange`, no
+// state, and for the fee field React then re-renders the seeded `String(charge.fee)`, so
+// `handleFeeBlur`'s `if (fee === String(charge.fee)) return` guard fires and the write never
+// happens. The failure is a 15s timeout on a ✓ Saved that was never going to appear.
+//
+// `waitForBarnPageHydrated` is the right barrier because it drives the nav bar's avatar menu —
+// a control in the *same* React root as the page but one no test here asserts on — so it can
+// never stand in for the thing a test is claiming. Both sibling phase-2 specs do the same.
+//
+// The End Agreement test needs it for fact 10's reason rather than fact 9's:
+// `EndAgreementButton` is `<form action={serverAction}>`, which carries a pre-hydration click on
+// its own, but its `window.confirm` lives in an `onClick`. So an unhydrated click submits the
+// form *without* ever raising the dialog — the agreement ends and the message assertion fails.
 //
 // ## What the seed does NOT contain
 //
@@ -78,9 +104,12 @@
 //
 // 1. **Narrowed, and weaker than what it replaced.** "**Boarding** is still highlighted in the
 //    nav on that page" is false against shipped behaviour. `members/[membership_id]/page.tsx`
-//    links its agreement card at `/barn/${slug}/agreements/${agreement.id}` with no `?kind=`,
-//    and `isNavLinkActive` returns `hrefQuery === undefined || currentQuery === hrefQuery` — both
-//    nav entries carry a query, so with an empty current query **neither** highlights. The line
+//    links its agreement card at `/barn/${slug}/agreements/${agreement.id}` with no `?kind=`.
+//    `isNavLinkActive` first requires the *path* to match (exactly, or as a `/`-prefix — which
+//    this URL does satisfy for both entries), and only then returns
+//    `hrefQuery === undefined || currentQuery === hrefQuery`. Both nav entries carry a query, so
+//    with an empty current query the path check passes and the query check fails, and
+//    **neither** highlights. A nav entry with no query of its own is unaffected. The line
 //    now characterises that, and names the mechanism so a reader does not mistake it for
 //    endorsement. **This documents a suspected UI defect, not intended behaviour**; the fix is
 //    `?kind=${agreement.kind}` on that href, and it is filed as a follow-up rather than made
@@ -99,11 +128,14 @@
 // section against `addLeaseCharge`-seeded agreements, including that each card links to its
 // detail page. The overlap is real and deliberate: that file owns Phase 4's *read* of that
 // section, this one owns Phase 2's chained walk *out* of it into the nav-highlight claim, which
-// nothing there asserts. Neither file's assertions depend on the other's fixtures — separate
-// barns, separate riders, separate horses.
+// nothing there asserts. Neither file's assertions depend on the other's fixtures: separate
+// barns, separate memberships, separate horses. (Not separate *people* — both seed on
+// `members.rider`, which is the one shared `rider@e2e.test` login the whole suite uses; the
+// isolation is the barn, not the identity.)
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse } from './support/fixtures'
+import { waitForBarnPageHydrated } from './support/hydration'
 import { createAgreement } from '@/lib/db/agreements'
 import type { Agreement } from '@/lib/db/types'
 
@@ -117,10 +149,10 @@ import type { Agreement } from '@/lib/db/types'
  * triples the *test* timeout and touches nothing else. So a number here LOOSENS, where a number
  * on a `waitFor`/`waitForURL` could only tighten.
  *
- * This file is write-heavy — six of its eight tests assert on something that only exists after a
- * Server Action round trip — so every post-write matcher carries it: the two ✓ Saved flashes,
- * the two post-reload reads, and the Boarding list after End Agreement. Matchers reading a page
- * a `goto` already settled keep the 5s default.
+ * This file is write-heavy — five of its eight tests drive a write — so the rule here is: **every
+ * matcher that runs after a write in its own test carries this timeout**, and matchers reading a
+ * page a `goto` already settled keep the 5s default. Stated as a rule rather than as a list of
+ * sites on purpose: a count in a comment drifts the moment a matcher is added, and silently.
  *
  * File-local on purpose (#1469), and the same value `checklist-phase2-managed-stubs.spec.ts` and
  * `checklist-phase2-horses-owner.spec.ts` use.
@@ -283,8 +315,11 @@ const savedIndicator = (cell: Locator) => cell.getByText(SAVED_TEXT, { exact: tr
 
 /**
  * `DesktopNavLinks`' root — the only `div` child of `<nav>` carrying `hidden`. Desktop Chrome's
- * viewport is above the `md` breakpoint, so this is the nav that renders; `NavDrawer`'s links
- * live inside a closed drawer and are not in the accessibility tree at all (fact 16).
+ * viewport is above the `md` breakpoint, so this is the nav that renders; `NavDrawer` gates its
+ * whole panel behind `{open && (…)}`, so a closed drawer's links are not in the DOM at all and
+ * cannot join a match set. Deliberately NOT fact 16: that fact is about links which *are*
+ * attached but sit in a `display:none` container, where `getByRole` reads zero and
+ * `locator('a')` still counts them. Nothing is attached here, so no locator form reaches them.
  */
 const desktopNav = (page: Page) => page.locator('nav > div.hidden')
 
@@ -346,7 +381,7 @@ const memberCardLabel = () => `Boarding · ${LINKED_BOARD_HORSE} · $${LINKED_BO
 // ---------------------------------------------------------------------------
 //
 // `describe.serial` is what contains fact 15 here rather than merely surviving it: these tests
-// share one barn and four of them write to it, so on a failure the remainder are skipped instead
+// share one barn and five of them write to it, so on a failure the remainder are skipped instead
 // of running against a half-mutated fixture and reporting a second, invented failure.
 //
 // The End Agreement test is **declared last**, out of checklist order. It is the only
@@ -365,6 +400,9 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
   }) => {
     test.slow()
     await page.goto(leaseDetailUrl())
+    // Fact 9's barrier. `ChargeRow` has no zero-interaction hydration signal (fact 13),
+    // so without this the drive below can land before React is listening and write nothing.
+    await waitForBarnPageHydrated(page)
 
     await paymentTypeSelect(page).selectOption(FIRST_PAYMENT_TYPE)
 
@@ -398,7 +436,11 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
   test('selecting_a_payment_type_flashes_a_saved_confirmation_beside_the_dropdown @manager', async ({
     page,
   }) => {
+    test.slow()
     await page.goto(leaseDetailUrl())
+    // Fact 9's barrier. `ChargeRow` has no zero-interaction hydration signal (fact 13),
+    // so without this the drive below can land before React is listening and write nothing.
+    await waitForBarnPageHydrated(page)
 
     // A different value from the previous test's, or React fires no change event at all.
     await paymentTypeSelect(page).selectOption(SECOND_PAYMENT_TYPE)
@@ -415,6 +457,9 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
   test('editing_a_charge_fee_and_blurring_persists_across_a_reload @manager', async ({ page }) => {
     test.slow()
     await page.goto(leaseDetailUrl())
+    // Fact 9's barrier. `ChargeRow` has no zero-interaction hydration signal (fact 13),
+    // so without this the drive below can land before React is listening and write nothing.
+    await waitForBarnPageHydrated(page)
 
     await feeInput(page).fill(String(PERSISTED_FEE))
     await feeInput(page).blur()
@@ -433,7 +478,11 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
   test('editing_a_charge_fee_flashes_a_saved_confirmation_beside_the_fee_field @manager', async ({
     page,
   }) => {
+    test.slow()
     await page.goto(leaseDetailUrl())
+    // Fact 9's barrier. `ChargeRow` has no zero-interaction hydration signal (fact 13),
+    // so without this the drive below can land before React is listening and write nothing.
+    await waitForBarnPageHydrated(page)
 
     // A different value from the previous test's, or `handleFeeBlur` returns before writing.
     await feeInput(page).fill(String(FLASHED_FEE))
@@ -452,7 +501,8 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
   //
   // `waitForURL` carries no explicit timeout: `navigationTimeout` defaults to unbounded, so a
   // number could only tighten it (#1211). `test.slow()` is the sanctioned way to buy room, and
-  // this test needs it — it is the first to reach the agreement detail route in this file.
+  // this test needs it — it is the first to reach the kind-scoped *list* route `/agreements`.
+  // (Not the detail route: the four charge-row tests above already warmed `/agreements/[id]`.)
   test('the_boarding_list_card_opens_a_detail_page_with_boarding_highlighted_in_the_nav @manager', async ({
     page,
   }) => {
@@ -462,11 +512,16 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     await listCard(page, endingBoardAgreement.id).click()
     await page.waitForURL(atAgreementPage(endingBoardAgreement.id), { waitUntil: 'commit' })
 
-    await expect.poll(() => navHighlightMap(page)).toEqual([INERT('Leases'), HIGHLIGHTED('Boarding')])
+    await expect
+      .poll(() => navHighlightMap(page), { timeout: SETTLE_AFTER_WRITE })
+      .toEqual([INERT('Leases'), HIGHLIGHTED('Boarding')])
   })
 
   // "On a rider's member detail page with an active boarding agreement, click the
-  // **Boarding · Dovetail · $900.00/month** link → lands on the agreement detail page"
+  // **Boarding · `<horse>` · $X/month** link → lands on the agreement detail page"
+  //
+  // Quoted verbatim from the checklist, placeholders included. Substituting this file's own
+  // fixture values would make the fragment ungreppable against the file it cites.
   //
   // The label is asserted through the locator itself — the card is selected by its href and
   // filtered to the derived label, so a click that happens at all proves both. The heading is
@@ -508,7 +563,9 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     await memberCard(page, linkedBoardAgreement.id).click()
     await page.waitForURL(atAgreementPage(linkedBoardAgreement.id), { waitUntil: 'commit' })
 
-    await expect.poll(() => navHighlightMap(page)).toEqual([INERT('Leases'), INERT('Boarding')])
+    await expect
+      .poll(() => navHighlightMap(page), { timeout: SETTLE_AFTER_WRITE })
+      .toEqual([INERT('Leases'), INERT('Boarding')])
   })
 
   // "**End Agreement** (confirm the browser prompt) → it now shows **Ended** in the Boarding
@@ -539,6 +596,9 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     await page.waitForURL(atAgreementPage(endingBoardAgreement.id), { waitUntil: 'commit' })
     await page.getByRole('link', { name: 'Edit', exact: true }).click()
     await page.waitForURL(/\/edit\?kind=board$/, { waitUntil: 'commit' })
+    // Fact 10's reason, not fact 9's: the form carries a pre-hydration click on its own,
+    // but the `window.confirm` guard is an `onClick` and would simply not run.
+    await waitForBarnPageHydrated(page)
 
     const dialogMessages: string[] = []
     page.on('dialog', async (dialog) => {
@@ -558,6 +618,8 @@ test.describe.serial('agreement charges, End Agreement, and the boarding link', 
     // The untouched sibling, in the same read: "it now shows Ended" is a claim about *that*
     // agreement, and an assertion that the list contains Ended somewhere would be satisfied by a
     // page that ended both.
-    await expect(listCard(page, linkedBoardAgreement.id)).toContainText('Active')
+    await expect(listCard(page, linkedBoardAgreement.id)).toContainText('Active', {
+      timeout: SETTLE_AFTER_WRITE,
+    })
   })
 })

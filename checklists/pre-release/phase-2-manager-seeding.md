@@ -82,7 +82,7 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] (e2e: editing_a_charge_fee_flashes_a_saved_confirmation_beside_the_fee_field) The same "✓ Saved" confirmation appears next to the Fee field
 - [ ] (e2e: the_boarding_list_card_opens_a_detail_page_with_boarding_highlighted_in_the_nav) Click the boarding agreement's card → its detail page shows the nav still highlighting **Boarding** (not Leases)
 - [ ] (e2e: ending_a_boarding_agreement_makes_the_boarding_list_show_ended) **End Agreement** (confirm the browser prompt) → it now shows **Ended** in the Boarding list
-- [ ] (e2e: the_member_detail_boarding_card_links_to_the_agreement_detail_page) On a rider's member detail page with an active boarding agreement, click the **Boarding · <horse> · $X/month** link → lands on the agreement detail page
+- [ ] (e2e: the_member_detail_boarding_card_links_to_the_agreement_detail_page) On a rider's member detail page with an active boarding agreement, click the **Boarding · `<horse>` · $X/month** link → lands on the agreement detail page
 - [ ] (e2e: the_member_detail_boarding_link_lands_with_neither_leases_nor_boarding_highlighted) Neither **Leases** nor **Boarding** is highlighted in the nav on that page — the member-detail card's link carries no `?kind=`, which is what the nav's highlight rule matches on. **Suspected UI defect, characterised here rather than endorsed** — see #1458
 
 Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Riders section):
