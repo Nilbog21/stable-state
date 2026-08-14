@@ -89,20 +89,20 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 > The UI creates managed **rider** and **trainer** stubs (#564 added the Add Trainer form); **manager** stubs are not creatable — other managers appear only once they join. The steps below use rider stubs; Phase 5's trainer checks still use the seeded trainers via `change-user.sh` rather than a freshly created stub.
 
-- [ ] (e2e-candidate) Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row is a normal card link to its member detail page
-- [ ] (e2e-candidate) Each of those rows carries an inline amber **Unlinked** badge next to the name
-- [ ] (e2e-candidate) No Copy Invite/Revoke buttons appear on this list
-- [ ] (e2e-candidate) Open Gale Test's member detail page as manager — a **Manage Member** section appears right after the name
-- [ ] (e2e-candidate) That **Manage Member** section carries an amber notice
-- [ ] (e2e-candidate) That **Manage Member** section carries **Copy Invite** and **Revoke** buttons
-- [ ] (e2e-candidate) While Gale Test is still unclaimed, upload `scripts/data/test_1_kb.pdf` on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
-- [ ] (e2e-candidate) Click **Copy Invite** on Gale Test's detail page → the button briefly reads **Copied!**
-- [ ] (e2e-candidate) The copied URL matches `/barn/dev-barn/register?token=<uuid>` (a well-formed UUID token)
+- [ ] (e2e: creating_three_managed_riders_through_the_add_rider_form_adds_a_card_link_for_each) Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row is a normal card link to its member detail page
+- [ ] (e2e: each_managed_rider_row_carries_an_inline_amber_unlinked_badge) Each of those rows carries an inline amber **Unlinked** badge next to the name
+- [ ] (e2e: the_members_list_shows_no_copy_invite_or_revoke_buttons) No Copy Invite/Revoke buttons appear on this list
+- [ ] (e2e: a_managed_riders_detail_page_shows_a_manage_member_section_right_after_the_name) Open Gale Test's member detail page as manager — a **Manage Member** section appears right after the name
+- [ ] (e2e: the_manage_member_sections_notice_renders_amber) That **Manage Member** section carries an amber notice
+- [ ] (e2e: the_manage_member_section_carries_copy_invite_and_revoke_buttons) That **Manage Member** section carries **Copy Invite** and **Revoke** buttons
+- [ ] (e2e: a_manager_can_upload_a_document_for_an_unclaimed_managed_rider) While Gale Test is still unclaimed, upload `scripts/data/test_1_kb.pdf` on their detail page — confirms manager can upload documents for a managed/unclaimed rider
+- [ ] (e2e: copy_invite_flashes_copied_after_writing_the_invite_link) Click **Copy Invite** on Gale Test's detail page → the button briefly reads **Copied!**
+- [ ] (e2e: the_copied_invite_url_carries_a_well_formed_uuid_token) The copied URL matches `/barn/dev-barn/register?token=<uuid>` (a well-formed UUID token)
 
 > Actually claiming that invite — and the pre-claim-document-readability regression check that goes with it — needs a genuinely different person, which no local or preview setup produces. It's verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](../../POST_RELEASE_TEST_CHECKLIST.md) instead.
 
-- [ ] (e2e-candidate) On Harper Test's detail page, click **Revoke** → click **Copy Invite** again → the copied URL contains a **different** token than before
-- [ ] (e2e-candidate) On Indigo Test's detail page, click **Revoke** then immediately click **Copy Invite** (as fast as possible, before the button re-enables) — Copy Invite is disabled/unclickable until the new token has loaded, so it never copies the just-revoked stale token (#939 regression check)
+- [ ] (e2e: revoking_an_invite_makes_copy_invite_yield_a_different_token) On Harper Test's detail page, click **Revoke** → click **Copy Invite** again → the copied URL contains a **different** token than before
+- [ ] (e2e: copy_invite_stays_disabled_until_the_revoked_token_has_loaded) On Indigo Test's detail page, click **Revoke** — Copy Invite is disabled/unclickable until the new token has loaded, so it never copies the just-revoked stale token (#939 regression check)
 
 Visual sweep — one pass per feature area, walked at the end of the phase with the data it just created (#1414):
 
