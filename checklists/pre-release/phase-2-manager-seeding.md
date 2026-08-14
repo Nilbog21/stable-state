@@ -44,15 +44,15 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
-- [ ] (e2e-candidate) **Leases** in the nav opens the lease-kind list
-- [ ] (e2e-candidate) **Leases** stays highlighted in the nav on that list
-- [ ] (e2e-candidate) The URL shows `?kind=lease`
-- [ ] (e2e-candidate) **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
-- [ ] (e2e-candidate) **Boarding** in the nav opens the board-kind list
-- [ ] (e2e-candidate) **Boarding** stays highlighted in the nav on that list
-- [ ] (e2e-candidate) The URL shows `?kind=board`
-- [ ] (e2e-candidate) **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
-- [ ] (e2e-candidate) Both agreements appear in their respective kind-scoped lists
+- [ ] (e2e: clicking_leases_in_the_nav_opens_the_lease_kind_list) **Leases** in the nav opens the lease-kind list
+- [ ] (e2e: the_lease_list_highlights_leases_and_not_boarding) **Leases** stays highlighted in the nav on that list
+- [ ] (e2e: the_lease_list_url_carries_kind_lease) The URL shows `?kind=lease`
+- [ ] (e2e: the_add_lease_form_highlights_leases_and_not_boarding) (e2e: saving_the_add_lease_form_adds_the_lease_to_the_lease_list) **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
+- [ ] (e2e: clicking_boarding_in_the_nav_opens_the_board_kind_list) **Boarding** in the nav opens the board-kind list
+- [ ] (e2e: the_board_list_highlights_boarding_and_not_leases) **Boarding** stays highlighted in the nav on that list
+- [ ] (e2e: the_board_list_url_carries_kind_board) The URL shows `?kind=board`
+- [ ] (e2e: the_add_boarding_form_prefills_the_barns_default_board_fee_and_saves) **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
+- [ ] (e2e: both_agreements_appear_only_in_their_own_kind_scoped_list) Both agreements appear in their respective kind-scoped lists
 - [ ] (e2e-candidate) Each of those cards shows its rider
 - [ ] (e2e-candidate) Each of those cards shows its horse
 - [ ] (e2e-candidate) Each of those cards shows its fee
@@ -63,19 +63,19 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] (e2e-candidate) Mark that charge paid → refresh the list → the **Unpaid** pill disappears
 - [ ] (e2e-candidate) Add a one-time lease (rider Dana, horse Apple, cadence One time) → its card in the Leases list shows **Complete** instead of Active
 - [ ] (e2e-candidate) That one-time lease's detail page also shows **Complete**
-- [ ] (e2e-candidate) Click the monthly lease's card → its detail page shows the rider
-- [ ] (e2e-candidate) That detail page shows the horse
-- [ ] (e2e-candidate) That detail page shows the fee
-- [ ] (e2e-candidate) That detail page shows the cadence
-- [ ] (e2e-candidate) That detail page shows the status
-- [ ] (e2e-candidate) That detail page's charges table lists the first auto-generated charge
-- [ ] (e2e-candidate) The nav still shows **Leases** highlighted (not Boarding) on the detail page
-- [ ] (e2e-candidate) **Edit** button top-right → the nav still shows **Leases** highlighted on the edit page too
-- [ ] (e2e-candidate) On the edit page, the rider is read-only
-- [ ] (e2e-candidate) On the edit page, the horse is read-only
-- [ ] (e2e-candidate) On the edit page, the start date is read-only
-- [ ] (e2e-candidate) On the edit page, the cadence is read-only
-- [ ] (e2e-candidate) Change the fee → Save → the new fee is reflected in the list
+- [ ] (e2e: the_lease_card_opens_a_detail_page_showing_its_rider) Click the monthly lease's card → its detail page shows the rider
+- [ ] (e2e: the_lease_detail_page_shows_its_horse) That detail page shows the horse
+- [ ] (e2e: the_lease_detail_page_shows_its_fee) That detail page shows the fee
+- [ ] (e2e: the_lease_detail_page_shows_its_cadence) That detail page shows the cadence
+- [ ] (e2e: the_lease_detail_page_shows_its_status) That detail page shows the status
+- [ ] (e2e: the_lease_detail_charges_table_lists_the_rpc_created_first_charge) That detail page's charges table lists the first auto-generated charge
+- [ ] (e2e: the_lease_detail_page_highlights_leases_and_not_boarding) The nav still shows **Leases** highlighted (not Boarding) on the detail page
+- [ ] (e2e: the_edit_button_opens_an_edit_page_that_highlights_leases_and_not_boarding) **Edit** button top-right → the nav still shows **Leases** highlighted on the edit page too
+- [ ] (e2e: the_lease_edit_page_renders_the_rider_as_read_only_text) On the edit page, the rider is read-only
+- [ ] (e2e: the_lease_edit_page_renders_the_horse_as_read_only_text) On the edit page, the horse is read-only
+- [ ] (e2e: the_lease_edit_page_renders_the_start_date_as_read_only_text) On the edit page, the start date is read-only
+- [ ] (e2e: the_lease_edit_page_renders_the_cadence_as_read_only_text) On the edit page, the cadence is read-only
+- [ ] (e2e: saving_a_changed_fee_on_the_edit_page_updates_the_lease_list_card) Change the fee → Save → the new fee is reflected in the list
 - [ ] (e2e: selecting_a_payment_type_on_a_charge_row_persists_across_a_reload) On the lease detail page's charge row, select a **Payment Type** → the page refreshes and the selection persists
 - [ ] (e2e: selecting_a_payment_type_flashes_a_saved_confirmation_beside_the_dropdown) A brief "✓ Saved" confirmation appears next to that dropdown
 - [ ] (e2e: editing_a_charge_fee_and_blurring_persists_across_a_reload) Edit the charge's **Fee** field and blur → the new amount persists after refresh
