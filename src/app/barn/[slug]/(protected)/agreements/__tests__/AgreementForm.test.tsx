@@ -249,6 +249,20 @@ describe('AgreementForm - edit mode', () => {
     expect(screen.getByText('Monthly')).toBeDefined()
   })
 
+  it('should_not_render_a_label_bound_to_the_absent_cadence_select_in_edit_mode', () => {
+    const { container } = render(
+      <AgreementForm
+        mode="edit"
+        kind="lease"
+        initialAgreement={initialAgreement}
+        riderName="Dana Rider"
+        horseName="Apple"
+        onSave={onSave}
+      />
+    )
+    expect(container.querySelector('label[for="agreement-cadence"]')).toBeNull()
+  })
+
   it('should_prefill_fee_input_from_initial_agreement_in_edit_mode', () => {
     render(
       <AgreementForm
