@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/members/**
 // covers: src/app/barn/[slug]/(protected)/documents/new/**
 // covers: src/app/barn/[slug]/register/**
+// covers: src/proxy.ts
 //
 // Phase 2's managed-rider-stub block (checklists/pre-release/phase-2-manager-seeding.md, from
 // "Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test**" through "it never
@@ -91,6 +92,23 @@ const HARPER = fullName(STUBS[1])
 const INDIGO = fullName(STUBS[2])
 
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+
+/**
+ * The one sanctioned numeric timeout (`support/test.ts`'s timeout block, #1469): web-first `expect`
+ * matchers run on expect's own 5s default, which `test.slow()` does NOT raise — it triples the
+ * *test* timeout and touches nothing else. So a number here LOOSENS, where a number on a
+ * `waitFor`/`waitForURL` could only tighten.
+ *
+ * Applied only at the four sites the rule names as the sanctioned case — where the assertion's own
+ * target is the only thing left to wait on, so a `waitFor` on some other signal would be
+ * tautological: the three post-submit card appearances in the create loop, the uploaded document's
+ * row, and the two Copy Invite re-enables that wait out a revalidated-props round trip. Every other
+ * matcher in this file reads a page that a `goto` already settled and keeps the 5s default.
+ *
+ * File-local on purpose (#1469), and the same value `checklist-phase2-horses-owner.spec.ts` uses
+ * for the structurally identical Add-Horse-through-the-form settle.
+ */
+const SETTLE_AFTER_WRITE = 15_000
 
 const UPLOADED_DOCUMENT = 'test_1_kb.pdf'
 
@@ -235,10 +253,13 @@ test.describe.serial('managed rider stubs', () => {
   }) => {
     test.slow()
     await page.goto(membersUrl())
-    // The Add Rider inputs are uncontrolled inside a `GuardedForm`, whose `onChange` is what arms
-    // the unsaved-changes guard — so a fill landing before hydration moves the DOM value and
-    // nothing else (fact 9). Cheap here, and it is also the barrier the two revoke tests below
-    // genuinely cannot do without.
+    // Deliberately NOT fact 9's case, which is about a React-*controlled* input losing its fill:
+    // these inputs are uncontrolled, so a pre-hydration fill keeps its value, and the submit is
+    // `<form action={serverAction}>`, which carries a pre-hydration click on its own (fact 10). The
+    // barrier is here for the loop rather than for the fill — `GuardedForm`'s `onChange`/`onSubmit`
+    // dirty toggle only runs once hydrated, and React 19's post-action form reset is what the next
+    // iteration types into. The two revoke tests below need a barrier for a much harder reason,
+    // stated at each of them; this one is a settle point.
     await waitForBarnPageHydrated(page)
 
     const form = ridersSection(page).locator('form')
@@ -248,8 +269,9 @@ test.describe.serial('managed rider stubs', () => {
       await form.getByRole('button', { name: 'Add Rider', exact: true }).click()
       // A settle point, not the assertion: `createManagedMemberAction` revalidates rather than
       // redirecting, so the next iteration would otherwise type into a form the previous
-      // submission is still resetting.
-      await expect(riderCard(page, fullName(stub))).toHaveCount(1)
+      // submission is still resetting. The card this submission creates is the only thing there
+      // is to wait on, which is the tautological case where the number is the right tool.
+      await expect(riderCard(page, fullName(stub))).toHaveCount(1, { timeout: SETTLE_AFTER_WRITE })
     }
 
     const hrefs: Record<string, string> = {}
@@ -368,7 +390,9 @@ test.describe.serial('managed rider stubs', () => {
     await submitButton(page).click()
     await page.waitForURL(new RegExp(`/members/${galeId}$`), { waitUntil: 'commit' })
 
-    await expect(documentRow(page, UPLOADED_DOCUMENT)).toHaveCount(1)
+    // `waitUntil: 'commit'` resolves before the member page has rendered, so this row is the first
+    // thing waiting on that render as well as on the write — hence the loosened budget.
+    await expect(documentRow(page, UPLOADED_DOCUMENT)).toHaveCount(1, { timeout: SETTLE_AFTER_WRITE })
   })
 
   // "Click **Copy Invite** on Gale Test's detail page → the button briefly reads **Copied!**"
@@ -429,7 +453,7 @@ test.describe.serial('managed rider stubs', () => {
     )
     await revokeButton(page).click()
     await revoked
-    await expect(copyInviteButton(page)).toBeEnabled()
+    await expect(copyInviteButton(page)).toBeEnabled({ timeout: SETTLE_AFTER_WRITE })
 
     const after = await copyInvite(page)
 
@@ -465,7 +489,10 @@ test.describe.serial('managed rider stubs', () => {
     await revokeButton(page).click()
 
     await expect(copyInviteButton(page)).toBeDisabled()
-    await expect(copyInviteButton(page)).toBeEnabled()
+    // The re-enable waits out the action POST plus the revalidated-props round trip and has no
+    // other signal to sync on; the disable above keeps the 5s default deliberately, since it
+    // asserts a transient state and a looser budget there would only delay a real failure.
+    await expect(copyInviteButton(page)).toBeEnabled({ timeout: SETTLE_AFTER_WRITE })
   })
 })
 
