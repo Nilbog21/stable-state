@@ -97,12 +97,14 @@ function agreementHref(agreementId: string) {
 
 /** Matched by RegExp rather than Playwright's URL glob, the idiom the rest of the suite uses. */
 function atAgreementPage(agreementId: string) {
-  return new RegExp(`${agreementHref(agreementId)}$`)
+  return new RegExp(`${agreementHref(agreementId)}(\\?|$)`)
 }
 
 /** A card addressed by the agreement it points at, rather than by any text it renders. */
-function agreementCard(page: Page, agreementId: string) {
-  return activeAgreements(page).locator(`a[href="${agreementHref(agreementId)}"]`)
+function agreementCard(page: Page, agreement: Agreement) {
+  return activeAgreements(page).locator(
+    `a[href="${agreementHref(agreement.id)}?kind=${agreement.kind}"]`
+  )
 }
 
 /**
@@ -118,9 +120,9 @@ function agreementCard(page: Page, agreementId: string) {
  * be regexes — see the fee constants above for why containment alone is too weak.
  */
 function cardsMatching(page: Page, lease: string | RegExp, board: string | RegExp) {
-  return agreementCard(page, leaseAgreement.id)
+  return agreementCard(page, leaseAgreement)
     .filter({ hasText: lease })
-    .or(agreementCard(page, boardAgreement.id).filter({ hasText: board }))
+    .or(agreementCard(page, boardAgreement).filter({ hasText: board }))
 }
 
 function riderPage() {
@@ -138,12 +140,12 @@ test('rider_detail_shows_an_active_agreements_header @manager', async ({ page })
 
 test('rider_detail_shows_a_card_for_the_lease_agreement @manager', async ({ page }) => {
   await page.goto(riderPage())
-  await expect(agreementCard(page, leaseAgreement.id)).toHaveCount(1)
+  await expect(agreementCard(page, leaseAgreement)).toHaveCount(1)
 })
 
 test('rider_detail_shows_a_card_for_the_boarding_agreement @manager', async ({ page }) => {
   await page.goto(riderPage())
-  await expect(agreementCard(page, boardAgreement.id)).toHaveCount(1)
+  await expect(agreementCard(page, boardAgreement)).toHaveCount(1)
 })
 
 // The kind labels are the page's own wording for the two agreement kinds, not the column values.
@@ -181,12 +183,12 @@ test('each_agreement_card_shows_its_fee @manager', async ({ page }) => {
 test('each_agreement_card_links_to_its_agreement_detail_page @manager', async ({ page }) => {
   test.slow()
   await page.goto(riderPage())
-  await agreementCard(page, leaseAgreement.id).click()
+  await agreementCard(page, leaseAgreement).click()
   await page.waitForURL(atAgreementPage(leaseAgreement.id), { waitUntil: 'commit' })
   await expect(page.getByRole('heading', { name: LEASE_DETAIL_HEADING, exact: true })).toBeVisible()
 
   await page.goto(riderPage())
-  await agreementCard(page, boardAgreement.id).click()
+  await agreementCard(page, boardAgreement).click()
   await page.waitForURL(atAgreementPage(boardAgreement.id), { waitUntil: 'commit' })
   await expect(page.getByRole('heading', { name: BOARD_DETAIL_HEADING, exact: true })).toBeVisible()
 })
@@ -237,5 +239,5 @@ test('the_empty_active_agreements_state_carries_no_add_boarding_link @manager', 
 // renders its header and nothing else.
 test('a_managed_riders_detail_page_shows_the_active_agreements_section @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/members/${managedRiderId}`)
-  await expect(agreementCard(page, managedAgreement.id)).toHaveCount(1)
+  await expect(agreementCard(page, managedAgreement)).toHaveCount(1)
 })
