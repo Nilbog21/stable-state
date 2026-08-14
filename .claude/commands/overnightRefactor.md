@@ -1,4 +1,4 @@
-You are running an unattended overnight loop of structure-only refactors: Fable plans one task in a fresh context, Opus implements it in a fresh context, Opus reviews it in a fresh context. One nightly branch, one draft PR, one commit per kept iteration.
+You are running an unattended overnight loop of structure-only refactors: Fable plans one task in a fresh context, Opus implements it in a fresh context, Opus reviews it in a fresh context, and you gate any iteration touching `e2e/**` on the checklist suite. One nightly branch, one draft PR, one commit per kept iteration.
 
 > **Recommended model: Sonnet.** This session only orchestrates — it dispatches subagents, parses their verdict lines, and runs scripted git; the Fable and Opus subagents below do the actual work, and the loop runs for hours. Set with `/model` before invoking.
 
@@ -8,26 +8,27 @@ Every `Agent` call in this skill: no `isolation` param (subagents must share thi
 
 ## Step 0 — Preflight
 
-1. `git status --porcelain` in this worktree. If not empty, stop and tell the user to commit or stash their in-progress work first — this worktree is about to be repurposed for the night.
-2. Determine the release base:
+1. `bash scripts/workflow-context.sh` — record `worktree_path` and `port`. Step 1d's suite run needs both, and this skill states no port of its own: `scripts/workflow-context.sh` owns the worktree→port map (#1118 — the per-skill copies of it had already diverged once).
+2. `git status --porcelain` in this worktree. If not empty, stop and tell the user to commit or stash their in-progress work first — this worktree is about to be repurposed for the night.
+3. Determine the release base:
    ```
    git fetch --all -p
    git branch -r --list 'origin/release/release-*' | sed 's|.*origin/release/||' | sort -t- -k2 -n | tail -1
    ```
    Record as `{release}` (e.g. `release-3`).
-3. Compute tonight's date: `date +%F` → `{date}`.
-4. Create the nightly branch and run the baseline check:
+4. Compute tonight's date: `date +%F` → `{date}`.
+5. Create the nightly branch and run the baseline check:
    ```
    git checkout -B overnight/refactor-{date} origin/release/{release}
    bash scripts/ci.sh
    ```
    If `ci.sh` fails here, the tree is already red before any refactor work starts — stop, report the failure, and do not proceed. Don't fix it yourself; that's the user's call.
-5. Compute the wall-clock stop time and hold it for the whole loop: if local time is already past 06:00, the cutoff is tomorrow 06:00; otherwise today 06:00.
+6. Compute the wall-clock stop time and hold it for the whole loop: if local time is already past 06:00, the cutoff is tomorrow 06:00; otherwise today 06:00.
    ```
    cutoff_epoch=$(date -d '06:00' +%s)
    [ "$(date +%s)" -ge "$cutoff_epoch" ] && cutoff_epoch=$(date -d 'tomorrow 06:00' +%s)
    ```
-6. Push the branch and open the draft PR:
+7. Push the branch and open the draft PR:
    ```
    git push -u origin overnight/refactor-{date}
    gh pr create --draft --base release/{release} --head overnight/refactor-{date} \
@@ -35,13 +36,13 @@ Every `Agent` call in this skill: no `isolation` param (subagents must share thi
      --body "Unattended overnight refactor loop (\`/overnightRefactor\`). Structure-only: file splits/merges, renames, dead-code removal, doc accuracy fixes. No migrations, dependency changes, RLS/RPC changes, or behavior changes. Per-iteration plan/review rationale is in \`specs/overnight-{date}.md\` (gitignored — read it locally in this worktree, not in the diff)."
    ```
    Record the PR number as `{pr}`.
-7. Create the ledger file `specs/overnight-{date}.md`:
+8. Create the ledger file `specs/overnight-{date}.md`:
    ```markdown
    # Overnight Refactor — {date}
 
    Base: release/{release} · Branch: overnight/refactor-{date} · PR: #{pr}
    ```
-8. Print exactly one confirmation line, then go autonomous — no further questions:
+9. Print exactly one confirmation line, then go autonomous — no further questions:
    ```
    Nightly branch overnight/refactor-{date} created, draft PR #{pr} open, baseline green — starting the loop.
    ```
@@ -100,18 +101,36 @@ These are hard-forbidden, no exceptions:
 - UI copy/markup/behavior changes — anything that changes what a user sees or what the DB stores
 - `.claude/commands/**` — these are repo-tracked workflow skills, and CLAUDE.md requires a standalone
   skill change to get its own issue and PR
+- `checklists/**` and `PRE_RELEASE_TEST_CHECKLIST.md` — CLAUDE.md's born-automated-or-justified-manual
+  rule governs every line in these, and it is enforced only by `/reviewIssue`, which is not in this
+  loop. "Doc accuracy fixes" would otherwise admit restructuring a phase file at 3am with nothing
+  checking the tags
 - anything requiring a product judgment call
 
-`e2e/**` is in scope for **internal, verbatim motion only** — extracting shared vocabulary into
-`e2e/support/`, splitting spec monoliths — under extra rules, because `scripts/ci.sh` doesn't run
-the suite and nothing in this loop can: moved code must be byte-identical, and no assertion, selector
-string, or test title may change (titles are load-bearing — checklist `(e2e:)` tags name them;
-`ci.sh`'s lint gates catch title renames and orphaned `covers:` globs, but a rewritten selector
-string is invisible until the wrapup's full-suite gate, which is the night's actual e2e
-verification). Read `e2e/CLAUDE.md` before planning any e2e task — ordered specs and the framework
-facts constrain what can move. The plan's Verification list must include a mechanical equivalence
-check (reconstruct the original from the moved pieces and diff to empty). A *src* change that would
-force an e2e spec update remains out of scope, not a task with an extra step.
+`e2e/**` is in scope for **internal, behaviour-preserving motion** — extracting shared vocabulary
+into `e2e/support/`, splitting spec monoliths. Selector strings **may** change; assertions and test
+titles **may not**. Titles stay frozen regardless of anything else: checklist `(e2e:)` tags name
+them and `ci.sh`'s `check-e2e-tags.sh` enforces that.
+
+Step 1d runs the specs `select-specs.sh` picks for any iteration touching `e2e/**`, so the motion is
+no longer unverified. The restriction on assertions survives that gate for a different reason: **a
+green suite cannot distinguish a weakened assertion from a preserved one.** A relaxed assertion
+passes exactly as well as the one it replaced, so the run says nothing about it.
+
+Which is also why a selector may only be rewritten where a **positive** assertion exercises it.
+Rewriting one whose only use is an absence assertion or a `[]`-accepting read is an automatic
+reject: per spec-maintenance rules 3 and 4 and framework facts 16 and 18 a green run there proves
+nothing — the same blindness `e2e/support/must-affect.ts`'s module comment documents on the fixture
+side.
+
+Know the throughput cost before you plan the task: anything touching `e2e/support/**` matches
+`select-specs.sh`'s `ALWAYS_FULL` list, so an extraction there always buys a full ~14-minute suite
+run at 1d. Only intra-file work — splitting a spec monolith — stays scoped and cheap.
+
+Read `e2e/CLAUDE.md` before planning any e2e task — ordered specs and the framework facts constrain
+what can move. The plan's Verification list must include a mechanical equivalence check
+(reconstruct the original from the moved pieces and diff to empty). A *src* change that would force
+an e2e spec update remains out of scope, not a task with an extra step.
 
 Size ceiling: ~15 files touched. A worthwhile task larger than that gets planned as a self-contained
 first slice, with the remainder noted as a candidate for a future night.
@@ -192,9 +211,14 @@ Compare it against three things, in order:
    - RLS policies or RPC signatures
    - UI copy/markup/behavior changes — anything that changes what a user sees or what the DB stores
    - `.claude/commands/**` (repo-tracked workflow skills — CLAUDE.md requires their own issue and PR)
-   - `e2e/**` changes that are anything but verbatim motion — any changed assertion, selector
-     string, or test title is an automatic reject (`scripts/ci.sh` doesn't run the suite; the
-     wrapup's full-suite gate is the only net, so the diff must be pure relocation)
+   - `checklists/**` and `PRE_RELEASE_TEST_CHECKLIST.md` (the born-automated-or-justified-manual rule
+     on those lines is enforced only by `/reviewIssue`, which is not in this loop)
+   - `e2e/**` changes that are anything but behaviour-preserving motion. A changed **assertion** or
+     **test title** is an automatic reject. A changed **selector string** is allowed only where a
+     *positive* assertion exercises it — rewriting one whose only use is an absence assertion or a
+     `[]`-accepting read is an automatic reject too. Step 1d runs the suite against this diff, but a
+     green suite cannot distinguish a weakened assertion from a preserved one, which is what these
+     two rules cover and the run does not
    - anything requiring a product judgment call
 3. Correctness and this repo's conventions (CLAUDE.md). Small findings here are not reject-worthy —
    fix them directly, then re-run `bash scripts/ci.sh` and `npm run build`, and amend the commit
@@ -217,13 +241,73 @@ REASON: {one-line reason}
 
 - If the Agent call itself errors, go to **Step 4**.
 - If `VERDICT: REJECT`, go to **Step 2a (failure path)** with the given reason.
-- If `VERDICT: APPROVE`, go to **Step 2b (success path)**.
+- If `VERDICT: APPROVE`, go to **1d**.
+
+### 1d — E2E gate
+
+**You run this yourself, as the orchestrator — never a subagent.** The verdict is a mechanical exit
+code, and `/fableFleet` Step 5 records that a subagent ending its turn to wait on a background run
+never gets woken (three for three in the pilot).
+
+Take the iteration's diff once and reuse it: `git diff --name-only {last_good_sha}..HEAD`.
+
+**Skip conditions**, checked in this order — on either, append `**E2E gate:** skipped — {reason}`
+under the Iteration {N} section and go straight to **Step 2b**:
+
+1. The diff touches no `e2e/` path. `tsc` plus vitest at 100% branch coverage already net a src
+   refactor, and `select-specs.sh` returns `mode=full` for most of them (`src/lib/**`,
+   `src/components/**` and `src/app/actions/**` are all in `ALWAYS_FULL`) — running the suite on
+   every iteration would cost ~14 minutes each and roughly halve the night's throughput to
+   re-verify what is already verified.
+2. `$(date +%s) + 900 -ge $cutoff_epoch` — a full run wouldn't finish before the wall clock. The
+   wrapup's full-suite gate still sees this commit in the morning.
+
+Otherwise, ask the selector what to run and act on the `mode=` line:
+
+```
+git diff --name-only {last_good_sha}..HEAD | bash scripts/select-specs.sh
+```
+
+- **`mode=none`** — nothing to run; log it as a skip and go to Step 2b.
+- **`mode=scoped`** — one `--spec` per reported spec.
+- **`mode=full`** — no `--spec` flags.
+
+Launch this with the Bash tool's `run_in_background`, as one command, substituting `{worktree_path}`
+and `{port}` from Step 0's preflight:
+
+```bash
+cd {worktree_path} && npm run dev -- --port {port} > /tmp/overnight-dev-{date}.log 2>&1 &
+dev_pid=$!; trap 'kill $dev_pid' EXIT
+for _ in $(seq 60); do curl -sf -o /dev/null "http://localhost:{port}/" && break; sleep 2; done
+bash scripts/run-checklist-suite.sh --base-url "http://localhost:{port}" {--spec flags}
+```
+
+The server is started here and dies with the command. This loop holds no long-lived one:
+`playwright.config.ts` has no `webServer` block so the suite cannot start its own, and a server that
+has hot-reloaded through a night of file moves is its own flake source — a flaky failure at 3am
+reads as a real regression and burns half the circuit breaker.
+
+Read the verdict from `{worktree_path}/checklist-suite.log`, not from the tool result — a full run
+outruns the Bash tool's 600s foreground ceiling. Two things to check, both per `/testIssue` Step 4:
+the `=== run-checklist-suite.sh — barn prefix … — started {date} ===` header belongs to *this* run,
+and the log ends with the `=== run-checklist-suite.sh exited {code} … ===` terminator, which the
+script's `EXIT` trap writes on every path including the early bails that kill it before Playwright
+writes a line. `exited 0` is the whole verdict on a green run; read the per-test lines only on a red
+one.
+
+**On red:** re-run the failing spec(s) alone once, same command with `--spec` narrowed to them. One
+flake allowance, because the wrapup already names timezone- and time-of-day-dependent specs as the
+usual suspects and 3am is when they fire. Still red → **Step 2a (failure path)** with reason
+"e2e gate failed: {spec}", counting toward the 2-failure circuit breaker.
+
+**On green**, append `**E2E gate:** {mode} — passed` under the Iteration {N} section and go to
+**Step 2b**. Every iteration records an E2E gate line, skips included.
 
 ---
 
 ## Step 2a — Failure path
 
-Triggered by a failed implementation or a reviewer reject.
+Triggered by a failed implementation, a reviewer reject, or a red e2e gate.
 
 ```
 git branch overnight/failed-{date}-iter{N} HEAD

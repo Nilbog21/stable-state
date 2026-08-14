@@ -21,7 +21,7 @@ Run this from the same worktree the overnight loop ran in — the ledger it depe
 
 ## Step 1 — Verify the whole branch
 
-The loop verified each commit in isolation via `scripts/ci.sh`, which **does not run e2e**. Nothing has yet checked the night's commits as a set, or against a browser.
+The loop verified each commit in isolation via `scripts/ci.sh`, which **does not run e2e**. Its Step 1d gate closes only part of that: it runs `select-specs.sh`'s selection for iterations that touch `e2e/**`, and nothing at all for src-only ones. Nothing has yet checked the night's commits **as a set**, or checked a src iteration against a browser at all — so this run still sees most of the branch for the first time.
 
 1. Confirm a dev server is up on `{port}` and serving this worktree:
    ```
@@ -73,7 +73,7 @@ These issues are **born closed**. `quick-win`, `rearchitecture`, `testing-improv
 Each body:
 - A short paragraph of the problem **as it stood before the commit**, in the present tense — the line count, the duplication, the false doc claim. This is the part the ledger's Task statement gives you.
 - **Why:** one sentence, from the iteration's Navigability payoff.
-- **Acceptance criteria** — 3–5 checkboxes, written as work still to be done. Prefer the criteria the reviewer actually checked: byte-identical moved bodies, preserved test counts, no stale cross-references, claims verified against the implementation rather than against another doc, pure-comment diffs.
+- **Acceptance criteria** — 3–5 checkboxes, written as work still to be done. Prefer the criteria the reviewer actually checked: byte-identical moved bodies (behaviour-preserving, for an `e2e/**` commit — the loop admits a rewritten selector there, never a rewritten assertion or title), preserved test counts, no stale cross-references, claims verified against the implementation rather than against another doc, pure-comment diffs.
 - A footer naming the SHA and the PR.
 
 Write the bodies to files and create with `gh issue create --body-file`; assemble a `manifest.tsv` of key/SHA/labels/title first so the creation loop is mechanical and re-runnable.
