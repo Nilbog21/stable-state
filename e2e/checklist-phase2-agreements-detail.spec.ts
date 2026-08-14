@@ -2,6 +2,7 @@
 // covers: src/app/barn/[slug]/(protected)/nav-active.ts
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
+// covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 //
 // Phase 2's agreements block, the lease detail and edit stretch
 // (checklists/pre-release/phase-2-manager-seeding.md, from "Click the monthly lease's card → its
@@ -12,20 +13,28 @@
 //
 // ## What is NOT declared above, and why the omission is the considered answer
 //
-// This file asserts on two rendered strings it does not own: `formatFee`'s "$450.00"
-// (`src/lib/format-currency.ts`) and `formatChargePeriod`'s "Aug 2026" (`src/lib/format-date.ts`).
-// By `docs/scripts.md`'s discriminating question — "could an assertion in this file fail if that
-// module changed?" — both are plainly yes, and declaring them looks correct.
+// This file asserts on several rendered strings it does not own, and every one of them is produced
+// under `src/lib/`: `formatFee`'s "$450.00" (`format-currency.ts`), `formatChargePeriod`'s
+// "Aug 2026" (`format-date.ts`), `getAgreementStatusLabel`'s "Active"/"Complete" (`db/agreements.ts`)
+// and `resolveMemberNames`' "Test Rider" (`db/member-names.ts`). By `docs/scripts.md`'s
+// discriminating question — "could an assertion in this file fail if that module changed?" — all
+// four are plainly yes, and declaring them looks correct.
 //
 // They are deliberately left out. `scripts/select-specs.sh`'s `ALWAYS_FULL` array already contains
 // `src/lib/**` (alongside `src/components/**`, `src/app/actions/**` and `e2e/support/**`), so a
-// diff touching either module forces `mode=full`, which runs every spec in the suite including this
+// diff touching any of them forces `mode=full`, which runs every spec in the suite including this
 // one. The declarations would therefore buy nothing for *selection*, which is the only thing
 // `covers:` drives. Worse, a redundant glob invites the next reader to believe selection depends on
-// it and to preserve it through a refactor that could otherwise drop it safely. The three nav globs
-// above are a different case entirely and are load-bearing: `nav-active.ts`, `nav-links.ts` and
-// `DesktopNavLinks.tsx` are files of `(protected)/` itself, sit under no `ALWAYS_FULL` entry and
-// under neither route glob, and two checkboxes here are claims about nothing else.
+// it and to preserve it through a refactor that could otherwise drop it safely.
+//
+// The four `(protected)/` globs above are the opposite case and every one is load-bearing:
+// `nav-active.ts`, `nav-links.ts`, `DesktopNavLinks.tsx` and `NavigationBlocker.tsx` sit under no
+// `ALWAYS_FULL` entry (only `(protected)/layout.tsx` is listed, as an exact path) and under the
+// route glob of no spec that would otherwise select. `NavigationBlocker.tsx` is the one that is
+// easy to miss and is declared here because the review round caught its absence: `DesktopNavLinks`
+// does not render an anchor at all — it renders `BlockingLink`, which is what forwards the
+// `aria-current` and `className` the two highlight tests read — and `AgreementForm` arms
+// `useUnsavedChangesGuard` from the same module, which sits in the path of the fee round-trip.
 //
 // ## Every one of these thirteen checklist lines is TRUE against shipped behaviour
 //
@@ -44,9 +53,11 @@
 //     branch, and Leases matches exactly while Boarding fails. #1458's case is the member-detail
 //     card, whose href carries **no** query at all — there `currentQuery` is `''`, both entries
 //     fail, and NEITHER highlights. Same route prefix, opposite outcomes, and the difference is
-//     entirely the entry point. That is why this file reaches the detail page by clicking the card
-//     rather than by `goto`-ing a URL it wrote itself: a hand-written `?kind=lease` would be
-//     asserting a query string the test had supplied.
+//     entirely the entry point. That is why the two HIGHLIGHT tests reach their page by clicking —
+//     for them a hand-written `?kind=lease` would be asserting a query string the test had itself
+//     supplied. The other eleven tests `goto` a URL this file composes, `?kind=lease` and all, and
+//     that is fine precisely because the query is irrelevant to what they assert: none of them
+//     reads the nav.
 //   - "**Edit** button top-right → the nav still shows **Leases** highlighted on the edit page too"
 //     is true for the same mechanism one level deeper: the Edit href is
 //     `` `…/agreements/${id}/edit?kind=${agreement.kind}` `` (`[id]/page.tsx`), so the query
@@ -63,7 +74,7 @@
 // *shows an agreement* — the barn would hold exactly one, so any rider name the page rendered would
 // be the right one, and a page that ignored its `id` param entirely would pass. A mutation pass
 // cannot detect that: every assertion still fails when broken, which is the only question a mutant
-// answers. It is the same shape that shipped twice already in this batch. With the decoy, each of
+// answers. It is the same shape that shipped once already in this batch. With the decoy, each of
 // the five expectations is one of two live possibilities and the test genuinely binds to its
 // subject. It does the same work for the last test, where the list holds two cards and the
 // assertion pins both — so "the new fee is reflected in the list" cannot be satisfied by a list
@@ -83,8 +94,11 @@
 // edit there forces `mode=full` and takes `/fableFleet`'s fleet-wide mutex, stalling every other
 // worker. Calling the DAL function the UI itself calls (`agreements/actions.ts`'s
 // `createAgreementAction` invokes exactly this) is the batch's standing ruling for reproducing a
-// predecessor's end state, and importing a DAL function into a spec is precedented in both merged
-// sibling slices.
+// predecessor's end state. Importing a DAL function into a spec is precedented — `fixtures.ts`
+// imports this very function, `checklist-phase2-agreements-charges.spec.ts` imports it directly,
+// and `checklist-phase4-expenses-form.spec.ts` imports `updateExpense`. (Not "both merged sibling
+// slices": `checklist-phase2-agreements-create.spec.ts` imports nothing from `@/lib/db`. The review
+// round caught that overstatement.)
 //
 // No `startDate` is passed. `create_agreement_with_first_charge` derives the barn's own day from
 // `barns.timezone` and COALESCEs `p_start_date` to it
@@ -93,10 +107,10 @@
 // monthly charge's `period` from that same barn-frame day. So omitting it keeps every date in this
 // file inside the barn's frame with no host-zone arithmetic to get wrong (fact 12).
 //
-// ## Hydration barriers go before the CLICK, and three tests deliberately have none
+// ## Hydration barriers go before the CLICK, and nine of the thirteen tests deliberately have none
 //
-// A nav or card click dispatched before React has hydrated is **not lost**: `Card` and `Button`
-// both render a plain `next/link` `<a href>`, so the browser performs an ordinary document
+// A card or Edit-button click dispatched before React has hydrated is **not lost**: `Card` and
+// `Button` both render a plain `next/link` `<a href>`, so the browser performs an ordinary document
 // navigation and the page that loads is SERVER-rendered. `aria-current` is an attribute, and React
 // 19 does not reconcile a mismatched attribute during hydration (fact 7), so the server's value
 // then persists for the rest of the test. Every highlight read downstream would be measuring SSR's
@@ -111,13 +125,18 @@
 // a control in the same React root as the page but one no test here asserts on, so it can never
 // stand in for the thing a test is claiming.
 //
-// The four read-only tests (9-12) have **no barrier, on purpose**. They read server-rendered markup
-// and assert that a control is absent — and it is absent pre-hydration too, since `AgreementForm`
-// renders the same `<p>` on the server. There is no client-computed value anywhere in the claim, so
-// a barrier could not change the answer; adding one would be cargo cult. The last test does need
-// one, for fact 9's reason rather than fact 7's: its fee field is React-*controlled*
-// (`value={fee}` + `onChange`), so a `fill()` landing before hydration moves the DOM value and the
-// controlled re-render then discards it.
+// Barriers therefore sit in exactly four tests: 1 and 7 (through `openLeaseDetailByCard`), 8, and 13.
+//
+// The other NINE have none, on purpose, and for one reason: they `goto` a page and read markup the
+// server already rendered, with no click and no client-computed value anywhere in the claim. That
+// covers the five detail-page reads (2-6) as well as the four read-only tests (9-12) — the read-only
+// ones being the case worth stating, since "a control is absent" is absent pre-hydration too, as
+// `AgreementForm` renders the same `<p>` on the server. A barrier could not change any of those
+// answers; adding one would be cargo cult.
+//
+// Test 13 needs its barrier for fact 9's reason rather than fact 7's: its fee field is
+// React-*controlled* (`value={fee}` + `onChange`), so a `fill()` landing before hydration moves the
+// DOM value and the controlled re-render then discards it.
 //
 // ## Rules 4 and 5
 //
@@ -127,12 +146,16 @@
 // having forgotten it. The one service-role read the seed does make is a *precondition*, guarded by
 // `mustSucceed(...single())`, which throws on both zero rows and more than one.
 //
-// Rule 4 (#1434) binds at the four read-only tests, whose `controls: 0` half is an absence claim.
-// Its anchor is not merely in the same test but in the same *assertion*: each reads its field as
-// `{ value, controls }` and asserts one object equality, so the expectation is non-empty and
-// `expect.poll` retries against it rather than being satisfied on its first poll the way a bare
-// `toHaveCount(0)` would be. A field that never rendered fails on the container's `waitFor`; a read
-// pointed at the wrong element yields the wrong `value` rather than a passing zero.
+// Rule 4 (#1434) binds at SIX sites, not the four it is tempting to name. The four read-only tests
+// carry a `controls: 0` half; the two highlight tests carry `INERT('Boarding')`, whose
+// `aria-current: 'none'` is equally an absence; and the charges table's single-element `toEqual` is
+// an absence claim about a second row. The mechanism is the same at all of them and it satisfies
+// the rule more tightly than the rule asks: the anchor is not merely in the same test but in the
+// same *assertion*. Each reads a compound value — `{ value, controls }`, a two-row nav map, a
+// one-row charge list — so the expectation is non-empty and `expect.poll` retries against it rather
+// than being satisfied on its first poll the way a bare `toHaveCount(0)` would be. A region that
+// never rendered fails on its container's `waitFor`; a read pointed at the wrong element yields the
+// wrong value rather than a passing zero.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
@@ -158,9 +181,12 @@ const SUBJECT_HORSE = 'Bramble'
 const DECOY_HORSE = 'Clover'
 
 /**
- * Whole numbers, all three distinct. `agreements.fee` is unconstrained `NUMERIC`, so PostgREST
- * returns whatever was written and 450 round trips as exactly "450" where a scaled value could
- * arrive as either "512.5" or "512.50".
+ * Whole numbers, all three distinct. `agreements.fee` and `agreement_charges.fee` are both
+ * unconstrained `NUMERIC`. Whole numbers are chosen so no rendered string depends on how a scale is
+ * carried — not because a scaled value would round trip ambiguously, which the review round
+ * established it cannot: supabase-js JSON-parses a PostgREST numeric into a JS number, so 512.50
+ * arrives as 512.5 and `String()` can never produce "512.50". Distinctness is the load-bearing
+ * property; the earlier version of this comment claimed a hazard that does not exist.
  */
 const SUBJECT_FEE = 450
 const DECOY_FEE = 375
@@ -278,6 +304,21 @@ const barn = withBarn('phase2-agreements-detail', async ({ supabase, barn, membe
       .single(),
     'read back the auto-generated first charge for the subject lease'
   )
+
+  // The fee half of that read-back would otherwise be self-agreeing, which the review round caught:
+  // `ChargesTable` seeds its input from `agreement_charges.fee` and this read comes from the same
+  // column, so asserting one against the other passes however wrong the stored value is. The page
+  // assertion is therefore made against `SUBJECT_FEE` — the number handed TO the RPC — and this
+  // guard is what connects the two, by pinning that the RPC actually stored what it was given.
+  // Deliberately not folded into the page assertion: "the RPC stored the right fee" is a claim
+  // about the write, and it belongs where the write happened rather than three tests later.
+  if (subjectCharge.fee !== SUBJECT_FEE) {
+    throw new Error(
+      `create_agreement_with_first_charge stored ${subjectCharge.fee} on the first charge, not the ` +
+        `${SUBJECT_FEE} it was given — the charges-table assertion downstream would be comparing the ` +
+        `column against itself`
+    )
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -428,6 +469,41 @@ const INERT = (label: string) => [label, 'none', INACTIVE_FONT_WEIGHT]
 /** Leases highlighted, Boarding not — the claim both nav checkboxes make, in DOM order. */
 const LEASES_ONLY = [HIGHLIGHTED('Leases'), INERT('Boarding')]
 
+/**
+ * The page's own `<h1>` read together with the nav highlight, as one value — and this pairing is
+ * the whole reason the two highlight tests are not vacuous.
+ *
+ * THE HAZARD, because it is invisible and a green run is no evidence against it: both highlight
+ * tests start on a page where the expected answer is ALREADY TRUE. Test 7's origin is the lease
+ * list (`/agreements?kind=lease`, so Leases is highlighted there) and test 8's is the lease detail
+ * page (same query, same verdict). `waitForURL(…, { waitUntil: 'commit' })` resolves when the
+ * navigation commits, which says nothing about the destination having rendered, and `expect.poll`
+ * returns on its FIRST successful read. So a nav read taken straight after the hop can be satisfied
+ * by the origin's markup, and the test would pass without the destination's nav ever being
+ * consulted — including in exactly the regression the checklist line names, where
+ * `isNavLinkActive` stops matching the nested `…/agreements/<id>` path and the correct answer
+ * becomes "neither highlighted".
+ *
+ * The heading is the discriminator, and it works because it is destination-ONLY: the list renders
+ * `<h1>Leases</h1>`, the detail page `<h1>Lease Detail</h1>`, the edit page `<h1>Edit Lease</h1>`
+ * (`agreements/page.tsx`, `[id]/page.tsx`, `[id]/edit/page.tsx`). Folding it into the same polled
+ * value means the poll cannot succeed until the destination has actually rendered, so the nav map
+ * in that same read is the destination's. A separate `expect` before the poll would NOT do this —
+ * it would settle the heading and then leave the nav free to be read a moment later, which is the
+ * "a settle that is not a barrier" shape.
+ *
+ * `checklist-phase2-agreements-create.spec.ts` closes the same hazard differently and deliberately:
+ * every test there starts from `/horses`, chosen so neither agreements entry is highlighted on the
+ * origin, which makes each highlight expectation a genuine change of state. That option is not open
+ * here — this file's checklist lines start from the lease list card by name — so the discriminator
+ * is carried in the assertion instead.
+ */
+async function headingAndHighlight(page: Page): Promise<{ heading: string; nav: string[][] }> {
+  const heading = page.locator('main h1')
+  await heading.waitFor()
+  return { heading: (await heading.textContent()) ?? '', nav: await navHighlightMap(page) }
+}
+
 // ---------------------------------------------------------------------------
 // Expected renderings, derived independently of the code that produces them
 // ---------------------------------------------------------------------------
@@ -563,7 +639,7 @@ test.describe.serial('the monthly lease detail and edit pages', () => {
 
     await expect
       .poll(() => chargeRows(page))
-      .toEqual([{ period: periodLabel(subjectCharge.period), fee: String(subjectCharge.fee) }])
+      .toEqual([{ period: periodLabel(subjectCharge.period), fee: String(SUBJECT_FEE) }])
   })
 
   // "The nav still shows **Leases** highlighted (not Boarding) on the detail page"
@@ -576,7 +652,9 @@ test.describe.serial('the monthly lease detail and edit pages', () => {
     test.slow()
     await openLeaseDetailByCard(page)
 
-    await expect.poll(() => navHighlightMap(page)).toEqual(LEASES_ONLY)
+    await expect
+      .poll(() => headingAndHighlight(page))
+      .toEqual({ heading: 'Lease Detail', nav: LEASES_ONLY })
   })
 
   // "**Edit** button top-right → the nav still shows **Leases** highlighted on the edit page too"
@@ -596,7 +674,9 @@ test.describe.serial('the monthly lease detail and edit pages', () => {
     await page.getByRole('link', { name: 'Edit', exact: true }).click()
     await page.waitForURL(atEditPage(), { waitUntil: 'commit' })
 
-    await expect.poll(() => navHighlightMap(page)).toEqual(LEASES_ONLY)
+    await expect
+      .poll(() => headingAndHighlight(page))
+      .toEqual({ heading: 'Edit Lease', nav: LEASES_ONLY })
   })
 
   // "On the edit page, the rider is read-only"
