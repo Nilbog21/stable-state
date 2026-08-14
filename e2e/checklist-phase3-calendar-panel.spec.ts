@@ -40,10 +40,15 @@
 // THREE OF THOSE COPIES CARRY CORRECTIONS PAID FOR THE HARD WAY. Do not "simplify" them back:
 //
 //   - `goToMonth` takes its settle target as a PARAMETER. #1462 first derived it from the barn's
-//     clock, which silently assumes the grid is sitting on the barn's current month. This file is
-//     the case that fix was written for: `..._share_one_hue_per_band` pages and then taps twice,
-//     and a derived target would wait unboundedly on a heading the grid had already left, burning
-//     the whole `test.slow()`-tripled budget instead of failing fast.
+//     clock, which silently assumes the grid is sitting on the barn's current month; #1463 is the
+//     file that correction was actually written for, because its two barn-wide tests call it
+//     TWICE IN ONE TEST and the derived form would click through to month +2 while waiting on
+//     month +1's heading. **No test in THIS file calls it more than once** — every call is a
+//     single `goToFixtureMonth`, plus one direct call in the month-advance test — so the derived
+//     form would happen to be correct here. The parameter is kept anyway, and this note exists
+//     because an earlier draft of it claimed the opposite: a copied correction silently
+//     re-derived in the one file where its failure mode is dormant is how the correction gets
+//     lost. `pickDay` is what this file calls twice in one test, which is not the same thing.
 //   - `readGrid` guards on all 42 cells. The weaker "first cell is visible" form stops an empty
 //     read and not a short one, and several assertions below compare whole-grid rows — a 7-cell
 //     read would compare 7 against 7 and pass.
@@ -81,8 +86,10 @@
 // unnoticed. This seed callback contains neither: `addTier`, `addHorse` and `addUnpaidLesson`
 // bottom out in inserts that raise on failure, the last of them in the
 // `create_lesson_with_participants` RPC, which raises server-side. `addHorse`'s threshold write
-// IS an `.update(`, but it lives inside the builder, is guarded there by `mustSucceed`, and
-// matches the row `createHorse` just returned.
+// IS an `.update(`, but it lives inside the builder and ends in `.select().single()`, which is
+// rule 5's own "already guarded" category — a zero-row match raises PGRST116 there. `mustSucceed`
+// alone would NOT be that guard, which is exactly what rule 5 exists to say; an earlier draft of
+// this paragraph credited it, as does the sibling spec this was copied from.
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
@@ -137,10 +144,12 @@ function panelLineFor(horseName: string, riderName: string): RegExp {
 /**
  * The time `openNewLessonForm` fills to prove React has taken the form over.
  *
- * ITS MINUTES MUST NOT BE `:00`, for the reason #1372 measured and the two sibling calendar specs
- * state in full: `LessonStartTime` initialises `time` to the top of the barn's *current* hour on
- * the server too, so a barrier time of `10:00` would already match whenever the suite runs during
- * the barn's 10:00–10:59 hour and the barrier would resolve having proved nothing.
+ * ITS MINUTES MUST NOT BE `:00`: `LessonStartTime` initialises `time` to the top of the barn's
+ * *current* hour on the server too, so a barrier time of `10:00` would already match whenever the
+ * suite runs during the barn's 10:00–10:59 hour and the barrier would resolve having proved
+ * nothing. Stated in full by checklist-phase3-calendar-shading.spec.ts, which is where the chain
+ * of citations bottoms out — #1372 itself is about a *timeout tier* (a bare `toHaveCount` running
+ * on expect's 5s default) and did not measure this.
  *
  * Its HOUR is separately load-bearing: `computeDayDecorations` centres its ±3-day exertion window
  * on `${date}T${hour}`, and the fixture table below is written against hour 10.
@@ -150,10 +159,11 @@ const BARRIER_TIME = '10:37'
 /**
  * `expect.poll` and web-first matchers run on expect's own 5s default, which `test.slow()` does
  * not raise, so a number here *loosens* rather than tightens (e2e/CLAUDE.md fact 1). 30s rather
- * than 20s is #1482's measurement rather than padding: a cold `next dev` compiles the routes a
- * test visits *inside that test's budget*, measured at ~16.6s of pure compile, and under
- * full-suite worker contention that compounds with the schedule Server Action every band read
- * here waits behind.
+ * than the 20s checklist-phase5-lessons-new.spec.ts uses, and THE EXTRA 10s is #1482's
+ * measurement rather than padding: a cold `next dev` compiles the routes a test visits *inside
+ * that test's budget*, measured at ~16.6s of pure compile, and under full-suite worker contention
+ * that compounds with the schedule Server Action every band read here waits behind. (#1482
+ * measured the compile; it did not rule on 30-vs-20, which is this file following its sibling.)
  */
 const SCHEDULE_FETCH_BUDGET = 30_000
 
@@ -363,11 +373,18 @@ type GridCell = {
  * Everything one grid cell renders that this file asserts on, for all 42 cells, in one round
  * trip.
  *
- * `boxShadow` is #1464's addition to #1463's copy: Tailwind's `ring-2 ring-blue-500` paints the
- * selection ring as a box shadow, so the ring is a *computed* value rather than a class or an
- * attribute. It is read this way rather than off `aria-pressed` because React 19 does not
- * reconcile an attribute that mismatched at hydration and #1252 measured exactly that on these
- * cells (e2e/CLAUDE.md fact 7).
+ * `boxShadow` is #1464's addition to #1463's copy, and the reason is the checkbox's own wording:
+ * "the tapped day gains a selection ring" is a claim about what is PAINTED, and Tailwind's
+ * `ring-2 ring-blue-500` paints it as a box shadow. Reading the computed shadow asserts the thing
+ * the line names rather than a proxy for it, and nothing else on a day cell paints a shadow, so
+ * `!== 'none'` is exactly the ring.
+ *
+ * NOT justified by fact 7, though an earlier draft of this comment claimed it was. #1252 did
+ * measure `aria-pressed` surviving at the server's value on these very cells — but only because
+ * that spec PINS THE CLOCK, which is what made server and client disagree at hydration. This file
+ * pins nothing, and `lessonDate` initialises from `barnToday` identically on both sides, so there
+ * is no mismatch here for React to decline to reconcile — and `className` would be no safer than
+ * `aria-pressed` if there were, since React writes both.
  *
  * THE COUNT GUARD PINS THE FULL GRID, and must stay that way. It is support/read.ts's rule 3
  * reaching `evaluateAll`, which carries the identical hazard — the weaker "first match is
@@ -529,8 +546,8 @@ async function openNewLessonForm(page: Page): Promise<void> {
  * second month and then never satisfy its own predicate. `openNewLessonForm`'s barrier has
  * already proved React is listening, which is what makes one click enough.
  *
- * `target` IS A PARAMETER, AND MUST STAY ONE — see the file header. This is the file that
- * correction was written for.
+ * `target` IS A PARAMETER, AND MUST STAY ONE — see the file header, which also records that this
+ * file does not itself exercise the failure mode the parameter exists for (#1463 does).
  */
 async function goToMonth(page: Page, direction: 'Previous' | 'Next', target: string): Promise<void> {
   await page.getByRole('button', { name: `${direction} month`, exact: true }).click()
@@ -567,10 +584,20 @@ async function selectHorse(page: Page, horse: Horse): Promise<void> {
  *
  * This is the fetch barrier, not a convenience. `scheduleItems` starts `[]`, and `worstBand` over
  * an empty window is `getExhaustionBand(0, …)` — `low` — so with a horse checked and the Server
- * Action still outstanding, EVERY day already reads `data-band="low"`. A grid read taken before
- * this would see a fully-decorated calendar carrying entirely the wrong bands. That asymmetry is
- * why every use below waits on a `moderate`/`high` day: waiting on a `low` one would be satisfied
- * by the un-fetched state.
+ * Action still outstanding, every *future* day already reads `data-band="low"` (a past day is
+ * `band: null` and carries no attribute at all). A grid read taken before this would see a
+ * fully-decorated calendar carrying entirely the wrong bands. That asymmetry is why every use
+ * below waits on a `moderate`/`high` day: waiting on a `low` one would be satisfied by the
+ * un-fetched state.
+ *
+ * THERE IS A SECOND STALE STATE, and it makes the choice of DAY matter as much as the choice of
+ * band. `scheduleItems` is never reset when the month changes — `LessonForm`'s effect only calls
+ * `setScheduleItems` inside its `.then` — so immediately after paging forward the grid is still
+ * decorated from the PREVIOUS month's items. Month M's fetch reaches `fixtureMonth` day
+ * `45 − w − L` (w = weekday of M's 1st, L = M's length), which ranges over day 8 to day 17, so a
+ * barrier on day 15 can be satisfied by month M's fetch on some calendar alignments. Day 22 is
+ * unreachable from it for every alignment (`45 − w − L ≥ 22` needs `w + L ≤ 23`, impossible for
+ * `L ≥ 28`), which is why every barrier below names day 22.
  */
 async function waitForScheduleShading(page: Page, date: string, band: string): Promise<void> {
   await expect(dayCell(page, date)).toHaveAttribute('data-band', band, {
@@ -664,6 +691,12 @@ test.describe('The day panel below the grid', () => {
   // `describeScheduleItem` composes horses and riders into one string and a substring match on
   // either half would pass against a line that had dropped the other. The expected text is that
   // composition over values this file's own builders returned.
+  //
+  // THE TWO BODIES ARE THEREFORE IDENTICAL, and that is bookkeeping rather than a copy-paste
+  // slip: they are two checklist checkboxes over one rendered string, and the convention is one
+  // test per checkbox. Each still discriminates its own half — breaking the horse name fails the
+  // first and breaking the rider name fails the second — but neither catches anything the other
+  // misses, so do not read the pair as two independent guarantees.
   test('manager_the_day_panel_shows_each_items_horse_names @manager', async ({ page }) => {
     await openNewLessonForm(page)
     await goToFixtureMonth(page)
@@ -684,20 +717,31 @@ test.describe('The day panel below the grid', () => {
     })
   })
 
-  // The empty message and the empty list anchor each other: the message is a positive read
-  // proving the panel rendered for this day, which is what the `toHaveCount(0)` beneath it needs
-  // (#1434) — on its own that count is satisfied on its first poll, before the panel could have
-  // drawn anything.
+  // THE ANCHOR IS A DIFFERENT DAY, and that is the whole point of this test's shape.
+  //
+  // The empty message and the empty list are NOT independent readings: `MonthCalendarPicker`
+  // renders both from the single `popupItems.length === 0` branch. And `[]` is that branch's
+  // PRE-FETCH default — `scheduleItems` starts empty and `LessonForm` never resets it, so a day
+  // with a lesson on it also reads "Nothing scheduled for this day." while the fetch is in
+  // flight. Anchoring on the message alone satisfies rule 4 literally and proves nothing: it
+  // shows the panel rendered, not that this month's schedule was ever fetched.
+  //
+  // So the anchor is `highLessonDay` — day 22, which is out of reach of the previous month's
+  // fetch on every calendar alignment (`waitForScheduleShading` states the arithmetic). Its line
+  // can only be on screen once THIS month's fetch has landed, which is what makes the emptiness
+  // asserted immediately afterwards a claim about `emptyDay` rather than about a pending request.
+  // `panelDay` would NOT do: at day 04 it is always already inside month M's fetch range.
   test('manager_tapping_a_day_with_nothing_on_it_reads_nothing_scheduled_for_this_day @manager', async ({
     page,
   }) => {
     await openNewLessonForm(page)
     await goToFixtureMonth(page)
+    await pickDay(page, highLessonDay)
+    await expect(dayPanelItems(page)).toHaveCount(1, { timeout: SCHEDULE_FETCH_BUDGET })
+
     await pickDay(page, emptyDay)
 
-    await expect(dayPanel(page).getByText('Nothing scheduled for this day.', { exact: true })).toBeVisible({
-      timeout: SCHEDULE_FETCH_BUDGET,
-    })
+    await expect(dayPanel(page).getByText('Nothing scheduled for this day.', { exact: true })).toBeVisible()
     await expect(dayPanelItems(page)).toHaveCount(0)
   })
 })
@@ -734,6 +778,13 @@ test.describe('Selecting a day and paging the grid', () => {
   test('manager_tapping_next_month_advances_the_grid_one_month @manager', async ({ page }) => {
     await openNewLessonForm(page)
     const openingMonth = barnToday(barn.data.barn.timezone).slice(0, 7)
+    // `fixtureMonth` is frozen at seed time while this is read per test, so a suite run that
+    // crosses barn-local midnight on a month's last day would leave every other test in this file
+    // paging to the month its fixtures are NOT in — and `goToMonth`'s settle is unbounded, so
+    // they would hang out their budget rather than say why. This is where that condition gets a
+    // name; it is asserted here rather than inside `goToFixtureMonth` because a helper on twelve
+    // tests' path cannot be touched without re-scoring the whole mutation pass.
+    expect(shiftMonth(openingMonth, 1)).toBe(fixtureMonth)
     await expect(page.getByText(formatMonthHeading(openingMonth), { exact: true })).toBeVisible()
     expect((await readGrid(page)).map((c) => c.date)).toEqual(getMonthGrid(openingMonth))
 
@@ -767,13 +818,20 @@ test.describe('Selecting a day and paging the grid', () => {
   // are compared to each other, so no palette value is frozen here.
   //
   // Grid index 41 is provably always a neighbouring-month day: the grid is 42 cells starting on
-  // the Sunday on or before the 1st, so at most 6 + 31 = 37 of them belong to the month and
-  // indices 37–41 always spill forward. It is also always in the future, being in month +2, which
+  // the Sunday on or before the 1st, so at most 6 leading spill-over days plus at most 31 of the
+  // month consume 37 cells, and indices 37–41 always spill forward. It is also always in the future, being in month +2, which
   // matters because a *past* day is greyed further still (`text-zinc-300`) and would satisfy this
   // ordering for the wrong reason — hence the `past` assertions on both cells.
   //
   // NOT an automation of the neighbouring `(manual)` line, which asks whether that number is
   // *readable* against its tint. This asserts an ordering between two cells and sets no threshold.
+  //
+  // The ordering encodes LIGHT-MODE polarity: `text-zinc-600` outside vs `text-zinc-900` inside,
+  // against a white page. The dark variants (`zinc-300` vs `zinc-50`) invert it, so "dimmed" as a
+  // mode-independent claim would be "further from the in-month colour toward the page background"
+  // rather than "lighter". `playwright.config.ts` sets no `colorScheme`, so Chromium's `light`
+  // default holds and this is correct today — and if a dark project is ever added it FAILS rather
+  // than passing vacuously, which is the safe direction for a fragility to point.
   test('manager_a_day_carried_in_from_the_neighbouring_month_renders_dimmed @manager', async ({ page }) => {
     await openNewLessonForm(page)
     await goToFixtureMonth(page)
@@ -819,8 +877,10 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
   // fixed `top`, "so tapping a day near the start of the month hid the very day just tapped".
   //
   // The day tapped is the first cell that belongs to the displayed month, which is always in the
-  // first row (the grid starts on the Sunday on or before the 1st, so the 1st is at index 0–6) —
-  // asserted rather than assumed, because "in the calendar's first row" is half the claim.
+  // first row: the grid starts on the Sunday on or before the 1st, so the 1st lands at index 0–6
+  // by construction. `toBeLessThan(7)` is therefore a GUARD on `data-outside` rather than a claim
+  // that can fail from a real placement bug — it is here so "in the calendar's first row" is
+  // pinned to something rather than left to the reader, not because the grid could violate it.
   test('manager_the_day_panel_does_not_cover_the_first_row_day_that_opened_it @manager', async ({
     page,
   }) => {
@@ -864,7 +924,10 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
     await page.locator(`#exertion_${apple.id}`).fill('1')
     await expect(page.locator(`#exertion_${apple.id}`)).toHaveValue('1')
     await goToFixtureMonth(page)
-    await waitForScheduleShading(page, moderateLessonDay, 'moderate')
+    // Day 22, not day 15: month M's fetch reaches day 15 on some calendar alignments, so a
+    // barrier there can be satisfied by the previous month's stale items. See
+    // `waitForScheduleShading`.
+    await waitForScheduleShading(page, highLessonDay, 'high')
 
     await pickDay(page, moderateLessonDay)
     await waitForExhaustionBar(page, apple, MODERATE_EXERTION)
@@ -924,10 +987,10 @@ test('manager_checking_recurring_relabels_the_month_calendars_own_field_label @m
 // satisfied on its first poll, so on its own it would pass against a page that had not rendered
 // yet. The visible native date input is that anchor.
 //
-// Reached by `goto` rather than by clicking through Manage Barn → Events → Add Event, which is
-// what checklist-phase4-settings-tiers-events.spec.ts does for this same route. Framework fact 11
-// binds switching a *tab or filter*, where the query param is the state under test; a route is
-// not that.
+// Reached by `goto` rather than by clicking through Manage Barn → Events → Add Event.
+// checklist-phase4-settings-tiers-events.spec.ts reaches this same route by `goto` too, which is
+// the precedent being followed. Framework fact 11 binds switching a *tab or filter*, where the
+// query param is the state under test; a route is not that.
 test('manager_add_event_uses_a_plain_native_date_box_and_no_month_calendar @manager', async ({ page }) => {
   test.slow()
   await page.goto(`/barn/${barn.slug}/settings/events/new`)
