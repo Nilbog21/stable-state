@@ -6,13 +6,13 @@
 
 All via `/barn/dev-barn/lessons/new`. Times entered here should display later in 12-hour AM/PM format. `reset-db.ts` seeds ~43 varied lessons across past/current/future dates, tiers, jumping, and exertion — only create the purpose-built lessons below; verify everything else against seeded data (including the seeded Custom-tier lesson).
 
-- [ ] (e2e-candidate) Create a **past lesson** (dated ~5 weeks ago, previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
-- [ ] (e2e-candidate) Try saving a lesson with a blank fee (Custom tier, no tier selected) — rejected with "fee is required"
-- [ ] (e2e-candidate) In edit mode, a blank fee is rejected too
-- [ ] (e2e-candidate) Select a named tier (e.g. Beginner) — the fee field stays visible and editable
-- [ ] (e2e-candidate) That fee field is pre-filled with the tier's price
-- [ ] (e2e-candidate) Change the fee and save — the lesson saves with the edited fee
-- [ ] (e2e-candidate) That lesson keeps the tier's name (not "Custom")
+- [ ] (e2e: creating_a_past_lesson_stores_its_date_tier_instructor_horse_and_rider) Create a **past lesson** (dated in the previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
+- [ ] (e2e: saving_a_new_lesson_with_a_blank_fee_is_rejected_by_the_fee_field) Try saving a lesson with a blank fee (Custom tier, no tier selected) — the Fee field itself rejects the save
+- [ ] (e2e: editing_a_lesson_to_a_blank_fee_is_rejected_by_the_fee_field) In edit mode, a blank fee is rejected too
+- [ ] (e2e: selecting_a_named_tier_leaves_the_fee_field_visible_and_editable) Select a named tier (e.g. Beginner) — the fee field stays visible and editable
+- [ ] (e2e: selecting_a_named_tier_prefills_the_fee_with_that_tiers_price) That fee field is pre-filled with the tier's price
+- [ ] (e2e: an_edited_fee_is_stored_on_the_created_lesson) Change the fee and save — the lesson saves with the edited fee
+- [ ] (e2e: an_edited_fee_leaves_the_lesson_on_the_selected_tier) That lesson keeps the tier's name (not "Custom")
 - [ ] (e2e-candidate) Create a **current-month paid lesson** (dated a few days ago, before today): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
 - [ ] (e2e-candidate) While creating it, before a date is picked no exhaustion bars render
 - [ ] (e2e-candidate) Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar
@@ -25,16 +25,16 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 > The two `(manual)` lines in this block compare colours by eye, so the days they compare come from the seed rather than from the checkboxes above them (#1413): `reset-db.ts` gives **Juniper** low exhaustion thresholds and four lessons, which put an amber day, a red day and a tinted neighbouring-month day on its calendar from any date the checklist is walked on. Selecting Juniper is the setup for both.
 
-- [ ] (e2e-candidate) (#1019) The Date field renders as a month calendar grid, not a native date box
-- [ ] (e2e-candidate) (#1019) Days before today are greyed out, making today the first fully-coloured day on the grid
-- [ ] (e2e-candidate) (#1019) With neither a horse nor a rider selected, no day is tinted
-- [ ] (e2e-candidate) (#1019) With neither a horse nor a rider selected, no day shows a dot
-- [ ] (e2e-candidate) (#1019) Select rider Dana and no horse — days where Dana already has a lesson are tinted
-- [ ] (e2e-candidate) (#1019) Still rider-only, no day shows a dot
-- [ ] (e2e-candidate) (#1019) Now also check horse Apple — the flat rider tint is replaced by exertion shading
-- [ ] (e2e-candidate) (#1019) A day where Apple already has a lesson shows a small red dot below the date number
-- [ ] (e2e-candidate) (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
-- [ ] (e2e-candidate) (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
+- [ ] (e2e: manager_new_lesson_date_field_renders_a_month_grid_not_a_native_date_input) (#1019) The Date field renders as a month calendar grid, not a native date box
+- [ ] (e2e: manager_calendar_greys_out_every_day_before_today) (#1019) Days before today are greyed out, making today the first fully-coloured day on the grid
+- [ ] (e2e: manager_no_day_is_tinted_before_a_horse_or_rider_is_selected) (#1019) With neither a horse nor a rider selected, no day is tinted
+- [ ] (e2e: manager_no_day_shows_a_conflict_dot_before_a_horse_or_rider_is_selected) (#1019) With neither a horse nor a rider selected, no day shows a dot
+- [ ] (e2e: manager_rider_only_selection_tints_exactly_the_days_that_rider_already_rides) (#1019) Select rider Dana and no horse — days where Dana already has a lesson are tinted
+- [ ] (e2e: manager_rider_only_selection_shows_no_conflict_dot) (#1019) Still rider-only, no day shows a dot
+- [ ] (e2e: manager_checking_a_horse_replaces_the_flat_rider_tint_with_exertion_shading) (#1019) Now also check horse Apple — the flat rider tint is replaced by exertion shading
+- [ ] (e2e: manager_a_day_the_selected_horse_already_works_shows_a_conflict_dot) (#1019) A day where Apple already has a lesson shows a small red dot below the date number
+- [ ] (e2e: manager_a_day_shaded_only_by_a_neighbouring_days_lesson_shows_no_conflict_dot) (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
+- [ ] (e2e: manager_two_checked_horses_resolve_each_day_to_the_heavier_shading) (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
 - [ ] (e2e-candidate) (#1019, #1021) Change the **Start Time** field in the day panel from an early hour to a late one — at least one day's shading shifts
 - [ ] (e2e-candidate) (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks in `phase-5-trainer.md` need both) — then reopen this form with Apple selected — that day shows a dot
 - [ ] (e2e-candidate) (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
