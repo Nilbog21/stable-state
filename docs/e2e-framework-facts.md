@@ -27,10 +27,10 @@ on expect's 5s default, which `test.slow()` does not raise. So a number on the f
 *tightens* and a number on the third *loosens*. Full statement: `support/test.ts`'s Timeouts
 block.
 
-A test spending more than about half its warm budget has no room left for a cold server, where
-`next dev` compiles the routes it visits inside that same budget — measured at ~16.6s of pure
-compile on one such test. Under full-suite worker contention the two costs compound and it times
-out — declare `test.slow()`. *(#1482)*
+A test spending more than about a third of its warm budget has no room left for a cold server,
+where `next dev` compiles the routes it visits inside that same budget — measured at ~16.6s of
+pure compile on one such test. Under full-suite worker contention the two costs compound and it
+times out — declare `test.slow()`. *(#1482)*
 
 ## Fact 2
 
