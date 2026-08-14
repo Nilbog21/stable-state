@@ -148,13 +148,15 @@ From your Profile page (opened from a specific barn), a **Calendar Feed** sectio
 
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
 
-- **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn.
+- **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn. You also receive this when cancelling the last remaining rider's spot in a group lesson cancels the whole lesson, whether a manager, a trainer, or the rider themselves did it.
+- **Lesson participation cancelled** — a rider cancelled their own spot in a lesson, or a trainer cancelled a rider's spot on their behalf. Tap the notification to open the lesson.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
 - **Outstanding expenses** — one or more expenses are past their scheduled date and still need an amount entered, a payment type picked, or both. Tap the notification to go to Finances. This is checked and updated once nightly, so it may take up to a day to clear after you resolve them.
 - **New lesson(s) scheduled nearby** — if you instruct lessons yourself, another instructor booked a lesson within the barn's schedule-buffer window (set in Settings) of one of yours. Tap the notification to review the schedule.
+- **Recurring lesson generated with an unavailable horse** — if you instruct lessons yourself, the nightly job generated the next occurrence of one of your recurring series, but the horse assigned to it is currently marked unavailable or inactive. Tap the notification to review the lesson and reassign the horse if needed.
 
 ## If something goes wrong
 

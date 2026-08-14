@@ -20,7 +20,11 @@ If you have past lessons with unpaid balances, an uncollected late-cancellation 
 
 ## Notifications
 
-Tap the bell icon in the nav bar to view your notifications. If your profile is missing a phone number or emergency contact, you will receive a **Complete your profile** notification — tap it to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
+Tap the bell icon in the nav bar to view your notifications.
+
+- **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
+- **Lesson cancelled** — a lesson you were enrolled in was cancelled. Tap the notification to open the lesson.
+- **Lesson participation cancelled** — a manager or trainer cancelled your spot in a lesson on your behalf. Tap the notification to open the lesson.
 
 ## Members and your documents
 

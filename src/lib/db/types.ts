@@ -43,6 +43,10 @@ export type Instant = { at: string; tz: string }
 export type CalendarDate = string & { __brand: 'CalendarDate' }
 
 export type Role = 'manager' | 'trainer' | 'rider'
+// Adding a member here means adding a bullet to the Notifications section of every role guide
+// whose members can receive it — USER_GUIDE_MANAGER.md, USER_GUIDE_TRAINER.md, USER_GUIDE_RIDER.md.
+// Nothing else enforces this: CLAUDE.md's User Guides rule fires on UI-impacting changes, and a new
+// notification type changes no route, so it slips through (#1471 — five bullets were missing).
 export type NotificationType =
   | 'outstanding_payment'
   | 'lesson_cancelled'
