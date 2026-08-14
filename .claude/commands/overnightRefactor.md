@@ -271,11 +271,13 @@ Take the iteration's diff once and reuse it: `git diff --name-only {last_good_sh
 **Skip conditions**, checked in this order — on either, append `**E2E gate:** skipped — {reason}`
 under the Iteration {N} section and go straight to **Step 2b**:
 
-1. The diff touches no `e2e/` path. `tsc` plus vitest at 100% branch coverage already net a src
-   refactor, and `select-specs.sh` returns `mode=full` for most of them (`src/lib/**`,
-   `src/components/**` and `src/app/actions/**` are all in `ALWAYS_FULL`) — running the suite on
-   every iteration would cost ~14 minutes each and roughly halve the night's throughput to
-   re-verify what is already verified.
+1. The diff touches no `e2e/` path **and not `playwright.config.ts`**. `tsc` plus vitest at 100%
+   branch coverage already net a src refactor, and `select-specs.sh` returns `mode=full` for most
+   of them (`src/lib/**`, `src/components/**` and `src/app/actions/**` are all in `ALWAYS_FULL`) —
+   running the suite on every iteration would cost ~14 minutes each and roughly halve the night's
+   throughput to re-verify what is already verified. `playwright.config.ts` is the one
+   `ALWAYS_FULL` entry that lives outside `e2e/`, so an `e2e/`-prefix test alone would skip the
+   gate on a diff the selector would have called `mode=full`.
 2. `$(date +%s) + 900 -ge $cutoff_epoch` — a full run wouldn't finish before the wall clock. The
    wrapup's full-suite gate still sees this commit in the morning.
 
