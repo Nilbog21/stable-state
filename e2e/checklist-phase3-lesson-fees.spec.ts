@@ -1,11 +1,17 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/components/ui/date-nav.ts
+// covers: src/components/ExhaustionBar.tsx
 // covers: src/app/actions/lessons.ts
 // covers: src/app/actions/lesson-form-parsing.ts
 // covers: src/lib/db/lessons.ts
+// covers: src/lib/db/schedule.ts
+// covers: src/lib/month-calendar.ts
+// covers: src/lib/barn-timezone.ts
+// covers: src/lib/local-day.ts
 //
 // Phase 3's opening block (checklists/pre-release/phase-3-manager-lesson-entry.md, from
-// "Create a **past lesson**" through "That lesson keeps the tier's name (not \"Custom\")"): the
+// "Create a **past lesson**" through "That lesson keeps the tier's name (not "Custom")"): the
 // past lesson driven through /lessons/new, the Fee field's rejection of a blank value on create
 // and again in edit mode, and the named-tier prefill that a manager then overrides without the
 // lesson falling back to Custom.
@@ -276,6 +282,32 @@ async function submitNewLesson(page: Page): Promise<void> {
 }
 
 /**
+ * Switches the list's top-row filter by clicking its `Pill`, never by re-`goto`ing with a query
+ * param (fact 11): the pills are `<Pill href="?filter=…">` → Next `Link`s, so a click costs no
+ * document load, and both callers below are *already* on `/lessons` from `submitNewLesson`'s
+ * redirect — a `goto` there would be a second load of the page the test is already on. Copied in
+ * shape from checklist-phase4-lessons-list.spec.ts's `pickTopFilter`, which drives this same row.
+ */
+async function pickTopFilter(page: Page, label: string, expected: string): Promise<void> {
+  await page.getByRole('link', { name: label, exact: true }).click()
+  await page.waitForURL((url) => url.searchParams.get('filter') === expected, {
+    waitUntil: 'commit',
+  })
+}
+
+/**
+ * Picks one horse from the second-row pills, which exist only once By Horse is the active filter.
+ *
+ * `exact: true` is load-bearing rather than defensive: `getByRole`'s name match is a substring, and
+ * every lesson card on this page is a link whose accessible name *contains* its horse's name, so a
+ * loose match would resolve to the pill and the cards at once.
+ */
+async function pickHorseFilter(page: Page, horseName: string): Promise<void> {
+  await page.getByRole('link', { name: horseName, exact: true }).click()
+  await page.waitForURL((url) => url.searchParams.get('id') !== null, { waitUntil: 'commit' })
+}
+
+/**
  * Walks from the Lessons list to a created lesson's own edit form, the way a manager reaches it,
  * and reports the lesson's id.
  *
@@ -290,13 +322,22 @@ async function submitNewLesson(page: Page): Promise<void> {
  * same markup before and after hydration (fact 13). Reaching a card *through* that toggle is also
  * the structural half of the past-lesson claim: only a lesson older than the list's cutoff is
  * behind it at all.
+ *
+ * The toggle is activated by keyboard, not a pointer click: this is the same button `4de20ed5`
+ * (#1189) converted for the reason `04c64505` (#501) established — it sits at the very bottom of a
+ * long scrollable page, where Chromium's scroll-into-view animation races Playwright's
+ * actionability check and a list item intermittently intercepts the click mid-scroll. Nothing here
+ * is a claim about pointer behaviour, so there is no reason to take that risk.
  */
-async function openEditFormForHorse(page: Page, horseId: string, past: boolean): Promise<string> {
-  await page.goto(`/barn/${barn.slug}/lessons?filter=horse&id=${horseId}`)
+async function openEditFormForHorse(page: Page, horseName: string, past: boolean): Promise<string> {
+  await pickTopFilter(page, 'By Horse', 'horse')
+  await pickHorseFilter(page, horseName)
 
   if (past) {
     await waitForBarnPageHydrated(page)
-    await page.getByRole('button', { name: 'Show older lessons', exact: true }).click()
+    const toggle = page.getByRole('button', { name: 'Show older lessons', exact: true })
+    await toggle.focus()
+    await toggle.press('Enter')
   }
 
   await lessonCards(page).click()
@@ -320,30 +361,30 @@ async function openEditFormForHorse(page: Page, horseId: string, past: boolean):
  * is five claims about one lesson, and splitting them would let four pass while the fifth silently
  * named a different lesson.
  *
- * Every field is seeded from a server prop, so these values are in the server-rendered markup and
- * need no hydration barrier; the `waitFor` is there so a form that never rendered fails here
- * instead of returning empties. `aria-pressed` is safe to read for the same reason — the server
- * and the client compute it from the same prop, so fact 7's non-reconciliation has no mismatch to
- * preserve, and nothing on this page ever changes the selected day.
+ * Called inside `expect.poll`, which is what makes the composite safe: every member read here is
+ * **one-shot**. `inputValue()` and `getAttribute()` do not retry once they have an element, and
+ * `evaluateAll` does not retry at all — it yields `[]` on an unsettled page, which is rule 3's
+ * pass-on-nothing hazard. A bare `expect(await …)` would freeze whatever the first read happened
+ * to see; the poll re-reads the whole object instead, so `[]` simply fails and is retried rather
+ * than being compared against. Same shape, and the same reason, as
+ * checklist-phase4-expenses-form.spec.ts's `the_edit_form_opens_prefilled_with_the_expenses_stored_values`.
+ *
+ * `aria-pressed` is safe to read here — the server and the client compute it from the same
+ * `initialLesson` prop, so fact 7's non-reconciliation has no mismatch to preserve, and nothing on
+ * this page ever changes the selected day.
  */
 async function editFormSelection(page: Page) {
-  const horseInputs = page.locator('input[name="horse_id"]')
-  await horseInputs.first().waitFor()
-
-  // `evaluateAll` is one-shot and does not auto-retry, so an unsettled read yields `[]` and any
-  // assertion that happens to accept an empty array passes on nothing (rule 3). The `waitFor`
-  // above is that guard, and it doubles as the assertion: it throws rather than returning `[]`.
-  const horses = await horseInputs.evaluateAll((els) =>
-    els
-      .filter((el) => (el as HTMLInputElement).checked)
-      .map((el) => (el as HTMLInputElement).value)
-  )
-
   return {
     day: await page.locator('button[data-past][aria-pressed="true"]').getAttribute('aria-label'),
     tier: await page.locator('#tier_name').inputValue(),
     instructor: await page.locator('#instructor_id').inputValue(),
-    horses,
+    horses: await page
+      .locator('input[name="horse_id"]')
+      .evaluateAll((els) =>
+        els
+          .filter((el) => (el as HTMLInputElement).checked)
+          .map((el) => (el as HTMLInputElement).value)
+      ),
     rider: await page.locator('#rider_id').inputValue(),
   }
 }
@@ -392,17 +433,19 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
     await page.locator('#rider_id').selectOption(riderMembershipId)
     await submitNewLesson(page)
 
-    await openEditFormForHorse(page, apple.id, true)
+    await openEditFormForHorse(page, apple.name, true)
 
     // Every expectation is a builder return value or a seeded membership id — nothing here is a
     // string this file also typed into the form by hand.
-    expect(await editFormSelection(page)).toEqual({
-      day: pastDay,
-      tier: beginner.id,
-      instructor: trainerMembershipId,
-      horses: [apple.id],
-      rider: riderMembershipId,
-    })
+    await expect
+      .poll(() => editFormSelection(page))
+      .toEqual({
+        day: pastDay,
+        tier: beginner.id,
+        instructor: trainerMembershipId,
+        horses: [apple.id],
+        rider: riderMembershipId,
+      })
   })
 
   test('saving_a_new_lesson_with_a_blank_fee_is_rejected_by_the_fee_field @manager', async ({
@@ -486,7 +529,7 @@ test.describe.serial('New Lesson — the past lesson, fee validation and tier pr
     await page.locator('#rider_id').selectOption(riderMembershipId)
     await submitNewLesson(page)
 
-    editedLessonId = await openEditFormForHorse(page, willow.id, false)
+    editedLessonId = await openEditFormForHorse(page, willow.name, false)
 
     await expect(page.locator('#fee')).toHaveValue(EDITED_FEE)
   })
