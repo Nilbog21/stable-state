@@ -18,17 +18,17 @@ Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/setting
 
 Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
-- [ ] (e2e-candidate) Create horses **Daisy**, **Eclipse**, and **Flint**
-- [ ] (e2e-candidate) Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
-- [ ] (e2e-candidate) Horses page now shows Daisy under **Unavailable** with the reason visible
-- [ ] (e2e-candidate) On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list
-- [ ] (e2e-candidate) Dana's row carries an **Owner** column showing **Set as Owner**
-- [ ] (e2e-candidate) Tap **Set as Owner** on Dana's row → the button changes to **Owner**
-- [ ] (e2e-candidate) (#1069) Dana's row now shows **Write** selected in the **Documents** column without tapping it directly (auto-elevated on becoming owner)
-- [ ] (e2e-candidate) (#1069) Dana's row now shows lesson access **Can View** without tapping the toggle directly (auto-elevated on becoming owner)
-- [ ] (e2e-candidate) Refresh the page → an "Owner: Dana Rider" line appears above the photo
-- [ ] (e2e-candidate) That "Owner: Dana Rider" line links to Dana's member detail page
-- [ ] (e2e-candidate) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
+- [ ] (e2e: adding_three_horses_through_the_inline_form_lists_all_three) Create horses **Daisy**, **Eclipse**, and **Flint**
+- [ ] (e2e: marking_a_horse_unavailable_with_a_reason_stores_both) Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
+- [ ] (e2e: the_horses_list_shows_an_unavailable_horse_with_its_reason) Horses page now shows Daisy with an **Unavailable** badge and the reason visible — under **My Horses**, since the manager who adds a horse through this form becomes its owner (#998)
+- [ ] (e2e: granting_a_rider_access_adds_them_to_the_grants_list) On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list
+- [ ] (e2e: a_granted_riders_row_offers_set_as_owner) Dana's row carries an **Owner** column showing **Set as Owner**
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) Tap **Set as Owner** on Dana's row → the button changes to **Owner**
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069) Dana's row now shows **Write** selected in the **Documents** column without tapping it directly (auto-elevated on becoming owner)
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069) Dana's row now shows lesson access **Can View** without tapping the toggle directly (auto-elevated on becoming owner)
+- [ ] (e2e: the_identity_header_owner_line_names_the_new_owner) Refresh the page → the identity header's owner line beside the photo now reads "Dana Rider" (it named the manager who created the horse before)
+- [ ] (e2e: the_identity_header_owner_line_links_to_the_owners_member_detail_page) That owner line links to Dana's member detail page
+- [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
 - [ ] (e2e-candidate) Grant access to rider Emery → Emery appears in the grants list
 - [ ] (e2e-candidate) Emery's row shows Documents set to **None**
 - [ ] (e2e-candidate) Emery's row shows lesson access **Cannot View**
