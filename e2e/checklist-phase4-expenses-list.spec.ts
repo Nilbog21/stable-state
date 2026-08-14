@@ -3,10 +3,11 @@
 // covers: src/app/barn/[slug]/(protected)/DesktopNavLinks.tsx
 //
 // The manager's Expenses list: the nav slot it occupies, the five fields an expense card renders,
-// the recent/older split and its toggle, a future-dated planned expense with no amount, the
-// whole-card tap target, and the absence of a row-level Delete link
-// (checklists/pre-release/phase-4-manager-verification.md, the block from "Nav shows **Expenses**
-// between Lessons and Horses" through "There is no separate row-level Delete link on the list").
+// the recent/older split and its toggle, a future-dated planned expense with no amount, the Past
+// Due badge on an outstanding one, the whole-card tap target, and the absence of a row-level Delete
+// link (checklists/pre-release/phase-4-manager-verification.md, the block from "Nav shows
+// **Expenses** between Lessons and Horses" through "There is no separate row-level Delete link on
+// the list").
 //
 // Every test does its own goto and mutates nothing the next one reads — the one click that changes
 // state (the older-expenses toggle) is component state, discarded by the next navigation. So this
@@ -58,11 +59,36 @@ const NO_AMOUNT_RENDERED = '(no amount specified)'
 
 const OLDER_RECIPIENT = 'Old Hay Barn Ltd'
 
-// Day offsets against the page's own `now - 7 days` cutoff (OLDER_EXPENSE_CUTOFF_DAYS). -1/-2 and
-// +5 are comfortably inside it and -20 comfortably outside, so a run that crosses barn-local
-// midnight cannot move any of the four across the boundary.
+/**
+ * Past-dated, priced, and never attributed to a payment method — the state `getOutstandingExpenses`
+ * calls outstanding and the card's badge now agrees with (#1481). The only fixture here seeded
+ * *without* a payment type that also carries an amount.
+ */
+const UNPAID_RECIPIENT = 'Longmeadow Equine Dental'
+const UNPAID_AMOUNT = 75
+/**
+ * That card's whole amount line: the figure, then the badge ExpenseCard renders into the same <p>.
+ *
+ * Anchored at both ends, so this is still full-string equality — the regex form is only here
+ * because the two are separate <span>s and textContent's treatment of the gap between them is not
+ * worth pinning. Written out rather than built from the seed for the reason PRIMARY_AMOUNT_RENDERED
+ * gives: '$75.00' must not be satisfiable by '$750.00'.
+ */
+const UNPAID_AMOUNT_LINE_RENDERED = /^\$75\.00\s*Past Due$/
+
+/**
+ * Every other amounted fixture is seeded paid, which is what keeps the full-string amount-line
+ * assertions below pinning the badge's *absence* rather than quietly tolerating it. Fixed at seed
+ * time rather than left to `addExpense`'s default, so the choice is visible where it is made.
+ */
+const SEEDED_PAYMENT_TYPE = 'check' as const
+
+// Day offsets against the page's own `now - 7 days` cutoff (OLDER_EXPENSE_CUTOFF_DAYS). -1/-2/-3
+// and +5 are comfortably inside it and -20 comfortably outside, so a run that crosses barn-local
+// midnight cannot move any of the five across the boundary.
 const PRIMARY_DAY = -1
 const BARNWIDE_DAY = -2
+const UNPAID_DAY = -3
 const PLANNED_DAY = 5
 const OLDER_DAY = -20
 
@@ -82,8 +108,10 @@ let primary: SeededAppointment
 let barnwide: SeededAppointment
 let planned: SeededAppointment
 let older: SeededAppointment
+let unpaid: SeededAppointment
 
-// Insertion order is deliberately primary -> barnwide -> planned -> older; see recentHrefs below.
+// Insertion order is deliberately primary -> barnwide -> planned -> older -> unpaid; see
+// recentHrefs below.
 const barn = withBarn('phase4-expenses-list', async ({ supabase, barn }) => {
   const apple = await addHorse(supabase, barn.id, APPLE)
   const butter = await addHorse(supabase, barn.id, BUTTER)
@@ -95,6 +123,7 @@ const barn = withBarn('phase4-expenses-list', async ({ supabase, barn }) => {
     expenseType: PRIMARY_TYPE,
     horseIds: [apple.id, butter.id],
     amount: PRIMARY_AMOUNT,
+    paymentType: SEEDED_PAYMENT_TYPE,
   })
 
   // No horseIds — addExpense sets applies_to_all_horses, which is the 'Entire Barn' branch.
@@ -103,6 +132,7 @@ const barn = withBarn('phase4-expenses-list', async ({ supabase, barn }) => {
     recipient: BARNWIDE_RECIPIENT,
     expenseType: 'Feed',
     amount: 45,
+    paymentType: SEEDED_PAYMENT_TYPE,
   })
 
   // Future-dated, no amount: a planned expense. Not past due (its due instant is still ahead), so
@@ -121,6 +151,18 @@ const barn = withBarn('phase4-expenses-list', async ({ supabase, barn }) => {
     expenseType: 'Hay',
     horseIds: [butter.id],
     amount: 300,
+    paymentType: SEEDED_PAYMENT_TYPE,
+  })
+
+  // No paymentType, and that is the fixture: past-dated with an amount but nothing to attribute
+  // it to. Seeded last so its created_at ordering is distinct from the rendered one — see
+  // recentHrefs.
+  unpaid = await addExpense(supabase, barn, {
+    at: daysFromNow(UNPAID_DAY, barn.timezone),
+    recipient: UNPAID_RECIPIENT,
+    expenseType: 'Dental',
+    horseIds: [apple.id],
+    amount: UNPAID_AMOUNT,
   })
 })
 
@@ -147,15 +189,15 @@ function expenseHref(expense: SeededAppointment): string {
 
 /**
  * The list's rendered order is getExpensesByBarn's `expense_date DESC, created_at DESC`, so the
- * three recent expenses come back planned (+5), primary (-1), barnwide (-2).
+ * four recent expenses come back planned (+5), primary (-1), barnwide (-2), unpaid (-3).
  *
  * That order is deliberately distinct from every fallback the system could produce by accident:
- * insertion order is primary, barnwide, planned (seeded that way on purpose above) and a pure
- * `created_at DESC` is planned, barnwide, primary. All three permutations differ, so neither
- * fallback can satisfy this array (#1196).
+ * insertion order is primary, barnwide, planned, unpaid (seeded that way on purpose above) and a
+ * pure `created_at DESC` is unpaid, planned, barnwide, primary. All three permutations differ, so
+ * neither fallback can satisfy this array (#1196).
  */
 function recentHrefs(): string[] {
-  return [expenseHref(planned), expenseHref(primary), expenseHref(barnwide)]
+  return [expenseHref(planned), expenseHref(primary), expenseHref(barnwide), expenseHref(unpaid)]
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +278,7 @@ const AMOUNT_LINE = 4
  * Every expense card on the page, in DOM order.
  *
  * The `:not` drops the "Add Expense" button, which is a Link to `/expenses/new` inside the same
- * <main> and would otherwise read as a fourth card.
+ * <main> and would otherwise read as an extra card.
  */
 function cardLinks(page: Page) {
   return page.locator(`main a[href^="/barn/${barn.slug}/expenses/"]:not([href$="/new"])`)
@@ -336,13 +378,34 @@ test('an_expense_card_shows_its_amount @manager', async ({ page }) => {
 })
 
 // ---------------------------------------------------------------------------
+// The Past Due badge
+// ---------------------------------------------------------------------------
+
+// Two cards in one assertion, because the claim is the *boundary* rather than the badge: `unpaid`
+// and `primary` are both past-dated and both amounted, and differ only in the payment type. Before
+// #1481 the card keyed the badge off the amount alone, so both read as not-past-due; the seeded
+// `primary` right beside it is what stops a fix that badges every past-dated card from passing.
+//
+// Full-string equality on both lines rather than a badge-presence count: the badge renders *into*
+// the amount <p>, so equality pins its presence on the one card and its absence on the other in
+// the same read — and pins that the amount survives beside it, which a `getByText('Past Due')`
+// would not. CSS union resolves in DOM order, which is primary (-1) before unpaid (-3).
+test('a_past_dated_amounted_expense_with_no_payment_type_shows_past_due @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/expenses`)
+
+  await expect(
+    page.locator(`${cardLine(primary, AMOUNT_LINE)}, ${cardLine(unpaid, AMOUNT_LINE)}`)
+  ).toHaveText([PRIMARY_AMOUNT_RENDERED, UNPAID_AMOUNT_LINE_RENDERED])
+})
+
+// ---------------------------------------------------------------------------
 // The recent / older split
 // ---------------------------------------------------------------------------
 
 // A *split* is two groups, so both halves are asserted together: the recent group is exactly these
-// three cards, and an older group exists.
+// four cards, and an older group exists.
 //
-// The second half is not decoration. The href list alone — three recent, no older — is satisfied
+// The second half is not decoration. The href list alone — four recent, no older — is satisfied
 // identically by a page that *discarded* expenses older than the cutoff rather than grouping them,
 // since OlderExpensesToggle returns null on an empty list and nothing else marks a boundary. That
 // is the cheapest way to break this checkbox, and the toggle's presence is what rules it out.
@@ -382,8 +445,9 @@ test('show_older_expenses_toggle_reveals_the_older_group @manager', async ({ pag
 // it moves with the actual and would agree with a fixture that placed the expense in the past. What
 // the second element does pin is the observable consequence of being future-dated — full-string
 // equality on the amount <p> also rejects the `Past Due` badge, which ExpenseCard renders into that
-// same <p> for any unamounted expense whose due instant has passed. That is a proxy, not the claim,
-// and the claim's remaining half is a property of the seed rather than of the app.
+// same <p> for any outstanding expense whose due moment has passed, and an unamounted one is
+// outstanding by definition. That is a proxy, not the claim, and the claim's remaining half is a
+// property of the seed rather than of the app.
 test('a_future_dated_planned_expense_with_no_amount_appears_in_the_list @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/expenses`)
 
@@ -438,7 +502,7 @@ test('tapping_an_expense_card_away_from_its_text_opens_its_edit_page @manager', 
 
 // An absence claim, so the zero is paired with a non-zero in one comparison: a page that rendered
 // nothing at all would report zero delete controls too, and would pass an assertion that only
-// looked for the absence. Requiring the three recent cards alongside it makes the empty page fail.
+// looked for the absence. Requiring the four recent cards alongside it makes the empty page fail.
 //
 // Both roles are counted because the distinction the checkbox draws is about the control existing
 // per row, not about which element it is: Delete on the *edit* page is a Button-as-Link, and the

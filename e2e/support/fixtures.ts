@@ -33,6 +33,7 @@ import type {
   LessonTier,
   Notification,
   NotificationType,
+  PaymentType,
   RiderDocumentType,
   Role,
   TrainerDocumentType,
@@ -819,6 +820,12 @@ export type ExpenseOptions = When & {
   /** Barn-local HH:MM. Omit for a date-only planned expense, which the dashboard excludes. */
   time?: string
   amount?: number
+  /**
+   * Omit for an expense that is still outstanding: `getOutstandingExpenses` and the card's own
+   * Past Due badge both treat a missing payment type as owed, whatever the amount says (#1481).
+   * Pass one on any amounted fixture whose amount line is asserted with full-string equality.
+   */
+  paymentType?: PaymentType
   horseIds?: string[]
   /** The one appointment field a trainer can only see on the detail page, not the card (#1148). */
   notes?: string
@@ -849,6 +856,7 @@ export async function addExpense(
       recipient: opts.recipient,
       expenseType: opts.expenseType ?? 'Farrier',
       amount: opts.amount,
+      paymentType: opts.paymentType,
       notes: opts.notes,
       appliesToAllHorses: !opts.horseIds,
       horseIds: opts.horseIds,

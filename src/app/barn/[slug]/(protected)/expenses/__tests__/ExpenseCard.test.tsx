@@ -6,8 +6,16 @@ import { calendarDate } from '@/lib/local-day'
 
 afterEach(cleanup)
 
-function renderCard(overrides = {}, now?: number) {
-  render(<ExpenseCard expense={createMockExpenseWithHorses(overrides)} slug="green-acres" now={now} />)
+/**
+ * Barn-local wall clock, the frame ExpenseCard now compares in. The default sits *before* the
+ * mock expense's own 2026-07-01 date, so the cases below that say nothing about the badge render
+ * without one and stay about the field they name.
+ */
+const BEFORE_DUE = '2026-06-01T00:00:00'
+const AFTER_DUE = '2026-07-02T00:00:00'
+
+function renderCard(overrides = {}, nowWall = BEFORE_DUE) {
+  render(<ExpenseCard expense={createMockExpenseWithHorses(overrides)} slug="green-acres" nowWall={nowWall} />)
 }
 
 describe('ExpenseCard', () => {
@@ -67,18 +75,39 @@ describe('ExpenseCard', () => {
   })
 
   it('should_not_style_no_amount_specified_as_amber_before_due', () => {
-    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-06-01T00:00:00Z'))
+    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, BEFORE_DUE)
     expect(screen.getByText('(no amount specified)').className).not.toContain('amber')
   })
 
   it('should_style_no_amount_specified_as_amber_and_show_past_due_badge_once_due_has_passed', () => {
-    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+    renderCard({ amount: null, expense_date: calendarDate('2026-07-01'), expense_time: null }, AFTER_DUE)
     expect(screen.getByText('(no amount specified)').className).toContain('amber')
     expect(screen.getByText('Past Due')).toBeDefined()
   })
 
-  it('should_not_show_past_due_badge_when_amount_is_set', () => {
-    renderCard({ amount: 42.5, expense_date: calendarDate('2026-07-01'), expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+  it('should_show_past_due_badge_when_amount_is_set_but_payment_type_is_not', () => {
+    renderCard(
+      { amount: 42.5, payment_type: null, expense_date: calendarDate('2026-07-01'), expense_time: null },
+      AFTER_DUE
+    )
+    expect(screen.getByText('Past Due')).toBeDefined()
+  })
+
+  // Amber text stays reserved for "(no amount specified)": on an amounted past-due card only the
+  // badge is amber, so the figure itself doesn't read as the missing thing.
+  it('should_not_style_the_amount_as_amber_on_a_past_due_card', () => {
+    renderCard(
+      { amount: 42.5, payment_type: null, expense_date: calendarDate('2026-07-01'), expense_time: null },
+      AFTER_DUE
+    )
+    expect(screen.getByText('$42.50').className).not.toContain('amber')
+  })
+
+  it('should_not_show_past_due_badge_when_amount_and_payment_type_are_both_set', () => {
+    renderCard(
+      { amount: 42.5, payment_type: 'cash', expense_date: calendarDate('2026-07-01'), expense_time: null },
+      AFTER_DUE
+    )
     expect(screen.queryByText('Past Due')).toBeNull()
   })
 
