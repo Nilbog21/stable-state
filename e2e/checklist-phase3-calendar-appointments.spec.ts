@@ -58,6 +58,18 @@
 // rather than as a consequence of `playwright.config.ts`'s `retries: 0` and `fullyParallel:
 // false` — config that can change without anyone re-auditing the specs silently relying on it.
 //
+// THE REACH RUNS BOTH WAYS, and only one direction is load-bearing. Backwards, a grid starts at
+// the Sunday on or before its 1st, so the +2 grid can spill back up to 6 days — far enough to
+// pull `horseAppointmentDay` (+1 day 25) onto it, dot and all, on some month alignments. That is
+// harmless *because* the two barn-wide tests address cells by name through `cellFor` and never
+// assert a whole-grid set. Do not "strengthen" either of them into an exact `dottedDates`
+// equality: it would be right on most calendar days and wrong on the rest, which is the shape of
+// bug that reads as a phantom flake rather than as a mistake.
+//
+// Both directions were verified computationally over every month alignment 2026–2030, not by
+// hand: max forward reach day 14 of the following month (worst case a 28-day February whose 1st
+// is a Sunday), fetch tail to day 18; max backward reach 6 days.
+//
 // ## Why nothing here uses `mustAffect` (#1435)
 //
 // Spec-maintenance rule 5 binds a fixture `.update(`/`.delete(` whose zero-row result would go
@@ -517,6 +529,31 @@ async function setStartTime(page: Page, time: string): Promise<void> {
   await page.locator('#lesson-start-time').fill(time)
 }
 
+/**
+ * Blocks until the form's hidden `lesson_at` carries `date` at `time` in the barn's zone.
+ *
+ * Read through `page.evaluate` rather than `toHaveValue`, for the reason `openNewLessonForm`
+ * reads it the same way: the input is hidden, and a web-first matcher on a hidden element is a
+ * trap waiting for a Playwright version that starts checking visibility on it.
+ *
+ * Carries SCHEDULE_FETCH_BUDGET, which is generous for what is only a local re-render — but a
+ * number on `expect.poll` loosens rather than tightens (e2e/CLAUDE.md fact 1), and a barrier that
+ * is never the reason a passing run is slow costs nothing by being roomy.
+ */
+async function waitForStartTimeCommitted(page: Page, date: string, time: string): Promise<void> {
+  const expected = wallClockToInstant(`${date}T${time}:00`, barn.data.barn.timezone).toISOString()
+  await expect
+    .poll(
+      () =>
+        page.evaluate((want) => {
+          const el = document.querySelector('input[name="lesson_at"]')
+          return el instanceof HTMLInputElement && el.value === want
+        }, expected),
+      { timeout: SCHEDULE_FETCH_BUDGET }
+    )
+    .toBe(true)
+}
+
 /** The conflict dot on one day, as a locator that can be waited on. `getByTestId` resolves
  *  against the DOM rather than the accessibility tree, which matters because the dot is
  *  `aria-hidden` (e2e/CLAUDE.md fact 16 in the other direction). */
@@ -556,13 +593,24 @@ test.describe('#1021 start time shifts the shading', () => {
     await waitForScheduleShading(page, shiftLessonDay, 'high')
 
     await setStartTime(page, EARLY_TIME)
-    // Safe as a `low` wait only because the line above already proved the fetch landed: at the
-    // form's opening hour of 10 this day reads `high`, so `low` here can only come from the
-    // EARLY_TIME fill reaching the decorations.
+    // TWO barriers, because neither alone pins the hour the `early` grid is decorated for.
+    //
+    // The band wait is safe as a `low` wait only because the fetch was already proved above (at
+    // the form's opening hour of 10 this day reads `high`). But it proves only `hour < 8`, not
+    // `hour == 6`: `selectedHour` falls back to 0 whenever `lessonAt` is `''` (LessonForm.tsx),
+    // which `LessonStartTime` produces for an empty time input — and hours 0 and 6 give
+    // genuinely different grids, so that is not a distinction without a difference.
+    //
+    // The `lesson_at` wait closes it: only client-side `LessonStartTime` writes that value, and
+    // it is the sole input `selectedHour` is derived from, so the two together say the hour is
+    // exactly 6 AND the decorations have re-rendered against it. Ordered `lesson_at` first
+    // because it is the cause and the band is the effect.
+    await waitForStartTimeCommitted(page, tapDay, EARLY_TIME)
     await waitForScheduleShading(page, earlyHourBarrierDay, 'low')
     const early = await readGrid(page)
 
     await setStartTime(page, LATE_TIME)
+    await waitForStartTimeCommitted(page, tapDay, LATE_TIME)
     await waitForScheduleShading(page, shiftDay, 'high')
     const late = await readGrid(page)
 
@@ -729,17 +777,24 @@ test.describe.serial('#1147 barn-wide appointment', () => {
 /**
  * Drives both past-day tests to the state their checkboxes describe, and returns the grid.
  *
- * The month is the barn's previous one, which is entirely past and therefore always contains
- * greyed days — unlike the current month's grid, which legitimately holds none when the 1st
- * falls on a Sunday and today is the 1st.
+ * The month is the barn's previous one, every *own* day of which is past, so this grid always
+ * contains greyed days — unlike the current month's grid, which legitimately holds none when the
+ * 1st falls on a Sunday and today is the 1st.
+ *
+ * NOTE WHAT THAT DOES NOT SAY. This grid is NOT entirely past: its last rows spill up to 14 days
+ * into the *current* month, which are live cells. An earlier draft of this comment claimed
+ * otherwise and used it to justify the anchor below; the justification survives the correction
+ * but the claim did not, so it is stated the true way here.
  *
  * THE ANCHOR (#1434) IS THE DAY PANEL LISTING THE PAST DAY'S OWN LESSON, and nothing weaker will
  * do. `toHaveCount(0)`/absence is satisfied on its first poll (fact 18), so an absence claimed
- * off a freshly-navigated grid passes before the schedule could arrive — and on a grid whose
- * every cell is past, no shaded or dotted cell exists anywhere to anchor against. The panel line
- * is the right anchor rather than merely an available one: it proves the fetch landed AND that
- * this exact day holds an APPLE lesson, which is precisely the input that shades and dots a
- * *live* day. The absence is therefore attributable to the day being past.
+ * off a freshly-navigated grid passes before the schedule could arrive. And no cell on this grid
+ * can serve instead: the past cells are suppressed by definition, and the spilled-in live cells
+ * belong to the current month, where this barn seeds no fixture at all — so there is no shaded
+ * or dotted cell anywhere on it to anchor against. The panel line is the right anchor rather
+ * than merely an available one: it proves the fetch landed AND that this exact day holds an
+ * APPLE lesson, which is precisely the input that shades and dots a *live* day. The absence is
+ * therefore attributable to the day being past.
  *
  * The expected text is `describeScheduleItem`'s composition for a lesson — horse names then
  * rider names — built from the fixtures rather than transcribed.
@@ -782,8 +837,14 @@ test.describe('#1019 past days', () => {
   // "With Apple selected, a greyed-out past day shows no dot."
   //
   // Same anchor, same reason. Asserted as the whole grid's dotted set rather than as one cell's
-  // flag: every day of this month is past, so the empty set says the suppression is a property
-  // of pastness and not of this one day.
+  // flag, so the claim is that the suppression is a property of pastness and not of this one day.
+  //
+  // The empty set rests on TWO facts, and only the first is about pastness: every *own* day of
+  // this month is past and therefore suppressed, and the up-to-14 live days this grid spills in
+  // from the current month carry no APPLE booking, because this barn seeds no fixture in the
+  // current month. Verified over every month alignment 2026–2030 rather than by hand. Seeding
+  // anything into the barn's current month would break this assertion on some alignments and not
+  // others — which is exactly the shape of bug that reads as a phantom flake.
   test('manager_a_greyed_out_past_day_shows_no_conflict_dot @manager', async ({ page }) => {
     const cells = await openPastMonthWithAppleSelected(page)
 
