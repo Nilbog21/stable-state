@@ -44,15 +44,15 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
-- [ ] (e2e-candidate) **Leases** in the nav opens the lease-kind list
-- [ ] (e2e-candidate) **Leases** stays highlighted in the nav on that list
-- [ ] (e2e-candidate) The URL shows `?kind=lease`
-- [ ] (e2e-candidate) **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
-- [ ] (e2e-candidate) **Boarding** in the nav opens the board-kind list
-- [ ] (e2e-candidate) **Boarding** stays highlighted in the nav on that list
-- [ ] (e2e-candidate) The URL shows `?kind=board`
-- [ ] (e2e-candidate) **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
-- [ ] (e2e-candidate) Both agreements appear in their respective kind-scoped lists
+- [ ] (e2e: clicking_leases_in_the_nav_opens_the_lease_kind_list) **Leases** in the nav opens the lease-kind list
+- [ ] (e2e: the_lease_list_highlights_leases_and_not_boarding) **Leases** stays highlighted in the nav on that list
+- [ ] (e2e: the_lease_list_url_carries_kind_lease) The URL shows `?kind=lease`
+- [ ] (e2e: the_add_lease_form_highlights_leases_and_not_boarding) (e2e: saving_the_add_lease_form_adds_the_lease_to_the_lease_list) **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
+- [ ] (e2e: clicking_boarding_in_the_nav_opens_the_board_kind_list) **Boarding** in the nav opens the board-kind list
+- [ ] (e2e: the_board_list_highlights_boarding_and_not_leases) **Boarding** stays highlighted in the nav on that list
+- [ ] (e2e: the_board_list_url_carries_kind_board) The URL shows `?kind=board`
+- [ ] (e2e: the_add_boarding_form_prefills_the_barns_default_board_fee_and_saves) **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
+- [ ] (e2e: both_agreements_appear_only_in_their_own_kind_scoped_list) Both agreements appear in their respective kind-scoped lists
 - [ ] (e2e-candidate) Each of those cards shows its rider
 - [ ] (e2e-candidate) Each of those cards shows its horse
 - [ ] (e2e-candidate) Each of those cards shows its fee
