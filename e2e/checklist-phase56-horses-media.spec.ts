@@ -44,7 +44,7 @@
 // whole #1187-#1208 batch handled a fixture whose name differs from the dev-barn walkthrough's.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, setHorsePhoto, assetPath } from './support/fixtures'
-import { BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, CLOVER_PHOTO, displayedPhotoAsset, photoControls, photoImage, photoSection } from './support/horse-pages'
+import { BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, CLOVER_PHOTO, displayedPhotoAsset, headerLines, photoControls, photoImage, photoSection } from './support/horse-pages'
 import { settledTextContents } from './support/read'
 
 // Seed inputs, not builder outputs — these are what the spec puts in. No name contains another
@@ -130,23 +130,6 @@ const horseUrl = (horseId: string) => `/barn/${barn.slug}/horses/${horseId}`
 const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
 const atPhotoUpload = (horseId: string) =>
   new RegExp(`/documents/new\\?entity=horse&id=${horseId}&type=photo`)
-
-/**
- * The identity header's text lines, in DOM order.
- *
- * #1390 replaced the labelled `Status` / `Registered Name` `<dl>` this used to read with an
- * unlabelled header column: the horse's name as `<h1>` with a status `<Badge>` beside it, then a
- * `<p>` per optional line — registered name, unavailability reason — and finally the owner line,
- * which always renders. So the registered name's *position* is still assertable, and still
- * assertable as a whole list rather than an index into one; only the labels are gone.
- *
- * `<h1>` and the badge are excluded deliberately: the horse's own name and status are other
- * lines' claims, and including them would make every registered-name assertion here fail on an
- * unrelated change to either.
- */
-function headerLines(page: Page) {
-  return page.locator('main header p')
-}
 
 /**
  * How many controls the Photo section renders for a horse, read after the section has settled.

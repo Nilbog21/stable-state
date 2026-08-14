@@ -86,6 +86,14 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { settledInnerTexts, settledTextContents } from './support/read'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { openSection, accordionSection } from './support/accordion'
+import {
+  headerLines,
+  ownerLink,
+  accessSection,
+  accessColumns,
+  grantRow,
+  grantedMembers,
+} from './support/horse-pages'
 import { E2E_USERS } from './support/fixtures'
 
 // ---------------------------------------------------------------------------
@@ -190,24 +198,6 @@ async function openHorse(page: Page, name: string) {
 // The horse detail page
 // ---------------------------------------------------------------------------
 
-/**
- * The identity header's text lines, in DOM order — registered name, unavailability reason, and
- * the owner line, which always renders (as the owner's name, or as "No owner set").
- *
- * Asserted as the whole list rather than as an index into it, the way
- * checklist-phase56-horses-media.spec.ts reads the same header: a line that vanished, moved, or
- * arrived unexpectedly fails, where a single-line read would not.
- */
-function headerLines(page: Page): Locator {
-  return page.locator('main header p')
-}
-
-/** The owner line's link. Absent entirely when the horse has no owner, which is what makes this
- *  a real locator rather than a text match on a line that always exists. */
-function ownerLink(page: Page): Locator {
-  return headerLines(page).getByRole('link')
-}
-
 /** Horse Settings, open and hydrated. Both halves are load-bearing: the section is a collapsed
  *  `<details>` on every fresh render (`support/accordion.ts`), and the status pills are
  *  `<button type="button" onClick>` — the one shape a pre-hydration click is silently lost on
@@ -250,27 +240,6 @@ async function saveHorseSettings(page: Page) {
 async function openAccess(page: Page, horseName: string) {
   await openHorse(page, horseName)
   await openSection(page, 'Access')
-}
-
-function accessSection(page: Page): Locator {
-  return accordionSection(page, 'Access')
-}
-
-/** The header row, read in the same test as any cell index, so `OWNER_COLUMN` and friends are
- *  checked against the table rather than assumed about it. */
-function accessColumns(page: Page): Locator {
-  return accessSection(page).locator('thead th')
-}
-
-function grantRow(page: Page, name: string): Locator {
-  return accessSection(page)
-    .locator('tbody tr')
-    .filter({ has: page.getByRole('cell', { name, exact: true }) })
-}
-
-/** The member names the grants list currently holds. */
-function grantedMembers(page: Page): Locator {
-  return accessSection(page).locator('tbody tr td:first-child')
 }
 
 /**
