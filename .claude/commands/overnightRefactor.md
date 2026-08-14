@@ -8,7 +8,7 @@ Every `Agent` call in this skill: no `isolation` param (subagents must share thi
 
 ## Step 0 — Preflight
 
-1. `bash scripts/workflow-context.sh` — record `worktree_path` and `port`. Step 1d's suite run needs both, and this skill states no port of its own: `scripts/workflow-context.sh` owns the worktree→port map (#1118 — the per-skill copies of it had already diverged once).
+1. `bash scripts/workflow-context.sh` — record `worktree_path` and `port`. Step 1d's suite run needs both, and this skill states no port of its own: `scripts/workflow-context.sh` owns the worktree→port map, which #1118 consolidated there precisely so no skill would carry its own copy to drift.
 2. `git status --porcelain` in this worktree. If not empty, stop and tell the user to commit or stash their in-progress work first — this worktree is about to be repurposed for the night.
 3. Determine the release base:
    ```
@@ -17,7 +17,19 @@ Every `Agent` call in this skill: no `isolation` param (subagents must share thi
    ```
    Record as `{release}` (e.g. `release-3`).
 4. Compute tonight's date: `date +%F` → `{date}`.
-5. Create the nightly branch and run the baseline check:
+5. **Terminal-state check, then create the nightly branch and run the baseline check.** Step 3's
+   `git fetch --all -p` already refreshed the remote refs; reuse them rather than looking anything up
+   again:
+   ```
+   git rev-parse --verify --quiet origin/overnight/refactor-{date}
+   ```
+   A hit means tonight's branch is already pushed — an earlier invocation got past step 7, so kept
+   iterations and their ledger prose may already exist. **Stop cold**: say the branch and its PR are
+   already live and that resuming a partly-run night is the user's call, and do not proceed. The
+   `checkout -B` below resets the branch to the release base, and step 8 overwrites
+   `specs/overnight-{date}.md`'s header — and since `specs/` is gitignored, the per-iteration Task and
+   Navigability-payoff prose that `/overnightRefactorWrapup` Step 3 turns into issue bodies exists
+   nowhere else once it's gone.
    ```
    git checkout -B overnight/refactor-{date} origin/release/{release}
    bash scripts/ci.sh
@@ -105,6 +117,9 @@ These are hard-forbidden, no exceptions:
   rule governs every line in these, and it is enforced only by `/reviewIssue`, which is not in this
   loop. "Doc accuracy fixes" would otherwise admit restructuring a phase file at 3am with nothing
   checking the tags
+- `scripts/run-checklist-suite.sh` — Step 1d runs this script and reads the night's e2e verdict out
+  of the `started`/`exited {code}` markers it prints. A structure-only pass over its `echo` lines
+  would not fail anything, and would silently corrupt every later e2e verdict this same night
 - anything requiring a product judgment call
 
 `e2e/**` is in scope for **internal, behaviour-preserving motion** — extracting shared vocabulary
@@ -213,6 +228,8 @@ Compare it against three things, in order:
    - `.claude/commands/**` (repo-tracked workflow skills — CLAUDE.md requires their own issue and PR)
    - `checklists/**` and `PRE_RELEASE_TEST_CHECKLIST.md` (the born-automated-or-justified-manual rule
      on those lines is enforced only by `/reviewIssue`, which is not in this loop)
+   - `scripts/run-checklist-suite.sh` (Step 1d parses this script's own log markers for the e2e
+     verdict — a rewritten `echo` there breaks the gate silently, and nothing else that night notices)
    - `e2e/**` changes that are anything but behaviour-preserving motion. A changed **assertion** or
      **test title** is an automatic reject. A changed **selector string** is allowed only where a
      *positive* assertion exercises it — rewriting one whose only use is an absence assertion or a
@@ -276,16 +293,27 @@ Launch this with the Bash tool's `run_in_background`, as one command, substituti
 and `{port}` from Step 0's preflight:
 
 ```bash
-cd {worktree_path} && npm run dev -- --port {port} > /tmp/overnight-dev-{date}.log 2>&1 &
-dev_pid=$!; trap 'kill $dev_pid' EXIT
+cd {worktree_path} && fuser -k {port}/tcp 2>/dev/null; sleep 1
+npm run dev -- --port {port} > /tmp/overnight-dev-{date}.log 2>&1 &
 for _ in $(seq 60); do curl -sf -o /dev/null "http://localhost:{port}/" && break; sleep 2; done
+curl -sf -o /dev/null "http://localhost:{port}/" || { echo "dev server never came up"; exit 1; }
 bash scripts/run-checklist-suite.sh --base-url "http://localhost:{port}" {--spec flags}
+fuser -k {port}/tcp 2>/dev/null
 ```
 
-The server is started here and dies with the command. This loop holds no long-lived one:
+The server is started here and killed here. This loop holds no long-lived one:
 `playwright.config.ts` has no `webServer` block so the suite cannot start its own, and a server that
 has hot-reloaded through a night of file moves is its own flake source — a flaky failure at 3am
 reads as a real regression and burns half the circuit breaker.
+
+**Kill by port, never by `$!`.** `npm run dev` is a wrapper: `$!` is the npm PID, and `kill`ing it
+orphans the `next dev` → `next-server` children that actually hold the port. The next iteration's
+`npm run dev` then dies on `EADDRINUSE` — an explicit `--port` disables Next's port-hunting
+fallback — while the readiness `curl` succeeds *instantly* against the survivor, so the suite greens
+a verdict about the **previous** commit. Killing the port owner is also why the pre-run `fuser` is
+there: it makes the gate self-healing if any earlier iteration leaked one anyway. The explicit
+readiness bail matters for the same reason — without it, a server that never started sends the suite
+at a dead port and the resulting red reads as a real regression against the circuit breaker.
 
 Read the verdict from `{worktree_path}/checklist-suite.log`, not from the tool result — a full run
 outruns the Bash tool's 600s foreground ceiling. Two things to check, both per `/testIssue` Step 4:
