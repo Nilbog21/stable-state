@@ -33,15 +33,15 @@ function applicableHorseIdsForExpense(
 const QUERY_PADDING_MS = 24 * 60 * 60 * 1000
 
 // #829/#865: expense-kind transactions rows are the ledger source of truth for
-// getExpenseFinancialSummary/getHorseExpenseDetail — only an expense whose amount is
-// known has one (see sync_expense_transaction), so this already excludes planned
-// expenses without a separate null-amount filter. Reads the base rows via
-// transactions.ts:getTransactionRows, then resolves applies_to_all_horses (the one
-// extra field it needs) via a small follow-up appointments lookup. `timezone`
-// (barns.timezone) decodes each row's occurredAt (a real UTC instant, post-#955) back
-// to the calendar date it falls on in the barn's own local time — a naive
-// occurredAt.slice(0, 10) would read the wrong day for an entry near a local midnight
-// boundary whose UTC digits land on a different date.
+// getExpenseFinancialSummary/getHorseExpenseDetail and, since #949, the two recipient
+// readers — only an expense whose amount is known has one (see sync_expense_transaction),
+// so this already excludes planned expenses without a separate null-amount filter. Reads
+// the base rows via transactions.ts:getTransactionRows, then resolves
+// applies_to_all_horses, recipient, and expense_type (the extra fields it needs) via a
+// small follow-up appointments lookup. `timezone` (barns.timezone) decodes each row's
+// occurredAt (a real UTC instant, post-#955) back to the calendar date it falls on in the
+// barn's own local time — a naive occurredAt.slice(0, 10) would read the wrong day for an
+// entry near a local midnight boundary whose UTC digits land on a different date.
 //
 // startDate/endDate are the requested month's UTC-midnight boundary (from
 // resolveFinancesMonth), but a barn-local calendar month doesn't line up with that UTC

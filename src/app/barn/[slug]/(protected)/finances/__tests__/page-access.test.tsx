@@ -30,7 +30,6 @@ vi.mock('@/lib/db/agreement-finances', () => ({ getOutstandingCharges: vi.fn() }
 vi.mock('@/lib/db/expenses', () => ({ getOutstandingExpenses: vi.fn() }))
 vi.mock('@/lib/db/expense-finances', () => ({ getExpenseFinancialSummary: vi.fn(), getRecipientExpenseSummary: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
-vi.mock('@/app/actions/expenses', () => ({ resolvePastDueExpenseAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {

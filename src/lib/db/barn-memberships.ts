@@ -198,9 +198,11 @@ export async function getActiveMembersWithProfiles(
     inviteToken: m.invite_token,
   }))
 
-  // A caller-supplied client is always a service-role script (reset-db.ts/seed-test-barn.ts)
-  // — service-role already bypasses barn_memberships' RLS on the direct query above, so
-  // there are no narrow-RLS gap rows to backfill; the RPC below is simply never reached
+  // A caller-supplied client is always service-role — the only such caller is seed-barn.ts's
+  // seedBarn(), reached by reset-db.ts and, at app runtime, by /demo's createOrResumeDemoBarn
+  // (seed-test-barn.ts stopped calling this when #1085 rewired it through the e2e fixture
+  // builders) — service-role already bypasses barn_memberships' RLS on the direct query above,
+  // so there are no narrow-RLS gap rows to backfill; the RPC below is simply never reached
   // in that case (#930 added a service_role grant to get_active_barn_member_summaries, but
   // that's for other callers — this early return still skips it here regardless).
   if (client) return direct

@@ -15,7 +15,8 @@
 // about which nav entry is highlighted, and that verdict is computed entirely by
 // `nav-active.ts`'s `isNavLinkActive` over `nav-links.ts`'s hrefs, rendered by
 // `DesktopNavLinks` — which renders no anchor itself: it renders `NavigationBlocker.tsx`'s
-// `BlockingLink`, the anchor that carries the `aria-current` this file's `navHighlightMap` reads.
+// `BlockingLink`, the anchor that carries the `aria-current` `e2e/support/nav.ts`'s
+// `navHighlightMap` reads.
 // None of the four sits under the two route globs above — they are files of
 // `(protected)/` itself — so without their own lines a change to the highlight rule would not
 // select *this* spec. It would still select others: `checklist-phase1-nav-responsive.spec.ts`
@@ -136,6 +137,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addHorse } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
+import { HIGHLIGHTED, INERT, navHighlightMap } from './support/nav'
 import { createAgreement } from '@/lib/db/agreements'
 import type { Agreement } from '@/lib/db/types'
 
@@ -198,14 +200,6 @@ const END_CONFIRM_MESSAGE = 'This cannot be undone. End this agreement?'
 
 /** The agreement detail page's h1 for a board agreement (`${label} Detail`). */
 const BOARD_DETAIL_HEADING = 'Boarding Detail'
-
-/**
- * `DesktopNavLinks`' two class sets, reduced to the property that renders "highlighted".
- * Written out rather than imported from the component, so a change there fails here instead of
- * agreeing with itself.
- */
-const ACTIVE_FONT_WEIGHT = '600'
-const INACTIVE_FONT_WEIGHT = '500'
 
 let leaseAgreement: Agreement
 let endingBoardAgreement: Agreement
@@ -312,47 +306,6 @@ const paymentTypeSelect = (page: Page) => paymentTypeCell(page).locator('select'
  * document that a bare role query would collect.
  */
 const savedIndicator = (cell: Locator) => cell.getByText(SAVED_TEXT, { exact: true })
-
-// ---------------------------------------------------------------------------
-// The nav
-// ---------------------------------------------------------------------------
-
-/**
- * `DesktopNavLinks`' root — the only `div` child of `<nav>` carrying `hidden`. Desktop Chrome's
- * viewport is above the `md` breakpoint, so this is the nav that renders; `NavDrawer` gates its
- * whole panel behind `{open && (…)}`, so a closed drawer's links are not in the DOM at all and
- * cannot join a match set. Deliberately NOT fact 16: that fact is about links which *are*
- * attached but sit in a `display:none` container, where `getByRole` reads zero and
- * `locator('a')` still counts them. Nothing is attached here, so no locator form reaches them.
- */
-const desktopNav = (page: Page) => page.locator('nav > div.hidden')
-
-/**
- * Both agreement nav entries paired with both halves of their highlight state, in DOM order.
- *
- * `aria-current` alone is not enough in either direction: a regression applying the active class
- * to every link while leaving `aria-current` correct is exactly "the other one is highlighted
- * too", and an `aria-current`-only read calls that page clean. `checklist-phase1-nav-responsive.
- * spec.ts` records the same reasoning at length; this is the two-link form of its `highlightMap`.
- *
- * Non-retrying by construction — `expect.poll` owns the pacing at every call site. The inline
- * `waitFor` is what stops `[]` reaching an expectation as a shortened answer, which for the
- * absence-shaped test below is the positive anchor rule 4 requires.
- */
-async function navHighlightMap(page: Page): Promise<string[][]> {
-  const links = desktopNav(page).getByRole('link', { name: /^(Leases|Boarding)$/ })
-  await links.first().waitFor()
-  return links.evaluateAll((els) =>
-    els.map((el) => [
-      el.textContent ?? '',
-      el.getAttribute('aria-current') ?? 'none',
-      getComputedStyle(el).fontWeight,
-    ])
-  )
-}
-
-const HIGHLIGHTED = (label: string) => [label, 'page', ACTIVE_FONT_WEIGHT]
-const INERT = (label: string) => [label, 'none', INACTIVE_FONT_WEIGHT]
 
 // ---------------------------------------------------------------------------
 // Cards

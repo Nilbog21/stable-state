@@ -100,6 +100,7 @@ import type { Locator } from '@playwright/test'
 import { addHorse, updateBarnSettings } from './support/fixtures'
 import { settledTextContents } from './support/read'
 import { waitForBarnPageHydrated } from './support/hydration'
+import { ACTIVE_FONT_WEIGHT, INACTIVE_FONT_WEIGHT, desktopNav } from './support/nav'
 
 // ---------------------------------------------------------------------------
 // What the checklist's names resolve to in this barn
@@ -131,10 +132,6 @@ const LEASE_FEE = '150'
  * makes the indirection worth anything.
  */
 const SEEDED_BOARD_FEE = 725
-
-/** Tailwind `font-semibold` / `font-medium` — the two weights the nav's active/inactive classes set. */
-const ACTIVE_FONT_WEIGHT = '600'
-const INACTIVE_FONT_WEIGHT = '500'
 
 const LEASES = 'Leases'
 const BOARDING = 'Boarding'
@@ -195,11 +192,8 @@ const barn = withBarn('phase2-agreements-create', async ({ supabase, barn }) => 
 /** A query-less protected page, so every `waitForURL` below is a real sync point (fact 3). */
 const startUrl = () => `/barn/${barn.slug}/horses`
 
-/** `DesktopNavLinks`' root — the only `div` child of `<nav>` carrying `hidden` (phase 1's note 4). */
-const desktopNavContainer = (page: Page) => page.locator('nav > div.hidden')
-
 const navLink = (page: Page, label: string) =>
-  desktopNavContainer(page).getByRole('link', { name: label, exact: true })
+  desktopNav(page).getByRole('link', { name: label, exact: true })
 
 /**
  * The agreements list's cards. `Card href=…` renders an anchor.
@@ -226,13 +220,13 @@ const agreementCards = (page: Page) =>
 /**
  * Both halves of "highlighted" for both agreements nav entries, in one value.
  *
- * `checklist-phase1-nav-responsive.spec.ts`'s `highlightOf`, copied rather than hoisted (a shared
- * helper would live under `e2e/support/**`, which is `scripts/select-specs.sh`'s `ALWAYS_FULL` and
- * would force every diff touching it to a full-suite run). Both entries are read, not just the one
- * a given test names, for the reason that file's `highlightMap` gives: a regression applying the
- * active class to every link while leaving `aria-current` correct is exactly its "other links are
- * highlighted" case, and an `aria-current`-only read calls that page clean. The computed weight is
- * the half that catches it.
+ * `checklist-phase1-nav-responsive.spec.ts`'s `highlightOf`, copied rather than hoisted (still a
+ * local copy now that `e2e/support/nav.ts` exists: the two copies differ in their
+ * missing-attribute default — `'none'` here, `null` there — so neither is canonical for the
+ * other). Both entries are read, not just the one a given test names, for the reason that file's
+ * `highlightMap` gives: a regression applying the active class to every link while leaving
+ * `aria-current` correct is exactly its "other links are highlighted" case, and an
+ * `aria-current`-only read calls that page clean. The computed weight is the half that catches it.
  *
  * Not literally non-retrying — `getAttribute` and `evaluate` both auto-wait for the element to
  * attach, and under `actionTimeout: 0` that wait is unbounded. It carries no *matcher* retry, which

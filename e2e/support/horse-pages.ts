@@ -1,11 +1,18 @@
-// The horse detail page's shared locator vocabulary — currently the #1390 identity-header media
-// cluster — extracted 2026-08-11 from `checklist-phase4-horses-photos.spec.ts` and
+// The horse detail page's shared locator vocabulary — the #1390 identity-header media cluster,
+// extracted 2026-08-11 from `checklist-phase4-horses-photos.spec.ts` and
 // `checklist-phase56-horses-media.spec.ts`, which carried byte-identical copies of it. The photos
 // spec is the source of each canonical body unless noted, and each docstring is an existing copy's
-// rationale moved verbatim.
+// rationale moved verbatim. The identity-header lines and Access-table cluster (`headerLines`,
+// `ownerLink`, `accessSection`, `accessColumns`, `grantRow`, `grantedMembers`) followed on
+// 2026-08-14, from `checklist-phase2-horses-access.spec.ts` and
+// `checklist-phase2-horses-owner.spec.ts`, which carried byte-identical copies, plus
+// `checklist-phase56-horses-media.spec.ts`'s `headerLines`; the access spec is the canonical body
+// source for that cluster, and `checklist-phase56-horses-media.spec.ts` supplied `headerLines`'s
+// docstring.
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import { accordionSection } from './accordion'
 import { assetPath } from './fixtures'
 
 // Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
@@ -86,4 +93,53 @@ export async function displayedPhotoAsset(page: Page, horseName: string): Promis
   const name = ASSET_BY_DIGEST.get(digestOf(await response.body()))
   if (!name) throw new Error(`the displayed ${horseName} photo matches none of the committed assets`)
   return name
+}
+
+/**
+ * The identity header's text lines, in DOM order.
+ *
+ * #1390 replaced the labelled `Status` / `Registered Name` `<dl>` this used to read with an
+ * unlabelled header column: the horse's name as `<h1>` with a status `<Badge>` beside it, then a
+ * `<p>` per optional line — registered name, unavailability reason — and finally the owner line,
+ * which always renders. So the registered name's *position* is still assertable, and still
+ * assertable as a whole list rather than an index into one; only the labels are gone.
+ *
+ * `<h1>` and the badge are excluded deliberately: the horse's own name and status are other
+ * lines' claims, and including them would make every registered-name assertion over it fail on an
+ * unrelated change to either.
+ *
+ * Asserted as the whole list rather than as an index into it: a line that vanished, moved, or
+ * arrived unexpectedly fails, where a single-line read would not.
+ */
+export function headerLines(page: Page): Locator {
+  return page.locator('main header p')
+}
+
+/** The owner line's link. Absent entirely when the horse has no owner, which is what makes this a
+ *  real locator rather than a text match on a line that always exists. */
+export function ownerLink(page: Page): Locator {
+  return headerLines(page).getByRole('link')
+}
+
+/** The Access accordion's rendered section — the scope every Access-table read hangs off. */
+export function accessSection(page: Page): Locator {
+  return accordionSection(page, 'Access')
+}
+
+/** The header row. Each spec reads it back in the same test as its first indexed cell read, so
+ *  its column-index consts are checked against the table rather than assumed about it. */
+export function accessColumns(page: Page): Locator {
+  return accessSection(page).locator('thead th')
+}
+
+/** A member's row in the Access table, addressed by the name in its Member cell. */
+export function grantRow(page: Page, name: string): Locator {
+  return accessSection(page)
+    .locator('tbody tr')
+    .filter({ has: page.getByRole('cell', { name, exact: true }) })
+}
+
+/** The member names the grants list currently holds. */
+export function grantedMembers(page: Page): Locator {
+  return accessSection(page).locator('tbody tr td:first-child')
 }

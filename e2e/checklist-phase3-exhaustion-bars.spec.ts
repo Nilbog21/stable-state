@@ -95,11 +95,13 @@
 // *next* one, so it can never enter a ±3-day window read below.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
-import { hydrateByDriving, waitForBarnPageHydrated } from './support/hydration'
+import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
+import { editPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
+import { pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
-import { addDays, calendarDate, firstOfMonth, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
+import { addDays, firstOfMonth, formatMonthHeading } from '@/lib/local-day'
 import type { Horse, Lesson, LessonTier } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -143,19 +145,6 @@ const THIRD_TIME = '12:00'
 /** The exertion the dayA Clover lesson is seeded with. Named because two places need to agree
  *  about it: the seed below, and the ghost segment its own edit form renders for it. */
 const CLOVER_DAY_A_EXERTION = 2
-
-/**
- * The time `openNewLessonForm` fills to prove React has taken the form over.
- *
- * ITS MINUTES MUST NOT BE `:00`, measured by #1372 and stated at length on
- * checklist-phase3-calendar-shading.spec.ts's own barrier. `LessonStartTime` initialises `time`
- * to the top of the barn's CURRENT hour and runs that initialiser on the server too, so the
- * hidden `lesson_at` input already carries today at `HH:00` in the server-rendered HTML. A
- * barrier time of `10:00` would therefore already match during the barn's 10:00–10:59 hour, the
- * fill would never be dispatched, and the barrier would resolve having proved nothing — leaving
- * every click after it exposed to the lost-click hazard (facts 9 and 10) for one hour a day.
- */
-const BARRIER_TIME = '10:37'
 
 /** What test 1 marks the created lesson paid with — a `#payment_type` option value. */
 const PAID_VIA = 'cash'
@@ -322,14 +311,6 @@ const HIGH_EXERTION = 5
 // Locators, readers and drivers
 // ---------------------------------------------------------------------------
 
-function newLessonPath(): string {
-  return `/barn/${barn.slug}/lessons/new`
-}
-
-function editPath(lessonId: string): string {
-  return `/barn/${barn.slug}/lessons/${lessonId}/edit`
-}
-
 /**
  * One horse's row in the Horses fieldset, addressed through the checkbox that carries its id.
  *
@@ -449,35 +430,6 @@ async function waitForBarTotal(page: Page, horse: Horse, total: { points: number
 }
 
 /**
- * Opens the New Lesson form and blocks until React has taken it over.
- *
- * Body copied from checklist-phase3-calendar-shading.spec.ts's `openNewLessonForm`, whose
- * docstring is the reasoning: waiting for `#lesson-start-time` to merely exist proves nothing,
- * because since #1021 the day panel is `dayPanelAlwaysOpen` and that input is in the
- * server-rendered HTML. The barrier waits on the hidden `lesson_at` input carrying the barn's
- * today combined with the time just filled, which only client-side `LessonStartTime` can write.
- *
- * `test.slow()` rather than a number on any wait: every `waitFor*` is unbounded already, so a
- * number could only tighten it (#1211).
- */
-async function openNewLessonForm(page: Page): Promise<void> {
-  test.slow()
-  const timezone = barn.data.barn.timezone
-  await page.goto(newLessonPath())
-  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
-
-  const expected = wallClockToInstant(`${barnToday(timezone)}T${BARRIER_TIME}:00`, timezone).toISOString()
-  await hydrateByDriving(
-    () => page.locator('#lesson-start-time').fill(BARRIER_TIME),
-    () =>
-      page.evaluate((want) => {
-        const el = document.querySelector('input[name="lesson_at"]')
-        return el instanceof HTMLInputElement && el.value === want
-      }, expected)
-  )
-}
-
-/**
  * Pages the grid forward onto `fixtureMonth`, settling on that month's heading.
  *
  * A plain click, deliberately NOT `hydrateByDriving`: the month button is *monotonic*, not
@@ -495,30 +447,11 @@ async function goToFixtureMonth(page: Page): Promise<void> {
   await page.getByText(formatMonthHeading(fixtureMonth), { exact: true }).waitFor()
 }
 
-/**
- * Taps a day, settling on the day panel's own heading changing to that day.
- *
- * The settle is not `aria-pressed`: React 19 does not reconcile an attribute that mismatched at
- * hydration, and #1252 measured exactly that on these cells. The panel heading is rendered text,
- * so it moves. Copied from checklist-phase3-calendar-shading.spec.ts's `pickDay`.
- */
-async function pickDay(page: Page, date: string): Promise<void> {
-  await page.getByRole('button', { name: date, exact: true }).click()
-  await page.getByText(formatCalendarDate(calendarDate(date)), { exact: true }).waitFor()
-}
-
 /** Opens the form and lands it on `dayA`, the day every bar fixture is arranged around. */
 async function openFormOnDayA(page: Page): Promise<void> {
-  await openNewLessonForm(page)
+  await openNewLessonForm(page, barn)
   await goToFixtureMonth(page)
   await pickDay(page, dayA)
-}
-
-/** Ticks a horse, settling on the per-horse exertion input — `useState`-gated markup that cannot
- *  exist until React has the horse checked. */
-async function selectHorse(page: Page, horse: Horse): Promise<void> {
-  await page.getByRole('checkbox', { name: horse.name, exact: true }).check()
-  await page.locator(`#exertion_${horse.id}`).waitFor()
 }
 
 /**
@@ -538,26 +471,6 @@ async function setExertion(page: Page, horse: Horse, level: number): Promise<voi
   const field = page.locator(`#exertion_${horse.id}`)
   await field.fill(String(level))
   await expect(field).toHaveValue(String(level))
-}
-
-/**
- * Submits the New Lesson form and waits out the redirect to the Lessons list.
- *
- * Body copied from checklist-phase3-lesson-fees.spec.ts's `submitNewLesson`. Keyboard activation
- * rather than a pointer click: the submit sits at the bottom of a long scrollable form, the shape
- * #501 (04c64505) diagnosed, where Chromium's scroll-into-view animation races Playwright's
- * actionability check. `exact: true` because `getByRole`'s name match is a case-insensitive
- * substring and the button relabels itself to "Submitting…" while pending.
- *
- * The `waitForURL` cannot no-op (fact 3) — the pattern excludes the `/lessons/new` it is called
- * from — and it doubles as the "the save succeeded" half: `submitLesson` re-renders the form with
- * a `role="alert"` and no navigation on every failure path, and only redirects on success.
- */
-async function submitNewLesson(page: Page): Promise<void> {
-  const submit = page.getByRole('button', { name: 'Submit', exact: true })
-  await submit.focus()
-  await submit.press('Enter')
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 }
 
 /**
@@ -611,7 +524,7 @@ async function openEditFromDetail(page: Page): Promise<void> {
 /**
  * What a stored lesson's edit form holds, as one object.
  *
- * Body from checklist-phase3-lesson-fees.spec.ts's `editFormSelection`, extended with the payment
+ * Body from e2e/support/lesson-form.ts's `editFormSelection`, extended with the payment
  * type this checkbox adds. Read together and asserted as a single `toEqual` because the checkbox
  * is a conjunction — "Beginner tier, trainer Alex, horse Clover, rider Dana … mark it paid" is
  * six claims about one lesson, and splitting them would let five pass while the sixth silently
@@ -679,14 +592,14 @@ test.describe('New Lesson — the current-month paid lesson', () => {
   test('creating_a_current_month_lesson_then_marking_it_paid_stores_its_details_and_payment_type @manager', async ({
     page,
   }) => {
-    await openNewLessonForm(page)
+    await openNewLessonForm(page, barn)
     await page.locator('#tier_name').selectOption(beginner.id)
     await expect(page.locator('#tier_name')).toHaveValue(beginner.id)
     await pickDay(page, pastDay)
     await page.locator('#instructor_id').selectOption(trainerMembershipId)
     await selectHorse(page, clover)
     await page.locator('#rider_id').selectOption(riderMembershipId)
-    await submitNewLesson(page)
+    await submitNewLesson(page, barn)
 
     await openCreatedLessonEditForm(page)
     await waitForBarnPageHydrated(page)
@@ -897,7 +810,7 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
     page,
   }) => {
     test.slow()
-    await page.goto(editPath(cloverDayALesson.id))
+    await page.goto(editPath(barn, cloverDayALesson.id))
     await waitForEditFormHydrated(page)
     await waitForBarTotal(page, clover, CLOVER_EXCLUDING_ITSELF)
 

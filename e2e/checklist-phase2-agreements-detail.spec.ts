@@ -159,6 +159,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
+import { HIGHLIGHTED, INERT, navHighlightMap } from './support/nav'
 import { mustSucceed } from '@/lib/db/service-role'
 import { createAgreement } from '@/lib/db/agreements'
 import type { Agreement } from '@/lib/db/types'
@@ -193,14 +194,6 @@ const DECOY_FEE = 375
 
 /** Typed into the edit form by the last test. Differs from both seeded fees, so no card can match it by accident. */
 const UPDATED_FEE = 615
-
-/**
- * `DesktopNavLinks`' two class sets, reduced to the property that renders "highlighted" —
- * Tailwind's `font-semibold` and `font-medium`. Written out rather than imported from the
- * component, so a change there fails here instead of agreeing with itself.
- */
-const ACTIVE_FONT_WEIGHT = '600'
-const INACTIVE_FONT_WEIGHT = '500'
 
 /**
  * The one sanctioned numeric timeout (`support/test.ts`'s timeout block, #1469): a web-first
@@ -431,40 +424,6 @@ async function listCardLines(page: Page): Promise<Record<string, string>> {
   )
   return Object.fromEntries(entries)
 }
-
-/**
- * `DesktopNavLinks`' root — the only `div` child of `<nav>` carrying `hidden`. Desktop Chrome's
- * viewport is above the `md` breakpoint, so this is the nav that renders; `NavDrawer` gates its
- * whole panel behind `{open && (…)}`, so a closed drawer's links are not in the DOM at all and
- * cannot join a match set.
- */
-const desktopNav = (page: Page) => page.locator('nav > div.hidden')
-
-/**
- * Both agreement nav entries paired with both halves of their highlight state, in DOM order.
- * `checklist-phase2-agreements-charges.spec.ts`'s `navHighlightMap`, copied rather than hoisted —
- * a shared helper would live under `e2e/support/**`, which is `select-specs.sh`'s `ALWAYS_FULL`
- * and would force every diff touching it to a full-suite run.
- *
- * `aria-current` alone is not enough in either direction: a regression applying the active class to
- * every link while leaving `aria-current` correct is exactly "the other one is highlighted too",
- * and an `aria-current`-only read calls that page clean. The computed weight is the half that
- * catches it.
- */
-async function navHighlightMap(page: Page): Promise<string[][]> {
-  const links = desktopNav(page).getByRole('link', { name: /^(Leases|Boarding)$/ })
-  await links.first().waitFor()
-  return links.evaluateAll((els) =>
-    els.map((el) => [
-      el.textContent ?? '',
-      el.getAttribute('aria-current') ?? 'none',
-      getComputedStyle(el).fontWeight,
-    ])
-  )
-}
-
-const HIGHLIGHTED = (label: string) => [label, 'page', ACTIVE_FONT_WEIGHT]
-const INERT = (label: string) => [label, 'none', INACTIVE_FONT_WEIGHT]
 
 /** Leases highlighted, Boarding not — the claim both nav checkboxes make, in DOM order. */
 const LEASES_ONLY = [HIGHLIGHTED('Leases'), INERT('Boarding')]

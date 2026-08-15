@@ -31,10 +31,14 @@
 //    expectation below by a whole day, and the assertion cannot pass because two zones
 //    happened to coincide on the day it was written.
 //
-// 2. THE FEED'S EVENT ORDER IS NOT STABLE. `get_calendar_feed` aggregates with `jsonb_agg`
-//    over a `UNION ALL` and no `ORDER BY` anywhere, so the VEVENT order in the payload is
-//    whatever the planner produced. Every read below locates a block by UID or compares a
-//    sorted set; nothing indexes into the payload.
+// 2. NOTHING BELOW DEPENDS ON THE FEED'S EVENT ORDER. When this file was written,
+//    `get_calendar_feed` aggregated with `jsonb_agg` over a `UNION ALL` and no `ORDER BY`
+//    anywhere, so the VEVENT order in the payload was whatever the planner produced; #1286
+//    (`20260805022307_ordered_calendar_feed_and_exhaustion.sql`) has since made it stable —
+//    `jsonb_agg(item ORDER BY starts_at, item->>'id')`. The reads keep the older, stronger
+//    discipline anyway: every one locates a block by UID or compares a sorted set, nothing
+//    indexes into the payload, and a membership assertion is correct on either side of the
+//    ordering (checklist-phase56-nav-profile.spec.ts's note 3 records the same ruling).
 //
 // 3. THE FETCHES ARE GENUINELY UNAUTHENTICATED, AND GETTING THERE TAKES MORE THAN IT LOOKS.
 //    The checklist says "Open that URL directly (or `curl` it)", and `/calendar.ics` has

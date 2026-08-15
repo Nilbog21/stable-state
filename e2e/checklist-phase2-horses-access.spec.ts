@@ -88,7 +88,15 @@ import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { settledInnerTexts, settledTextContents } from './support/read'
 import { waitForBarnPageHydrated } from './support/hydration'
-import { openSection, accordionSection } from './support/accordion'
+import { openSection } from './support/accordion'
+import {
+  headerLines,
+  ownerLink,
+  accessSection,
+  accessColumns,
+  grantRow,
+  grantedMembers,
+} from './support/horse-pages'
 import { addHorse, E2E_USERS, E2E_STUB_RIDER } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 
@@ -109,7 +117,9 @@ const ECLIPSE = 'Eclipse'
 const DANA = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 const EMERY = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
 
-/** What the identity header renders in place of the owner link when the horse has no owner. */
+/** What the identity header renders in place of the owner link when the horse has no owner.
+ *  Eclipse carries neither a registered name nor an unavailability reason, so the owner line is
+ *  the only one there is. */
 const NO_OWNER = 'No owner set'
 
 /** The empty state the Access section renders instead of the table at zero grants. */
@@ -192,22 +202,6 @@ function horsePath(): string {
   return `/barn/${barn.slug}/horses/${eclipseId}`
 }
 
-/**
- * The identity header's text lines, in DOM order. Read as the whole list rather than as an index
- * into it — a line that vanished, moved, or arrived unexpectedly fails, where a single-line read
- * would not. Eclipse carries neither a registered name nor an unavailability reason, so the owner
- * line is the only one there is.
- */
-function headerLines(page: Page): Locator {
-  return page.locator('main header p')
-}
-
-/** The owner line's link. Absent entirely when the horse has no owner, which is what makes this a
- *  real locator rather than a text match on a line that always exists. */
-function ownerLink(page: Page): Locator {
-  return headerLines(page).getByRole('link')
-}
-
 // ---------------------------------------------------------------------------
 // The Access table
 // ---------------------------------------------------------------------------
@@ -233,27 +227,6 @@ async function openAccessHydrated(page: Page) {
   await page.goto(horsePath())
   await waitForBarnPageHydrated(page)
   await openSection(page, 'Access')
-}
-
-function accessSection(page: Page): Locator {
-  return accordionSection(page, 'Access')
-}
-
-/** The header row, read in the same test as the first cell index, so `DOCUMENTS_COLUMN` and
- *  friends are checked against the table rather than assumed about it. */
-function accessColumns(page: Page): Locator {
-  return accessSection(page).locator('thead th')
-}
-
-function grantRow(page: Page, name: string): Locator {
-  return accessSection(page)
-    .locator('tbody tr')
-    .filter({ has: page.getByRole('cell', { name, exact: true }) })
-}
-
-/** The member names the grants list currently holds. */
-function grantedMembers(page: Page): Locator {
-  return accessSection(page).locator('tbody tr td:first-child')
 }
 
 /** Whichever of a row's three Documents buttons is pressed. All three labels render in that cell
