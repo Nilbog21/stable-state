@@ -408,8 +408,10 @@ rm -rf "$REPO"
 
 # Test 25: string state carries across lines. A REVOKE-shaped line inside a multi-line string is
 # text, not DDL — the same shape as test 13's dollar-quoted body, through the construct that
-# actually needs the state to persist past a newline. A scanner that reset state per line counts
-# the quoted REVOKE and exits 0.
+# actually needs the state to persist past a newline. Mutation-checked: resetting state at each
+# line makes the quoted REVOKE count, and do_thing goes unreported. That mutant does still exit
+# non-zero — the drift trips the EOF valve on its way out — so, as in test 20, it is the grep for
+# the function name and not the exit status that kills it.
 REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
 LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
 COMMENT ON FUNCTION public.do_thing(uuid) IS 'a note that spans lines:

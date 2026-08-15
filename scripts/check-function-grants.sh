@@ -41,6 +41,8 @@ cd "$(git rev-parse --show-toplevel)"
 
 # SQL keywords are case-insensitive, so every `=~` and `case` below is too. Function names are
 # folded to lower case at capture so a mixed-case CREATE and a lowercase REVOKE share a key.
+# The one thing this must *not* fold is a dollar-quote tag, which Postgres compares
+# case-sensitively — see the `body` branch, which uses parameter expansion for exactly that reason.
 shopt -s nocasematch
 
 declare -A reset_at reset_loc revoke_at is_trigger
@@ -49,6 +51,7 @@ seq=0
 pending=''
 state=''
 tag=''
+estr=''
 fail=0
 
 # The leftmost of these four starts something that is not DDL. POSIX EREs are leftmost-longest, so
@@ -69,16 +72,19 @@ tok_re='(--|/\*|'\''|\$[a-zA-Z_0-9]*\$)'
 # ponytail: block comments don't nest, though Postgres nests them — an inner `*/` ends the comment
 # and the leftover text is scanned as code. Add a depth counter if a migration ever nests one.
 strip_body() {
-  local rest="$1" tok
+  local rest="$1" tok pre bs after
   code=''
   while [ -n "$rest" ]; do
     case "$state" in
       body)
-        # A body ends only on its own opening delimiter.
-        case "$rest" in
-          *"$tag"*) rest="${rest#*"$tag"}"; state='' ;;
-          *) rest='' ;;
-        esac
+        # A body ends only on its own opening delimiter, and dollar-quote tags are case-sensitive
+        # in Postgres — so this is the one comparison in the scanner that must not be folded.
+        # `nocasematch` governs `case` and `[[` but *not* parameter expansion, which is why this
+        # branch is an expansion where its three siblings are `case`. `$tag` is never empty (the
+        # token regex requires at least `$$`), so a match always shortens the string and an
+        # unchanged result reliably means "not found".
+        after="${rest#*"$tag"}"
+        if [ "$after" != "$rest" ]; then rest="$after"; state=''; else rest=''; fi
         ;;
       comment)
         case "$rest" in
@@ -89,9 +95,18 @@ strip_body() {
       string)
         case "$rest" in
           *"'"*)
+            pre="${rest%%\'*}"
             rest="${rest#*\'}"
-            # `''` is an escaped quote — the string continues past it.
-            case "$rest" in "'"*) rest="${rest#\'}" ;; *) state='' ;; esac
+            # Only an E'…' literal treats `\` as an escape (`standard_conforming_strings` is on),
+            # and there an *odd* run of backslashes escapes the quote — an even run is escaped
+            # backslashes, and the quote after them still closes.
+            bs="${pre##*[!\\]}"
+            if [ -n "$estr" ] && [ $(( ${#bs} % 2 )) -eq 1 ]; then continue; fi
+            # `''` is an escaped quote — the string continues past it. Behaviour-preserving to
+            # delete (the second quote sits at position 0, so the code-state scan would re-enter
+            # string state with identical `rest` and `code`), kept so `estr` survives a `''`
+            # structurally rather than by that coincidence.
+            case "$rest" in "'"*) rest="${rest#\'}" ;; *) state=''; estr='' ;; esac
             ;;
           *) rest='' ;;
         esac
@@ -104,7 +119,9 @@ strip_body() {
           case "$tok" in
             '--') rest='' ;;
             '/*') state=comment ;;
-            "'") state=string ;;
+            # `code` ends at the character before the quote, so its tail is the E prefix test.
+            "'") state=string; estr=''
+                 if [[ "$code" =~ (^|[^a-zA-Z0-9_])e$ ]]; then estr=1; fi ;;
             *) state=body; tag="$tok" ;;
           esac
         else
