@@ -428,7 +428,33 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 26: the live migration set is the real fixture — the guard has to pass against it, which is
+# Test 26: Postgres requires the `E` of an E'…' literal to be *character-adjacent* to the opening
+# quote, so `e/* c */'…'` is a generic `typename 'literal'` cast (needing a type actually named
+# `e`) and not an E-string. Deciding E-ness from the stripped `code` accumulator can't see that:
+# the block comment is gone by then, `code` still ends in `e`, and the `\` in `'C:\'` is read as
+# an escape that the string has none of. The scan drifts and a migration psql applies cleanly
+# draws a false `FAIL … reached end of file still inside a string` — fail-closed, blocking CI, and
+# the message names the file rather than a function so it doesn't even point at what to look at.
+#
+# The `CREATE DOMAIN e` line makes the cast real SQL rather than a shape invented for the test;
+# comments are whitespace to Postgres' lexer, so this file applies as written.
+#
+# No mirror of its own: the degenerate "never set estr" fix is already killed by test 21 (an
+# adjacent E'it\'s a note' must still be an E-string) and "any backslash escapes" by test 22.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE DOMAIN e AS text;
+CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+INSERT INTO public.notes (body) VALUES (e/* not an E-string */'C:\\');
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "a comment between \`e\` and a quote is not an E'…' literal: exits 0"
+else
+  assert_fail "a comment between \`e\` and a quote is not an E'…' literal: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 27: the live migration set is the real fixture — the guard has to pass against it, which is
 # the acceptance criterion this issue's migration exists to satisfy.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "the repo's own migration set: exits 0"
