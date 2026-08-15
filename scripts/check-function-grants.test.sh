@@ -328,7 +328,102 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 21: the live migration set is the real fixture — the guard has to pass against it, which is
+# Test 21: `standard_conforming_strings` is on, so `\` escapes only inside an E'…' literal — and
+# there `\'` does not end the string. Reading it as an end puts the scan one quote out of phase:
+# the literal's real closing quote is taken as an *opening* one, and everything after it — the
+# whole CREATE below included — is swallowed as string content, so the function never enters the
+# set at all. Unchecked rather than unguarded, and the gate says OK.
+#
+# The trailing `--` line is load-bearing, not decoration. The EOF valve would otherwise catch this,
+# since an out-of-phase scan ends inside a string; a `--` reached in *code* state clears the rest
+# of its line without setting state, which resyncs the phase and leaves the valve silent. E'…' is
+# already live in the set (20260724034551, 20260805022307), just not yet with an escaped quote.
+REPO="$(make_repo 20260101000001_fn.sql "COMMENT ON TABLE public.lessons IS E'it\\'s a note';
+CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+-- note: don't edit")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "escaped quote in an E'…' literal does not end it: exits non-zero"
+else
+  assert_fail "escaped quote in an E'…' literal does not end it: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 22: the mirror for test 21 — an E'…' literal that legitimately closes must not swallow the
+# REVOKE after it. The `\\` immediately before the closing quote is the point: it is an escaped
+# *backslash*, so the quote that follows it still closes. A fix that skips any quote with a
+# backslash anywhere before it passes test 21 while never closing an E-string again.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+COMMENT ON FUNCTION public.do_thing(uuid) IS E'it\\'s at C:\\\\';
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "E'…' closing after an escaped backslash: exits 0"
+else
+  assert_fail "E'…' closing after an escaped backslash: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 23: dollar-quote tags are case-sensitive in Postgres, but `shopt -s nocasematch` governs
+# `case` and `[[` — so a body opened `$Body$` closes on the *text* `$body$` inside it. This one
+# fails closed, not open: the scan drifts and the file ends inside a string, so a valid migration
+# draws a false `FAIL … reached end of file`, which blocks CI.
+#
+# Also the suite's first fixture with a tagged `$tag$` quote at all — 933e8726 generalised the
+# scanner from bare `$$` to any tag and nothing has covered that since.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$Body\$
+BEGIN
+  RAISE NOTICE 'the \$body\$ tag is lowercase here';
+END;
+\$Body\$;
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "lowercase look-alike tag does not close a \$Body\$ body: exits 0"
+else
+  assert_fail "lowercase look-alike tag does not close a \$Body\$ body: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 24: a doubled `''` is an escaped quote and the string continues past it. This pins the
+# behaviour; it does not kill a mutant, and the comment says so rather than implying coverage it
+# doesn't have. Deleting the scanner's `''` branch is behaviour-preserving: the second quote of
+# the pair sits at position 0 of the remaining text, so the code-state scan re-enters string state
+# with identical `rest` and an unchanged `code`. The branch is kept anyway, so that an E'…'
+# literal's escape flag survives a `''` structurally rather than by that coincidence.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+COMMENT ON FUNCTION public.do_thing(uuid) IS 'it''s guarded';
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "doubled '' inside a string literal: exits 0"
+else
+  assert_fail "doubled '' inside a string literal: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 25: string state carries across lines. A REVOKE-shaped line inside a multi-line string is
+# text, not DDL — the same shape as test 13's dollar-quoted body, through the construct that
+# actually needs the state to persist past a newline. A scanner that reset state per line counts
+# the quoted REVOKE and exits 0.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+COMMENT ON FUNCTION public.do_thing(uuid) IS 'a note that spans lines:
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;
+end of note';")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "REVOKE inside a multi-line string is not a revoke: exits non-zero"
+else
+  assert_fail "REVOKE inside a multi-line string is not a revoke: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 26: the live migration set is the real fixture — the guard has to pass against it, which is
 # the acceptance criterion this issue's migration exists to satisfy.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "the repo's own migration set: exits 0"
