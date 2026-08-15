@@ -28,6 +28,14 @@ Per-helper rationale for the `SECURITY DEFINER` policy-helper functions indexed 
 
 RLS policies always go in a **separate migration file** from schema changes.
 
+## Function EXECUTE grants
+
+**Every non-trigger function in `supabase/migrations/` carries a `REVOKE … ON FUNCTION <sig> FROM PUBLIC` at or after its last plain `CREATE FUNCTION`/`DROP FUNCTION`, paired with an explicit `GRANT EXECUTE` to the roles that actually call it.** Postgres' default is `EXECUTE` for `PUBLIC`, and PostgREST exposes every `public` function — so a function created without the pair is callable with the anon key. That is not automatically a hole (a `SECURITY INVOKER` function executes as `anon`, and RLS rejects the writes), but it is a hole for any `SECURITY DEFINER` one whose in-body check assumes an authenticated caller, which is how #828/#829 were found.
+
+`scripts/check-function-grants.sh` (wired into `ci.sh`) enforces it, so a new instance fails CI rather than waiting to be noticed. It checks the **replay** property — what a from-scratch migration run produces — because that is the half that broke twice: `CREATE OR REPLACE` preserves an existing ACL, so an already-migrated dev/prod keeps a grant its own migration set no longer reproduces. #972's squash dropped `set_instructor_cut`'s pair that way (#1158 restored it), and #1535 swept the remaining nine, all `SECURITY INVOKER`. The gate's ordering rule is what makes it real: a bare existence check passes `20260731081403_appointment_functions.sql`, which `DROP`s and recreates `create_expense_with_horses`, discarding its ACL.
+
+Grant targets are **not** uniform, and a blanket "grant `authenticated`" is the known way to break this. The `ALTER DEFAULT PRIVILEGES` rule below covers **TABLES only**, so a function reached by a service-role caller — the nightly GHA crons via `scripts/run-cron.sh`, `seed-barn.ts`, the e2e fixtures — needs `service_role` named explicitly; `20260723182521_nearby_instructor_unread_title_service_role_grant.sql` exists because that gap broke a cron in prod once. The reachability half can't be checked statically and isn't: `reset-db` and a `generate-recurring-lessons` run against dev are the real check.
+
 ## service_role grants
 
 `service_role` has `GRANT ALL ON ALL TABLES IN SCHEMA public` plus a default-privileges rule so future tables are covered automatically. Supabase normally applies this at project creation; it was made explicit in migration `20260614000000_service_role_grants.sql`, whose content now lives in the #657 squash baseline (`20260629004612_baseline_rls.sql` — the per-table `GRANT ALL ... TO service_role` statements plus its `ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO service_role` rule); the original file is kept for reference at `supabase/migrations_archive/20260614000000_service_role_grants.sql`.

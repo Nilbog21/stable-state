@@ -1,6 +1,7 @@
 # Tier & barn-setting RPCs
 
 `set_default_tier(p_tier_id, p_barn_id)` — atomically clears `is_default` on all barn tiers then sets `is_default=true` on the target tier in one transaction.
+`SECURITY INVOKER`; `EXECUTE` revoked from `PUBLIC` (#1535) and granted to `authenticated`.
 Used by `setDefaultTier` in `lesson-tiers.ts`.
 
 `set_instructor_cut(p_barn_id uuid, p_value numeric)` — sets `default_instructor_cut` on a single `barns` row (RPC name and TS wrapper `setInstructorCut` left as-is post-#776 — internal-only identifiers, not user-facing).

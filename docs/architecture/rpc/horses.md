@@ -3,6 +3,7 @@
 `update_horse_details(p_horse_id, p_barn_id, p_name, p_is_active, p_is_available, p_unavailability_reason, p_exhaustion_threshold_moderate DEFAULT NULL, p_exhaustion_threshold_high DEFAULT NULL, p_feed_notes DEFAULT NULL, p_medication_notes DEFAULT NULL, p_registered_name DEFAULT NULL, p_owning_member_id DEFAULT NULL)` — atomically updates a horse's `name`, `is_active`, `is_available`, `unavailability_reason`, `exhaustion_threshold_moderate`, `exhaustion_threshold_high`, `feed_notes`, `medication_notes`, `registered_name`, and `owning_member_id` in one statement, deriving `deactivated_at` from the row's own pre-update `is_active` value (unchanged transition leaves it untouched, false→true clears it to `NULL`, true→false sets it to `now()`) — avoids a separate read-then-write.
 `p_name` of `NULL` leaves the name unchanged; the threshold, feed-notes, medication-notes, registered-name, and owning-member params are all written as-given (including `NULL`, which reverts thresholds to barn defaults / clears a note, the registered name, or the owner) rather than left untouched, since every caller always supplies the resolved state for each.
 `SECURITY INVOKER`; relies on the existing `horses_manager_update` RLS policy for authorization.
+`EXECUTE` revoked from `PUBLIC` (#1535) and granted to `authenticated`.
 Used by `updateHorseDetails` in `horses.ts`.
 The threshold params were added in #759 (replacing a second, non-atomic `updateHorseExhaustionThresholds` table update that used to run as its own DB call after this RPC — folding both into one RPC call means the horse detail page's single Save button can no longer partially persist a status change while a thresholds write fails) via a new migration that drops and recreates the 6-param function with the 8-param version.
 `p_feed_notes`/`p_medication_notes` were added in #1005 the same way, growing the function to 10 params; `p_registered_name` was added in #1001, growing it to 11.
@@ -50,6 +51,7 @@ Folding both into this one call would silently drop rider-visible horse ids from
 
 `revoke_horse_privilege(p_privilege_id uuid, p_barn_id uuid) RETURNS void` (#998 redesign) — deletes a `member_horse_privileges` row and, if that row's `member_id` was the horse's `owning_member_id`, clears `owning_member_id` to `NULL` in the same statement (via `DELETE ... RETURNING` feeding the follow-up `UPDATE`'s `WHERE`) — avoids the same non-atomic-multi-write failure mode `update_horse_details` (#759/#1005/#1001/#998) already closed, this time spanning `member_horse_privileges` and `horses`.
 `SECURITY INVOKER`; relies on the existing manager-only `member_horse_privileges` `FOR ALL` policy and `horses_manager_update` for authorization, same reasoning as `update_horse_details`.
+`EXECUTE` revoked from `PUBLIC` (#1535) and granted to `authenticated`.
 Used by `revokeHorsePrivilege` in `member-horse-privileges.ts`, replacing that function's original plain `.delete()` call.
 `set_horse_owner` below is its forward-direction counterpart.
 
@@ -60,4 +62,5 @@ Raising rather than upserting the missing row preserves #998's invariant that ow
 Because the `RAISE` aborts the whole `plpgsql` body, the `horses` write rolls back with it and the caller still gets both effects or neither.
 The `horses` `UPDATE` itself is deliberately left unguarded — `setHorseOwnerAction` already does `getHorseById` + `notFound()` before calling this.
 `SECURITY INVOKER`; relies on the existing `horses_manager_update` RLS policy and manager-only `member_horse_privileges` `FOR ALL` policy for authorization, same reasoning as `revoke_horse_privilege`.
+`EXECUTE` revoked from `PUBLIC` (#1535) and granted to `authenticated`.
 Used by `setHorseOwner` in `member-horse-privileges.ts` — a function the #1069 follow-up created by rewriting `elevateOwnerPrivileges` (a plain `member_horse_privileges` `.update()`) in place to call this RPC; the replaced two-call sequence was `setHorseOwnerAction`'s, which called `updateHorseDetails` (writing `owning_member_id`) and then `elevateOwnerPrivileges` as separate, non-transactional DB calls.
