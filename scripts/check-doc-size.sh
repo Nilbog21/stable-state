@@ -34,11 +34,7 @@ BUDGETS=(
   # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
   # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
   "CLAUDE.md:6500"
-  # Raised from 9300 by #1535, which added the check-function-grants pair: 9128 -> 9287, one new
-  # script index entry plus its name in the "only .test.sh files that survive" list. A genuinely
-  # new script entering the index, the same class of raise as ARCHITECTURE.md's above; the file
-  # was at 13 characters of headroom and the entry is already one line, so no trim was available.
-  "scripts/CLAUDE.md:9450"
+  "scripts/CLAUDE.md:9300"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each
