@@ -114,14 +114,18 @@ strip_body() {
       *)
         if [[ "$rest" =~ $tok_re ]]; then
           tok="${BASH_REMATCH[1]}"
-          code+="${rest%%"$tok"*}"
+          pre="${rest%%"$tok"*}"
+          code+="$pre"
           rest="${rest#*"$tok"}"
           case "$tok" in
             '--') rest='' ;;
             '/*') state=comment ;;
-            # `code` ends at the character before the quote, so its tail is the E prefix test.
+            # Postgres requires the `E` to be character-adjacent to the quote, so the test is on
+            # `pre` — the *raw* text between the previous token and this one — and not on `code`,
+            # which has anything stripped in between removed and so still ends in `e` for
+            # `e/* c */'…'`, a typed-literal cast that is not an E-string.
             "'") state=string; estr=''
-                 if [[ "$code" =~ (^|[^a-zA-Z0-9_])e$ ]]; then estr=1; fi ;;
+                 if [[ "$pre" =~ (^|[^a-zA-Z0-9_])e$ ]]; then estr=1; fi ;;
             *) state=body; tag="$tok" ;;
           esac
         else
