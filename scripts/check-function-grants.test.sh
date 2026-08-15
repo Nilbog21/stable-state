@@ -250,7 +250,83 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 16: the live migration set is the real fixture — the guard has to pass against it, which is
+# Test 16: a `$$` inside a line comment is text, not a delimiter. Parity-toggling on every `$$`
+# substring opens a body that never closes, so every later line strips to '' and the CREATE below
+# is never entered into the set at all — unchecked rather than unguarded, and the gate says OK.
+REPO="$(make_repo 20260101000001_fn.sql "-- the \$\$ delimiter below opens the body
+CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "'\$\$' inside a line comment does not open a body: exits non-zero"
+else
+  assert_fail "'\$\$' inside a line comment does not open a body: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 17: the same poisoning through a string literal. Same consequence as test 16, different
+# construct — a `$$` in quoted text must not open a body either.
+REPO="$(make_repo 20260101000001_fn.sql "COMMENT ON TABLE public.lessons IS 'the price is \$\$5 per lesson';
+CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "'\$\$' inside a string literal does not open a body: exits non-zero"
+else
+  assert_fail "'\$\$' inside a string literal does not open a body: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 18: test 13's failure mode one comment syntax over — a REVOKE inside a /* … */ block is a
+# note about a revoke, not a revoke. Not hypothetical: /* */ is live in three migrations, this
+# issue's own included.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+/* still to do before this ships:
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;
+*/")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "REVOKE inside a block comment is not a revoke: exits non-zero"
+else
+  assert_fail "REVOKE inside a block comment is not a revoke: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 19: the mirror for test 18 — a closed block comment must not swallow the real REVOKE that
+# follows it. Test 18 alone is satisfied by a scanner that never leaves comment state.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
+/* #1535: PUBLIC keeps EXECUTE by default,
+   so every INVOKER function needs the pair below. */
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.do_thing(uuid) TO authenticated;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "REVOKE after a closed block comment still counts: exits 0"
+else
+  assert_fail "REVOKE after a closed block comment still counts: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 20: the safety valve. If the scan reaches end of file still inside a body, comment or
+# string, it lost track somewhere and every verdict it drew from that file is unreliable — which
+# is the fail-open shape tests 16-18 are each one instance of. Report it rather than mis-scan.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+LANGUAGE plpgsql AS \$\$ BEGIN END;
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"
+run_in "$REPO"
+# Asserts the valve's own message, not merely a non-zero exit: this fixture happens to fail for an
+# unrelated reason too (the REVOKE is swallowed by the unterminated body), and "it failed" would
+# read as a working valve on a script that has none.
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'end of file.*20260101000001_fn.sql\|20260101000001_fn.sql.*end of file'; then
+  assert_pass "unterminated body at end of file: exits non-zero, names the file"
+else
+  assert_fail "unterminated body at end of file: exits non-zero, names the file" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 21: the live migration set is the real fixture — the guard has to pass against it, which is
 # the acceptance criterion this issue's migration exists to satisfy.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "the repo's own migration set: exits 0"
