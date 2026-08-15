@@ -16,3 +16,5 @@ bash scripts/check-e2e-tags.sh
 bash scripts/check-e2e-tags.test.sh
 bash scripts/check-pipefail-race.sh
 bash scripts/check-pipefail-race.test.sh
+bash scripts/check-function-grants.sh
+bash scripts/check-function-grants.test.sh
