@@ -33,10 +33,11 @@ cd "$(git rev-parse --show-toplevel)"
 # precisely what broke. A live pg_proc.proacl assertion would check the accumulated dev/prod state
 # instead, and needs a database in CI.
 #
-# Function bodies are excluded from matching (see `strip_body`) and SQL keywords are matched
+# Only text Postgres would read as DDL is matched: `strip_body` removes dollar-quoted bodies,
+# `/* */` block comments, `--` line comments and string literals, and SQL keywords are matched
 # case-insensitively. Both are fail-open fixes, not polish: without them a `RETURNS trigger` or a
-# REVOKE-shaped line inside a `RAISE NOTICE`, or lowercase DDL, makes the gate report OK on a
-# function it never guarded.
+# REVOKE-shaped line inside a `RAISE NOTICE` or a `/* … */` note, or lowercase DDL, makes the gate
+# report OK on a function it never guarded.
 
 # SQL keywords are case-insensitive, so every `=~` and `case` below is too. Function names are
 # folded to lower case at capture so a mixed-case CREATE and a lowercase REVOKE share a key.
@@ -46,38 +47,70 @@ declare -A reset_at reset_loc revoke_at is_trigger
 
 seq=0
 pending=''
-in_body=''
+state=''
+tag=''
+fail=0
 
-# Sets `code` to the line with dollar-quoted body text removed, carrying `$$` depth across lines
-# via `in_body`. A body-only line yields ''; the `$$ LANGUAGE plpgsql;` closer yields its tail, so
-# the trigger window below still ends where it should.
-# ponytail: bare `$$` only — no migration in the set uses a tagged `$tag$` quote. Track the tag
-# too if one ever appears.
+# The leftmost of these four starts something that is not DDL. POSIX EREs are leftmost-longest, so
+# the match *is* the first one — no separate "which comes first" comparison.
+tok_re='(--|/\*|'\''|\$[a-zA-Z_0-9]*\$)'
+
+# Sets `code` to the line with everything Postgres would not read as DDL removed: dollar-quoted
+# bodies, `/* */` block comments, `--` line comments, and single-quoted strings. `state` and `tag`
+# carry across lines, since all four can span them. A body-only line yields ''; the
+# `$$ LANGUAGE plpgsql;` closer yields its tail, so the trigger window below still ends where it
+# should.
+#
+# This is a scanner rather than a "count the `$$`s" parity toggle because parity has no notion of
+# whether an occurrence is a delimiter: one `$$` in a comment or a string literal flips it for
+# every remaining line of the file, and the CREATEs after it are never entered into the set at all.
+# ponytail: block comments don't nest, though Postgres nests them — an inner `*/` ends the comment
+# and the leftover text is scanned as code. Add a depth counter if a migration ever nests one.
 strip_body() {
-  local rest="$1"
+  local rest="$1" tok
   code=''
   while [ -n "$rest" ]; do
-    if [ -z "$in_body" ]; then
-      case "$rest" in
-        *'$$'*)
-          code+="${rest%%'$$'*}"
-          rest="${rest#*'$$'}"
-          in_body=1
-          ;;
-        *)
+    case "$state" in
+      body)
+        # A body ends only on its own opening delimiter.
+        case "$rest" in
+          *"$tag"*) rest="${rest#*"$tag"}"; state='' ;;
+          *) rest='' ;;
+        esac
+        ;;
+      comment)
+        case "$rest" in
+          *'*/'*) rest="${rest#*'*/'}"; state='' ;;
+          *) rest='' ;;
+        esac
+        ;;
+      string)
+        case "$rest" in
+          *"'"*)
+            rest="${rest#*\'}"
+            # `''` is an escaped quote — the string continues past it.
+            case "$rest" in "'"*) rest="${rest#\'}" ;; *) state='' ;; esac
+            ;;
+          *) rest='' ;;
+        esac
+        ;;
+      *)
+        if [[ "$rest" =~ $tok_re ]]; then
+          tok="${BASH_REMATCH[1]}"
+          code+="${rest%%"$tok"*}"
+          rest="${rest#*"$tok"}"
+          case "$tok" in
+            '--') rest='' ;;
+            '/*') state=comment ;;
+            "'") state=string ;;
+            *) state=body; tag="$tok" ;;
+          esac
+        else
           code+="$rest"
           rest=''
-          ;;
-      esac
-    else
-      case "$rest" in
-        *'$$'*)
-          rest="${rest#*'$$'}"
-          in_body=''
-          ;;
-        *) rest='' ;;
-      esac
-    fi
+        fi
+        ;;
+    esac
   done
 }
 
@@ -127,11 +160,17 @@ for f in supabase/migrations/*.sql; do
       revoke_at[${BASH_REMATCH[2],,}]=$seq
     fi
   done < "$f"
+  # Still inside something at EOF means the scan lost track, and every verdict drawn from this file
+  # is unreliable — the same fail-open shape the scanner exists to close, so report it rather than
+  # silently mis-scan.
+  if [ -n "$state" ]; then
+    echo "FAIL: $f: reached end of file still inside a $state — this file was not fully scanned" >&2
+    fail=1
+  fi
   pending=''
-  in_body=''
+  state=''
 done
 
-fail=0
 for name in $(printf '%s\n' "${!reset_at[@]}" | sort); do
   [ -n "${is_trigger[$name]:-}" ] && continue
   if [ "${revoke_at[$name]:-0}" -lt "${reset_at[$name]}" ]; then

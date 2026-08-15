@@ -237,7 +237,7 @@ fi
 rm -rf "$REPO"
 
 # Test 15: the other half of test 14 — a lowercase revoke must clear a lowercase create. Without
-# this, "lowercase always fails" would pass test 15 while being a fail-closed bug of its own.
+# this, "lowercase always fails" would pass test 14 while being a fail-closed bug of its own.
 REPO="$(make_repo 20260101000001_fn.sql "create function public.do_thing(p_id uuid) returns void
 language plpgsql as \$\$ BEGIN END; \$\$;
 revoke all on function public.do_thing(uuid) from public;
