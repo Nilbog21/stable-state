@@ -334,9 +334,12 @@ rm -rf "$REPO"
 # whole CREATE below included — is swallowed as string content, so the function never enters the
 # set at all. Unchecked rather than unguarded, and the gate says OK.
 #
-# The trailing `--` line is load-bearing, not decoration. The EOF valve would otherwise catch this,
-# since an out-of-phase scan ends inside a string; a `--` reached in *code* state clears the rest
-# of its line without setting state, which resyncs the phase and leaves the valve silent. E'…' is
+# The trailing line is load-bearing, not decoration, and the apostrophe in `don't` is the part
+# that carries it — not the `--`. The EOF valve would otherwise catch this, since an out-of-phase
+# scan ends inside a string; that stray quote resyncs the phase and leaves the valve silent. The
+# scanner is in *string* state for the whole of that line, so its `--` is never reached in code
+# state at all. Checked: change it to `-- do not edit` and the pre-fix scanner draws
+# `FAIL … still inside a string` rather than the OK this test's fail-open shape produces. E'…' is
 # already live in the set (20260724034551, 20260805022307), just not yet with an escaped quote.
 REPO="$(make_repo 20260101000001_fn.sql "COMMENT ON TABLE public.lessons IS E'it\\'s a note';
 CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
