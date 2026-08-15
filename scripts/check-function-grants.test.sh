@@ -187,7 +187,70 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 12: the live migration set is the real fixture — the guard has to pass against it, which is
+# Test 12: `returns trigger` appearing in a function *body* must not exempt the function. The
+# trigger-detection window runs from the CREATE line until a line containing LANGUAGE, and in the
+# `AS $$ … $$ LANGUAGE plpgsql;` spelling that is the last line — so the whole body is in the
+# window unless dollar-quoted text is excluded from matching.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+AS \$\$
+BEGIN
+  RAISE NOTICE 'the audit hook returns trigger rows';
+END;
+\$\$ LANGUAGE plpgsql;")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "'returns trigger' inside a body does not exempt: exits non-zero"
+else
+  assert_fail "'returns trigger' inside a body does not exempt: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 13: a REVOKE-shaped line inside a dollar-quoted string is text, not DDL. A multi-line
+# RAISE NOTICE puts one at column 0, which is exactly what the line-anchored REVOKE detector reads
+# as a real revoke — the function ships PUBLIC-executable and the gate says OK.
+REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
+AS \$\$
+BEGIN
+  RAISE NOTICE 'to lock this down, run:
+REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;';
+END;
+\$\$ LANGUAGE plpgsql;")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "REVOKE-shaped line inside a body is not a revoke: exits non-zero"
+else
+  assert_fail "REVOKE-shaped line inside a body is not a revoke: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 14: SQL keywords are case-insensitive. Lowercase DDL must still be tracked — a
+# case-sensitive detector never enters the function into the set at all, so it is not merely
+# unguarded, it is unchecked, and the gate reports OK.
+REPO="$(make_repo 20260101000001_fn.sql "create or replace function public.do_thing(p_id uuid) returns void
+language plpgsql as \$\$ BEGIN END; \$\$;")"
+run_in "$REPO"
+if [ "$script_exit" -ne 0 ] && printf '%s' "$script_output" | grep -q 'do_thing'; then
+  assert_pass "lowercase CREATE with no revoke: exits non-zero"
+else
+  assert_fail "lowercase CREATE with no revoke: exits non-zero" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 15: the other half of test 14 — a lowercase revoke must clear a lowercase create. Without
+# this, "lowercase always fails" would pass test 15 while being a fail-closed bug of its own.
+REPO="$(make_repo 20260101000001_fn.sql "create function public.do_thing(p_id uuid) returns void
+language plpgsql as \$\$ BEGIN END; \$\$;
+revoke all on function public.do_thing(uuid) from public;
+grant execute on function public.do_thing(uuid) to authenticated;")"
+run_in "$REPO"
+if [ "$script_exit" -eq 0 ]; then
+  assert_pass "lowercase CREATE then lowercase revoke: exits 0"
+else
+  assert_fail "lowercase CREATE then lowercase revoke: exits 0" "exit=$script_exit output=$script_output"
+fi
+rm -rf "$REPO"
+
+# Test 16: the live migration set is the real fixture — the guard has to pass against it, which is
 # the acceptance criterion this issue's migration exists to satisfy.
 if (cd "$SCRIPT_DIR/.." && bash "$SCRIPT" >/dev/null 2>&1); then
   assert_pass "the repo's own migration set: exits 0"
