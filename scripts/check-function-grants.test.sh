@@ -310,8 +310,10 @@ fi
 rm -rf "$REPO"
 
 # Test 20: the safety valve. If the scan reaches end of file still inside a body, comment or
-# string, it lost track somewhere and every verdict it drew from that file is unreliable — which
-# is the fail-open shape tests 16-18 are each one instance of. Report it rather than mis-scan.
+# string, it lost track somewhere and every verdict it drew from that file is unreliable. A
+# different mechanism from tests 16-18, which cover a look-alike delimiter being read as real DDL
+# and whose fixtures all close every construct they open — this one is the scan losing its place
+# outright. Report it rather than mis-scan.
 REPO="$(make_repo 20260101000001_fn.sql "CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
 LANGUAGE plpgsql AS \$\$ BEGIN END;
 REVOKE ALL ON FUNCTION public.do_thing(uuid) FROM PUBLIC;")"

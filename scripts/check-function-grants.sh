@@ -57,7 +57,9 @@ tok_re='(--|/\*|'\''|\$[a-zA-Z_0-9]*\$)'
 
 # Sets `code` to the line with everything Postgres would not read as DDL removed: dollar-quoted
 # bodies, `/* */` block comments, `--` line comments, and single-quoted strings. `state` and `tag`
-# carry across lines, since all four can span them. A body-only line yields ''; the
+# carry across lines, since bodies, block comments and strings can all span them — a `--` comment
+# ends at the newline, so it alone clears the rest of the line without setting `state`. A body-only
+# line yields ''; the
 # `$$ LANGUAGE plpgsql;` closer yields its tail, so the trigger window below still ends where it
 # should.
 #
