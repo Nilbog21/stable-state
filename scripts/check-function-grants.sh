@@ -32,11 +32,54 @@ cd "$(git rev-parse --show-toplevel)"
 # This checks the **replay** property — what a from-scratch migration run produces — which is
 # precisely what broke. A live pg_proc.proacl assertion would check the accumulated dev/prod state
 # instead, and needs a database in CI.
+#
+# Function bodies are excluded from matching (see `strip_body`) and SQL keywords are matched
+# case-insensitively. Both are fail-open fixes, not polish: without them a `RETURNS trigger` or a
+# REVOKE-shaped line inside a `RAISE NOTICE`, or lowercase DDL, makes the gate report OK on a
+# function it never guarded.
+
+# SQL keywords are case-insensitive, so every `=~` and `case` below is too. Function names are
+# folded to lower case at capture so a mixed-case CREATE and a lowercase REVOKE share a key.
+shopt -s nocasematch
 
 declare -A reset_at reset_loc revoke_at is_trigger
 
 seq=0
 pending=''
+in_body=''
+
+# Sets `code` to the line with dollar-quoted body text removed, carrying `$$` depth across lines
+# via `in_body`. A body-only line yields ''; the `$$ LANGUAGE plpgsql;` closer yields its tail, so
+# the trigger window below still ends where it should.
+# ponytail: bare `$$` only — no migration in the set uses a tagged `$tag$` quote. Track the tag
+# too if one ever appears.
+strip_body() {
+  local rest="$1"
+  code=''
+  while [ -n "$rest" ]; do
+    if [ -z "$in_body" ]; then
+      case "$rest" in
+        *'$$'*)
+          code+="${rest%%'$$'*}"
+          rest="${rest#*'$$'}"
+          in_body=1
+          ;;
+        *)
+          code+="$rest"
+          rest=''
+          ;;
+      esac
+    else
+      case "$rest" in
+        *'$$'*)
+          rest="${rest#*'$$'}"
+          in_body=''
+          ;;
+        *) rest='' ;;
+      esac
+    fi
+  done
+}
 
 for f in supabase/migrations/*.sql; do
   n=0
@@ -44,22 +87,24 @@ for f in supabase/migrations/*.sql; do
     n=$((n + 1))
     seq=$((seq + 1))
 
+    strip_body "$line"
+
     # A signature can span lines, so `RETURNS trigger` is looked for from the CREATE line until
     # the LANGUAGE clause that always follows it. Both spellings live in the set: the baseline
     # puts RETURNS on the CREATE line, later migrations give it its own.
     if [ -n "$pending" ]; then
-      if [[ "$line" =~ [Rr][Ee][Tt][Uu][Rr][Nn][Ss][[:space:]]+[Tt][Rr][Ii][Gg][Gg][Ee][Rr] ]]; then
+      if [[ "$code" =~ RETURNS[[:space:]]+TRIGGER ]]; then
         is_trigger[$pending]=1
       fi
-      case "$line" in *LANGUAGE* | *language*) pending='' ;; esac
+      case "$code" in *LANGUAGE*) pending='' ;; esac
     fi
 
-    if [[ "$line" =~ ^[[:space:]]*CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?FUNCTION[[:space:]]+(public\.)?([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
+    if [[ "$code" =~ ^[[:space:]]*CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?FUNCTION[[:space:]]+(public\.)?([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
       # Captured before the next `=~`, which overwrites BASH_REMATCH.
-      name="${BASH_REMATCH[3]}"
+      name="${BASH_REMATCH[3],,}"
       or_replace="${BASH_REMATCH[1]:-}"
       pending="$name"
-      if [[ "$line" =~ [Rr][Ee][Tt][Uu][Rr][Nn][Ss][[:space:]]+[Tt][Rr][Ii][Gg][Gg][Ee][Rr] ]]; then
+      if [[ "$code" =~ RETURNS[[:space:]]+TRIGGER ]]; then
         is_trigger[$name]=1
       fi
       # An OR REPLACE preserves the ACL — record the name so a never-revoked function still
@@ -71,18 +116,19 @@ for f in supabase/migrations/*.sql; do
       continue
     fi
 
-    if [[ "$line" =~ ^[[:space:]]*DROP[[:space:]]+FUNCTION[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(public\.)?([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
-      name="${BASH_REMATCH[3]}"
+    if [[ "$code" =~ ^[[:space:]]*DROP[[:space:]]+FUNCTION[[:space:]]+(IF[[:space:]]+EXISTS[[:space:]]+)?(public\.)?([a-zA-Z_][a-zA-Z0-9_]*) ]]; then
+      name="${BASH_REMATCH[3],,}"
       reset_at[$name]=$seq
       reset_loc[$name]="$f:$n"
       continue
     fi
 
-    if [[ "$line" =~ ^[[:space:]]*REVOKE[[:space:]].*ON[[:space:]]+FUNCTION[[:space:]]+(public\.)?([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]*\(.*FROM[[:space:]]+PUBLIC ]]; then
-      revoke_at[${BASH_REMATCH[2]}]=$seq
+    if [[ "$code" =~ ^[[:space:]]*REVOKE[[:space:]].*ON[[:space:]]+FUNCTION[[:space:]]+(public\.)?([a-zA-Z_][a-zA-Z0-9_]*)[[:space:]]*\(.*FROM[[:space:]]+PUBLIC ]]; then
+      revoke_at[${BASH_REMATCH[2],,}]=$seq
     fi
   done < "$f"
   pending=''
+  in_body=''
 done
 
 fail=0
