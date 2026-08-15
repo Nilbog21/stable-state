@@ -433,15 +433,18 @@ rm -rf "$REPO"
 # `e`) and not an E-string. Deciding E-ness from the stripped `code` accumulator can't see that:
 # the block comment is gone by then, `code` still ends in `e`, and the `\` in `'C:\'` is read as
 # an escape that the string has none of. The scan drifts and a migration psql applies cleanly
-# draws a false `FAIL … reached end of file still inside a string` — fail-closed, blocking CI, and
-# the message names the file rather than a function so it doesn't even point at what to look at.
+# draws a false `FAIL … reached end of file still inside a string` — fail-closed, blocking CI —
+# plus, since the drift starts *after* the CREATE and swallows the REVOKE that follows, a second
+# false FAIL accusing a properly-revoked function of having none.
 #
-# The `CREATE DOMAIN e` line makes the cast real SQL rather than a shape invented for the test;
-# comments are whitespace to Postgres' lexer, so this file applies as written.
+# The `CREATE DOMAIN e` and `CREATE TABLE notes` lines make the cast real SQL rather than a shape
+# invented for the test; comments are whitespace to Postgres' lexer, so this file applies as
+# written — verified against Postgres 18.
 #
 # No mirror of its own: the degenerate "never set estr" fix is already killed by test 21 (an
 # adjacent E'it\'s a note' must still be an E-string) and "any backslash escapes" by test 22.
 REPO="$(make_repo 20260101000001_fn.sql "CREATE DOMAIN e AS text;
+CREATE TABLE public.notes (body text);
 CREATE FUNCTION public.do_thing(p_id uuid) RETURNS void
 LANGUAGE plpgsql AS \$\$ BEGIN END; \$\$;
 INSERT INTO public.notes (body) VALUES (e/* not an E-string */'C:\\');
