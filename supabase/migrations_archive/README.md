@@ -1,5 +1,14 @@
 # Migration archive
 
+> **Equivalence is now a script, not a procedure.** Each section below records a
+> `migra` run someone performed by hand; #1542 replaced that with
+> `bash scripts/verify-migration-equivalence.sh --before-ref <pre-squash-sha>`,
+> which replays both sets and diffs `pg_dump --schema-only` including every ACL.
+> Use it for the next squash rather than reconstructing the prose. Its
+> `--self-check` re-derives the first section's verdict below — and, run against
+> #657's squash *as first pushed*, independently finds the 11 missing GRANTs that
+> review caught in `bf620567`. The hand-run recorded here did not.
+
 These 93 files (`20260516000000`–`20260629004605`) are the pre-#657 migration
 history — everything through v2.0.2 (release-2 + patches). They are kept for
 history, not applied by the Supabase CLI (only `supabase/migrations/` is).

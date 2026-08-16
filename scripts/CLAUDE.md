@@ -85,4 +85,5 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `check-function-grants` — CI gate: every non-trigger migration function is revoked from `PUBLIC` after its last create/drop
 - `check-ceremony-tags` — CI gate: every `RELEASE_CEREMONY.md` checkbox carries exactly one `(auto)`/`(prompt)`/`(manual)` tag — what `/releaseCeremony` reads to decide what it may run unattended
 - `check-e2e-tags` — CI gate: every checklist `(e2e:)` tag names a test that exists, carries a project tag, and runs as an identity its phase asserts as; and no `e2e/**/*.ts` file cites a checklist item by line number rather than by quoted fragment (#1410)
+- `verify-migration-equivalence` — replay two migration sets into throwaway DBs and diff the schema incl. ACLs; the squash check `Verify Migrations` CI can't do (`--self-check`, needs a local Postgres)
 - `repair-migration-history`, `replace-all-migrations` — migration-history repair tooling (prod-targeting by design)

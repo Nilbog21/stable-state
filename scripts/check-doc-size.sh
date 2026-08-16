@@ -34,13 +34,14 @@ BUDGETS=(
   # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
   # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
   "CLAUDE.md:6500"
-  # Raised from 9300 by #1542: 9287 -> 9632. Two genuinely new scripts entering the index
-  # (check-ceremony-tags, and a .test.sh for workflow-context), plus one line noting why the
-  # latter isn't an exception to the no-.test.sh-for-shell policy stated just above it. New
-  # index entries, not elaboration of existing ones — the legitimate-raise case the
-  # e2e/CLAUDE.md note below describes. The file was at 13 characters of headroom, so no trim
-  # was available; the rationale for both scripts lives in docs/scripts.md, not here.
-  "scripts/CLAUDE.md:9750"
+  # Raised from 9300 by #1542: 9287 -> 9834. Three genuinely new scripts entering the index
+  # (check-ceremony-tags, verify-migration-equivalence, and a .test.sh for workflow-context),
+  # plus one line noting why the last isn't an exception to the no-.test.sh-for-shell policy
+  # stated just above it. New index entries, not elaboration of existing ones — the
+  # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13
+  # characters of headroom, so no trim was available; all three scripts' rationale lives in
+  # docs/scripts.md, and the index entries stay one line each per #1468's cap.
+  "scripts/CLAUDE.md:9950"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each

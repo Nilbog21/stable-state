@@ -89,9 +89,8 @@ Then:
 Acceptance criteria to paste into that issue:
 
 - [ ] Re-confirm at execution time that no other `release-N` issue or PR has pending migration changes — the ceremony's gate was checked when this issue was filed, not when it was worked
-- [ ] Replay the release's current migrations → schema A
-- [ ] Author a consolidated set split by concern (schema / backfills / functions / rls, one fresh timestamp), following the naming of the existing baseline files in `supabase/migrations/` → replay → schema B
-- [ ] A `migra` diff between schema A and schema B is empty
+- [ ] Author a consolidated set split by concern (schema / backfills / functions / rls, one fresh timestamp), following the naming of the existing baseline files in `supabase/migrations/`
+- [ ] `bash scripts/verify-migration-equivalence.sh --before-ref <pre-squash-sha>` reports **identical** — it replays both sets into throwaway databases and diffs `pg_dump --schema-only` including every ACL. Do not substitute a by-hand `migra` run: that was the procedure for all three previous squashes and #657's first push still dropped 11 GRANTs, caught by a human reviewer rather than by the diff (`bf620567`)
 - [ ] The superseded originals are moved to `supabase/migrations_archive/`, not deleted
 - [ ] `docs/architecture/schema.md`'s migration-history paragraph names the new consolidated file set
 - [ ] `Verify Migrations` CI passes on the squash PR
