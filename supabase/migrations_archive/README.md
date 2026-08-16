@@ -2,9 +2,10 @@
 
 > **Equivalence is now a script, not a procedure.** Each section below records a
 > `migra` run someone performed by hand; #1542 replaced that with
-> `bash scripts/verify-migration-equivalence.sh --before-ref <pre-squash-sha>`,
-> which replays both sets and diffs `pg_dump --schema-only` including every ACL.
-> Use it for the next squash rather than reconstructing the prose. Its
+> `bash scripts/verify-migration-equivalence.sh`, which replays both sets and diffs
+> `pg_dump --schema-only` including every ACL. Use it for the next squash rather than
+> reconstructing the prose — `RELEASE_CEREMONY.md`'s Wrapup 4 criteria own the exact
+> invocation, including which ref to pass, so it is stated once. Its
 > `--self-check` re-derives the first section's verdict below — and, run against
 > #657's squash *as first pushed*, independently finds the 11 missing GRANTs that
 > review caught in `bf620567`. The hand-run recorded here did not.
