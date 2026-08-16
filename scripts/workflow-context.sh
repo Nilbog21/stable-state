@@ -36,19 +36,41 @@ port_for() {
 # it's just the fallback, because it asks for confirmation before merging an untriaged
 # issue rather than trusting the default. Sets rather than echoes so both survive: a
 # `$(...)` call would run this in a subshell and drop `base_from_label`.
-# process-for-release is checked first: those are release close-out steps that land on
-# main even when the issue also carries a release-N label.
+#
+# Order matters, and `release-N` beats `process-for-release` (#1542). That is a reversal:
+# the rule used to check process-for-release first, on the claim that "those are release
+# close-out steps that land on main even when the issue also carries a release-N label".
+# The claim was false when it was written. Of release-3's ceremony issues, #978 (PR #982)
+# and #979 (PR #983) both landed on `release/release-3`, and RELEASE_CEREMONY.md steps 5
+# and 6 *prescribe* that base, citing those two PRs by number as the precedent. Only #977
+# — the release merge itself — went to main, and #1542 restructured that step out of issue
+# shape entirely: the four issues the ceremony now files (Wrapup 1, 4, 5, 6) all ride into
+# main on the release's merge commit, so all four want the release branch.
+#
+# The label is kept as a *fallback* rather than deleted, so a process-for-release issue
+# carrying no release-N still resolves to main with base_from_label=yes — /finishIssue
+# reads that flag to decide whether to confirm before merging, and demoting the label to
+# the untriaged default would make it prompt on a triaged issue.
+#
+# This mis-routed silently for a release. The cost is worst headless: /fableFleet does
+# `git worktree add --detach origin/{base}` straight off this answer, so a mis-routed
+# ceremony issue gets a worktree where the files it edits don't exist, and nobody is
+# watching. Hence scripts/workflow-context.test.sh, wired into ci.sh.
 base_for_labels() {
   local labels=" $1 "
   base_from_label=yes
-  if [[ $labels == *" process-for-release "* ]]; then base="main"; return; fi
   if [[ $labels =~ [[:space:]]patch-[0-9]+[[:space:]] ]]; then base="main"; return; fi
   if [[ $labels =~ [[:space:]]release-([0-9]+)[[:space:]] ]]; then
     base="release/release-${BASH_REMATCH[1]}"; return
   fi
+  if [[ $labels == *" process-for-release "* ]]; then base="main"; return; fi
   base="main"
   base_from_label=no
 }
+
+# Sourced with WORKFLOW_CONTEXT_LIB set, the file defines its functions and stops, so the
+# test can exercise base_for_labels without the `gh`/`git` round trips below.
+[[ -n ${WORKFLOW_CONTEXT_LIB:-} ]] && return 0
 
 worktree=""
 worktree_path=""

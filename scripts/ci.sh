@@ -20,3 +20,4 @@ bash scripts/check-function-grants.sh
 bash scripts/check-function-grants.test.sh
 bash scripts/check-ceremony-tags.sh
 bash scripts/check-ceremony-tags.test.sh
+bash scripts/workflow-context.test.sh
