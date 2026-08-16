@@ -128,6 +128,8 @@ Announce each step, then work its checkboxes in order by tag:
 
 **The `(auto)` verifications are also the already-done guards** `.claude/commands/CLAUDE.md` requires of a state-changing step. "The tag is visible on GitHub" is fetched anyway, so branching on it is what stops a re-invocation re-tagging — no dedicated lookup needed. The same holds for the `patch-N` label (Closeout 4 says outright to skip if it exists) and for Wrapup 9's PR.
 
+**Closeout 3's merge is the one that needs its own fetch.** Step 2's re-checks fire on resume; Closeout 3 is reached by walking forward from Wrapup 9 through Closeout 1–2, which is hours of prod work in between. Before composing the `gh pr merge`, read the PR's state — the same `gh pr view <n> --json state,mergeable` the checkbox needs anyway — and if it is already `MERGED`, tick the box, record the existing merge SHA into `release-merge-sha`, and move on rather than prompting. A merge that happened out of band while you were pushing migrations is the ordinary case, not a fault.
+
 **When a check fails, park.** Say what failed and what would fix it, flush the run file, and stop. Do not tick a checkbox the evidence doesn't support and do not improvise a repair — the steps that exist only because prod broke are precisely the ones where improvising is expensive.
 
 ### Part 2 working-directory guard

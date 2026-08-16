@@ -81,7 +81,7 @@ The gate's two halves are tagged differently on purpose: a PR's file list is gre
 
 Then:
 
-- [ ] (prompt) An issue is filed, labeled `release-N`, `data-migration` and `rearchitecture`, titled something like "Squash release-N's pending migrations", with the gate's result recorded in its body and the seven bullets below as its acceptance criteria
+- [ ] (prompt) An issue is filed, labeled `release-N`, `data-migration` and `rearchitecture`, titled something like "Squash release-N's pending migrations", with the gate's result recorded in its body and the bullets below as its acceptance criteria
 - [ ] (auto) It is worked through the normal pipeline and its PR is merged into `release/release-N`
 - [ ] (auto) The squash PR's merge SHA is recorded — step 7 needs it
 - [ ] (prompt) The shared dev DB is reconciled separately after the squash merges (`scripts/replace-all-migrations.sh`, #659) — `/sync-migrations` does not apply to a squash PR

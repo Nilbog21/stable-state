@@ -18,9 +18,11 @@ cd "$(git rev-parse --show-toplevel)"
 #
 # Checkboxes under `Acceptance criteria to paste into that issue:` are exempt: they are text
 # destined for a GitHub issue body, not ceremony steps. The exemption ends at the next `### `
-# heading or `---` divider — both, because Part 1's last acceptance-criteria block is followed by a
-# divider and a `## ` heading rather than a `###`, so a `###`-only rule would carry the exemption
-# across the part boundary.
+# heading or a `---` divider. Today every one of the four blocks is closed by a `### ` — the
+# divider arm is there for the shape that has no `###` after it: an acceptance-criteria block
+# ending a part, where the next heading is the `## ` of Part 2 behind a `---`. A `###`-only rule
+# would carry that exemption across the part boundary and silently unlint the whole of Closeout,
+# which is this gate's own failure class rather than a hypothetical.
 
 FILE='RELEASE_CEREMONY.md'
 AC_LEAD='Acceptance criteria to paste into that issue:'

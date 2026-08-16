@@ -8,6 +8,11 @@
 > `--self-check` re-derives the first section's verdict below — and, run against
 > #657's squash *as first pushed*, independently finds the 11 missing GRANTs that
 > review caught in `bf620567`. The hand-run recorded here did not.
+>
+> **Read every "verified until empty" below as the hand-run's verdict, not as
+> fact.** Two of the three are known wrong: #657's above, and #972's, which
+> missed `set_instructor_cut`'s dropped REVOKE — #1158 restored it and #1535
+> built a CI gate for it. That is the whole argument for the script.
 
 These 93 files (`20260516000000`–`20260629004605`) are the pre-#657 migration
 history — everything through v2.0.2 (release-2 + patches). They are kept for
@@ -72,3 +77,11 @@ since only their referenced shape — `auth.users`, `auth.uid()`,
 `storage.objects`, `storage.foldername()` — matters for this diff), then
 diffing with `migra --with-privileges` until empty. No prod migration-tracking
 reconciliation was needed — release-3 still hadn't shipped to prod at this point.
+
+That empty diff was wrong. This squash's `CREATE OR REPLACE` of
+`set_instructor_cut` dropped its `REVOKE ... FROM PUBLIC`, leaving PUBLIC
+EXECUTE on a `SECURITY DEFINER` function; #1158 restored it and #1535 added
+`check-function-grants.sh` to catch the class in CI. The `--with-privileges`
+flag was passed and the drop still went unrecorded, which is why
+`verify-migration-equivalence.sh` diffs rendered schema text including ACLs
+rather than trusting a flag someone has to remember.

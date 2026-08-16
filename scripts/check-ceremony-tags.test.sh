@@ -166,8 +166,10 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 8: the exemption also ends at a --- part divider. Part 1's last step ends in one before
-# Part 2's ## heading, so a rule keyed only on ### would carry an AC block across the divider.
+# Test 8: the exemption also ends at a --- part divider. Every AC block in today's runbook is
+# closed by a ###, so this fixture is the shape that arm exists for rather than a copy of the
+# real file: an AC block ending a part, whose next heading is Part 2's ## behind a ---. Under a
+# ###-only rule the exemption would run past the divider and unlint the whole of Part 2.
 REPO="$(make_repo <<'EOF'
 # Release Ceremony
 

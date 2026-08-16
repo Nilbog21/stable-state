@@ -35,7 +35,9 @@ cd "$(git rev-parse --show-toplevel)"
 
 PRELUDE_ROLE=postgres
 
-usage() { sed -n '7,30p' "$0" | sed 's/^# \?//'; exit 2; }
+# 11,28 — the doc block starts below the `cd`, and stops before the `migra` rationale, which is
+# a note to the next editor rather than something a caller needs on a usage error.
+usage() { sed -n '11,28p' "$0" | sed 's/^# \?//'; exit 2; }
 
 before_ref=""
 after_ref=""

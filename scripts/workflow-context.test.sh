@@ -37,7 +37,10 @@ assert_base "high-priority process-for-release release-4" "release/release-4" ye
 # The label survives as a fallback rather than being deleted: a process-for-release issue
 # with no release label still resolves to main *and* still reports base_from_label=yes.
 # /finishIssue reads that flag to decide whether to confirm before merging, so demoting the
-# label to the untriaged default would make it prompt on a triaged issue.
+# label to the untriaged default would make it prompt on a triaged issue. This is also the
+# boundary case for the release-N parse: `process-for-release` contains the word "release"
+# but no digits, so a base of `main` here is what proves it isn't read as a release label —
+# were it read as one, this would route to a nonexistent branch rather than to main.
 assert_base "process-for-release" main yes \
   "process-for-release alone still routes to main, decided by label"
 
@@ -64,12 +67,6 @@ assert_base "pre-release-4" main no \
   "a label containing release-N as a substring does not match"
 assert_base "release-42" "release/release-42" yes \
   "a multi-digit release number is captured whole, not truncated"
-
-# `process-for-release` itself contains the word "release" but no digits, so it must never
-# be read as a release-N label — that would route every close-out issue to a nonexistent
-# branch rather than to main.
-assert_base "process-for-release" main yes \
-  "process-for-release is not itself parsed as a release-N label"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
