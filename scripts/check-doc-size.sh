@@ -34,7 +34,11 @@ BUDGETS=(
   # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
   # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
   "CLAUDE.md:6500"
-  "scripts/CLAUDE.md:9300"
+  # Raised from 9300 by #1542, which added check-ceremony-tags to the script index: 9287 -> 9483.
+  # A genuinely new script entering the index, not elaboration of an existing entry — the same
+  # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13 characters of
+  # headroom, so no trim was available.
+  "scripts/CLAUDE.md:9600"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each

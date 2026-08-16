@@ -18,3 +18,5 @@ bash scripts/check-pipefail-race.sh
 bash scripts/check-pipefail-race.test.sh
 bash scripts/check-function-grants.sh
 bash scripts/check-function-grants.test.sh
+bash scripts/check-ceremony-tags.sh
+bash scripts/check-ceremony-tags.test.sh
