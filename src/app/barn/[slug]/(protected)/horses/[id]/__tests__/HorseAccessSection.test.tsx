@@ -44,6 +44,21 @@ function documentButton(grantName: string, label: string): HTMLButtonElement {
   return within(row).getByRole('button', { name: label }) as HTMLButtonElement
 }
 
+/** A named grant's lesson-schedule switch. */
+function lessonSwitch(grantName: string): HTMLButtonElement {
+  const row = screen.getByText(grantName).closest('tr')!
+  return within(row).getByRole('switch') as HTMLButtonElement
+}
+
+/**
+ * Every interactive control in the section. `getAllByRole('button')` alone is not it: since #1548
+ * the lesson-schedule toggle is `role="switch"`, which that query does not match -- so a sweep
+ * written against buttons would silently stop covering the one control that moved.
+ */
+function everyControl(): HTMLElement[] {
+  return [...screen.getAllByRole('button'), ...screen.getAllByRole('switch')]
+}
+
 describe('HorseAccessSection', () => {
   it('should_render_a_row_for_each_grant', () => {
     render(<HorseAccessSection {...makeProps()} />)
@@ -72,14 +87,24 @@ describe('HorseAccessSection', () => {
     expect(pressed).toEqual(['false', 'true', 'false'])
   })
 
-  it('should_show_cannot_view_label_when_lesson_read_privileges_is_false', () => {
+  // #1548 replaced the Can View/Cannot View label pair with a switch: the label was carrying the
+  // state, so there was nothing left saying what the control *was*. The column header names the
+  // setting; `aria-checked` and the knob say which way it is thrown.
+  it('should_report_lesson_access_off_through_the_switch', () => {
     render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByRole('button', { name: /cannot view/i })).toBeDefined()
+    expect(lessonSwitch('Dana Rider').getAttribute('aria-checked')).toBe('false')
   })
 
-  it('should_show_can_view_label_when_lesson_read_privileges_is_true', () => {
+  it('should_report_lesson_access_on_through_the_switch', () => {
     render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByRole('button', { name: /^can view$/i })).toBeDefined()
+    expect(lessonSwitch('Emery Rider').getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('should_name_the_lesson_switch_after_the_member_it_belongs_to', () => {
+    render(<HorseAccessSection {...makeProps()} />)
+    expect(lessonSwitch('Dana Rider').getAttribute('aria-label')).toBe(
+      'Lesson schedule access for Dana Rider'
+    )
   })
 
   it('should_render_add_member_control_when_available_members_exist', () => {
@@ -111,15 +136,13 @@ describe('HorseAccessSection', () => {
   describe('progressive enhancement', () => {
     it('should_submit_every_control_through_a_form', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const orphans = screen
-        .getAllByRole('button')
-        .filter((b) => b.closest('form') === null)
+      const orphans = everyControl().filter((c) => c.closest('form') === null)
       expect(orphans).toEqual([])
     })
 
     it('should_make_every_control_a_submit_button', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const types = screen.getAllByRole('button').map((b) => b.getAttribute('type'))
+      const types = everyControl().map((c) => c.getAttribute('type'))
       expect(new Set(types)).toEqual(new Set(['submit']))
     })
 
@@ -194,15 +217,51 @@ describe('HorseAccessSection', () => {
     it('should_call_onUpdateLesson_with_the_next_value_bound_at_render_time', () => {
       const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
-      fireEvent.click(screen.getByRole('button', { name: /cannot view/i }))
+      fireEvent.click(lessonSwitch('Dana Rider'))
       expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-1', true])
     })
 
     it('should_bind_false_for_a_grant_that_already_has_the_privilege', () => {
       const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
-      fireEvent.click(screen.getByRole('button', { name: /^can view$/i }))
+      fireEvent.click(lessonSwitch('Emery Rider'))
       expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-2', false])
+    })
+  })
+
+  /**
+   * #1548. Three separate buttons read as three actions; joined corners plus one filled segment
+   * read as one setting with three values. Still three forms and three submits underneath -- the
+   * corners are the only thing that changed, so #1390's pre-hydration guarantee is untouched.
+   */
+  describe('document access as a segmented group', () => {
+    it('should_group_the_three_states_for_assistive_tech', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const row = screen.getByText('Dana Rider').closest('tr')!
+      expect(within(row).getByRole('group').getAttribute('aria-label')).toBe('Document access')
+    })
+
+    it('should_square_the_inner_edges_of_the_first_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'None').className).toContain('rounded-r-none')
+    })
+
+    it('should_square_both_edges_of_the_middle_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'Read').className).toContain('rounded-none')
+    })
+
+    it('should_square_the_inner_edges_of_the_last_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'Write').className).toContain('rounded-l-none')
+    })
+
+    it('should_fill_only_the_current_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const fills = ['None', 'Read', 'Write'].map((label) =>
+        documentButton('Dana Rider', label).className.includes('bg-zinc-900')
+      )
+      expect(fills).toEqual([false, true, false])
     })
   })
 
