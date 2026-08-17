@@ -651,4 +651,92 @@ describe('SettingsPage', () => {
       Array(8).fill(false)
     )
   })
+
+  /**
+   * #1557 — every section leads with one description, in one style, in one place. Asserted as a
+   * table rather than eight bespoke tests because the AC is a uniformity claim: a description
+   * that drifts in wording, size or position fails the same equality the others pass.
+   *
+   * The body is `<details>`' last element child — `headerExtra` renders between the summary and
+   * the body, so `lastElementChild` is the one accessor correct for both section shapes.
+   */
+  function sectionBody(title: string): HTMLElement {
+    return section(title).lastElementChild as HTMLElement
+  }
+
+  const DESCRIPTION_CLASS = 'mb-3 text-sm text-zinc-500 dark:text-zinc-400'
+
+  const SECTION_DESCRIPTIONS: { section: string; text: string }[] = [
+    {
+      section: 'Default Instructor Cut',
+      text: "Changing this doesn't affect past lessons — only new tiers and Custom lessons booked afterward.",
+    },
+    {
+      section: 'Horse Exhaustion Thresholds',
+      text: "Sets where a horse's exhaustion bar crosses into the moderate and high bands. Individual horses can override these.",
+    },
+    {
+      section: 'Schedule Buffer',
+      text: 'Instructors are notified when another instructor books a lesson within this many minutes of one of their own.',
+    },
+    {
+      section: 'Lesson Tiers',
+      text: 'Named lesson types with a set price, so booking a lesson is a pick rather than a price entry. The default tier is pre-selected on new lessons.',
+    },
+    {
+      section: 'Barn Events',
+      text: 'One-off dates on the barn calendar — shows, clinics, meetings, closures. Choose which roles see each one.',
+    },
+    {
+      section: 'Default Board Fee',
+      text: 'Applies to new boarding agreements only — existing boarders are unchanged.',
+    },
+    {
+      section: 'Barn Timezone',
+      text: "Every date and time in the app — lesson times, calendar days, and when charges fall due — is your barn's local time. This sets which zone that is.",
+    },
+    // The default mock has no documents, so this is the empty-state half of the Data Backup
+    // documents description — the block it heads is still the section's first.
+    { section: 'Data Backup', text: 'No documents to download yet.' },
+  ]
+
+  it.each(SECTION_DESCRIPTIONS)(
+    'should_lead_the_$section_section_with_its_description',
+    async ({ section: title, text }) => {
+      const jsx = await SettingsPage({
+        params: Promise.resolve({ slug: 'green-acres' }),
+        searchParams: Promise.resolve({}),
+      })
+      render(jsx)
+
+      const first = sectionBody(title).firstElementChild as HTMLElement
+      expect({ tag: first.tagName, text: first.textContent, className: first.className }).toEqual({
+        tag: 'P',
+        text,
+        className: DESCRIPTION_CLASS,
+      })
+    }
+  )
+
+  it('should_not_render_subheadings_under_data_backup', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(section('Data Backup').querySelectorAll('h3').length).toBe(0)
+  })
+
+  it('should_preserve_the_gap_between_the_two_data_backup_blocks', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    // `:scope > p` — the two descriptions, never a DownloadButton's error alert.
+    const [, data] = sectionBody('Data Backup').querySelectorAll(':scope > p')
+    expect(data.className).toBe(`mt-6 ${DESCRIPTION_CLASS}`)
+  })
 })
