@@ -40,9 +40,9 @@ export function MarkdownDocument({ content }: { content: string }) {
     (Tag: 'h2' | 'h3'): Components['h2'] =>
     function AnchoredHeading({ node, children, ...props }) {
       // `node.position` is optional only in react-markdown's types; parsing a string source
-      // always supplies it, so the fallback is unreachable rather than untested.
-      /* v8 ignore next */
-      const line = node?.position?.start.line ?? -1
+      // always supplies it. Asserted rather than defaulted, so there is no dead branch to
+      // exempt from the 100% coverage gate.
+      const line = node!.position!.start.line
       return (
         <Tag id={slugByLine.get(line)} className="scroll-mt-4" {...props}>
           {children}
@@ -56,7 +56,7 @@ export function MarkdownDocument({ content }: { content: string }) {
     h1: ({ node, children, ...props }) => (
       <>
         <h1 {...props}>{children}</h1>
-        {headings.length > 0 && node?.position?.start.line === firstH1Line && (
+        {headings.length > 0 && node!.position!.start.line === firstH1Line && (
           <TableOfContents headings={headings} />
         )}
       </>

@@ -27,9 +27,11 @@ function slugify(text: string, index: number): string {
  *
  * Keyed by source line rather than by render order, so the renderer needs no counter state.
  *
- * ponytail: a line scan, not a remark AST walk — none of the five documents this serves contains
- * a fenced code block, so there is nothing for `^##` to false-positive on. Parse properly if one
- * ever gains a fenced block containing a `#` line.
+ * ponytail: a line scan, not a remark AST walk. Its ceiling is three shapes of CommonMark that
+ * remark renders as headings and this does not see — a `#` line inside a fenced code block (a
+ * false positive), a setext heading (`Text` over `---`, missed entirely, so it renders with no
+ * `id`), and a closing sequence (`## Heading ##`, whose trailing hashes land in the text and the
+ * slug). None of the five documents this serves uses any of them. Parse properly if one does.
  */
 export function parseHeadings(content: string): ParsedHeadings {
   const headings: TocHeading[] = []
@@ -38,7 +40,7 @@ export function parseHeadings(content: string): ParsedHeadings {
   let firstH1Line: number | null = null
 
   content.split('\n').forEach((line, i) => {
-    if (firstH1Line === null && /^# \S/.test(line)) {
+    if (firstH1Line === null && /^#\s+\S/.test(line)) {
       firstH1Line = i + 1
       return
     }

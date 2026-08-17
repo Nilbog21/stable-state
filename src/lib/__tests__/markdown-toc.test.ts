@@ -57,6 +57,12 @@ describe('parseHeadings', () => {
     expect(firstH1Line).toBe(1)
   })
 
+  it('should_report_the_h1_line_when_more_than_one_space_follows_the_hash', () => {
+    const { firstH1Line } = parseHeadings('#   Title\n\n## Section\n')
+
+    expect(firstH1Line).toBe(1)
+  })
+
   it('should_report_null_when_the_document_has_no_h1', () => {
     const { firstH1Line } = parseHeadings('## Section\n')
 
