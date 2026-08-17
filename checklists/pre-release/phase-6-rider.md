@@ -85,7 +85,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_outstanding_type_column_carries_no_other_riders_agreements) That page has a Type column, with no entries for other riders' agreements
 - [ ] (e2e: rider_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
 - [ ] (e2e: rider_dashboard_reminders_carries_an_unpaid_leases_boarding_card) With unpaid leases/boarding, that section also carries an "N unpaid leases/boarding" card
-- [ ] (e2e: rider_reminder_cards_link_to_the_outstanding_page) Each of those cards links to `/barn/dev-barn/finances/outstanding` — Dana's only nav path to that page, since the nav carries no Finances link
+- [ ] (e2e: rider_reminder_cards_link_to_the_outstanding_page) Each of those cards links to `/barn/dev-barn/finances/outstanding?from=dashboard` — Dana's only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e: rider_unpaid_lessons_card_still_appears_with_only_a_cancellation_fee_outstanding) (#938) With an outstanding late-cancellation fee but zero unpaid lesson fees, the Dashboard's "N unpaid lessons" card still appears (its count includes the cancellation fee) instead of being hidden
 - [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) For a rider with nothing outstanding of their own, the Dashboard shows no **Reminders** header at all — even while the barn holds unpaid items belonging to *another* rider, which proves the reminders query is rider-scoped rather than merely empty (Dana has her own unpaid items by this point, so verify as a rider who does not — the e2e run seeds exactly that pair)
 - [ ] (e2e: members_page_lists_all_four_roster_sections) `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders)
@@ -129,6 +129,6 @@ The no-hover-state rubric bullet is the line that used to sit under Active Agree
 
 Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
 
-The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `<MarkdownDocument>` — `<ReactMarkdown>` plus the generated contents list (#1556). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The rider guide at `/barn/dev-barn/guide` still describes what a rider can actually do — `USER_GUIDE_RIDER.md`

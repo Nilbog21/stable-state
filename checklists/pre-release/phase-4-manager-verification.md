@@ -35,8 +35,9 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
 - [ ] (e2e: dashboard_document_reminder_card_sits_directly_under_reminders_without_its_own_heading) That card appears directly under Reminders with no separate "Document Reminders" heading above it
 - [ ] (e2e: dashboard_document_reminder_card_links_to_the_horses_detail_page) That card links to the horse's or member's detail page
-- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
+- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding?from=dashboard`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
+- [ ] (e2e: dashboard_unpaid_lesson_card_back_link_returns_to_the_dashboard) (#1555) Tap that card, then **← Back** on Outstanding Payments → lands back on the Dashboard, not on Finances
 - [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
 - [ ] (e2e: dashboard_day_week_and_month_pill_switcher_appears_above_the_calendar) (#1016, #1558) A "Day"/"Week"/"Month" pill switcher appears above the calendar
 - [ ] (e2e: dashboard_day_pill_is_the_active_view_on_load) (#1016) The Day view is active by default
@@ -674,6 +675,6 @@ The Finances line below is the one that used to sit at the top of that section, 
 
 Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
 
-The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `<MarkdownDocument>` — `<ReactMarkdown>` plus the generated contents list (#1556). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The manager guide at `/barn/dev-barn/guide` still describes what a manager can actually do — `USER_GUIDE_MANAGER.md`

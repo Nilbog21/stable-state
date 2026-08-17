@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { readFileSync } from 'fs'
 import path from 'path'
 import Link from 'next/link'
-import ReactMarkdown from 'react-markdown'
+import { MarkdownDocument } from '@/components/MarkdownDocument'
 
 export default async function TermsPage() {
   let content: string
@@ -23,9 +23,7 @@ export default async function TermsPage() {
         </Link>
       </nav>
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <div className="prose prose-zinc max-w-none dark:prose-invert">
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
+        <MarkdownDocument content={content} />
       </main>
     </>
   )

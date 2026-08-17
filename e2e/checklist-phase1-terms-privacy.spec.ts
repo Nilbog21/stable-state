@@ -1,6 +1,8 @@
 // covers: src/app/login/**
 // covers: src/app/terms/**
 // covers: src/app/privacy/**
+// covers: src/components/MarkdownDocument.tsx
+// covers: src/lib/markdown-toc.ts
 // covers: TERMS_OF_SERVICE.md
 // covers: PRIVACY_POLICY.md
 //
@@ -228,6 +230,27 @@ test('the_terms_page_renders_the_drafted_terms_content @manager', async ({ anonP
   // `getByText`, which matches every ancestor carrying the text too and would trip strict mode;
   // paragraphs do not nest, so exactly one can match.
   await expect(anonPage.locator('p').filter({ hasText: bodyProbe(TERMS_FILE) })).toHaveCount(1)
+})
+
+test('the_terms_page_table_of_contents_links_to_each_heading @manager', async ({ anonPage }) => {
+  await anonPage.goto('/terms')
+
+  // `markdownHeadings` returns the `#` title first; the contents list covers the `##` sections
+  // only, so drop it. Same full-set ordered equality as the content check above and for the same
+  // reason — the list is generated from the file, so a section it omits is a real regression and
+  // containment would accept one.
+  const sections = markdownHeadings(TERMS_FILE).slice(1)
+  const contents = anonPage.getByRole('navigation', { name: 'Contents' })
+  await expect(contents.getByRole('link')).toHaveText(sections)
+
+  // The last entry is the one that cannot already be on screen, so it is the only entry whose
+  // click proves the anchor resolves rather than proving nothing. Asserting on the heading the
+  // href names — not on a re-derived slug — is what ties the generated id and the generated
+  // href together: if they ever disagreed there would be no such element to come into view.
+  const href = await contents.getByRole('link').last().getAttribute('href')
+  await contents.getByRole('link').last().click()
+  await expect(anonPage.locator(String(href))).toHaveText(sections[sections.length - 1])
+  await expect(anonPage.locator(String(href))).toBeInViewport()
 })
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,8 @@
 // covers: src/app/barn/[slug]/(protected)/nav-links.ts
 // covers: src/app/barn/[slug]/(protected)/NavigationBlocker.tsx
 // covers: src/components/useOutsideDismiss.ts
+// covers: src/components/MarkdownDocument.tsx
+// covers: src/lib/markdown-toc.ts
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/guide/**
