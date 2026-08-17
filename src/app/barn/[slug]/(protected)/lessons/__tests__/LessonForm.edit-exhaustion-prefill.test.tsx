@@ -61,6 +61,18 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1']))
   })
 
+  // #1578's current-hour estimate is a CREATE-form device and must not reach this one. The edit
+  // form is seeded from the stored instant, which `LessonStartTime` reports on its mount effect —
+  // one render after `lessonAt`'s initial `''`. An unguarded estimate would fill that render with
+  // a fetch for *today*, so every edit-form open would cost two round trips instead of one, and a
+  // past lesson would flash a set of bars that the very next render gates off again.
+  it('should_fetch_once_on_mount_rather_than_estimating_first', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    expect(getProjectedExhaustion.mock.calls.map(call => call[0])).toEqual(['2026-05-17T10:30:00.000Z'])
+  })
+
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
