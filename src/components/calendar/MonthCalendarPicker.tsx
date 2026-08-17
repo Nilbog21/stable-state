@@ -10,10 +10,14 @@ import { dateNavButtonClass } from '@/components/ui/date-nav'
 import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
 
 /**
- * Month grid used as a form date field (#1019): each cell is tinted from the caller's
- * precomputed `decorations`, so this component holds no scheduling logic of its own —
- * see `src/lib/month-calendar.ts` for the model. Tapping a day both selects it and opens
- * that day's schedule.
+ * Month grid: each cell is tinted from the caller's precomputed `decorations`, so this
+ * component holds no scheduling logic of its own — see `src/lib/month-calendar.ts` for the
+ * model. Tapping a day both selects it and opens that day's schedule.
+ *
+ * Originally a form date field (#1019), and still one for `LessonForm`/`ExpenseForm`. #1558
+ * made the dashboard a third caller, browsing a month rather than picking a day in one — the
+ * only difference being that it renders its own day panel (`renderDayPanel`) and passes no
+ * exhaustion band. Nothing here is form-specific; keep it that way.
  */
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
@@ -28,10 +32,11 @@ export function MonthCalendarPicker({
   month,
   onMonthChange,
   decorations,
-  items,
+  items = [],
   describeItem,
   label,
   dayPanel,
+  renderDayPanel,
   dayPanelAlwaysOpen = false,
 }: {
   /** Currently selected day, "YYYY-MM-DD". */
@@ -41,12 +46,21 @@ export function MonthCalendarPicker({
   month: string
   onMonthChange: (month: string) => void
   decorations: Record<string, DayDecoration>
-  items: ScheduleItem[]
-  describeItem: (item: ScheduleItem) => string
-  label: string
+  /** The month's schedule, used only to build the built-in day list. Both optional because
+   *  a `renderDayPanel` caller supplies its own panel and never reaches either one. */
+  items?: ScheduleItem[]
+  describeItem?: (item: ScheduleItem) => string
+  /** Optional: the form callers name their date field with it. The dashboard omits it — the
+   *  grid's own month heading and the active view pill already say what this is. */
+  label?: string
   /** Extra content for the day panel, below that day's schedule — #1021's lesson start-time
    *  field. Omitted by ExpenseForm, which wants the schedule alone. */
   dayPanel?: ReactNode
+  /** Replaces the built-in one-line-per-item list (and its "Nothing scheduled" fallback) with
+   *  the caller's own rendering of that day (#1558). The dashboard passes `CalendarDayView`,
+   *  so its month panel shows the same tappable cards as Day and Week rather than dead text.
+   *  Distinct from `dayPanel`, which *adds* content below the built-in list. */
+  renderDayPanel?: (date: CalendarDate) => ReactNode
   /** Makes the day panel a permanent part of the form rather than a transient popup: open on
    *  `value` from first render, and no Close button (#1021). The lesson form needs this because
    *  the panel hosts a required field — behind a tap, a lesson's own start time would be
@@ -68,7 +82,7 @@ export function MonthCalendarPicker({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
+      {label && <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>}
 
       <div ref={ref} className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -154,14 +168,16 @@ export function MonthCalendarPicker({
                 </Button>
               )}
             </div>
-            {popupItems.length === 0 ? (
+            {renderDayPanel ? (
+              renderDayPanel(popupDate)
+            ) : popupItems.length === 0 ? (
               <p className="text-zinc-500 dark:text-zinc-400">Nothing scheduled for this day.</p>
             ) : (
               <ul className="space-y-1">
                 {popupItems.map((item) => (
                   <li key={`${item.itemType}-${item.id}`} className="flex justify-between gap-3 text-zinc-700 dark:text-zinc-300">
                     <span>{formatItemTime(item.start)}</span>
-                    <span className="text-right">{describeItem(item)}</span>
+                    <span className="text-right">{describeItem?.(item)}</span>
                   </li>
                 ))}
               </ul>

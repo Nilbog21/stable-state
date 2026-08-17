@@ -15,6 +15,12 @@ vi.mock('@/components/calendar/CalendarWeekView', () => ({
   ),
 }))
 
+vi.mock('@/components/calendar/DashboardMonthCalendar', () => ({
+  DashboardMonthCalendar: ({ days, role, slug, month, selectedDate, viewerMembershipId }: { days: unknown[]; role: string; slug: string; month: string; selectedDate: string; viewerMembershipId?: string }) => (
+    <div data-testid="calendar-month-view" data-role={role} data-slug={slug} data-day-count={days.length} data-month={month} data-selected-date={selectedDate} data-viewer-membership-id={viewerMembershipId} />
+  ),
+}))
+
 vi.mock('../DocumentRemindersSection', () => ({
   DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
     <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
@@ -87,6 +93,7 @@ import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBar
 import type { ScheduleItem } from '@/lib/db/types'
 import BarnDashboardPage from '../page'
 import { calendarDate } from '@/lib/local-day'
+import { barnToday } from '@/lib/barn-timezone'
 
 const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '', timezone: 'America/New_York' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
@@ -607,10 +614,88 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_calendar_day_view_when_view_param_is_invalid', async () => {
-    const jsx = await renderPage({ view: 'month' })
+    const jsx = await renderPage({ view: 'year' })
     render(jsx)
 
     expect(screen.getByTestId('calendar-day-view')).toBeDefined()
+  })
+
+  it('should_render_the_month_calendar_when_view_param_is_month', async () => {
+    const jsx = await renderPage({ view: 'month' })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-month-view')).toBeDefined()
+    expect(screen.queryByTestId('calendar-day-view')).toBeNull()
+    expect(screen.queryByTestId('calendar-week-view')).toBeNull()
+  })
+
+  it('should_pass_the_whole_42_cell_grid_to_the_month_calendar', async () => {
+    const jsx = await renderPage({ view: 'month', date: calendarDate('2026-07-20') })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-month-view').getAttribute('data-day-count')).toBe('42')
+  })
+
+  it('should_pass_the_month_of_the_selected_date_to_the_month_calendar', async () => {
+    const jsx = await renderPage({ view: 'month', date: calendarDate('2026-07-20') })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-month-view').getAttribute('data-month')).toBe('2026-07')
+  })
+
+  it('should_pass_slug_role_and_viewer_membership_id_to_the_month_calendar', async () => {
+    const jsx = await renderPage({ view: 'month' })
+    render(jsx)
+
+    const el = screen.getByTestId('calendar-month-view')
+    expect(el.getAttribute('data-slug')).toBe('green-acres')
+    expect(el.getAttribute('data-role')).toBe('manager')
+    expect(el.getAttribute('data-viewer-membership-id')).toBe(mockManagerMembership.id)
+  })
+
+  // The grid spills into the neighbouring months, so a range stopping at the month's own
+  // boundaries would leave the leading and trailing cells permanently blank.
+  it('should_fetch_the_full_grid_range_including_spill_over_days_in_month_view', async () => {
+    await renderPage({ view: 'month', date: calendarDate('2026-07-20') })
+
+    // July 2026's grid runs Sun 2026-06-28 through Sat 2026-08-08.
+    const [, from, to] = vi.mocked(getScheduleForRange).mock.calls[0]
+    expect(from).toContain('2026-06-28')
+    expect(to).toContain('2026-08-09')
+  })
+
+  // The grid renders its own month heading and prev/next arrows -- two competing pagers in one
+  // calendar is the bug this avoids.
+  it('should_hide_the_pages_own_date_pager_in_month_view', async () => {
+    const jsx = await renderPage({ view: 'month' })
+    render(jsx)
+
+    expect(screen.queryByRole('link', { name: /^Previous / })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Next / })).toBeNull()
+  })
+
+  it('should_mark_the_month_pill_active_in_month_view', async () => {
+    const jsx = await renderPage({ view: 'month', date: calendarDate('2026-07-20') })
+    render(jsx)
+
+    expect(screen.getByRole('link', { name: 'Month' }).className).toContain('bg-zinc-900')
+  })
+
+  it('should_land_the_day_pill_on_the_first_of_the_month_when_the_viewed_month_excludes_today', async () => {
+    const jsx = await renderPage({ view: 'month', date: calendarDate('2026-01-15') })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
+    expect(link.href).toContain('date=2026-01-01')
+  })
+
+  it('should_land_the_day_pill_on_today_when_the_viewed_month_includes_today', async () => {
+    const todayStr = barnToday(mockBarn.timezone)
+    const jsx = await renderPage({ view: 'month', date: calendarDate(todayStr) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
+    expect(link.href).toContain(`date=${todayStr}`)
   })
 
   it('should_render_calendar_week_view_when_view_param_is_week', async () => {
