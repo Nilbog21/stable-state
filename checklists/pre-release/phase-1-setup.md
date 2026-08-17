@@ -20,8 +20,8 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e: the_demo_flow_lands_in_a_new_demo_barn) After the spinner, you land in a new `/barn/demo-.../` barn
 - [ ] (e2e: the_demo_visitor_holds_manager_in_the_demo_barn) You hold **manager** in that demo barn
 - [ ] (e2e: visiting_demo_again_in_the_same_browser_resumes_the_same_barn) Visiting `/demo` again in the same browser resumes the same demo barn (same URL) instead of creating a new one
-- [ ] (manual — needs the app restarted under different server env, which a spec cannot do to the server under test) With `DEMO_USER_EMAIL` set but `DEMO_USER_PASSWORD` unset, visit `/demo` — you land on `/login`
-- [ ] (manual — same env restart as the line above) That `/login` page carries a "demo is unavailable" message rather than arriving on a blank redirect
+- [ ] (manual, after-suite — needs the app restarted under different server env, which a spec cannot do to the server under test; that restart also kills a suite driving the same origin, and leaves `dev-barn` unbrowsable until the env is put back) With `DEMO_USER_EMAIL` set but `DEMO_USER_PASSWORD` unset, visit `/demo` — you land on `/login`
+- [ ] (manual, after-suite — same env restart as the line above) That `/login` page carries a "demo is unavailable" message rather than arriving on a blank redirect
 - [ ] (e2e: the_reset_demo_cron_route_rejects_a_request_with_no_authorization_header) `curl -X POST /api/cron/reset-demo` with **no** `Authorization` header — response is `401`
 - [ ] (e2e: the_reset_demo_cron_route_rejects_a_wrong_authorization_header) The same request with a **wrong** `Authorization` header — response is `401`
 - [ ] (e2e: the_reset_demo_cron_route_reaps_a_backdated_demo_barn) With `CRON_SECRET` set in `.env.local` and a demo barn from the step above manually backdated (`update barns set created_at = now() - interval '7 hours' where slug = '...'`), `curl -X POST /api/cron/reset-demo -H "Authorization: Bearer <CRON_SECRET>"` — response is `{"reaped":1}` (or more). A spec backdates `barns.created_at` with its own service client.
@@ -32,14 +32,14 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e: the_nav_demo_barn_name_renders_amber) That nav name renders amber
 - [ ] (e2e: the_user_menu_hides_the_profile_link_for_the_demo_user) The user menu does not show a **Profile** link while signed in as the demo user
 - [ ] (e2e: visiting_profile_as_the_demo_user_redirects_away) Visiting `/profile` directly while signed in as the demo user redirects to `/`
-- [ ] (manual — a spec cannot drive it: `reset-db.sh` wipes every barn in the dev project, so a spec running it destroys its own fixtures mid-run) Reset and reseed the dev database:
+- [ ] (manual, before-suite — a spec cannot drive it, and neither can anything else run alongside it: `reset-db.sh` wipes every barn in the dev project, so it destroys the suite's fixtures as readily as its own. It also deletes every auth user, the demo one included, so `scripts/setup-demo-user.sh` has to be re-run — see the Prerequisites — before the suite launches) Reset and reseed the dev database:
 
   ```bash
   bash scripts/reset-db.sh
   ```
 
   This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults.
-- [ ] (manual — a spec cannot drive it: this is the stdout of the `reset-db.sh` run above, which is manual for the same reason) The script prints `Invite path: /barn/dev-barn/register?token=<uuid>`
+- [ ] (manual, before-suite — this is the stdout of the `reset-db.sh` run above, read at the moment that command runs, so it is manual and `before-suite` for the same reasons) The script prints `Invite path: /barn/dev-barn/register?token=<uuid>`
 - [ ] (e2e: opening_an_invite_link_with_no_session_redirects_to_the_barn_login_page) Open that path on your app origin (no existing session) — it redirects to `/barn/dev-barn/login?token=<uuid>`
 - [ ] (e2e: the_barn_login_page_shows_a_keep_me_logged_in_checkbox) The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox
 - [ ] (e2e: the_keep_me_logged_in_checkbox_is_checked_by_default) That checkbox is checked by default
@@ -62,9 +62,7 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e: the_drawer_highlights_lessons_on_the_lessons_list) **Lessons** is bolded/highlighted in the drawer while on `/barn/dev-barn/lessons`
 - [ ] (e2e: the_drawer_keeps_lessons_highlighted_on_a_lesson_detail_page) It stays bolded/highlighted in the drawer on a nested page like `/barn/dev-barn/lessons/[id]`
 - [ ] (e2e: the_desktop_nav_bar_leaves_the_other_links_unhighlighted) Other links stay unhighlighted
-- [ ] (manual — needs source edited to `throw new Error('smoke test')` and the app reloaded; a spec cannot patch the app under test) Temporarily `throw new Error('smoke test')` at the top of any page or Server Action and load it — the global error boundary (`src/app/error.tsx`) renders "Something went wrong"
-- [ ] (manual — same source edit as the line above) That page shows no raw stack trace
-- [ ] (manual — same source edit as the line above) That error boundary's **Try again** button works (then revert the thrown error)
+- [ ] (manual, after-suite — needs a production build; the dev overlay covers the boundary unconditionally, and the build replaces the server the suite drives) Against a production build (`npm run build && npm start`), temporarily `throw new Error('smoke test')` at the top of any page or Server Action and load it — the global error boundary (`src/app/error.tsx`) renders "Something went wrong". Then revert the throw and restart the dev server. The heading, the absent stack trace and the **Try again** reset are asserted in `src/app/__tests__/error.test.tsx`; what no unit test can claim, and this line does, is that a real thrown error reaches the boundary at all
 
 Doc review — read either the page or its repo-root markdown file; they are the same content by construction:
 
@@ -73,4 +71,4 @@ Both pages read that file at request time and render it through `ReactMarkdown` 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) `/terms` still describes what the app does — `TERMS_OF_SERVICE.md`
 - [ ] (manual — same judgement, and `CLAUDE.md`'s Privacy Policy section names the change classes that most often invalidate it) `/privacy` still describes what the app collects, stores and shares — `PRIVACY_POLICY.md`
 
-**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
+**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); horse Hazel (available-flag off, reason "Recovering from minor injury", feed notes but no medication notes — the Horses page lists it under Unavailable); horse Juniper (#1413's calendar-band fixture: exhaustion thresholds lowered to 3/8 and four upcoming lessons, so the New Lesson form's month calendar has an amber day, a red day and a tinted next-month day to compare); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
