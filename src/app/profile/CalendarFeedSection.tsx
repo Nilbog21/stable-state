@@ -101,7 +101,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
         </Button>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="ghost" onClick={handleCopy} disabled={pending}>
+          <Button type="button" variant="secondary" onClick={handleCopy} disabled={pending}>
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>
           <Button type="button" variant="danger" onClick={handleRegenerate} loading={pending}>

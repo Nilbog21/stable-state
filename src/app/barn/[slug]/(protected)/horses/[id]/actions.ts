@@ -13,8 +13,10 @@
  * privilege CRUD (`grantHorseAccessAction`,
  * `updateHorseAccessDocumentAction`/`updateHorseAccessLessonAction`,
  * `revokeHorseAccessAction`, and `setHorseOwnerAction` — owner picked from existing
- * privilege rows, set atomically via `setHorseOwner`), and manager-only horse-document
- * row actions (`deleteHorseDocumentAction`, `updateHorseDocumentReminderDateAction`).
+ * privilege rows, set atomically via `setHorseOwner`), and the horse-document row actions
+ * (`deleteHorseDocumentAction` — any active role, with the manager-or-owner arbitration left to
+ * the `horse_documents` DELETE policies since #1547; `updateHorseDocumentReminderDateAction` —
+ * manager-only).
  */
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
@@ -224,13 +226,17 @@ export async function setHorseOwnerAction(
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
+// #1547: any active role may call, because the caller may be the horse's owning member whatever
+// their role. `horse_documents_delete_ownership` and its `storage.objects` counterpart are the
+// boundary -- a caller who neither manages the barn nor owns the horse deletes zero rows and
+// removes no object, which is why neither call needs a role branch here.
 export async function deleteHorseDocumentAction(
   barnSlug: string,
   horseId: string,
   docId: string,
   storagePath: string
 ): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
   await deleteDocument('horse', docId, horseId, barn.id)
   await removeFile(storagePath).catch(() => {})
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)

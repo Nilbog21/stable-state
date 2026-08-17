@@ -558,9 +558,12 @@ describe('deleteHorseDocumentAction', () => {
     })
   })
 
-  it('should_call_requireMembership_with_manager_role_only', async () => {
+  // #1547: any active role, because the caller may be the horse's owning member whatever their
+  // role. The horse_documents DELETE policy is the boundary -- an unowning rider's call deletes
+  // zero rows rather than being refused here.
+  it('should_call_requireMembership_with_all_active_roles', async () => {
     await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
   })
 
   it('should_delete_document_record', async () => {

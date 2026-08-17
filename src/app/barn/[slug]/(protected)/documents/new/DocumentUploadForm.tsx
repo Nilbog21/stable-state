@@ -75,7 +75,7 @@ export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Pr
           className="sr-only"
         />
         <div className="flex items-center gap-3">
-          <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()}>
+          <Button type="button" variant="secondary" onClick={() => inputRef.current?.click()}>
             Choose File
           </Button>
           {fileName && <span className="text-sm text-zinc-700 dark:text-zinc-300">{fileName}</span>}
@@ -113,7 +113,7 @@ export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Pr
         <Button type="submit" loading={pending}>
           {pending ? 'Uploading…' : 'Upload'}
         </Button>
-        <Button href={cancelHref} variant="ghost">
+        <Button href={cancelHref} variant="secondary">
           Cancel
         </Button>
       </div>

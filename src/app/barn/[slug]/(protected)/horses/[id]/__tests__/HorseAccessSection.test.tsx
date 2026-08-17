@@ -1,12 +1,28 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 
-import { HorseAccessSection } from '../HorseAccessSection'
+import { buttonVariants } from '@/components/ui/Button'
+import { bgColors, contrast } from '@/test/tailwind-contrast'
+
+import { HorseAccessSection, SEGMENT_DIVIDER } from '../HorseAccessSection'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
 })
+
+/**
+ * The two colour tokens `SEGMENT_DIVIDER` declares, read back out of the class string rather than
+ * restated here — Tailwind's scanner needs the literal, so the component can't build its string
+ * from a shared constant, and a restated pair would keep passing after the real one darkened.
+ */
+function dividerTones(): { light: string; dark: string } {
+  const classes = SEGMENT_DIVIDER.split(' ')
+  return {
+    light: classes.find((c) => /^divide-[a-z]+-\d+$/.test(c))!.replace('divide-', ''),
+    dark: classes.find((c) => /^dark:divide-[a-z]+-\d+$/.test(c))!.replace('dark:divide-', ''),
+  }
+}
 
 const grants = [
   { id: 'privilege-1', memberId: 'mem-1', name: 'Dana Rider', documentPrivileges: 'read' as const, lessonReadPrivileges: false },
@@ -44,6 +60,21 @@ function documentButton(grantName: string, label: string): HTMLButtonElement {
   return within(row).getByRole('button', { name: label }) as HTMLButtonElement
 }
 
+/** A named grant's lesson-schedule switch. */
+function lessonSwitch(grantName: string): HTMLButtonElement {
+  const row = screen.getByText(grantName).closest('tr')!
+  return within(row).getByRole('switch') as HTMLButtonElement
+}
+
+/**
+ * Every interactive control in the section. `getAllByRole('button')` alone is not it: since #1548
+ * the lesson-schedule toggle is `role="switch"`, which that query does not match -- so a sweep
+ * written against buttons would silently stop covering the one control that moved.
+ */
+function everyControl(): HTMLElement[] {
+  return [...screen.getAllByRole('button'), ...screen.getAllByRole('switch')]
+}
+
 describe('HorseAccessSection', () => {
   it('should_render_a_row_for_each_grant', () => {
     render(<HorseAccessSection {...makeProps()} />)
@@ -72,14 +103,24 @@ describe('HorseAccessSection', () => {
     expect(pressed).toEqual(['false', 'true', 'false'])
   })
 
-  it('should_show_cannot_view_label_when_lesson_read_privileges_is_false', () => {
+  // #1548 replaced the Can View/Cannot View label pair with a switch: the label was carrying the
+  // state, so there was nothing left saying what the control *was*. The column header names the
+  // setting; `aria-checked` and the knob say which way it is thrown.
+  it('should_report_lesson_access_off_through_the_switch', () => {
     render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByRole('button', { name: /cannot view/i })).toBeDefined()
+    expect(lessonSwitch('Dana Rider').getAttribute('aria-checked')).toBe('false')
   })
 
-  it('should_show_can_view_label_when_lesson_read_privileges_is_true', () => {
+  it('should_report_lesson_access_on_through_the_switch', () => {
     render(<HorseAccessSection {...makeProps()} />)
-    expect(screen.getByRole('button', { name: /^can view$/i })).toBeDefined()
+    expect(lessonSwitch('Emery Rider').getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('should_name_the_lesson_switch_after_the_member_it_belongs_to', () => {
+    render(<HorseAccessSection {...makeProps()} />)
+    expect(lessonSwitch('Dana Rider').getAttribute('aria-label')).toBe(
+      'Lesson schedule access for Dana Rider'
+    )
   })
 
   it('should_render_add_member_control_when_available_members_exist', () => {
@@ -103,6 +144,73 @@ describe('HorseAccessSection', () => {
     expect(screen.getAllByRole('button', { name: /set as owner/i })).toHaveLength(1)
   })
 
+  // #1547: ownership now confers document write and lesson read through `auth_is_horse_owner`,
+  // whatever this row's stored values say — so on the owner's row these two controls described a
+  // state they no longer governed. Emery (`mem-2`) is the owner in this block and holds
+  // `documentPrivileges: 'none'`/`lessonReadPrivileges: true`, which is the divergence itself: the
+  // stored 'none' is what the row used to show and what ownership overrides.
+  describe('the owner row shows effective access rather than the stored grant', () => {
+    function ownerRow(): HTMLElement {
+      return screen.getByText('Emery Rider').closest('tr')!
+    }
+
+    it('should_not_render_document_state_buttons_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      const labels = ['None', 'Read', 'Write'].map((label) =>
+        within(ownerRow()).queryByRole('button', { name: label })
+      )
+      expect(labels).toEqual([null, null, null])
+    })
+
+    // Read as the tag carrying the text, not as the text's presence: 'Write' is inside a `<button>`
+    // both before and after this change, so a bare `getByText` would pass on the control it exists
+    // to have replaced. `getNodeText` matches an element's own text nodes, so the cell only answers
+    // here once the button between them is gone.
+    it('should_render_write_as_text_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByText('Write').tagName).toBe('TD')
+    })
+
+    it('should_not_render_a_lesson_toggle_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).queryByRole('button', { name: /can view|cannot view/i })).toBeNull()
+    })
+
+    it('should_render_can_view_as_text_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByText('Can View').tagName).toBe('TD')
+    })
+
+    // Revoke is the manager's one remaining lever over an owner's access, and it still works:
+    // `revoke_horse_privilege` clears `owning_member_id` along with the row.
+    it('should_keep_the_revoke_button_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByRole('button', { name: /revoke/i })).toBeDefined()
+    })
+
+    it('should_keep_the_owner_toggle_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByRole('button', { name: /^owner$/i })).toBeDefined()
+    })
+
+    // The non-owner rows are the reason those controls still exist at all, so their survival is
+    // asserted rather than assumed — Dana keeps her stored 'read' as a live, pressed control.
+    it('should_keep_the_document_buttons_on_a_non_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(documentButton('Dana Rider', 'Read').getAttribute('aria-pressed')).toBe('true')
+    })
+
+    it('should_explain_the_owner_row_when_one_is_present', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(screen.getByText(/unset the owner/i)).toBeDefined()
+    })
+
+    it('should_not_explain_the_owner_row_when_there_is_no_owner', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: null })} />)
+      expect(screen.queryByText(/unset the owner/i)).toBeNull()
+    })
+  })
+
   // #1390 — every control here was a `<Button type="button" onClick>` with no form action, so
   // each was a silent no-op inside the hydration window: the #1385 defect, four times over, on
   // a page a manager lands on and immediately clicks. Each is now a real form whose action is
@@ -111,15 +219,13 @@ describe('HorseAccessSection', () => {
   describe('progressive enhancement', () => {
     it('should_submit_every_control_through_a_form', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const orphans = screen
-        .getAllByRole('button')
-        .filter((b) => b.closest('form') === null)
+      const orphans = everyControl().filter((c) => c.closest('form') === null)
       expect(orphans).toEqual([])
     })
 
     it('should_make_every_control_a_submit_button', () => {
       render(<HorseAccessSection {...makeProps()} />)
-      const types = screen.getAllByRole('button').map((b) => b.getAttribute('type'))
+      const types = everyControl().map((c) => c.getAttribute('type'))
       expect(new Set(types)).toEqual(new Set(['submit']))
     })
 
@@ -194,15 +300,65 @@ describe('HorseAccessSection', () => {
     it('should_call_onUpdateLesson_with_the_next_value_bound_at_render_time', () => {
       const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
-      fireEvent.click(screen.getByRole('button', { name: /cannot view/i }))
+      fireEvent.click(lessonSwitch('Dana Rider'))
       expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-1', true])
     })
 
     it('should_bind_false_for_a_grant_that_already_has_the_privilege', () => {
       const onUpdateLesson = vi.fn().mockResolvedValue(undefined)
       render(<HorseAccessSection {...makeProps({ onUpdateLesson })} />)
-      fireEvent.click(screen.getByRole('button', { name: /^can view$/i }))
+      fireEvent.click(lessonSwitch('Emery Rider'))
       expect(onUpdateLesson.mock.calls[0].slice(0, 2)).toEqual(['privilege-2', false])
+    })
+  })
+
+  /**
+   * #1548. Three separate buttons read as three actions; joined corners plus one filled segment
+   * read as one setting with three values. Still three forms and three submits underneath -- the
+   * corners are the only thing that changed, so #1390's pre-hydration guarantee is untouched.
+   */
+  describe('document access as a segmented group', () => {
+    it('should_group_the_three_states_for_assistive_tech', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const row = screen.getByText('Dana Rider').closest('tr')!
+      expect(within(row).getByRole('group').getAttribute('aria-label')).toBe('Document access')
+    })
+
+    it('should_square_the_inner_edges_of_the_first_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'None').className).toContain('rounded-r-none')
+    })
+
+    it('should_square_both_edges_of_the_middle_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'Read').className).toContain('rounded-none')
+    })
+
+    it('should_square_the_inner_edges_of_the_last_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      expect(documentButton('Dana Rider', 'Write').className).toContain('rounded-l-none')
+    })
+
+    it('should_fill_only_the_current_segment', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const fills = ['None', 'Read', 'Write'].map((label) =>
+        documentButton('Dana Rider', label).className.includes('bg-zinc-900')
+      )
+      expect(fills).toEqual([false, true, false])
+    })
+
+    it('should_separate_the_segments_with_a_seam', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const row = screen.getByText('Dana Rider').closest('tr')!
+      expect(within(row).getByRole('group').className).toContain('divide-x')
+    })
+
+    it('should_clear_the_non_text_floor_between_seam_and_unselected_fill_in_light_mode', () => {
+      expect(contrast(dividerTones().light, bgColors(buttonVariants.secondary).light)).toBeGreaterThanOrEqual(3)
+    })
+
+    it('should_clear_the_non_text_floor_between_seam_and_unselected_fill_in_dark_mode', () => {
+      expect(contrast(dividerTones().dark, bgColors(buttonVariants.secondary).dark)).toBeGreaterThanOrEqual(3)
     })
   })
 

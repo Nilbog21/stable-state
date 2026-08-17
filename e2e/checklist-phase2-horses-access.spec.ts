@@ -96,6 +96,8 @@ import {
   accessColumns,
   grantRow,
   grantedMembers,
+  lessonSwitch,
+  settledLessonState,
 } from './support/horse-pages'
 import { addHorse, E2E_USERS, E2E_STUB_RIDER } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
@@ -143,7 +145,6 @@ function revokeConfirm(name: string): string {
  */
 const OWNER_COLUMN = 1
 const DOCUMENTS_COLUMN = 2
-const LESSON_COLUMN = 3
 const ACCESS_COLUMNS = ['Member', 'Owner', 'Documents', 'Lesson Schedule', 'Actions']
 
 /**
@@ -234,13 +235,6 @@ async function openAccessHydrated(page: Page) {
  *  emits it rather than relying on the fill colour. */
 function pressedDocumentState(row: Locator): Locator {
   return row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
-}
-
-/** The Lesson Schedule cell. Read whole rather than as a presence check on one label: `Can View`
- *  and `Cannot View` are the two states of one button, and reading the cell is what distinguishes
- *  them. Same for the Owner cell below. */
-function lessonCell(row: Locator): Locator {
-  return row.locator('td').nth(LESSON_COLUMN)
 }
 
 function ownerCell(row: Locator): Locator {
@@ -358,29 +352,29 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     }).toEqual({ columns: ACCESS_COLUMNS, documents: ['None'] })
   })
 
-  test('a_new_grants_lesson_access_starts_at_cannot_view @manager', async ({ page }) => {
+  test('a_new_grants_lesson_access_switch_starts_off @manager', async ({ page }) => {
     await openAccess(page)
 
-    expect(await settledInnerTexts(lessonCell(grantRow(page, EMERY)))).toEqual(['Cannot View'])
+    expect(await settledLessonState(grantRow(page, EMERY))).toBe('false')
   })
 
-  test('tapping_cannot_view_flips_a_grant_to_can_view @manager', async ({ page }) => {
+  test('tapping_the_lesson_access_switch_turns_it_on @manager', async ({ page }) => {
     await openAccess(page)
     const row = grantRow(page, EMERY)
-    const before = await settledInnerTexts(lessonCell(row))
+    const before = await settledLessonState(row)
 
-    await row.getByRole('button', { name: 'Cannot View', exact: true }).click()
-    // The wait, again — and `exact: true` is load-bearing on both labels, since getByRole's
-    // accessible-name match is a case-insensitive substring by default.
-    await expect(row.getByRole('button', { name: 'Can View', exact: true })).toBeVisible({
+    await lessonSwitch(row).click()
+    // The wait, again: the row refreshes through the action's own revalidatePath with no navigation
+    // to synchronise on, and `aria-checked` moving is the signal the action resolved (fact 8).
+    await expect(lessonSwitch(row)).toHaveAttribute('aria-checked', 'true', {
       timeout: SETTLE_AFTER_WRITE,
     })
 
     // The before half is what makes this the *flip* the item claims rather than a reading of
     // whatever the row happened to hold.
-    expect({ before, after: await settledInnerTexts(lessonCell(row)) }).toEqual({
-      before: ['Cannot View'],
-      after: ['Can View'],
+    expect({ before, after: await settledLessonState(row) }).toEqual({
+      before: 'false',
+      after: 'true',
     })
   })
 
@@ -389,7 +383,7 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
 
     // Durability, not redraw: a fresh navigation in a fresh test, so this value comes off a new
     // server render rather than off the DOM the tap above left behind.
-    expect(await settledInnerTexts(lessonCell(grantRow(page, EMERY)))).toEqual(['Can View'])
+    expect(await settledLessonState(grantRow(page, EMERY))).toBe('true')
   })
 
   test('an_owner_button_taps_back_to_set_as_owner @manager', async ({ page }) => {

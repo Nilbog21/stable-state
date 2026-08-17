@@ -143,3 +143,27 @@ export function grantRow(page: Page, name: string): Locator {
 export function grantedMembers(page: Page): Locator {
   return accessSection(page).locator('tbody tr td:first-child')
 }
+
+/** The Lesson Schedule column's index, shared by every spec reading a grant row's switch. */
+const LESSON_COLUMN = 3
+
+/** A row's Lesson Schedule switch. Since #1548 this control carries no text at all — the `Can
+ *  View`/`Cannot View` label pair was the state, which left nothing naming the control — so its
+ *  state is read off `aria-checked` by `settledLessonState` rather than out of the cell. */
+export function lessonSwitch(row: Locator): Locator {
+  return row.locator('td').nth(LESSON_COLUMN).getByRole('switch')
+}
+
+/**
+ * The switch's `aria-checked`, read only once the switch is visible: the settled-read discipline
+ * of `read.ts` (rule 3) applied to an attribute, because a one-shot read of a row that hasn't
+ * rendered returns `null` and an assertion comparing two of those passes on nothing.
+ *
+ * Safe to read at all — despite fact 7 — for the same reason `aria-pressed` is: the server and the
+ * client compute it from the same prop, so there is no hydration mismatch to survive.
+ */
+export async function settledLessonState(row: Locator): Promise<string | null> {
+  const control = lessonSwitch(row)
+  await control.waitFor()
+  return control.getAttribute('aria-checked')
+}
