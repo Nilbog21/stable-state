@@ -13,9 +13,9 @@ describe('Error', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined()
   })
 
-  // The one claim `checklists/pre-release/phase-1-setup.md` gave up when #1561 collapsed its
-  // three error-boundary lines to one: a dev server can never show it, since Next's overlay
-  // prints the trace unconditionally.
+  // The claim that pushed `checklists/pre-release/phase-1-setup.md` to delete its three
+  // error-boundary lines outright (#1561): a dev server can never show it, since Next's overlay
+  // prints the trace unconditionally, and a production build costs more than the claim is worth.
   it('should_not_render_the_error_message_or_stack', () => {
     const error = new Error('boom')
     const { container } = render(<ErrorBoundary error={error} reset={vi.fn()} />)

@@ -119,7 +119,7 @@ Phase 4 — Finances (/barn/dev-barn/finances)
 
 ```
 Phase 1 — opening run (/barn/dev-barn)
-45 checks · 39 covered by the suite · 5 either side of it · 1 needs your eye
+44 checks · 39 covered by the suite · 4 either side of it · 1 needs your eye
 ```
 
 If `needs your eye` is zero, say so and go to the next section without prompting — there is nothing to write, since the suite's result lands once in Step 3.5 rather than per section.
@@ -204,7 +204,7 @@ A clean run is a one-line block: `exited 0 — all 731 e2e-tagged checks passed.
 
 **Then the `after-suite` checks.** Prompt each line the `after-suite` grep found, in file order, same vocabulary, recording them into an `## After-suite checks` block appended at the end of the run file — the same shape Step 2 uses for a section. Their own phase sections flushed hours ago and their markers moved on, so there is nothing left for them to join; without a block of their own they'd be answered and then dropped, and Step 4 would total them as if they'd never been asked.
 
-They come last because each one takes the server under test away: today that is the two `/demo` lines, which need the app restarted with `DEMO_USER_PASSWORD` unset, and the error-boundary line, which needs `npm run build && npm start` in its place. Warn the user that `dev-barn` is unbrowsable until the env is restored and the dev server is back, so nothing else can be re-checked in between — and that anything they want another look at should be looked at before these start.
+They come last because each one takes the server under test away: today that is the two `/demo` lines, which need the app restarted with `DEMO_USER_PASSWORD` unset. Warn the user that `dev-barn` is unbrowsable until the env is restored and the dev server is back, so nothing else can be re-checked in between — and that anything they want another look at should be looked at before these start.
 
 ---
 
