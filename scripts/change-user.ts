@@ -1,20 +1,34 @@
 /**
  * Interactive dev tool (the `change-user.sh`-wrapped half): reassigns the developer's
- * own auth `user_id` between a barn's `barn_memberships` rows so a local session can
- * act as any member. Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`,
- * else a numbered prompt over all barns), refuses unless the developer already holds a
- * membership row there, lists the barn's active members, then vacates the
- * currently-inhabited row — restoring its rightful owner's `user_id`, or `null` for the
- * dev's own row (see `resolveRevertUserId`'s UNIQUE-constraint note) — before taking
- * over the selected member's row. Gated by `assertDevProject` unless
- * `CHANGE_USER_ALLOW_PROD` is set, which in turn requires an explicit barn slug (#986).
- * The pure formatters and resolvers are the module's test surface
- * (`change-user.test.ts`).
+ * own auth `user_id` between a barn's members so a local session can act as any one of
+ * them. The move covers **both** columns that carry that identity — `barn_memberships.user_id`
+ * (what `requireMembership` and the barn-scoped RLS policies read) and `profiles.user_id`
+ * (what `profiles_own_*` and the `documents` storage policies read). Moving only the
+ * membership half left the dev in a state no real user occupies, so a manual checklist walk
+ * exercised profile/document behaviour nobody would ever see (#1563).
+ *
+ * Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`, else a numbered prompt
+ * over all barns), refuses unless the developer already holds a membership row there, lists
+ * the barn's active members, then vacates the currently-inhabited rows — restoring their
+ * rightful owner's `user_id`, or `null` for the dev's own rows — before taking over the
+ * selected member's rows. `planUserIdMoves` owns that ordering and its UNIQUE-constraint
+ * rationale. Because `profiles.user_id` is now a column this script *writes*, it can no
+ * longer be read as the answer to "whose auth user is this really?" — `auth.users`, via
+ * `findAuthUserIdsByEmails`, is that source of truth instead.
+ *
+ * Gated by `assertDevProject` unless `CHANGE_USER_ALLOW_PROD` is set, which in turn requires
+ * an explicit barn slug (#986). The pure formatters and the move planner are the module's
+ * test surface (`change-user.test.ts`).
  */
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
+import {
+  mustSucceed,
+  createServiceClient,
+  assertDevProject,
+  findAuthUserIdsByEmails,
+} from './script-utils'
 
 export function formatProfileLine(
   profile: { first_name: string; last_name: string; email: string },
@@ -41,14 +55,33 @@ export function mergeMembersWithProfiles<M extends { profile_id: string }, P ext
   return memberships.map((m) => profileMap.get(m.profile_id)).filter((p): p is P => p !== undefined)
 }
 
-// Vacating the dev's own row must null it (not restore devUserId) since the target row is about
-// to take devUserId — barn_memberships' UNIQUE(user_id, barn_id) forbids both holding it at once.
-export function resolveRevertUserId(
-  currentRowProfileId: string,
-  devProfileId: string,
-  ownerUserId: string | null
-): string | null {
-  return currentRowProfileId === devProfileId ? null : ownerUserId
+export type UserIdMove = {
+  table: 'barn_memberships' | 'profiles'
+  id: string
+  userId: string | null
+}
+
+// Both columns must be vacated before the takeover writes devUserId: barn_memberships carries
+// UNIQUE(user_id, barn_id) and profiles carries the single-column profiles_user_id_unique, so
+// devUserId cannot sit on two rows of either table at once. Vacating the dev's own rows nulls
+// them rather than restoring devUserId, for the same reason — the target rows are about to take it.
+export function planUserIdMoves(args: {
+  devUserId: string
+  devProfileId: string
+  target: { membershipId: string; profileId: string }
+  current: { membershipId: string; profileId: string } | null
+  currentOwnerUserId: string | null
+}): UserIdMove[] {
+  const { devUserId, devProfileId, target, current, currentOwnerUserId } = args
+  const moves: UserIdMove[] = []
+  if (current && current.membershipId !== target.membershipId) {
+    const revertUserId = current.profileId === devProfileId ? null : currentOwnerUserId
+    moves.push({ table: 'barn_memberships', id: current.membershipId, userId: revertUserId })
+    moves.push({ table: 'profiles', id: current.profileId, userId: revertUserId })
+  }
+  moves.push({ table: 'barn_memberships', id: target.membershipId, userId: devUserId })
+  moves.push({ table: 'profiles', id: target.profileId, userId: devUserId })
+  return moves
 }
 
 async function promptSelection(max: number, label: string): Promise<number> {
@@ -106,17 +139,21 @@ async function run() {
     barnId = barns[barnSelection - 1].id
   }
 
-  const devProfile = mustSucceed<{ id: string; user_id: string | null }>(
-    await supabase.from('profiles').select('id, user_id').eq('email', DEV_EMAIL).single(),
+  const devProfile = mustSucceed<{ id: string }>(
+    await supabase.from('profiles').select('id').eq('email', DEV_EMAIL).single(),
     'fetch dev profile'
   )
 
-  if (!devProfile.user_id) {
+  // Not profiles.user_id: this script moves that column, so while the dev is inhabiting
+  // someone else their own row reads null.
+  const [devAuthUserId] = await findAuthUserIdsByEmails([DEV_EMAIL], supabase)
+
+  if (!devAuthUserId) {
     console.error('sign in to the app first, then run this script')
     process.exit(1)
   }
 
-  const devUserId: string = devProfile.user_id
+  const devUserId: string = devAuthUserId
   const devProfileId: string = devProfile.id
 
   const ownRow = mustSucceed<{ id: string } | null>(
@@ -166,7 +203,9 @@ async function run() {
     last_name: string
   }
 
-  if (!target.user_id) {
+  // The dev's own row is exempt: switching back to yourself is a restore, and its user_id is
+  // null precisely because a previous run vacated it.
+  if (!target.user_id && target.id !== devProfileId) {
     console.error(`${target.email} has not signed in yet — cannot switch to this profile`)
     process.exit(1)
   }
@@ -186,22 +225,34 @@ async function run() {
     'fetch currently inhabited membership'
   )
 
-  if (currentRow && currentRow.id !== targetRow.id) {
-    const ownerProfile = mustSucceed<{ user_id: string | null }>(
-      await supabase.from('profiles').select('user_id').eq('id', currentRow.profile_id).single(),
+  let currentOwnerUserId: string | null = null
+  if (currentRow && currentRow.profile_id !== devProfileId) {
+    const ownerProfile = mustSucceed<{ email: string }>(
+      await supabase.from('profiles').select('email').eq('id', currentRow.profile_id).single(),
       'fetch rightful owner profile'
     )
-    const revertUserId = resolveRevertUserId(currentRow.profile_id, devProfileId, ownerProfile.user_id)
-    mustSucceed(
-      await supabase.from('barn_memberships').update({ user_id: revertUserId }).eq('id', currentRow.id),
-      'revert previous membership'
-    )
+    const [ownerAuthUserId] = await findAuthUserIdsByEmails([ownerProfile.email], supabase)
+    currentOwnerUserId = ownerAuthUserId ?? null
   }
 
-  mustSucceed(
-    await supabase.from('barn_memberships').update({ user_id: devUserId }).eq('id', targetRow.id),
-    'become target membership'
-  )
+  // Both vacates precede both takeovers; the profile vacate is barn-scoped only because it
+  // mirrors the membership one. A dev holding memberships in two barns of the same project and
+  // swapping in both would hit a unique-violation from mustSucceed rather than silent
+  // corruption — loud enough for a dev tool aimed at a single-barn dev project.
+  const moves = planUserIdMoves({
+    devUserId,
+    devProfileId,
+    target: { membershipId: targetRow.id, profileId: target.id },
+    current: currentRow ? { membershipId: currentRow.id, profileId: currentRow.profile_id } : null,
+    currentOwnerUserId,
+  })
+
+  for (const move of moves) {
+    mustSucceed(
+      await supabase.from(move.table).update({ user_id: move.userId }).eq('id', move.id),
+      `update ${move.table} ${move.id}`
+    )
+  }
 
   console.log('Refresh your preview page.')
 }
