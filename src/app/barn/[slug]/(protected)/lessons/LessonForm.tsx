@@ -200,6 +200,11 @@ export function LessonForm({
   // measures against, so an opening estimate is never its own past lesson, at any hour and
   // across the boundary between two.
   //
+  // CREATE ONLY. The edit form is seeded from the stored instant, which `LessonStartTime` reports
+  // on its own mount effect — one render after `lessonAt`'s initial `''`. Estimating into that
+  // render would cost every edit-form open a second round trip, and would flash a past lesson's
+  // bars for one frame before the real instant gates them off again.
+  //
   // `lessonDate` is guarded for the reason `LessonStartTime` guards its own combination: the
   // no-calendar branch's native date input is clearable, and an empty half builds an Invalid Date
   // that throws RangeError out of `wallClockToInstant` *during render*, unmounting the form and
@@ -207,7 +212,7 @@ export function LessonForm({
   const estimateHour = instantToLocalWallClock(new Date(), timezone).slice(11, 13)
   const estimateAt = lessonAt
     ? lessonAt
-    : lessonDate
+    : mode === 'new' && lessonDate
       ? wallClockToInstant(`${lessonDate}T${estimateHour}:00:00`, timezone).toISOString()
       : ''
 
