@@ -1,21 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { LessonStartTime } from '../LessonStartTime'
 
 afterEach(cleanup)
 
 // The minute-granular replacement for DateHourPicker's hour <select> (#1021). Every expectation
-// below is barn-local (America/New_York), never the host's zone — 18:30Z is 2:30 PM EDT (UTC-4).
+// below is barn-local (America/New_York), never the host's zone — 20:30Z is 4:30 PM EDT (UTC-4).
+//
+// No clock is pinned here, and its absence is the point since #1578: the component no longer
+// reads the clock at all. Every test that needs a time in the field supplies one through
+// `initialTime`, which is also what the edit form does.
 describe('LessonStartTime', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-01T18:30:00Z'))
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   function hidden(container: HTMLElement) {
     return container.querySelector('input[name="lesson_at"]') as HTMLInputElement | null
   }
@@ -34,10 +29,19 @@ describe('LessonStartTime', () => {
     expect(screen.getByLabelText('Start Time').getAttribute('step')).toBe('60')
   })
 
-  it('should_default_to_the_barns_current_hour_at_zero_minutes', () => {
+  // #1578 — the create form supplies no `initialTime`, and the field opening empty is what makes
+  // `required` able to catch a manager who never looked at it. The pre-#1578 fallback to the top
+  // of the barn's current hour was never a value the user chose, and a wrong one was invisible.
+  it('should_default_to_an_empty_time_when_no_initialTime_is_given', () => {
     render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
 
-    expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('14:00')
+    expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_omit_the_hidden_input_when_no_initialTime_is_given', () => {
+    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+
+    expect(hidden(container)).toBeNull()
   })
 
   it('should_use_initialTime_when_provided', () => {
@@ -47,7 +51,9 @@ describe('LessonStartTime', () => {
   })
 
   it('should_combine_date_and_time_into_lesson_at_as_a_utc_instant', () => {
-    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    const { container } = render(
+      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+    )
 
     // 2026-06-01 14:00 America/New_York (EDT, UTC-4) => 18:00 UTC
     expect(hidden(container)!.value).toBe('2026-06-01T18:00:00.000Z')
@@ -73,7 +79,9 @@ describe('LessonStartTime', () => {
   })
 
   it('should_update_lesson_at_when_the_time_changes', () => {
-    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    const { container } = render(
+      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+    )
 
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '09:15' } })
 
@@ -91,8 +99,11 @@ describe('LessonStartTime', () => {
   // empty branch is new with #1021. Unguarded, `wallClockToInstant('2026-06-01T:00', tz)` builds
   // an Invalid Date and throws RangeError out of `Intl.DateTimeFormat.formatToParts` *during
   // render*, unmounting the whole form and discarding every other field the user had filled in.
+  //
+  // The three below seed `initialTime` since #1578: with the field opening empty, clearing an
+  // already-empty field would exercise nothing and all three would pass vacuously.
   it('should_not_throw_when_the_time_is_cleared', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />)
 
     expect(() =>
       fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
@@ -100,7 +111,9 @@ describe('LessonStartTime', () => {
   })
 
   it('should_omit_the_hidden_input_when_the_time_is_cleared', () => {
-    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    const { container } = render(
+      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+    )
 
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
 
@@ -109,19 +122,49 @@ describe('LessonStartTime', () => {
 
   it('should_call_onChange_with_an_empty_string_when_the_time_is_cleared', () => {
     const onChange = vi.fn()
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" onChange={onChange} />)
+    render(
+      <LessonStartTime
+        timezone="America/New_York"
+        date="2026-06-01"
+        initialTime="14:00"
+        onChange={onChange}
+      />
+    )
 
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
 
     expect(onChange).toHaveBeenLastCalledWith('')
   })
 
+  // The edit form's prefill reaching `LessonForm`'s `lessonAt` state, which is what gates its
+  // exhaustion fetch and its past-lesson check — the seeded value has to arrive without the user
+  // touching the field.
   it('should_call_onChange_with_the_combined_value_on_mount', () => {
+    const onChange = vi.fn()
+
+    render(
+      <LessonStartTime
+        timezone="America/New_York"
+        date="2026-06-01"
+        initialTime="14:00"
+        onChange={onChange}
+      />
+    )
+
+    expect(onChange).toHaveBeenCalledWith('2026-06-01T18:00:00.000Z')
+  })
+
+  // The create form's mount, since #1578. `LessonForm` leans on this being `''` rather than
+  // merely unset: it is the signal that no time has been entered, which is what selects
+  // `estimateAt`'s stand-in instant (the selected day at the barn's current hour) over the real
+  // one — and what `parseLessonFormData` rejects if the field is never filled. It does NOT keep
+  // the exhaustion bars off; the estimate is there precisely so they stay up meanwhile.
+  it('should_call_onChange_with_an_empty_string_on_mount_when_no_initialTime_is_given', () => {
     const onChange = vi.fn()
 
     render(<LessonStartTime timezone="America/New_York" date="2026-06-01" onChange={onChange} />)
 
-    expect(onChange).toHaveBeenCalledWith('2026-06-01T18:00:00.000Z')
+    expect(onChange).toHaveBeenCalledWith('')
   })
 
   it('should_call_onChange_with_an_empty_string_when_the_date_is_empty', () => {

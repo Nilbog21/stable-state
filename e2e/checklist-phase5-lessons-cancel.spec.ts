@@ -281,6 +281,9 @@ function cancellationNotesField(page: Page): Locator {
 //
 // Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
 // `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
+// Since #1578 the create form does not even server-render the hidden input, though this page is
+// the EDIT form, where the mount effect has a seeded `initialTime` to combine and the timing is
+// what matters rather than the presence.
 //
 // Three of the four other edit-page tests skip it because they only *read* server-rendered markup
 // (the "same **Cancellation Notes** textarea the manager gets", the "This is part of a recurring
