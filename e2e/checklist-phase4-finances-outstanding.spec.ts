@@ -436,6 +436,21 @@ test('outstanding_expenses_info_icon_explains_why_an_entry_is_listed @manager', 
   ).toBeVisible()
 })
 
+test('outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const section = outstandingExpenses(page)
+  const explanation = section.getByText(
+    'Shown here because the expense is missing an amount, missing a payment type, or both'
+  )
+  await section.getByRole('button', { name: 'Info' }).click()
+  // Rule 4's same-test anchor: without it a regression to the open path leaves the
+  // explanation hidden throughout, and the dismissal assertion below passes on nothing.
+  await expect(explanation).toBeVisible()
+  // Tapping the heading, not the icon: before #1551 only a second tap on the icon closed it.
+  await page.getByRole('heading', { name: 'Finances' }).click()
+  await expect(explanation).toBeHidden()
+})
+
 // ---------------------------------------------------------------------------
 // Cancellation fees, and /finances/outstanding
 // ---------------------------------------------------------------------------
