@@ -12,6 +12,7 @@ import {
   monthAnchor,
   type SeededAppointment,
 } from './support/fixtures'
+import { accordionSection } from './support/accordion'
 import { settledInnerTexts } from './support/read'
 import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -242,17 +243,28 @@ function barnLocalDate(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: barn.data.barn.timezone }).format(new Date(iso))
 }
 
+// Each Outstanding section is an `AccordionSection` since #1550 — a `<details>`, not the
+// `<section>` these two used to locate — so both go through the shared scope helper.
 function outstandingIncome(page: Page) {
-  return page.locator('main section').filter({ hasText: 'Outstanding Income' })
+  return accordionSection(page, 'Outstanding Income')
 }
 
 function outstandingExpenses(page: Page) {
-  return page.locator('main section').filter({ hasText: 'Outstanding Expenses' })
+  return accordionSection(page, 'Outstanding Expenses')
 }
 
-/** The bold figure each Outstanding section renders above its list — its second paragraph. */
+/**
+ * The bold figure each Outstanding section renders above its list. #1550 moved the label that used
+ * to precede it up into the accordion's `<summary>` as the section title.
+ *
+ * Selected on `font-bold` rather than as the section's *first* paragraph, which it briefly was:
+ * that section now leads with a description (`sectionDescriptionClass`), so `p:first` picks up a
+ * sentence and the failure reads as a dollar amount not matching prose. `toContainText` is still
+ * right for the read — the figure carries no ⓘ now, but a thousands separator or a trailing
+ * currency glyph is not worth an exact match.
+ */
 function sectionTotal(section: ReturnType<typeof outstandingIncome>) {
-  return section.locator('p').nth(1)
+  return section.locator('p.font-bold')
 }
 
 /** rider2 also owns the two agreement charges, so the Type cell is what isolates the lesson. */
@@ -404,7 +416,7 @@ test('outstanding_income_lease_charge_date_renders_as_plain_calendar_date @manag
 test('outstanding_expenses_total_sums_only_entries_with_a_known_amount @manager', async ({ page }) => {
   await page.goto(financesUrl())
   // Both seeded expenses are listed; only the priced one has an amount to contribute.
-  await expect(sectionTotal(outstandingExpenses(page))).toHaveText(formatCurrency(seeded.pricedExpense.amount!))
+  await expect(sectionTotal(outstandingExpenses(page))).toContainText(formatCurrency(seeded.pricedExpense.amount!))
 })
 
 test('outstanding_expenses_lists_past_due_planned_expense_as_one_line @manager', async ({ page }) => {
@@ -427,22 +439,43 @@ test('past_due_planned_expense_absent_from_outstanding_income_table @manager', a
   ).toHaveCount(0)
 })
 
-test('outstanding_expenses_info_icon_explains_why_an_entry_is_listed @manager', async ({ page }) => {
+// #1550 replaced both Outstanding sections' ⓘ with a description leading the section, so these
+// two are plain visibility reads with no click: the text is on the page for a reader who never
+// knew there was an icon to tap.
+test('outstanding_income_description_explains_what_it_lists @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const section = outstandingExpenses(page)
-  await section.getByRole('button', { name: 'Info' }).click()
   await expect(
-    section.getByText('Shown here because the expense is missing an amount, missing a payment type, or both')
+    outstandingIncome(page).getByText(
+      'All-time unpaid lessons, leases, and boarding charges — not only the month shown below.'
+    )
   ).toBeVisible()
 })
 
-test('outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+test('outstanding_expenses_description_explains_why_an_entry_is_listed @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const section = outstandingExpenses(page)
+  await expect(
+    outstandingExpenses(page).getByText(
+      'Expenses past their scheduled time that are still missing an amount, a payment type, or both. The total counts only the ones with an amount.'
+    )
+  ).toBeVisible()
+})
+
+// Re-pointed from the Outstanding Expenses ⓘ to Pending income's, which #1550 left in place:
+// this was #1551's only coverage anywhere in e2e/, so deleting it with the icon it happened to
+// be written against would have dropped the outside-tap fix silently.
+test('pending_income_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const section = accordionSection(page, 'Monthly Breakdown')
   const explanation = section.getByText(
-    'Shown here because the expense is missing an amount, missing a payment type, or both'
+    "Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut"
   )
-  await section.getByRole('button', { name: 'Info' }).click()
+  // Scoped to the Pending income label rather than `.first()` — Monthly Breakdown also holds
+  // the three column-header ⓘ, so a positional pick would follow the table's layout around.
+  await section
+    .locator('p')
+    .filter({ hasText: /^Pending income/ })
+    .getByRole('button', { name: 'Info' })
+    .click()
   // Rule 4's same-test anchor: without it a regression to the open path leaves the
   // explanation hidden throughout, and the dismissal assertion below passes on nothing.
   await expect(explanation).toBeVisible()
@@ -576,7 +609,7 @@ test.describe.serial('resolving a past-due planned expense', () => {
 
   test('past_due_expense_amount_now_counts_toward_the_outstanding_expenses_total @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await expect(sectionTotal(outstandingExpenses(page))).toHaveText(
+    await expect(sectionTotal(outstandingExpenses(page))).toContainText(
       formatCurrency(seeded.pricedExpense.amount! + PLANNED_EXPENSE_AMOUNT)
     )
   })

@@ -24,13 +24,18 @@ import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { GuardedForm } from '../NavigationBlocker'
 import { DownloadButton } from './DownloadButton'
+import { sectionDescriptionClass } from '@/components/ui/section-description'
 
 /**
  * #1557 — one style for every section's description, so the sizes can't drift apart again (two
  * sections had gone `text-xs`). Each description leads its section — or, in Data Backup's
  * two-download layout, its own block — above that block's controls.
+ *
+ * The string itself moved to `src/components/ui/section-description.ts` in #1550, when Finances
+ * became a second page needing it. Kept as a local alias so the eight call sites below read the
+ * same as they did.
  */
-const DESCRIPTION_CLASS = 'mb-3 text-sm text-zinc-500 dark:text-zinc-400'
+const DESCRIPTION_CLASS = sectionDescriptionClass
 
 export default async function SettingsPage({
   params,

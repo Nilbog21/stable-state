@@ -5,6 +5,7 @@ import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { mustAffect } from './support/must-affect'
+import { accordionSection } from './support/accordion'
 import { formatMonthParam } from '@/lib/finances-month'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SeededAppointment, SeededBarn } from './support/fixtures'
@@ -106,8 +107,10 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   const lessonDefaults = { at: lastMonth, instructorId: members.trainer.membershipId, tierName: tier.name }
 
   // Paid, not merely booked: every income breakdown counts collected rows only. Seeding
-  // everything collected also keeps both Outstanding Income and Outstanding Expenses off the
-  // page, so no assertion here has to work around them.
+  // everything collected also leaves both Outstanding Income and Outstanding Expenses empty —
+  // since #1550 they still render, collapsed, rather than vanishing, which is the state
+  // `an_empty_outstanding_section_renders_collapsed` below reads. Either way no assertion here
+  // has to work around their contents.
   await addPaidLesson(supabase, barn, {
     ...lessonDefaults,
     horseIds: [apollo.id],
@@ -242,11 +245,14 @@ function financesUrl(tab: Tab): string {
 }
 
 /**
- * The active tab's breakdown table. Scoped to a direct `main > div` child so it can't also
- * match a table nested deeper inside one of the page's `<section>`s.
+ * The active tab's breakdown table. Picked by its reconciliation `<tfoot>`, which the
+ * Outstanding Income table above it doesn't have — the same idiom as
+ * `checklist-phase4-finances-by-tier.spec.ts`. A structural `main > div > table` read used to
+ * do this job; #1550 moved every table inside an `AccordionSection`, and a locator that tracks
+ * how deeply the page nests its cards is exactly what broke.
  */
 function breakdownTable(page: Page): Locator {
-  return page.locator('main > div > table')
+  return page.locator('main table:has(tfoot)')
 }
 
 /**
@@ -291,6 +297,22 @@ async function totalsAcrossTabs(
   }
   return figures
 }
+
+// ---------------------------------------------------------------------------
+// The empty-section case (#1550)
+// ---------------------------------------------------------------------------
+
+// This file's barn is the one that has nothing outstanding — everything it seeds is collected
+// (see the fixture note above), which is exactly the state the other finances specs can't
+// produce. Before #1550 the two sections vanished here; now they stay, shut, so the page keeps
+// one shape whatever the data. Declared ahead of the mutating `describe.serial` below so it
+// reads the pristine seed.
+test('an_empty_outstanding_section_renders_collapsed @manager', async ({ page }) => {
+  await page.goto(financesUrl('horse'))
+  const outstanding = accordionSection(page, 'Outstanding Income')
+  await expect(outstanding).toBeVisible()
+  await expect(outstanding).not.toHaveAttribute('open', /.*/)
+})
 
 // ---------------------------------------------------------------------------
 // Reconciliation across tabs (#971)

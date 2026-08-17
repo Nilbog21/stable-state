@@ -74,6 +74,10 @@ describe('FinancesPage', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
+  // Survives #1550's move into the Monthly Breakdown accordion: the accordion's card border
+  // wraps the whole section, so it separates that section from its neighbours and nothing
+  // within it — the <hr> is still the only thing holding the tab bar apart from the pager and
+  // Pending income line above it.
   it('should_render_separator_before_tab_bar', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

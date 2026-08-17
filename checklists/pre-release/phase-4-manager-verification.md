@@ -350,6 +350,11 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 Finances (`/barn/dev-barn/finances`):
 
+- [ ] (e2e: finances_renders_three_accordion_sections_in_order) The page is three collapsible sections, in order: **Outstanding Income**, **Outstanding Expenses**, **Monthly Breakdown** (#1550)
+- [ ] (e2e: the_month_navigation_lives_inside_monthly_breakdown) The month `←`/`→` navigation lives **inside** Monthly Breakdown, not above all three sections
+- [ ] (e2e: the_tab_pills_live_inside_monthly_breakdown) The five tab pills live **inside** Monthly Breakdown, not above all three sections
+- [ ] (e2e: every_finances_section_header_is_at_least_44px_tall) Every section header is at least 44px tall, so it can be tapped to collapse the section
+- [ ] (e2e: an_empty_outstanding_section_renders_collapsed) An Outstanding section with nothing in it still renders, collapsed, rather than disappearing
 - [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
 - [ ] (e2e: outstanding_income_row_leaves_list_once_payment_type_set) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
 - [ ] (e2e: outstanding_income_lesson_date_renders_in_barn_timezone) A lesson row's date in **Outstanding Income** is the barn-local date of the time you entered for that lesson, not shifted by your own machine's UTC offset
@@ -363,8 +368,9 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: outstanding_expenses_total_sums_only_entries_with_a_known_amount) The **Outstanding Expenses** section (renamed from "Needs an amount", below Outstanding Income) shows a bold total above the list, summing only the expenses in it that have a known amount
 - [ ] (e2e: outstanding_expenses_lists_past_due_planned_expense_as_one_line) **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type)
 - [ ] (e2e: past_due_planned_expense_absent_from_outstanding_income_table) That past-due planned expense does **not** appear inside the Outstanding Income table itself
-- [ ] (e2e: outstanding_expenses_info_icon_explains_why_an_entry_is_listed) Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
-- [ ] (e2e: outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it) With that explanation open, tap anywhere outside it → it closes (#1551 — before it, only a second tap on the ⓘ itself would close it)
+- [ ] (e2e: outstanding_income_description_explains_what_it_lists) **Outstanding Income** opens with a description saying it lists all-time unpaid lessons, leases and boarding charges, not only the month shown below (#1550 — replaced an ⓘ)
+- [ ] (e2e: outstanding_expenses_description_explains_why_an_entry_is_listed) **Outstanding Expenses** opens with a description saying an entry is listed for a missing amount, a missing payment type, or both, and that the total counts only the ones with an amount (#1550 — replaced an ⓘ)
+- [ ] (e2e: pending_income_info_icon_dismisses_on_a_tap_outside_it) Tap the ⓘ beside **Pending income**, then tap anywhere outside the explanation → it closes (#1551 — before it, only a second tap on the ⓘ itself would close it; re-pointed here in #1550 when the Outstanding Expenses ⓘ this asserted on was removed)
 - [ ] (e2e: past_due_expense_line_links_to_its_edit_page) Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
 - [ ] (e2e: past_due_expense_still_outstanding_after_amount_entered_without_payment_type) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**
 - [ ] (e2e: past_due_expense_amount_now_counts_toward_the_outstanding_expenses_total) That same expense now contributes its amount to the **Outstanding Expenses** bold total instead of $0
@@ -376,7 +382,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: outstanding_page_omits_outstanding_expenses) Outstanding expenses do **not** appear on that page (no Outstanding Expenses equivalent there)
 - [ ] (e2e: month_navigation_arrows_update_the_month_query_param) Month navigation `←`/`→` works and updates `?month=YYYY-MM`
 - [ ] (e2e: previous_month_reflects_its_own_seeded_lesson) Navigate to the previous month → the previous month's seeded lesson is reflected
-- [ ] (e2e: pending_income_line_appears_once_below_the_outstanding_sections) Below the Outstanding sections, only a single **Pending income** line appears for the current month
+- [ ] (e2e: pending_income_line_appears_once_inside_monthly_breakdown) Inside **Monthly Breakdown**, only a single **Pending income** line appears for the current month
 - [ ] (e2e: pending_income_line_has_no_month_year_suffix) That **Pending income** line carries no month/year suffix (the month picker above already shows it)
 - [ ] (e2e: no_gross_expenses_net_summary_boxes_remain_on_the_page) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
 - [ ] (e2e: every_tab_shows_the_same_gross_expenses_net_columns) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
@@ -659,7 +665,7 @@ The Finances line below is the one that used to sit at the top of that section, 
 - [ ] (manual) **Expenses** — the list, the new/edit form with its month conflict calendar, and the delete confirmation page (`/barn/dev-barn/expenses` and below)
 - [ ] (manual) **Horses** — the list's sections and exhaustion bars, and a detail page's header and five collapsible sections (`/barn/dev-barn/horses`, `/horses/[id]`)
 - [ ] (manual) **Members** — the roster, a member detail page's Contact Info, Documents, Active Agreements and Instructor Access sections, and the document upload page (`/barn/dev-barn/members` and below, `/documents/new`)
-- [ ] (manual) **Finances** — the Outstanding sections, the tab pills, every tab's table and footer, and the four drill-downs (`/barn/dev-barn/finances` and below)
+- [ ] (manual) **Finances** — the three collapsible sections open and shut, their collapsed-row hints, the tab pills, every tab's table and footer, and the four drill-downs (`/barn/dev-barn/finances` and below)
 - [ ] (manual) **Manage Barn** — the collapsible sections, the tier and event forms, and the Data Backup section (`/barn/dev-barn/settings` and below)
 - [ ] (manual) **Notifications and profile** — the bell dropdown, the avatar menu, `/profile`, `/about` and `/changelog`
 - [ ] (manual) **Calendar feed** — the Calendar Feed section on `/profile?barn=dev-barn` and its Get link / Copy Link / Regenerate controls

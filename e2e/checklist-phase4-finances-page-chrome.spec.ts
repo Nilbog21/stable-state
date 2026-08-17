@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addPaidLesson, addTier, addUnpaidLesson, monthAnchor } from './support/fixtures'
+import { accordionSection } from './support/accordion'
 import { formatMonthParam } from '@/lib/finances-month'
 
 // The page-level invariants this file covers hold across every tab, so every assertion is
@@ -82,13 +83,14 @@ function financesUrl(tab?: (typeof TABS)[number]): string {
 }
 
 /**
- * The active tab's breakdown table. Scoped to a direct `main > div` child so it can't also
- * match the Outstanding Income table, which has a thead of its own but sits deeper, inside
- * its `<section>`.
+ * The active tab's breakdown table. Picked by its reconciliation `<tfoot>`, which the
+ * Outstanding Income table doesn't have — a structural `main > div > table` read used to do
+ * this job, until #1550 put every table inside an `AccordionSection`.
  */
 function breakdownTable(page: Page) {
-  return page.locator('main > div > table')
+  return page.locator('main table:has(tfoot)')
 }
+
 
 /**
  * Blocks until the breakdown table exists. Every reader below reaches it through
@@ -103,16 +105,16 @@ async function awaitBreakdownTable(page: Page): Promise<void> {
 }
 
 /**
- * The label of every "label above a big figure" block on the page, in document order. Each
- * such block is a direct `<section>`/`<div>` child of `<main>` whose first child is its own
- * label `<p>` — a structural handle rather than a class-name one. Only the leading text node
- * is read, so the label's trailing InfoPopover glyph is excluded.
+ * The title of every `AccordionSection` on the page, in document order — read from the `<h2>`
+ * inside each `<summary>`, which is a structural handle rather than a class-name one. The
+ * collapsed-row `hint` beside it is a sibling of the `<h2>`, not a child, so it's excluded for
+ * free.
  */
-async function summaryBlockLabels(page: Page): Promise<string[]> {
-  const blocks = page.locator('main > section > p:first-child, main > div > p:first-child')
+async function sectionTitles(page: Page): Promise<string[]> {
+  const titles = page.locator('main details > summary h2')
   // Same no-auto-wait hazard `awaitBreakdownTable` guards against, on a different locator.
-  await blocks.first().waitFor()
-  return blocks.evaluateAll((paragraphs) => paragraphs.map((p) => (p.childNodes[0]?.textContent ?? '').trim()))
+  await titles.first().waitFor()
+  return titles.evaluateAll((headings) => headings.map((h) => (h.textContent ?? '').trim()))
 }
 
 /**
@@ -149,28 +151,71 @@ async function forEachTab(page: Page, read: (page: Page) => Promise<string[]>): 
 }
 
 // ---------------------------------------------------------------------------
+// The three accordion sections (#1550)
+// ---------------------------------------------------------------------------
+
+test('finances_renders_three_accordion_sections_in_order @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  expect(await sectionTitles(page)).toEqual(['Outstanding Income', 'Outstanding Expenses', 'Monthly Breakdown'])
+})
+
+// The pager and the pills only ever scoped this one section's content. Two tests, not one:
+// they are independently regressable — either could be hoisted back out without the other —
+// and one checkbox per assertion is what lets a partial failure be marked cleanly.
+//
+// Both are containment claims rather than position ones, because "inside Monthly Breakdown" is
+// what stops the page reading flat; where within it they sit is not these checkboxes' business.
+test('the_month_navigation_lives_inside_monthly_breakdown @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  // By glyph rather than by role: at either end of the barn's month range the pager renders an
+  // `invisible` placeholder `<span>` in place of the `<a>`, and this barn — seeded in its own
+  // creation month — has no previous month to link to.
+  await expect(accordionSection(page, 'Monthly Breakdown').getByText(/^[<>]$/)).toHaveCount(2)
+})
+
+test('the_tab_pills_live_inside_monthly_breakdown @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const pills = accordionSection(page, 'Monthly Breakdown').getByRole('link', { name: /^By / })
+  await expect(pills).toHaveCount(TABS.length)
+})
+
+// 44px is the touch-target floor, and a header the manager can't reliably tap is a section
+// they can't collapse. `AccordionSection`'s `<summary>` carries `min-h-11`; measured rather
+// than asserted on the class, since the class is the mechanism and the height is the claim.
+test('every_finances_section_header_is_at_least_44px_tall @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const summaries = page.locator('main details > summary')
+  // Same no-auto-wait hazard `awaitBreakdownTable` guards against, on a third locator. The
+  // `toHaveLength(3)` below catches a wholly-unrendered page, but a partial one — one or two
+  // of the three summaries painted — would fail as a bogus 44px violation without this.
+  await summaries.first().waitFor()
+  const heights = await summaries.evaluateAll(
+    (elements) => elements.map((s) => s.getBoundingClientRect().height)
+  )
+  expect(heights).toHaveLength(3)
+  expect(Math.min(...heights)).toBeGreaterThanOrEqual(44)
+})
+
+// ---------------------------------------------------------------------------
 // The Pending income line and the summary boxes #971 removed
 // ---------------------------------------------------------------------------
 
-// Prefix-matched on purpose: whether the label carries a month/year suffix is the next
-// checkbox's claim, so this one asserts position (Pending income sits below both
-// Outstanding sections) and singularity (one entry, not one per month) and nothing else.
-test('pending_income_line_appears_once_below_the_outstanding_sections @manager', async ({ page }) => {
+// Position, not wording: the claim is that Pending income belongs to the month being viewed,
+// so it sits inside Monthly Breakdown rather than floating above all three sections. Its
+// singularity — one entry, not one per month — is the `toHaveCount(1)`.
+test('pending_income_line_appears_once_inside_monthly_breakdown @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  expect(await summaryBlockLabels(page)).toEqual([
-    expect.stringMatching(/^Outstanding Income/),
-    expect.stringMatching(/^Outstanding Expenses/),
-    expect.stringMatching(/^Pending income/),
-  ])
+  await expect(accordionSection(page, 'Monthly Breakdown').getByText(/^Pending income/)).toHaveCount(1)
 })
 
 // The month picker directly above the line already names the month, so the label must not
-// repeat it. Positional destructuring rather than a fresh locator: the test above owns the
-// claim that the third block is the Pending income one.
+// repeat it. Only the leading text node is read, so the label's trailing InfoPopover glyph is
+// excluded.
 test('pending_income_line_has_no_month_year_suffix @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const [, , pendingIncome] = await summaryBlockLabels(page)
-  expect(pendingIncome).toBe('Pending income')
+  const label = page.getByText(/^Pending income/)
+  await label.waitFor()
+  expect(await label.evaluate((p) => (p.childNodes[0]?.textContent ?? '').trim())).toBe('Pending income')
 })
 
 // Deliberately a page-wide absence claim rather than a restatement of the block list above:

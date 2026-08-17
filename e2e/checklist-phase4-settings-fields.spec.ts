@@ -62,7 +62,7 @@ import {
 import { hydrateByDriving } from './support/hydration'
 // Aliased: this file already has a settings-page `openSection` that navigates to `settingsUrl()`
 // first. The shared helper is the horse detail page's, which is already loaded when it is called.
-import { openSection as openAccordionSection } from './support/accordion'
+import { accordionSection, openSection as openAccordionSection } from './support/accordion'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type { Agreement, Horse } from '@/lib/db/types'
 
@@ -774,12 +774,14 @@ test.describe.serial('Manage Barn — Schedule Buffer', () => {
 test.describe.serial('Manage Barn — Barn Timezone', () => {
   const FIELD = '#timezone'
 
-  /** Every Outstanding Expenses entry, in render order. */
+  /**
+   * Every Outstanding Expenses entry, in render order. Reached through the shared accordion
+   * scope helper since #1550 made the section an `AccordionSection`: the finances page renders
+   * no `<section>` element at all now, so the old `locator('section')` read matched nothing —
+   * silently, since a zero-element locator fails on the assertion rather than on the locator.
+   */
   function outstandingExpenses(page: Page) {
-    return page
-      .locator('section')
-      .filter({ hasText: 'Outstanding Expenses' })
-      .locator('ul li a')
+    return accordionSection(page, 'Outstanding Expenses').locator('ul li a')
   }
 
   function expenseEntry(date: string, expense: { recipient: string; expenseType: string }) {

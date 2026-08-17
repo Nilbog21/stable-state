@@ -61,6 +61,7 @@ import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson, E2E_USERS } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { accordionSection } from './support/accordion'
 import { hydrateByDriving } from './support/hydration'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import type { Lesson } from '@/lib/db/types'
@@ -1003,7 +1004,16 @@ test.describe("Finances resolves the month in the barn's zone", () => {
     // `BARN_MONTH_HEADING` is built with `Intl` up top rather than by calling `formatMonthHeading`,
     // the function that renders this label — an expectation computed by the code under test agrees
     // with any bug in it.
-    await expect(page.getByText(BARN_MONTH_HEADING, { exact: true })).toHaveText(BARN_MONTH_HEADING)
+    //
+    // Scoped to Monthly Breakdown's *body* since #1550: the month label now renders twice, once
+    // as that section's collapsed-row hint inside the `<summary>` and once on the pager below it,
+    // so a bare exact-text locator is a strict-mode violation rather than a failed expectation.
+    // The body is where the pager lives, and the pager is what this item is about.
+    await expect(
+      accordionSection(page, 'Monthly Breakdown')
+        .locator('> div')
+        .getByText(BARN_MONTH_HEADING, { exact: true })
+    ).toHaveText(BARN_MONTH_HEADING)
   })
 
   test('a_new_agreements_first_charge_period_is_the_barns_month @manager', async ({ page }) => {

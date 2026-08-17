@@ -124,9 +124,30 @@ for path in "${changed[@]+"${changed[@]}"}"; do
   fi
 done
 
+# A file that cannot reach a browser cannot be the reason to open one (#1550). ALWAYS_FULL's
+# /** entries are literal prefixes with no extension filter, so `src/components/ui/CLAUDE.md`
+# — a doc — escalated to all 73 specs, and so did every TDD run's opening `__tests__` commit,
+# the most common diff shape in this repo. Consulted for the escalation decision only: a
+# non-runtime path still falls through to per-spec `covers:` matching below, so a spec that
+# genuinely wants to declare a fixture or doc keeps saying so and keeps being selected.
+is_non_runtime() {
+  local path="$1"
+  case "$path" in
+    *.md | *.test.ts | *.test.tsx | */__tests__/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 for path in "${changed[@]+"${changed[@]}"}"; do
+  is_non_runtime "$path" && continue
   for glob in "${ALWAYS_FULL[@]}"; do
     if path_matches "$path" "$glob"; then
+      # On stderr, and stdout stays `mode=full` alone: three skills parse this output as
+      # key=value lines, so a fourth line there is a contract change (asserted by test 20).
+      # #1550 — `mode=full` used to print with no indication of *which* path escalated, so
+      # confirming a 73-spec run was warranted meant reading ALWAYS_FULL against the diff by
+      # hand. Nobody did, and a markdown file bought a full suite more than once.
+      echo "select-specs.sh: mode=full because '$path' matches always-full glob '$glob'" >&2
       echo "mode=full"
       exit 0
     fi
