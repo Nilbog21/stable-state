@@ -103,6 +103,73 @@ describe('HorseAccessSection', () => {
     expect(screen.getAllByRole('button', { name: /set as owner/i })).toHaveLength(1)
   })
 
+  // #1547: ownership now confers document write and lesson read through `auth_is_horse_owner`,
+  // whatever this row's stored values say — so on the owner's row these two controls described a
+  // state they no longer governed. Emery (`mem-2`) is the owner in this block and holds
+  // `documentPrivileges: 'none'`/`lessonReadPrivileges: true`, which is the divergence itself: the
+  // stored 'none' is what the row used to show and what ownership overrides.
+  describe('the owner row shows effective access rather than the stored grant', () => {
+    function ownerRow(): HTMLElement {
+      return screen.getByText('Emery Rider').closest('tr')!
+    }
+
+    it('should_not_render_document_state_buttons_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      const labels = ['None', 'Read', 'Write'].map((label) =>
+        within(ownerRow()).queryByRole('button', { name: label })
+      )
+      expect(labels).toEqual([null, null, null])
+    })
+
+    // Read as the tag carrying the text, not as the text's presence: 'Write' is inside a `<button>`
+    // both before and after this change, so a bare `getByText` would pass on the control it exists
+    // to have replaced. `getNodeText` matches an element's own text nodes, so the cell only answers
+    // here once the button between them is gone.
+    it('should_render_write_as_text_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByText('Write').tagName).toBe('TD')
+    })
+
+    it('should_not_render_a_lesson_toggle_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).queryByRole('button', { name: /can view|cannot view/i })).toBeNull()
+    })
+
+    it('should_render_can_view_as_text_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByText('Can View').tagName).toBe('TD')
+    })
+
+    // Revoke is the manager's one remaining lever over an owner's access, and it still works:
+    // `revoke_horse_privilege` clears `owning_member_id` along with the row.
+    it('should_keep_the_revoke_button_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByRole('button', { name: /revoke/i })).toBeDefined()
+    })
+
+    it('should_keep_the_owner_toggle_on_the_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(within(ownerRow()).getByRole('button', { name: /^owner$/i })).toBeDefined()
+    })
+
+    // The non-owner rows are the reason those controls still exist at all, so their survival is
+    // asserted rather than assumed — Dana keeps her stored 'read' as a live, pressed control.
+    it('should_keep_the_document_buttons_on_a_non_owner_row', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(documentButton('Dana Rider', 'Read').getAttribute('aria-pressed')).toBe('true')
+    })
+
+    it('should_explain_the_owner_row_when_one_is_present', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+      expect(screen.getByText(/unset the owner/i)).toBeDefined()
+    })
+
+    it('should_not_explain_the_owner_row_when_there_is_no_owner', () => {
+      render(<HorseAccessSection {...makeProps({ ownerMemberId: null })} />)
+      expect(screen.queryByText(/unset the owner/i)).toBeNull()
+    })
+  })
+
   // #1390 — every control here was a `<Button type="button" onClick>` with no form action, so
   // each was a silent no-op inside the hydration window: the #1385 defect, four times over, on
   // a page a manager lands on and immediately clicks. Each is now a real form whose action is
