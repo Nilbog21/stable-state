@@ -210,9 +210,10 @@ export async function revokeHorseAccessAction(
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
-// Owner is now set exclusively from the Access table (a member must already
-// have a privilege row to be selected). setHorseOwner atomically sets
-// owning_member_id and elevates the new owner's privileges in one RPC call.
+// Owner is now set exclusively from the Access table. Every row there *except the owner's own* is
+// a grant row, which is the precondition setHorseOwner's RPC enforces by raising
+// privilege_grant_not_found. setHorseOwner atomically sets owning_member_id and elevates the new
+// owner's privileges in one RPC call.
 export async function setHorseOwnerAction(
   barnSlug: string,
   horseId: string,
@@ -221,6 +222,12 @@ export async function setHorseOwnerAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
   const horse = await getHorseById(horseId, barn.id)
   if (!horse) notFound()
+
+  // #1549: HorseAccessSection binds each row's own member id, so re-tapping the selected Owner
+  // radio submits the owner to themselves -- what a native radio's re-tap does. There is nothing
+  // to write, and the owner is exactly the member the RPC would raise on: ownership does not
+  // imply a privileges row, and a createHorse-created horse's owner has none.
+  if (horse.owning_member_id === memberId) return
 
   await setHorseOwner(horseId, barn.id, memberId)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
