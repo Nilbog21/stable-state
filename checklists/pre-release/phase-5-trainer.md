@@ -99,6 +99,8 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_outstanding_lists_uncollected_cancellation_fees_for_lessons_they_instruct) That page also lists any uncollected cancellation fees for lessons you instruct
 - [ ] (e2e: trainer_dashboard_day_view_shows_only_lessons_they_instruct) (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] (e2e: trainer_dashboard_week_view_shows_only_lessons_they_instruct_across_the_week) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
+- [ ] (e2e: trainer_dashboard_month_view_tints_only_days_they_instruct_on) (#1558) In Month view, only days you instruct on are tinted — another instructor's day is left untinted
+- [ ] (e2e: trainer_dashboard_month_view_day_panel_shows_only_lessons_they_instruct) (#1558) In Month view, tapping a day shows only the lessons you instruct on it
 - [ ] (e2e: trainer_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
 - [ ] (e2e: trainer_unpaid_lessons_card_navigates_to_the_outstanding_page) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
@@ -117,7 +119,7 @@ This phase is a flat list rather than sectioned, so the areas below are the page
 > - nothing in it is reachable or dismissible only by hover
 > - nothing non-interactive carries a hover state implying it is clickable
 
-- [ ] (manual) **Dashboard** — Day and Week views and the Reminders section, as the trainer sees them (`/barn/dev-barn`)
+- [ ] (manual) **Dashboard** — Day, Week and Month views and the Reminders section, as the trainer sees them (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the New Lesson form with its month calendar, and the cancel pages (`/barn/dev-barn/lessons` and below)
 - [ ] (manual) **Appointments** — the read-only appointment detail page reached from the dashboard card (`/barn/dev-barn/expenses/[id]`)
 - [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable sections and a detail page's header and sections, in both the owned and unowned forms (`/barn/dev-barn/horses`, `/horses/[id]`)

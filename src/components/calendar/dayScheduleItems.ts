@@ -36,8 +36,9 @@ export function mergeDayScheduleDisplayItems(
   return result
 }
 
-// Buckets a week-wide `getScheduleForRange` result into one `mergeDayScheduleDisplayItems`
-// call per day. Bucketing is a plain string-prefix match on `item.start` -- no timezone
+// Buckets a multi-day `getScheduleForRange` result into one `mergeDayScheduleDisplayItems`
+// call per day -- a week for the dashboard's Week view, the month picker's 42-cell grid for
+// its Month view (#1558). Bucketing is a plain string-prefix match on `item.start` -- no timezone
 // conversion needed, since `start` is already a barn-local wall-clock string (see
 // ScheduleItem's own doc comment in types.ts).
 export function groupScheduleItemsByDay(

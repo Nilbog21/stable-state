@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/page.tsx
 // covers: src/components/calendar/**
+// covers: src/lib/month-calendar.ts
 // covers: src/components/EmptyState.tsx
 //
 // The Dashboard calendar through the two non-manager eyes: #1015/#1016's Day- and Week-view
@@ -47,6 +48,7 @@
 // renders at all and the Calendar section is the whole page below the heading.
 
 import { test, expect, withBarn, type Page } from './support/test'
+import { dayCell, goToMonth, pickDay } from './support/calendar'
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import {
   addBarnEvent,
@@ -354,6 +356,33 @@ test('trainer_dashboard_week_view_empty_state_names_appointments_not_expenses @t
   ])
 })
 
+/**
+ * The Month view's role scoping, asserted on the **tint** rather than on the day panel.
+ *
+ * That is the claim the month grid makes that neither Day nor Week view makes: the whole point
+ * of a month at a glance is the at-a-glance part, so an unscoped grid leaks *which days other
+ * people are busy* before anything is tapped, even if tapping then shows a correctly filtered
+ * panel. MONDAY carries only `mondayTrainer` and FRIDAY only `fridayRider`, so this trainer must
+ * see exactly one of the two tinted — and the pair is one expectation because either half alone
+ * is satisfiable by a grid that tints nothing or everything.
+ */
+test('trainer_dashboard_month_view_tints_only_days_they_instruct_on @trainer', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${BUSY_DAY}`)
+
+  await expect(dayCell(page, MONDAY)).toHaveAttribute('data-scheduled', 'true')
+  await expect(dayCell(page, FRIDAY)).toHaveAttribute('data-scheduled', 'false')
+})
+
+// And the panel behind the tint, so the two cannot drift: the same scoping the Day view applies
+// on BUSY_DAY must survive the month path, which reaches CalendarDayView through
+// MonthCalendarPicker's renderDayPanel rather than directly.
+test('trainer_dashboard_month_view_day_panel_shows_only_lessons_they_instruct @trainer', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${BUSY_DAY}`)
+  await pickDay(page, BUSY_DAY)
+
+  expect(await lessonHrefs(page)).toEqual(lessonPaths(ownBoth, trainerOnly))
+})
+
 // =============================================================================================
 // Phase 6 — the rider's eye
 // =============================================================================================
@@ -393,4 +422,35 @@ test('rider_dashboard_week_view_shows_only_her_enrolled_lessons_across_the_week 
   await page.goto(`/barn/${barn.slug}?date=${BUSY_DAY}`)
   await switchToWeekView(page)
   expect(await lessonHrefs(page)).toEqual(lessonPaths(ownBoth, riderOnly, fridayRider))
+})
+
+
+// The exact inverse of the trainer's month tint, against the same two days: she is enrolled on
+// FRIDAY and not on MONDAY, so a grid tinting both is leaking and a grid tinting neither is
+// broken.
+test('rider_dashboard_month_view_tints_only_days_she_is_enrolled_on @rider', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${BUSY_DAY}`)
+
+  await expect(dayCell(page, FRIDAY)).toHaveAttribute('data-scheduled', 'true')
+  await expect(dayCell(page, MONDAY)).toHaveAttribute('data-scheduled', 'false')
+})
+
+// Her month day-panel counterpart, and the appointment claim in the same breath: BUSY_DAY holds
+// a timed appointment a manager and trainer both see, so "only her lessons" has something to be
+// false about here rather than being an empty-page tautology.
+test('rider_dashboard_month_view_day_panel_shows_no_appointment_cards @rider', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${BUSY_DAY}`)
+  await pickDay(page, BUSY_DAY)
+
+  expect(await linkedCardHrefs(page)).toEqual(lessonPaths(ownBoth, riderOnly))
+})
+
+// Paging the grid is a soft navigation (router.push), not a document load, so this also pins
+// that her scoping survives the refetch rather than being applied only on first render.
+test('rider_dashboard_month_view_scoping_survives_paging_to_another_month @rider', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${EMPTY_DAY}`)
+  await goToMonth(page, 'Previous', BUSY_DAY.slice(0, 7))
+
+  await expect(dayCell(page, FRIDAY)).toHaveAttribute('data-scheduled', 'true')
+  await expect(dayCell(page, MONDAY)).toHaveAttribute('data-scheduled', 'false')
 })
