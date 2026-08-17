@@ -247,15 +247,25 @@ async function openAccess(page: Page, horseName: string) {
  *
  * Read together and asserted as a single value because the promotion item is a conjunction —
  * one tap, three consequences — and splitting it would let two pass while the third silently
- * described a different row. The Documents state is "which button is pressed" rather than a
- * cell text, since all three labels render in that cell at all times and only `aria-pressed`
- * tells them apart.
+ * described a different row.
+ *
+ * The Documents column reads two ways because #1547 made the row *render* two ways. On a non-owner
+ * row all three labels render at once and only `aria-pressed` tells them apart, so the state is
+ * "which button is pressed". On the **owner's** row there are no buttons at all: ownership confers
+ * write through `auth_is_horse_owner` whatever the stored grant says, so offering a control that
+ * governs nothing would be a lie, and the cell shows the one effective value instead. `form` picks
+ * which read applies — and it is not a convenience, it is load-bearing: passing `'static'` for the
+ * owner row means an owner row that kept its buttons yields `['NoneReadWrite']` and fails, so the
+ * expected `['Write']` asserts the new form as well as the value.
+ *
+ * The Lesson Schedule column needs no such split — it is one element's text either way.
  */
-async function rowState(row: Locator) {
+async function rowState(row: Locator, form: 'controls' | 'static' = 'controls') {
+  const documents = row.locator('td').nth(DOCUMENTS_COLUMN)
   return {
     owner: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
     documents: await settledInnerTexts(
-      row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
+      form === 'controls' ? documents.locator('button[aria-pressed="true"]') : documents
     ),
     lesson: await settledInnerTexts(row.locator('td').nth(LESSON_COLUMN)),
   }
@@ -393,10 +403,19 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
       timeout: SETTLE_AFTER_WRITE,
     })
 
-    expect({ before, after: await rowState(row) }).toEqual({
+    expect({ before, after: await rowState(row, 'static') }).toEqual({
       before: { owner: ['Set as Owner'], documents: ['None'], lesson: ['Cannot View'] },
       after: { owner: ['Owner'], documents: ['Write'], lesson: ['Can View'] },
     })
+  })
+
+  // #1547: the two cells above lost their controls, and this is the sentence that says why. It
+  // renders only when a row in the table is the owner — which is the state the promotion above just
+  // produced, so this test's position in the chain is what gives it something to find. Scoped
+  // through the section, so a copy of the line elsewhere on the page couldn't satisfy it.
+  test('the_owner_row_explains_where_its_access_comes_from @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    await expect(accessSection(page).getByText(/unset the owner/i)).toBeVisible()
   })
 
   // Narrowed — see divergence 2 in the header. The assertion is the *change*, which is what

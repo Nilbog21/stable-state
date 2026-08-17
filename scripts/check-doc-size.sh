@@ -27,7 +27,12 @@ BUDGETS=(
   # .claude/commands/ and added them to the Workflow skills index: 19937 -> 20257. Two genuinely
   # new skills entering the index, not elaboration of an existing entry — the raise the e2e/CLAUDE.md
   # note below calls legitimate. The file was at 63 characters of headroom, so no trim was available.
-  "ARCHITECTURE.md:20500"
+  # Raised from 20500 by #1547, which added the `auth_is_horse_owner` RLS helper: 20459 -> 21081.
+  # A new helper always gets its line here (root CLAUDE.md's Architecture Docs rule), and the
+  # `horse_documents` rider cell has to name the two new policies it backs — two genuinely new
+  # index entries, the legitimate-raise case. The file was at 41 characters of headroom, so no trim
+  # was available; both entries are one line, and every word of rationale is in docs/architecture/rls.md.
+  "ARCHITECTURE.md:21150"
   # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
   # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
   # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was
