@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
@@ -64,11 +64,27 @@ export function MonthCalendarPicker({
   /** Makes the day panel a permanent part of the form rather than a transient popup: open on
    *  `value` from first render, and no Close button (#1021). The lesson form needs this because
    *  the panel hosts a required field — behind a tap, a lesson's own start time would be
-   *  invisible on the edit form until its day was tapped. Off for ExpenseForm. */
+   *  invisible on the edit form until its day was tapped. Off for ExpenseForm.
+   *
+   *  It is also what exempts a caller from the close-on-month-change below (#1580), and the
+   *  exemption is a *duty*: a panel that cannot close cannot use closing to avoid outliving its
+   *  data, so an always-open caller owes its own guarantee that `items` still covers `value`
+   *  after the grid pages away. `LessonForm` pays that by widening its fetched range. */
   dayPanelAlwaysOpen?: boolean
 }) {
   const { open, setOpen, ref } = useOutsideDismiss()
   const [popupDate, setPopupDate] = useState(calendarDate(dayPanelAlwaysOpen ? value : ''))
+
+  // Paging the grid strands an open panel: the heading is still the selected day — correct, the day
+  // is still selected — but the caller has refetched around the *new* month, so that day's items
+  // are out of window and the body silently empties under its own date (#1580). Closing is the
+  // transient callers' answer (ExpenseForm, the dashboard). Keyed off the prop rather than off the
+  // pager buttons, so the dashboard's browser Back closes it too — its month is a URL param.
+  //
+  // No `dayPanelAlwaysOpen` guard, because there is nothing to guard: `panelOpen` ORs that flag in,
+  // so this is already a no-op for a form panel. Adding the branch anyway would only add a dead one
+  // for `scripts/check-coverage.sh` to demand a meaningless test for.
+  useEffect(() => { setOpen(false) }, [month, setOpen])
 
   const days = getMonthGrid(month)
   const popupItems = items.filter((item) => item.start.slice(0, 10) === popupDate)
