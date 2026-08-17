@@ -291,11 +291,11 @@ const atHorseDetail = (horseId: string) => new RegExp(`/horses/${horseId}$`)
  * Any exhaustion bar, for the absence assertions — its label carries live figures.
  *
  * Absence is all this locator is for since #1390: the bar no longer renders on this page for any
- * role. It stays a `/^Exhaustion: /` name match rather than a narrower one so that a bar
+ * role. It stays a `/ Exhaustion \(/` name match rather than a narrower one so that a bar
  * reintroduced under *any* figures fails the assertion.
  */
 function anyExhaustionBar(page: Page) {
-  return page.getByRole('button', { name: /^Exhaustion: / })
+  return page.getByRole('button', { name: / Exhaustion \(/ })
 }
 
 function upcomingLessonsHeading(page: Page) {
