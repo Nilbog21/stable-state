@@ -24,8 +24,9 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] (e2e: granting_a_rider_access_adds_them_to_the_grants_list) On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list
 - [ ] (e2e: a_granted_riders_row_offers_set_as_owner) Dana's row carries an **Owner** column showing **Set as Owner**
 - [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) Tap **Set as Owner** on Dana's row → the button changes to **Owner**
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069) Dana's row now shows **Write** selected in the **Documents** column without tapping it directly (auto-elevated on becoming owner)
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069) Dana's row now shows lesson access **Can View** without tapping the toggle directly (auto-elevated on becoming owner)
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Documents** column now reads **Write** as plain text, with no None/Read/Write buttons — auto-elevated on becoming owner, and shown as a value rather than a control because ownership confers write whatever the stored grant says
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Lesson Schedule** column likewise reads **Can View** as plain text, with no toggle to tap
+- [ ] (e2e: the_owner_row_explains_where_its_access_comes_from) (#1547) A line under the Access table explains that the owner's access comes from owning the horse and that unsetting the owner is how to edit it
 - [ ] (e2e: the_identity_header_owner_line_names_the_new_owner) Refresh the page → the identity header's owner line beside the photo now reads "Dana Rider" (it named the manager who created the horse before)
 - [ ] (e2e: the_identity_header_owner_line_links_to_the_owners_member_detail_page) That owner line links to Dana's member detail page
 - [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
