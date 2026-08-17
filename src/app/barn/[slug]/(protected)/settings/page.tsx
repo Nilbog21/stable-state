@@ -25,6 +25,13 @@ import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { GuardedForm } from '../NavigationBlocker'
 import { DownloadButton } from './DownloadButton'
 
+/**
+ * #1557 — one style for every section's description, so the sizes can't drift apart again (two
+ * sections had gone `text-xs`). Each description is its section's first child, above that
+ * section's controls.
+ */
+const DESCRIPTION_CLASS = 'mb-3 text-sm text-zinc-500 dark:text-zinc-400'
+
 export default async function SettingsPage({
   params,
   searchParams,
@@ -69,6 +76,9 @@ export default async function SettingsPage({
       </h1>
 
       <AccordionSection title="Default Instructor Cut" slug="instructor-cut" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
+        </p>
         <GuardedForm action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
@@ -90,22 +100,22 @@ export default async function SettingsPage({
           </div>
           <Button type="submit">Save</Button>
         </GuardedForm>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
-        </p>
       </AccordionSection>
 
       <AccordionSection title="Horse Exhaustion Thresholds" slug="exhaustion-thresholds" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Sets where a horse&apos;s exhaustion bar crosses into the moderate and high bands. Individual horses can override these.
+        </p>
         <ExhaustionThresholdsForm
           barn={barn}
           action={updateExhaustionThresholdsAction.bind(null, slug)}
         />
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Default exertion-sum thresholds used when a horse has no per-horse override.
-        </p>
       </AccordionSection>
 
       <AccordionSection title="Schedule Buffer" slug="schedule-buffer" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Instructors are notified when another instructor books a lesson within this many minutes of one of their own.
+        </p>
         <GuardedForm action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
@@ -127,9 +137,6 @@ export default async function SettingsPage({
           </div>
           <Button type="submit">Save</Button>
         </GuardedForm>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Instructors are notified when another instructor books a lesson within this many minutes of one of their own.
-        </p>
       </AccordionSection>
 
       <AccordionSection
@@ -139,6 +146,9 @@ export default async function SettingsPage({
         openSlug={open}
         headerExtra={<Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>}
       >
+        <p className={DESCRIPTION_CLASS}>
+          Named lesson types with a set price, so booking a lesson is a pick rather than a price entry. The default tier is pre-selected on new lessons.
+        </p>
         {tiers.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -190,6 +200,9 @@ export default async function SettingsPage({
         openSlug={open}
         headerExtra={<Button href={`/barn/${slug}/settings/events/new`}>Add Event</Button>}
       >
+        <p className={DESCRIPTION_CLASS}>
+          One-off dates on the barn calendar — shows, clinics, meetings, closures. Choose which roles see each one.
+        </p>
         {events.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -231,6 +244,9 @@ export default async function SettingsPage({
       </AccordionSection>
 
       <AccordionSection title="Default Board Fee" slug="board-fee" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Applies to new boarding agreements only — existing boarders are unchanged.
+        </p>
         <GuardedForm action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
@@ -249,12 +265,12 @@ export default async function SettingsPage({
           </div>
           <Button type="submit">Save</Button>
         </GuardedForm>
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Applies to new boarding agreements only — existing boarders are unchanged.
-        </p>
       </AccordionSection>
 
       <AccordionSection title="Barn Timezone" slug="timezone" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Every date and time in the app — lesson times, calendar days, and when charges fall due — is your barn&apos;s local time. This sets which zone that is.
+        </p>
         <GuardedForm action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
@@ -275,37 +291,31 @@ export default async function SettingsPage({
           </div>
           <Button type="submit">Save</Button>
         </GuardedForm>
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Used to determine when scheduled expenses become past due and which month an expense falls into near month boundaries.
-        </p>
       </AccordionSection>
 
+      {/* #1557 — no `<h3>` per sub-block: each description and its button name already say which
+          of the two downloads it is. The second description carries the `mt-6` the deleted
+          heading held, so the gap between the blocks survives the deletion. */}
       <AccordionSection title="Data Backup">
-        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Documents</h3>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className={DESCRIPTION_CLASS}>
           {hasDocuments
             ? 'Downloads every horse, trainer, and rider document as one zip archive, grouped by horse and member.'
             : 'No documents to download yet.'}
         </p>
-        <div className="mt-2">
-          <DownloadButton
-            action={downloadAllDocumentsAction.bind(null, slug)}
-            disabled={!hasDocuments}
-            label="Download All Documents"
-          />
-        </div>
+        <DownloadButton
+          action={downloadAllDocumentsAction.bind(null, slug)}
+          disabled={!hasDocuments}
+          label="Download All Documents"
+        />
 
-        <h3 className="mt-6 text-sm font-medium text-zinc-700 dark:text-zinc-300">Data</h3>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <p className={`mt-6 ${DESCRIPTION_CLASS}`}>
           Downloads a spreadsheet of your horses, lessons, agreements, expenses, transactions, members, and document records — one sheet per record type.
         </p>
-        <div className="mt-2">
-          <DownloadButton
-            action={downloadBarnDataAction.bind(null, slug)}
-            disabled={false}
-            label="Download Data"
-          />
-        </div>
+        <DownloadButton
+          action={downloadBarnDataAction.bind(null, slug)}
+          disabled={false}
+          label="Download Data"
+        />
       </AccordionSection>
     </main>
   )
