@@ -1,10 +1,10 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/components/ExhaustionBar.tsx
 //
-// The Horses list's Available section: its exertion sort, one exhaustion bar per card, the three
+// The Horses list's Available section: its name sort, one exhaustion bar per card, the three
 // colour bands, and the breakdown popover's open / retap-to-close / tap-outside-to-close /
 // does-not-navigate behaviours (checklists/pre-release/phase-4-manager-verification.md, the block
-// from "The Available section is sorted by total exertion" through "Tapping the bar does not
+// from "The Available section is sorted by horse name" through "Tapping the bar does not
 // navigate to the horse detail page").
 //
 // Every test does its own goto and mutates nothing, so this file is a set of independent reads of
@@ -63,12 +63,12 @@ const LOW_BAND_FILL = /bg-green-500/
 const MODERATE_BAND_FILL = /bg-amber-500/
 const HIGH_BAND_FILL = /bg-red-500/
 
-// The Available section sorts ascending by that total, so the expected order is Clover, Apple,
-// Butter — deliberately different from *every* order the system could produce by accident:
-// alphabetical (Apple, Butter, Clover, which is get_horse_exertion_summary's own `ORDER BY h.name`
-// and therefore exactly what deleting the page's .sort() would show) and insertion order (Butter,
-// Clover, Apple, seeded that way below on purpose). No accidentally-correct ordering can pass this.
-const EXPECTED_EXERTION_ORDER = [CLOVER, APPLE, BUTTER]
+// The Available section sorts by name (#1553), so the expected order is Apple, Butter, Clover.
+// The two orders it could produce by accident both differ from it: insertion order (Butter,
+// Clover, Apple, seeded that way below on purpose) and the exertion-ascending order the page
+// sorted by before #1553 (Clover, Apple, Butter, per the totals above). No accidentally-correct
+// ordering can pass this.
+const EXPECTED_NAME_ORDER = [APPLE, BUTTER, CLOVER]
 
 // The breakdown popover's header for Apple, written as the literal string the page must render.
 // "1 lessons" would be the Clover form — the component does not pluralise — which is noted only
@@ -87,7 +87,7 @@ const barn = withBarn('phase4-horses-list', async ({ supabase, barn, members }) 
     exhaustionThresholdHigh: HIGH_THRESHOLD,
   })
 
-  // Butter, then Clover, then Apple: see EXPECTED_EXERTION_ORDER. Neither horse gets an owner or a
+  // Butter, then Clover, then Apple: see EXPECTED_NAME_ORDER. Neither horse gets an owner or a
   // custom availability, so createHorse's defaults put all three in Available with no My Horses
   // section above them.
   butterId = (await addHorse(supabase, barn.id, BUTTER)).id
@@ -164,9 +164,9 @@ function breakdown(page: Page, horseId: string, summary: string) {
 
 // toHaveText's array form pins the link list to exactly three entries in exactly this order, so a
 // section that renders nothing fails rather than satisfying the claim vacuously.
-test('available_section_is_sorted_by_total_exertion_ascending @manager', async ({ page }) => {
+test('available_section_is_sorted_by_horse_name @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
-  await expect(availableSection(page).getByRole('link')).toHaveText(EXPECTED_EXERTION_ORDER)
+  await expect(availableSection(page).getByRole('link')).toHaveText(EXPECTED_NAME_ORDER)
 })
 
 // One clause per horse, each requiring a bar *inside that horse's own card* — so three bars stacked
@@ -182,13 +182,14 @@ test('each_available_horse_card_shows_an_exhaustion_bar @manager', async ({ page
 // Read off the bar elements themselves, not off a wrapper: a class attribute is not inherited, so
 // this cannot resolve from the card or the track and report a colour for a bar that isn't there.
 // The array form asserts the count as well as the classes, so three missing bars fail rather than
-// match nothing. DOM order is the exertion order above, hence low -> moderate -> high.
+// match nothing. DOM order is the name order above — Apple (8), Butter (15), Clover (2) — hence
+// moderate -> high -> low.
 test('the_three_bars_land_in_three_different_color_bands @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
   await expect(availableSection(page).locator(SOLID_BAR)).toHaveClass([
-    LOW_BAND_FILL,
     MODERATE_BAND_FILL,
     HIGH_BAND_FILL,
+    LOW_BAND_FILL,
   ])
 })
 
