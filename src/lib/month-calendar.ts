@@ -112,6 +112,21 @@ function worstBand(
   return worst
 }
 
+/** Decorations for *browsing* a month rather than picking a day in one (#1558's dashboard):
+ *  a flat "something is on this day" tint and nothing else. Deliberately not
+ *  `computeDayDecorations` with empty options — that function's whole model is a form's
+ *  current selection, and two of its answers are wrong here. `past` stays false because a
+ *  dashboard browses history and `past` wins the tint precedence outright, so a past day
+ *  would go blank exactly when the user paged back to look at it; `scheduled` keys off any
+ *  item at all rather than off a selected rider's. `band`/`conflict` are selection concepts
+ *  with no meaning outside a form. */
+export function browseDayDecorations(dates: CalendarDate[], items: ScheduleItem[]): Record<string, DayDecoration> {
+  const busy = new Set(items.map((i) => i.start.slice(0, 10)))
+  return Object.fromEntries(
+    dates.map((date) => [date, { past: false, band: null, scheduled: busy.has(date), conflict: false }])
+  )
+}
+
 export function computeDayDecorations(
   dates: CalendarDate[],
   items: ScheduleItem[],

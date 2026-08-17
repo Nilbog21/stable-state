@@ -287,6 +287,15 @@ describe('MonthCalendarPicker — renderDayPanel', () => {
     expect(screen.queryByText('Nothing scheduled for this day.')).toBeNull()
   })
 
+  // The two props are independent: a caller supplying neither still renders the built-in list
+  // (just without descriptions) rather than crashing on the missing callback.
+  it('should_render_the_built_in_list_without_descriptions_when_describeItem_is_omitted', () => {
+    renderPicker({ items: [createMockScheduleItem({ start: '2026-03-10T09:00:00' })], describeItem: undefined })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.getByText('9:00 AM')).toBeDefined()
+  })
+
   // Guards both form callers: neither passes the prop, and both must keep the built-in list.
   it('should_keep_the_built_in_item_list_when_the_prop_is_omitted', () => {
     renderPicker({ items: [createMockScheduleItem({ start: '2026-03-10T09:00:00' })] })
