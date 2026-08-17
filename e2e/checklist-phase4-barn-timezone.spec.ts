@@ -272,9 +272,6 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * rather than trusted.
  */
 const PIN_INSTANT = wallClockToInstant(`${BARN_TODAY}T01:00:00`, EASTERN)
-// "HH:MM" since #1021: the New Lesson default is now read off a minute-granular time input
-// rather than an hour `<select>`, so the expected value carries the :00 the field renders.
-const PIN_BARN_TIME = '01:00'
 
 /**
  * The pin's arithmetic, executable rather than written in a comment.
@@ -289,20 +286,20 @@ const PIN_BARN_TIME = '01:00'
  * bug and is not. `HNL ≤ EDT ≤ UTC` at every instant, and that span is 10h < 24h — so the Eastern
  * calendar day always equals either the Honolulu day or the UTC day, and can never differ from
  * both. No date assertion in this file can separate the barn's day from the device's AND from UTC.
- * The date item therefore takes the axis its own line names (the device), and the UTC axis is
- * closed by the **Start Time** item's HOUR, where all three frames are distinct by construction —
- * same form, same page load. Asserting the equality here means a future edit that "fixes" the pin
- * thinking it has separated all three is told the truth immediately.
+ * The date item therefore takes the axis its own line names (the device). Asserting the equality
+ * here means a future edit that "fixes" the pin thinking it has separated all three is told the
+ * truth immediately.
+ *
+ * The UTC axis is closed elsewhere in this file, and not off this pin at all:
+ * `edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_start_time` reads a start time whose
+ * UTC decode is `20:00` and whose barn decode is `16:00`. #1578 deleted the create-form item that
+ * used to carry that axis off the pin's hour spread, which is why the hour check this guard once
+ * made went with it.
  */
 function assertPinArithmetic(): void {
   const barnSideDay = barnDay(PIN_INSTANT, EASTERN)
   const deviceSideDay = barnDay(PIN_INSTANT, HAWAII)
   const utcSideDay = PIN_INSTANT.toISOString().slice(0, 10)
-  const hours = [
-    barnWallClock(PIN_INSTANT, EASTERN).slice(11, 13),
-    barnWallClock(PIN_INSTANT, HAWAII).slice(11, 13),
-    PIN_INSTANT.toISOString().slice(11, 13),
-  ]
 
   const problems: string[] = []
   if (barnSideDay !== BARN_TODAY) {
@@ -317,9 +314,6 @@ function assertPinArithmetic(): void {
         'These are expected to be EQUAL — see the derivation above; if they now differ, the ' +
         'pin has moved and the date pre-fill item is asserting a different axis than its comment claims.'
     )
-  }
-  if (new Set(hours).size !== 3) {
-    problems.push(`barn/device/UTC hours ${hours.join('/')} are not pairwise distinct`)
   }
   if (problems.length > 0) {
     throw new Error(`device clock pin ${PIN_INSTANT.toISOString()} is misaimed:\n  ${problems.join('\n  ')}`)
@@ -555,19 +549,11 @@ async function pickCalendarDay(page: Page, day: string): Promise<void> {
   await page.getByRole('button', { name: day, exact: true }).click()
 }
 
-/** The time the time-axis barrier below enters. Never the picker's own default. */
-const HYDRATION_BARRIER_TIME = '09:00'
-
 /**
- * A day in the same calendar month as the barn's today, so it is always inside the rendered
- * grid without paging. `getMonthGrid` starts at the 1st minus its weekday, so a neighbouring
- * day in an ADJACENT month is only sometimes present — and a month always has at least 28
- * days, so at least one of ±1 stays inside it.
+ * The time the barrier below enters. Since #1578 the create form's Start Time opens empty, so
+ * any value is a value only the barrier can have written — it no longer has to dodge a default.
  */
-const HYDRATION_BARRIER_DAY =
-  shiftDay(BARN_TODAY, 1).slice(0, 7) === BARN_TODAY.slice(0, 7)
-    ? shiftDay(BARN_TODAY, 1)
-    : shiftDay(BARN_TODAY, -1)
+const HYDRATION_BARRIER_TIME = '09:00'
 
 /**
  * Whether the named hidden input already reports the given barn-local field, which only
@@ -616,11 +602,12 @@ async function pickerFieldIs(
  * the right one, so the assertion passes for the wrong reason. Both barriers below were forced
  * by probes that PASSED.
  *
- * Each barrier perturbs the axis the test it serves does NOT assert, then waits for the hidden
+ * The barrier perturbs the axis the test it serves does NOT assert, then waits for the hidden
  * `lesson_at` input to carry the change — a write only client-side React can produce, so
- * observing it is genuine proof the component is live. `selectOption`/`click` before hydration
- * is a no-op on a control whose listener is not attached yet, which is exactly why the wait is
- * on the consequence rather than on the control's own value.
+ * observing it is genuine proof the component is live. A `fill` before hydration is a no-op on a
+ * control whose listener is not attached yet, which is exactly why the wait is on the consequence
+ * rather than on the control's own value. Since #1578 that hidden input does not exist until a
+ * time is entered, which strengthens the signal: its mere presence is already client-only.
  *
  * What it does NOT do — measured, after an earlier version of this comment claimed otherwise —
  * is reconcile `aria-pressed`. That attribute keeps the server's value through hydration and
@@ -628,7 +615,7 @@ async function pickerFieldIs(
  * it. So the barrier makes the hidden input trustworthy and leaves the day cell exactly as
  * stale as it was.
  *
- * Both go through `hydrateByDriving` (`support/hydration.ts`, #1280) rather than driving once and
+ * It goes through `hydrateByDriving` (`support/hydration.ts`, #1280) rather than driving once and
  * waiting: a control driven before React is listening receives nothing and nothing replays it, so
  * a single drive can only run out the budget. Re-entering the same time is idempotent, which is
  * what makes the time axis safe to retry.
@@ -639,22 +626,6 @@ async function hydrateByChangingTime(page: Page): Promise<void> {
     // 11..16 rather than 11..13 since #1021: the wall clock the hidden input now carries is
     // minute-granular, so the barrier has to match "HH:MM" or it would pass on a truncation.
     () => pickerFieldIs(page, 'lesson_at', 11, 16, HYDRATION_BARRIER_TIME)
-  )
-}
-
-/**
- * The date-axis barrier, for the test that asserts the TIME and so must not perturb it.
- *
- * #1021 removed the trailing dismiss this used to carry. It existed because `Close` lived inside
- * MonthCalendarPicker's `useState`-gated popup, so it was unreachable on the pre-hydration
- * attempt and had to wait until `lesson_at` proved React was live (#1280). The lesson form now
- * passes `dayPanelAlwaysOpen`, so that panel is open from the server's own markup and renders no
- * Close button at all — there is nothing left to dismiss, and the ordering hazard is gone with it.
- */
-async function hydrateByChangingDay(page: Page): Promise<void> {
-  await hydrateByDriving(
-    () => page.getByRole('button', { name: HYDRATION_BARRIER_DAY, exact: true }).click(),
-    () => pickerFieldIs(page, 'lesson_at', 0, 10, HYDRATION_BARRIER_DAY)
   )
 }
 
@@ -726,12 +697,15 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
     // equality. The time is the discriminating half: a
     // viewer-framed decode of this instant yields 10:00, and a UTC one yields 20:00 (measured —
     // a probe pointing the decode at the runtime's own zone produced exactly `time: "20:00"`).
+    // Since #1578 deleted the create-form Start Time item, this is also the file's only remaining
+    // assertion separating the barn's frame from UTC — the date pre-fill item provably cannot
+    // (see assertPinArithmetic).
     //
-    // The seed-equals-default question has a sharper answer here than "the field starts empty":
-    // `LessonStartTime` falls back to THE BARN'S CURRENT HOUR at :00 when `initialTime` is
-    // absent. So a form that dropped the prop entirely renders '16:00' during the 16:00-16:59
-    // barn-local hour and this half agrees with it. Narrow (1-in-24) and time-of-day dependent,
-    // so it reads as a flake rather than as vacuity — recorded here rather than papered over.
+    // This carried a vacuity caveat until #1578, and it is now resolved rather than merely
+    // narrowed: `LessonStartTime` used to fall back to the barn's current hour at :00 when
+    // `initialTime` was absent, so a form that dropped the prop entirely agreed with '16:00'
+    // during the 16:00-16:59 barn-local hour — 1-in-24, and reading as a flake rather than as
+    // vacuity. The field now opens EMPTY with no prop, so that form fails this at every hour.
     //
     // The date half is asserted because the line names it, but 4:00 PM Eastern and 10:00 AM
     // Honolulu are the same calendar day, so it does not discriminate on its own.
@@ -767,13 +741,17 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
 })
 
 // ---------------------------------------------------------------------------
-// New Lesson's date and start-time defaults — the "**New Lesson**'s date pre-fills with the
-// barn's date" and "**Start Time** field opens on the barn's current hour" items
+// New Lesson's date pre-fill — the "**New Lesson**'s date pre-fills with the barn's date" item
 // ---------------------------------------------------------------------------
 //
-// A plain describe: both tests are read-only and independent. The clock pin is per-test rather
-// than file-wide so the nine tests that do not need a frozen clock do not carry one — and so
-// the idiom is liftable as-is by the three specs waiting on it (see the PR body).
+// A plain describe: the test is read-only. The clock pin is per-test rather than file-wide so the
+// tests that do not need a frozen clock do not carry one — and so the idiom is liftable as-is by
+// the specs waiting on it.
+//
+// This describe held a second test until #1578, asserting that **Start Time** opened on the barn's
+// current hour. That default is gone — the create form now opens the field empty — so the test and
+// its checklist line were deleted rather than rewritten: there is no barn-hour computation left on
+// this form to assert.
 
 test.describe('New Lesson defaults follow the barn, not the device', () => {
   test('new_lesson_date_prefills_the_barns_day_not_the_devices @manager', async ({ page }) => {
@@ -801,23 +779,6 @@ test.describe('New Lesson defaults follow the barn, not the device', () => {
     // control resolving the default in the DEVICE's zone answers `BARN_TODAY - 1`.
     const submitted = await page.locator('input[name="lesson_at"]').inputValue()
     expect(barnWallClock(new Date(submitted), EASTERN).slice(0, 10)).toBe(BARN_TODAY)
-  })
-
-  test('new_lesson_start_time_opens_on_the_barns_hour_not_the_devices @manager', async ({ page }) => {
-    await page.clock.setFixedTime(PIN_INSTANT)
-    await page.goto(`/barn/${barn.slug}/lessons/new`)
-    await hydrateByChangingDay(page)
-
-    // The item this file leans on hardest. At the pinned instant the barn reads hour 1, the
-    // device reads 19 and UTC reads 5 — three distinct values — so this is the one assertion
-    // here that separates the barn's frame from the device's AND from UTC at once, which is
-    // what closes the axis the date pre-fill item provably cannot (see assertPinArithmetic).
-    //
-    // One residue, stated rather than hidden: the SERVER renders this field from the real
-    // clock, not the pinned one, so during the 01:00-01:59 barn-local hour the server's own
-    // markup already says '01:00'. The barrier above is what makes the read a client read, and
-    // it is load-bearing for that window specifically.
-    await expect(page.locator('#lesson-start-time')).toHaveValue(PIN_BARN_TIME)
   })
 })
 

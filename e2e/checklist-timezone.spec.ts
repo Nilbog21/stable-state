@@ -80,6 +80,10 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   // #1021 — the day panel now hosts the Start Time field, so it is always open and has no Close
   // button to dismiss. Filling the field is itself the proof the panel is showing: a `fill` on a
   // control inside a closed panel would fail rather than pass quietly.
+  //
+  // Since #1578 the fill is also mandatory rather than merely corrective: the field opens empty,
+  // so a fill that never reached React leaves no `lesson_at` at all and the submit below is
+  // blocked outright — where it used to sail through carrying the barn's current hour.
   await page.locator('#lesson-start-time').fill(time)
 
   // Keyboard activation instead of a raw pointer .click(): Submit sits at the

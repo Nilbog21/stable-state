@@ -97,7 +97,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
-import { editPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
+import { BARRIER_TIME, editPath, newLessonPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
 import { pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
@@ -634,33 +634,41 @@ test.describe('New Lesson — the current-month paid lesson', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('New Lesson — live exhaustion bars', () => {
-  // "While creating it, with no start time entered (so no lesson instant is selected) no
-  // exhaustion bars render". See the header for why the line no longer says "before a date is
-  // picked": the create form has a day selected from its first render.
+  // "The New Lesson form OPENS with Start Time empty — so no lesson instant is selected — and no
+  // exhaustion bars render." The claim is the opening state since #1578, not a cleared field: the
+  // form no longer pre-fills the time with the barn's current hour, so "no instant selected" is
+  // now what a manager actually sees on arrival rather than a state they have to construct.
+  //
+  // NOT `openNewLessonForm`, and that is forced rather than stylistic: that helper's hydration
+  // barrier *fills the start time*, which is the very field this asserts is empty. The barrier
+  // here is `waitForBarnPageHydrated` instead — driven through the nav bar's avatar menu, which
+  // shares a React root with the page and touches no form control at all (fact 13's prescribed
+  // workaround, `support/hydration.ts`).
   //
   // THE ABSENCE IS DURABLE, WHICH IS WHAT MAKES IT ASSERTABLE (fact 18 / spec-maintenance rule
   // 4). `LessonStartTime` reports `''` for the combined instant whenever either half is empty,
-  // and `LessonForm`'s fetch effect early-returns on an empty `lessonAt` — so once the time is
-  // cleared no request is outstanding and nothing can bring the bars back. A `toHaveCount(0)`
+  // and `LessonForm`'s fetch effect early-returns on an empty `lessonAt` — so with no time
+  // entered no request is ever outstanding and nothing can bring the bars up. A `toHaveCount(0)`
   // satisfied on its first poll therefore observes the settled state rather than a pre-render
-  // window, and a regression that kept the bars up would never reach zero and would fail.
+  // window, and a regression that restored the pre-fill would fetch and would fail.
   //
-  // The positive anchor is the same locator's own count, in the same test, on the same page
-  // state: three bars, each already carrying dayA's fixture total, so the anchor also proves the
-  // fetch had landed before the clear.
-  test('with_no_start_time_entered_the_new_lesson_form_renders_no_exhaustion_bars @manager', async ({
+  // The positive anchor rule 4 requires is the second half: entering a time on dayA brings all
+  // three bars in, each carrying that day's fixture total. It proves the page region renders and
+  // that the fetch path is live, so the zero above is an absence rather than a blank page.
+  test('the_new_lesson_form_opens_with_an_empty_start_time_and_no_exhaustion_bars @manager', async ({
     page,
   }) => {
-    await openFormOnDayA(page)
+    await page.goto(newLessonPath(barn))
+    await waitForBarnPageHydrated(page)
+
+    await expect(page.locator('#lesson-start-time')).toHaveValue('')
+    await expect(solidBars(page)).toHaveCount(0)
+
+    await goToFixtureMonth(page)
+    await pickDay(page, dayA)
+    await page.locator('#lesson-start-time').fill(BARRIER_TIME)
     await waitForBarTotal(page, apple, DAY_A.apple)
     await expect(solidBars(page)).toHaveCount(HORSE_COUNT)
-
-    await page.locator('#lesson-start-time').fill('')
-    // Settles on React having committed the clear, so the count below is a claim about the
-    // cleared form rather than a race against the keystroke.
-    await expect(page.locator('#lesson-start-time')).toHaveValue('')
-
-    await expect(solidBars(page)).toHaveCount(0)
   })
 
   // "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar."

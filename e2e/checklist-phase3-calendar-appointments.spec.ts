@@ -135,6 +135,10 @@ const FARRIER_RECIPIENT = 'Ridgefield Hoofcare'
  * BARRIER_TIME's HOUR is separately load-bearing in this file: every test that does not drive the
  * start-time field runs the grid at hour 10, and the fixture-day table below is written against
  * that. Changing `10` breaks the two `earlyHourBarrierDay` transitions in the first test.
+ *
+ * Since #1578 that hour comes only from `openNewLessonForm`'s own fill — the form no longer
+ * pre-fills a start time, so hour 10 is a state every test here *enters* rather than one it
+ * inherits, and a test that skipped the helper would sit at `selectedHour`'s 0 fallback instead.
  */
 
 /** The start-time field's two ends for the shift test — "an early hour" and "a late one" in the
@@ -502,7 +506,8 @@ test.describe('#1021 start time shifts the shading', () => {
     // TWO barriers, because neither alone pins the hour the `early` grid is decorated for.
     //
     // The band wait is safe as a `low` wait only because the fetch was already proved above (at
-    // the form's opening hour of 10 this day reads `high`). But it proves only `hour < 8`, not
+    // hour 10, which `openNewLessonForm`'s barrier fill put the form in — since #1578 the form
+    // opens with no hour at all, so nothing here inherits one). But it proves only `hour < 8`, not
     // `hour == 6`: `selectedHour` falls back to 0 whenever `lessonAt` is `''` (LessonForm.tsx),
     // which `LessonStartTime` produces for an empty time input — and hours 0 and 6 give
     // genuinely different grids, so that is not a distinction without a difference.
