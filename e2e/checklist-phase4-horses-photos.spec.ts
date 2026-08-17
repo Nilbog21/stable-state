@@ -424,12 +424,14 @@ test.describe.serial('an owned horse whose owner never set a photo', () => {
   //
   // This line's whole point is its parenthetical — Apple *has* an owning rider, and the write
   // still succeeds because the lock needs an owner **and** an owner-uploaded photo. An assertion
-  // on the photo alone would pass just as happily against an unowned horse, i.e. it would have
+  // on the photo alone would pass just as happily against a horse owned by anyone else, i.e. it would have
   // full force and be about a weaker claim than the line makes. Nothing else in this file pins
   // Apple's ownership: the lock block below proves she is *unlocked*, which is not the same thing.
   //
-  // Read as the owner link's own href (page.tsx renders it only when owning_member_id is set), so
-  // the check is on rendered markup rather than on the seed value echoed back at itself. The
+  // Read as the owner link's own href — which is *whose* it is, not merely that one rendered:
+  // since #1549 every horse has an owner and the line always renders, so a count of the link alone
+  // would no longer discriminate. The href pins it to Apple's rider, on rendered markup rather
+  // than on the seed value echoed back at itself. The
   // photo read settles the document first, so the count that follows cannot be a premature zero.
   test('a_manager_can_set_a_photo_on_an_owned_horse_whose_owner_never_set_one @manager', async ({ page }) => {
     const ownerHref = `/barn/${barn.slug}/members/${barn.data.members.rider.membershipId}`

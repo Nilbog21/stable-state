@@ -76,11 +76,14 @@ const barn = withBarn('phase4-horses-detail', async ({ supabase, barn, members }
     high: settings.exhaustion_threshold_high,
   }
 
-  // Neither horse gets an owner: createHorse writes owning_member_id: null when none is passed,
-  // so both start under Available and the My Horses section starts absent — which is what makes
-  // the #1000 block below a state *change* rather than a state check.
-  appleId = (await addHorse(supabase, barn.id, APPLE)).id
-  cloverId = (await addHorse(supabase, barn.id, CLOVER)).id
+  // Both horses start owned by the *trainer*, not by the manager `addHorse` would otherwise
+  // default to (#1549 — `horses.owning_member_id` is NOT NULL, so "neither horse gets an owner"
+  // stopped being a state). The manager owning neither is what this file actually needs: both
+  // start under Available, the My Owned Horses section starts absent, and the #1000 block below
+  // is a state *change* rather than a state check. The trainer holds no grant on Clover, so their
+  // owner row is also the synthesised kind — the ordinary case since #1549.
+  appleId = (await addHorse(supabase, barn.id, APPLE, { owningMemberId: members.trainer.membershipId })).id
+  cloverId = (await addHorse(supabase, barn.id, CLOVER, { owningMemberId: members.trainer.membershipId })).id
 
   // Seeded inline rather than through a builder, per this batch's seed-inline ruling. The
   // Access table only renders "Set as Owner" for a member who already holds a
@@ -121,8 +124,9 @@ function horseHref(horseId: string): string {
 }
 
 /**
- * One member's row in the Access table. Clover carries two grants since #1547, so "Set as Owner"
- * and "Owner" are no longer unique on the page and the member name is what tells the rows apart.
+ * One member's row in the Access table. Clover carries two grants since #1547 plus its owner's own
+ * row since #1549, so "Set as Owner" and "Owner" are not unique on the page and the member name is
+ * what tells the rows apart.
  * Derived from the fixture rather than written as a literal, per this file's seed-inputs rule —
  * and safe as a `hasText` substring because no seeded name contains another (`E2E_STUB_RIDER`).
  */
@@ -368,19 +372,19 @@ test('horses_list_card_shows_registered_name_in_parentheses @manager', async ({ 
 test('setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
   await openSection(page, 'Access')
-  await accessRow(page, MANAGER_NAME).getByRole('button', { name: 'Set as Owner', exact: true }).click()
+  await accessRow(page, MANAGER_NAME).getByRole('radio', { name: 'Set as Owner', exact: true }).click()
   // A wait, not an assertion: the row refreshes through the action's own revalidatePath with no
   // navigation to wait on (#1390 dropped the router.refresh() that used to do this alongside it),
-  // and the button relabelling is the signal the action resolved.
-  await accessRow(page, MANAGER_NAME).getByRole('button', { name: 'Owner', exact: true }).waitFor()
+  // and the radio relabelling is the signal the action resolved.
+  await accessRow(page, MANAGER_NAME).getByRole('radio', { name: 'Owner', exact: true }).waitFor()
 
   await page.goto(`/barn/${barn.slug}/horses`)
-  await expect(page.locator('main > section').first().getByRole('heading')).toHaveText('My Horses')
+  await expect(page.locator('main > section').first().getByRole('heading')).toHaveText('My Owned Horses')
 })
 
 test('owned_horse_appears_under_my_horses @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
-  await expect(horseCardLink(page, 'My Horses', cloverId)).toHaveCount(1)
+  await expect(horseCardLink(page, 'My Owned Horses', cloverId)).toHaveCount(1)
 })
 
 // "Green" is asserted as the tone Badge selected, not as a rendered colour: Badge.test.tsx
@@ -388,7 +392,7 @@ test('owned_horse_appears_under_my_horses @manager', async ({ page }) => {
 // duplicate it, and a pixel judgment is what @visual was deferred for.
 test('owned_horse_shows_a_green_active_badge_under_my_horses @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
-  await expect(section(page, 'My Horses').getByText('Active', { exact: true })).toHaveClass(/bg-green-100/)
+  await expect(section(page, 'My Owned Horses').getByText('Active', { exact: true })).toHaveClass(/bg-green-100/)
 })
 
 // Deliberately not `toHaveCount(0)` on Clover's card: that passes on nothing if the Available
@@ -414,7 +418,7 @@ test('owned_horse_no_longer_appears_under_available @manager', async ({ page }) 
 // `exhaustion` prop.
 test('owned_horse_card_shows_an_exhaustion_bar @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
-  await expect(section(page, 'My Horses').locator(SOLID_BAR)).toHaveCount(1)
+  await expect(section(page, 'My Owned Horses').locator(SOLID_BAR)).toHaveCount(1)
 })
 
 // ---------------------------------------------------------------------------
@@ -446,10 +450,13 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
   return html.slice(start, end)
 }
 
-// Nine controls, nine forms: Grant Access, then Owner + Revoke on the manager's row, and Set as
-// Owner / the three document-access segments / the lesson-access switch / Revoke on the rider's.
-// #1548 turned that last control from a Can View/Cannot View button into a `Switch`, which is still
-// one form and one submit — the count is unchanged, and that is the point of it being a count.
+// Eight controls, eight forms: Grant Access, then the Owner radio alone on the manager's row, and
+// Set as Owner / the three document-access radios / the lesson-access switch / Revoke on the
+// rider's. #1548 turned that last control from a Can View/Cannot View button into a `Switch` and
+// #1549 turned the document segments and the owner toggle into `Radio`s — each is still one form
+// and one submit, which is the point of it being a count rather than a list of selectors. The
+// count did move by one: #1549 took Revoke off the owner's row, because `revoke_horse_privilege`
+// no longer clears ownership and the button would delete a grant nothing displays.
 // Before #1390 every one was a `<button type="button" onClick>` with no form at all, so each was a
 // silent no-op inside the hydration window — the defect #1385 fixed for member documents, on a page
 // a manager lands on and immediately clicks. Documents was a `<select>` carrying its value in
@@ -466,7 +473,7 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
 // that regressed to an inline closure — the shape e2e/CLAUDE.md fact 10 warns about — drops out
 // of this count while still looking correct in the browser and still passing every other test in
 // this file.
-const EXPECTED_ACCESS_FORMS = 9
+const EXPECTED_ACCESS_FORMS = 8
 
 test('the_access_tables_controls_all_submit_through_enhanced_forms @manager', async ({ page }) => {
   const markup = await servedAccessMarkup(page, cloverId)
@@ -489,25 +496,25 @@ test('the_access_tables_forms_carry_their_action_reference_in_hidden_fields @man
 // disagreeing, and every test in the suite passed through it — the served markup was well-formed
 // and jsdom saw the right FormData, so only a real round-trip plus a reload could see it.
 //
-// The rider's row, not the manager's: since #1547 the owner's row has no document buttons to
+// The rider's row, not the manager's: since #1547 the owner's row has no document radios to
 // click. Its grant is still at the schema default `none` — nothing in the chain touches it, and
 // `set_horse_owner`'s elevation reached the manager's row alone — so `read` remains a value only
 // this test's own click could have left behind.
 test('a_document_access_choice_survives_a_reload @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
   await openSection(page, 'Access')
-  const readButton = accessRow(page, RIDER_NAME).getByRole('button', { name: 'Read', exact: true })
-  await readButton.click()
+  const readRadio = accessRow(page, RIDER_NAME).getByRole('radio', { name: 'Read', exact: true })
+  await readRadio.click()
   // A wait, not the assertion: the row refreshes through the action's own revalidatePath with no
-  // navigation to wait on, and `aria-pressed` moving is the signal the action resolved (fact 8 —
+  // navigation to wait on, and `aria-checked` moving is the signal the action resolved (fact 8 —
   // the POST landing and the DOM reflecting it are separate events). Being a web-first matcher it
   // is bounded at 5s, which is the whole budget the reload below is guarded by — hence the number
   // (#1469).
-  await expect(readButton).toHaveAttribute('aria-pressed', 'true', { timeout: SETTLE_AFTER_WRITE })
+  await expect(readRadio).toHaveAttribute('aria-checked', 'true', { timeout: SETTLE_AFTER_WRITE })
 
   await page.reload()
   await openSection(page, 'Access')
-  await expect(readButton).toHaveAttribute('aria-pressed', 'true')
+  await expect(readRadio).toHaveAttribute('aria-checked', 'true')
 })
 
 // ---------------------------------------------------------------------------
@@ -667,10 +674,13 @@ test('clearing_feed_notes_leaves_the_field_empty_on_reload @manager', async ({ p
 })
 
 // #1390 — the manager's notes save must go through update_horse_notes, which until this issue
-// admitted the owning member alone. Apple has no owner, so a manager who was not admitted by the
-// new auth_is_barn_manager branch would get 'not_authorized' and no confirmation at all. The
-// three tests above would then fail on the value; this one names the reason.
-test('a_manager_saving_notes_on_an_unowned_horse_is_not_rejected @manager', async ({ page }) => {
+// admitted the owning member alone. Apple is owned by the *trainer* (#1549 made ownership
+// mandatory, so "no owner" stopped being a state this could be read against), so a manager who
+// was not admitted by the new auth_is_barn_manager branch would get 'not_authorized' and no
+// confirmation at all. The three tests above would then fail on the value; this one names the
+// reason — and the owner being somebody else is what keeps it a manager-branch check rather than
+// one the ownership branch could satisfy.
+test('a_manager_saving_notes_on_a_horse_they_do_not_own_is_not_rejected @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await page.getByLabel('Feed Notes', { exact: true }).fill(FEED_NOTES)
   await saveNotesAndSettle(page)

@@ -62,7 +62,8 @@ export async function updateHorsePrivilegeLessonAccess(
   if (error) throw error
 }
 
-export async function setHorseOwner(horseId: string, barnId: string, memberId: string | null): Promise<void> {
+// #1549: ownership transfers, never clears -- there is no null to pass any more.
+export async function setHorseOwner(horseId: string, barnId: string, memberId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('set_horse_owner', {
     p_horse_id: horseId,

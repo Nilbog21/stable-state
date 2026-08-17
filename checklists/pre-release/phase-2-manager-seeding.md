@@ -20,28 +20,29 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
 - [ ] (e2e: adding_three_horses_through_the_inline_form_lists_all_three) Create horses **Daisy**, **Eclipse**, and **Flint**
 - [ ] (e2e: marking_a_horse_unavailable_with_a_reason_stores_both) Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
-- [ ] (e2e: the_horses_list_shows_an_unavailable_horse_with_its_reason) Horses page now shows Daisy with an **Unavailable** badge and the reason visible — under **My Horses**, since the manager who adds a horse through this form becomes its owner (#998)
+- [ ] (e2e: the_horses_list_shows_an_unavailable_horse_with_its_reason) Horses page now shows Daisy with an **Unavailable** badge and the reason visible — under **My Owned Horses**, since the manager who adds a horse through this form becomes its owner (#998/#1549)
 - [ ] (e2e: granting_a_rider_access_adds_them_to_the_grants_list) On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list
-- [ ] (e2e: a_granted_riders_row_offers_set_as_owner) Dana's row carries an **Owner** column showing **Set as Owner**
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) Tap **Set as Owner** on Dana's row → the button changes to **Owner**
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Documents** column now reads **Write** as plain text, with no None/Read/Write segmented strip — auto-elevated on becoming owner, and shown as a value rather than a control because ownership confers write whatever the stored grant says
+- [ ] (e2e: a_granted_riders_row_offers_set_as_owner) (#1549) Dana's row carries an **Owner** column holding an unselected radio labelled **Set as Owner**
+- [ ] (e2e: granting_a_rider_access_adds_them_to_the_grants_list) (#1549) The manager who created Eclipse has a row of their own *above* Dana's, even though they hold no Access grant — every horse has an owner, so the Owner column always has one selected
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) Tap **Set as Owner** on Dana's row → her radio becomes selected and reads **Owner**, and the manager's row deselects
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Documents** column now reads **Write** as plain text, with no None/Read/Write radio group — auto-elevated on becoming owner, and shown as a value rather than a control because ownership confers write whatever the stored grant says
 - [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Lesson Schedule** column likewise reads **Can View** as plain text, with no switch to flick
-- [ ] (e2e: the_owner_row_explains_where_its_access_comes_from) (#1547) A line under the Access table explains that the owner's access comes from owning the horse and that unsetting the owner is how to edit it
+- [ ] (e2e: the_owner_row_explains_where_its_access_comes_from) (#1547) A line under the Access table explains that the owner's access comes from owning the horse
+- [ ] (e2e: the_owner_row_does_not_offer_to_unset_the_owner) (#1549) That line does **not** offer to unset the owner — every horse has one, so the way to change it is to hand it to somebody else
+- [ ] (e2e: the_owner_row_offers_no_revoke) (#1549) Dana's row no longer offers **Revoke** now that she is the owner — revoking would delete a grant nothing displays and leave the row unchanged, since `revoke_horse_privilege` no longer clears ownership
 - [ ] (e2e: the_identity_header_owner_line_names_the_new_owner) Refresh the page → the identity header's owner line beside the photo now reads "Dana Rider" (it named the manager who created the horse before)
 - [ ] (e2e: the_identity_header_owner_line_links_to_the_owners_member_detail_page) That owner line links to Dana's member detail page
-- [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
+- [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows the selected **Owner** radio, not **Set as Owner**
 - [ ] (e2e: granting_a_second_rider_adds_them_to_the_grants_list) Grant access to rider Emery → Emery appears in the grants list
 - [ ] (e2e: a_new_grants_document_access_starts_at_none) Emery's row shows Documents set to **None**
 - [ ] (e2e: a_new_grants_lesson_access_switch_starts_off) Emery's row shows the **Lesson Schedule** switch turned off
-- [ ] (e2e: a_document_access_choice_survives_a_reload) Tap **Read** in Emery's **Documents** column → refresh the page → **Read** is still the selected one
+- [ ] (e2e: a_document_access_choice_survives_a_reload) Tap **Read** in Emery's **Documents** radio group → refresh the page → **Read** is still the selected one
 - [ ] (e2e: tapping_the_lesson_access_switch_turns_it_on) Tap the **Lesson Schedule** switch on Emery's row → it flips on
 - [ ] (e2e: a_lesson_access_choice_survives_a_reload) Refresh the page → Emery's **Lesson Schedule** switch is still on
-- [ ] (e2e: an_owner_button_taps_back_to_set_as_owner) Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**
-- [ ] (e2e: clearing_the_owner_leaves_the_identity_header_reading_no_owner_set) Refresh the page → the identity header's owner line beside the photo now reads "No owner set" and no longer links to a member (there is no literal "Owner:" prefix in the app, and the line itself always renders — as the owner's name, or as this)
-- [ ] (e2e: revoking_the_owners_grant_removes_them_from_the_grants_list) Tap **Set as Owner** on Dana's row again, then tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list
-- [ ] (e2e: revoking_the_owners_grant_leaves_the_horse_with_no_owner) Refresh the page → that owner line still reads "No owner set" — revoking the owner's grant cleared ownership
-- [ ] (e2e: revoking_a_grant_empties_the_grants_list) Tap **Revoke** on Emery's row (confirm the browser prompt) → Emery no longer appears in the grants list
-- [ ] (e2e: a_revoked_member_is_offered_in_the_grant_dropdown_again) Emery is selectable again in the add-member dropdown
+- [ ] (e2e: tapping_the_selected_owner_radio_leaves_it_selected) (#1549) Tap the selected **Owner** radio on Dana's row → it stays selected and the identity header still names her; ownership transfers, it never clears
+- [ ] (e2e: handing_ownership_on_deselects_the_previous_owner) (#1549) Tap **Set as Owner** on Emery's row → Emery's radio is selected, Dana's reads **Set as Owner** again, and Dana's row gets its **Documents** radios, **Lesson Schedule** switch and **Revoke** back
+- [ ] (e2e: revoking_a_former_owners_grant_removes_them_from_the_grants_list) (#1549) Tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list, and the identity header still names Emery as owner
+- [ ] (e2e: a_revoked_member_is_offered_in_the_grant_dropdown_again) Dana is selectable again in the add-member dropdown, and Emery — who owns Eclipse — is **not** (#1549: the owner's row is synthesised from ownership, so a grant made to them would be invisible in the table and unrevokable from it)
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 

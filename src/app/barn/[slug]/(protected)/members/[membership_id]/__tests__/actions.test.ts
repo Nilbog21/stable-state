@@ -726,6 +726,22 @@ describe('removeMemberAction', () => {
       expect(result.error).toContain('Clover')
     })
 
+    it('should_speak_of_one_horse_in_the_singular', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue([ownedHorses[0]])
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).toContain('that horse')
+    })
+
+    it('should_speak_of_several_horses_in_the_plural', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).toContain('those horses')
+    })
+
     it('should_not_delete_the_membership', async () => {
       vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
       vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)

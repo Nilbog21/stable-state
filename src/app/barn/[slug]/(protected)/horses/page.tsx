@@ -67,7 +67,7 @@ export default async function HorsesPage({
   } else {
     const horses = await getHorseExertionSummary(barn.id, today)
 
-    // Owned horses come out of these three sections and are rendered by My Horses instead
+    // Owned horses come out of these three sections and are rendered by My Owned Horses instead
     // (#1000); they rejoin the exhaustion fan-out below.
     //
     // No sort of any kind here (#1553): get_horse_exertion_summary ends in `ORDER BY h.name`, so
@@ -118,7 +118,7 @@ export default async function HorsesPage({
 
       {ownedHorses.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">My Horses</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">My Owned Horses</h2>
           <div className="flex flex-col gap-2">
             {ownedHorses.map((horse) => (
               <HorseCard

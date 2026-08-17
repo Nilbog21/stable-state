@@ -7,9 +7,11 @@ per-horse exertion summary (`getHorseExertionSummary`, its `HorseExertionSummary
 no RLS change needed since `horses_member_read` already grants barn-wide `SELECT` to every active member regardless of role;
 `getHorsesByIds(horseIds, barnId)` — bulk lookup by ID list scoped to barn, `is_active` not filtered (so a horse deactivated after being assigned to a lesson can still be resolved) — used by `getProjectedExhaustionForBarn` so exhaustion data is scoped to the exact horse set a caller is rendering, not an independent barn-wide active-only query;
 `getHorseById(horseId, barnId, client?)` — single horse lookup, returns `null` if not found;
-`createHorse(barnId, name, owningMemberId?, client?)`
-(#998) — `owningMemberId` defaults `owning_member_id` at creation, `null` when omitted;
+`createHorse(barnId, name, owningMemberId, client?)`
+(#998; `owningMemberId` made **required** by #1549) — sets `owning_member_id` at creation;
+`horses.owning_member_id` is `NOT NULL`, and the mandatory argument is what enforces it — there is no default a DAL function could sensibly pick, so the type error at a new call site is the whole guard;
 its one app call site (the Horses page's manual "Add Horse" form) is manager-gated, so it passes the creating manager's own membership id — #1470 removed the two inline-new-horse paths in `submitLesson`/`updateLessonAction`, leaving the Horses page the only way to create a horse;
+the two fixture call sites are `scripts/seed-barn.ts` (owners spread across all three roles) and `e2e/support/fixtures.ts`'s `addHorse`, which defaults to the barn's manager — the same owner the Add Horse form would have assigned;
 `updateHorseDetails(horseId, barnId, updates)` — atomic update (via `update_horse_details` RPC) for `name?`, `is_active`, `is_available`, `unavailability_reason`, `exhaustion_thresholds: { moderate, high } | null`, `feed_notes`/`medication_notes: string | null`, `registered_name: string | null`, and `owning_member_id: string | null` (#759 — folded into this single RPC call so the horse detail page's one Save button writes both status and thresholds in one transaction, rather than two independent DB round-trips that could partially fail;
 passing `exhaustion_thresholds: null` nulls both threshold columns, reverting the horse to barn defaults;
 `feed_notes`/`medication_notes` (#1005), `registered_name` (#1001), and `owning_member_id` (#998, review follow-up — an initial separate `updateHorseOwner` column update broke this same atomicity guarantee, so it was folded into this RPC instead, growing it to 12 params) are all written as-given, including `null` to clear the field, same as the thresholds);

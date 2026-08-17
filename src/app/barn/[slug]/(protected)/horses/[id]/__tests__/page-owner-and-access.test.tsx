@@ -48,16 +48,23 @@ vi.mock('../HorseNotesForm', () => ({
 vi.mock('../HorseAccessSection', () => ({
   HorseAccessSection: (props: {
     grants: { id: string; name: string }[]
+    availableMembers: { membershipId: string; name: string }[]
+    owner: { memberId: string; name: string }
     onGrant: (formData: FormData) => Promise<void>
     onUpdateDocument: (privilegeId: string, formData: FormData) => Promise<void>
     onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
     onRevoke: (privilegeId: string) => Promise<void>
-    onSetOwner: (memberId: string | null) => Promise<void>
+    onSetOwner: (memberId: string) => Promise<void>
   }) => (
-    <div data-testid="horse-access-section">
+    <div data-testid="horse-access-section" data-owner-id={props.owner.memberId} data-owner-name={props.owner.name}>
       <ol data-testid="grant-names">
         {props.grants.map((g) => (
           <li key={g.id} data-grant-id={g.id}>{g.name}</li>
+        ))}
+      </ol>
+      <ol data-testid="available-members">
+        {props.availableMembers.map((m) => (
+          <li key={m.membershipId} data-membership-id={m.membershipId}>{m.name}</li>
         ))}
       </ol>
       <button onClick={() => props.onGrant(new FormData())}>test-grant</button>
@@ -182,6 +189,54 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText(/^owner/i)).toBeNull()
+  })
+
+  /**
+   * #1549: the owner arrives as its own prop rather than as an id the section looks up in `grants`,
+   * because the owner usually holds no grant at all — `createHorse` assigns ownership and writes no
+   * `member_horse_privileges` row.
+   */
+  it('should_pass_the_horses_owner_to_the_access_section', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    render(await HorseDetailPage({ params: pageParams }))
+    expect(screen.getByTestId('horse-access-section').getAttribute('data-owner-id')).toBe('mem-owner')
+  })
+
+  it('should_pass_the_resolved_owner_name_to_the_access_section', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    render(await HorseDetailPage({ params: pageParams }))
+    expect(screen.getByTestId('horse-access-section').getAttribute('data-owner-name')).toBe('Emery Rider')
+  })
+
+  // The header can drop an unresolvable owner line; the table can't drop the row, because the
+  // Owner single-select would then have nothing selected.
+  it('should_fall_back_to_a_placeholder_owner_name_when_it_cannot_be_resolved', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    render(await HorseDetailPage({ params: pageParams }))
+    expect(screen.getByTestId('horse-access-section').getAttribute('data-owner-name')).toBe('Unknown member')
+  })
+
+  // Granting the owner access would create a row the table can't show — their row is synthesised
+  // and displays effective access — so the dropdown must not offer them.
+  it('should_not_offer_the_owner_in_the_grant_dropdown', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-owner', userId: 'user-owner', name: 'Emery Rider', isManaged: false, inviteToken: null },
+      { membershipId: 'mem-other', userId: 'user-other', name: 'Dana Rider', isManaged: false, inviteToken: null },
+    ])
+    render(await HorseDetailPage({ params: pageParams }))
+    const offered = [...screen.getByTestId('available-members').children].map((li) => li.getAttribute('data-membership-id'))
+    expect(offered).not.toContain('mem-owner')
+  })
+
+  it('should_still_offer_every_other_member_in_the_grant_dropdown', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-owner', userId: 'user-owner', name: 'Emery Rider', isManaged: false, inviteToken: null },
+      { membershipId: 'mem-other', userId: 'user-other', name: 'Dana Rider', isManaged: false, inviteToken: null },
+    ])
+    render(await HorseDetailPage({ params: pageParams }))
+    const offered = [...screen.getByTestId('available-members').children].map((li) => li.getAttribute('data-membership-id'))
+    expect(offered).toContain('mem-other')
   })
 
   it('should_render_access_section_for_manager', async () => {

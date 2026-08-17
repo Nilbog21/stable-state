@@ -69,7 +69,10 @@ export default async function EditLessonPage({
       exhaustion_threshold_moderate: null,
       feed_notes: null,
       medication_notes: null,
-      owning_member_id: null,
+      // A display shim for an inactive horse the form still has to offer, not a row: nothing
+      // downstream reads the owner, and the real one was never joined in. Same fabrication as the
+      // empty `created_at`/`updated_at` below — #1549 only changed which literal typechecks.
+      owning_member_id: '',
       photo_path: null,
       photo_uploaded_by: null,
       created_at: '',

@@ -216,7 +216,7 @@ export async function revokeHorseAccessAction(
 export async function setHorseOwnerAction(
   barnSlug: string,
   horseId: string,
-  memberId: string | null
+  memberId: string
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   const horse = await getHorseById(horseId, barn.id)

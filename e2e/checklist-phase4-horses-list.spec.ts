@@ -96,7 +96,7 @@ const barn = withBarn('phase4-horses-list', async ({ supabase, barn, members }) 
   })
 
   // Butter, then Clover, then Apple: see EXPECTED_NAME_ORDER. Neither horse gets an owner or a
-  // custom availability, so createHorse's defaults put all three in Available with no My Horses
+  // custom availability, so createHorse's defaults put all three in Available with no My Owned Horses
   // section above them.
   butterId = (await addHorse(supabase, barn.id, BUTTER)).id
   cloverId = (await addHorse(supabase, barn.id, CLOVER)).id
