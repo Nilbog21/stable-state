@@ -73,7 +73,7 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `setup-demo-user` — one-time bootstrap of the shared demo auth user (deliberately no dev-project gate)
 - `run-cron` — shared shell wrapper for the 4 nightly cron scripts
 - `generate-outstanding-notifications`, `generate-agreement-charges`, `generate-recurring-lessons`, `prune-old-notifications` — the 4 nightly GHA cron jobs (`run(supabase)` → `{ summary, hadErrors }`)
-- `run-checklist-suite` — run the Playwright suite: per-run barn prefix, teardown `EXIT` trap, full output mirrored to `checklist-suite.log`
+- `run-checklist-suite` — run the Playwright suite: per-run barn prefix, teardown `EXIT` trap, output mirrored to `checklist-suite.log`, dev-server recycle
 - `workflow-ci-wait` — blocking CI gate for `/reviewIssue`/`/finishIssue`; exactly one exit-coded verdict line
 - `workflow-context` — worktree/port/branch/base detection for the five workflow skills; never fails, empty fields instead
 - `select-specs` — PR diff → e2e blast radius via each spec's `// covers:` globs; `--lint` wired into `ci.sh`

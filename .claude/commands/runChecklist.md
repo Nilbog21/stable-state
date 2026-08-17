@@ -35,7 +35,7 @@ Server: http://localhost:{port} · worktree {worktree}
 
   On `resume`, skip Step 0.5 if the file already carries a `Suite:` line, and begin Step 1 at the section after the marker. On `restart`, overwrite the file with a fresh header. An empty marker means no section has been flushed yet — resume starts at the first section either way.
 
-**Dev server.** The manual checks target the shared dev barn `dev-barn` in a browser, so a server has to be up. Bring one up exactly as `/testIssue` Step 3 prescribes — that step owns the sequence (reuse whatever answers `curl -sf http://localhost:{port}`, otherwise background `npm run dev -- -p {port}`, wait in one blocking `timeout 60` call rather than polling, and print the log's tail and stop if it never comes up). Use `/tmp/runchecklist-{worktree}.log` as the log path so a `/testIssue` session on the same worktree isn't clobbered.
+**Dev server.** The manual checks target the shared dev barn `dev-barn` in a browser, so a server has to be up. Bring one up exactly as `/testIssue` Step 3 prescribes — that step owns the sequence (reuse whatever answers `curl -sf http://localhost:{port}`, otherwise background `npm run dev -- -p {port}`, wait in one blocking `timeout 60` call rather than polling, and print the log's tail and stop if it never comes up). Use `/tmp/devserver-{port}.log`, the one dev-server log path (#1569) — a port has exactly one server, so the older per-skill paths meant whichever skill didn't start it was tailing a file nobody wrote.
 
 ---
 

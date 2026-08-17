@@ -296,12 +296,17 @@ and `{port}` from Step 0's preflight:
 
 ```bash
 cd {worktree_path} && fuser -k {port}/tcp 2>/dev/null; sleep 1
-npm run dev -- --port {port} > /tmp/overnight-dev-{date}.log 2>&1 &
+npm run dev -- --port {port} > /tmp/devserver-{port}.log 2>&1 &
 for _ in $(seq 60); do curl -sf -o /dev/null "http://localhost:{port}/" && break; sleep 2; done
 curl -sf -o /dev/null "http://localhost:{port}/" || { echo "dev server never came up"; exit 1; }
-bash scripts/run-checklist-suite.sh --base-url "http://localhost:{port}" {--spec flags}
+bash scripts/run-checklist-suite.sh --no-recycle --base-url "http://localhost:{port}" {--spec flags}
 fuser -k {port}/tcp 2>/dev/null
 ```
+
+`--no-recycle` because the very next line kills the port: `run-checklist-suite.sh` otherwise spends
+up to 90s booting a fresh server (#1569's fix for the ~10 GB a suite run leaves behind) that this
+loop shoots immediately. Every other caller wants the default. `/tmp/devserver-{port}.log` is that
+same change's one dev-server log path, keyed by port rather than by date.
 
 The server is started here and killed here. This loop holds no long-lived one:
 `playwright.config.ts` has no `webServer` block so the suite cannot start its own, and a server that
