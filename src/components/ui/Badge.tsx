@@ -5,7 +5,6 @@ import type { ReactNode } from 'react'
 export const toneClasses = {
   amber: 'rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5',
   red: 'rounded-full bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 px-2 py-0.5',
-  solid: 'rounded bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900 px-1.5 py-0.5',
   green: 'rounded-full bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 px-2 py-0.5',
   // The dark border is load-bearing, not decoration: gray sits both on the
   // zinc-950 page (lesson detail) and inside a Card whose dark hover is

@@ -38,7 +38,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
 - [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
-- [ ] (e2e: dashboard_day_and_week_pill_switcher_appears_above_the_calendar) (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (e2e: dashboard_day_week_and_month_pill_switcher_appears_above_the_calendar) (#1016, #1558) A "Day"/"Week"/"Month" pill switcher appears above the calendar
 - [ ] (e2e: dashboard_day_pill_is_the_active_view_on_load) (#1016) The Day view is active by default
 - [ ] (e2e: dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_the_viewed_date) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
 - [ ] (e2e: dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days) (#1016) In Week view, each of the 7 days shows its own date heading
@@ -52,6 +52,13 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_week_view_tints_todays_day_section_in_dark_mode) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
 - [ ] (e2e: dashboard_week_to_day_view_lands_on_today_when_today_is_inside_the_week) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
 - [ ] (e2e: dashboard_week_to_day_view_lands_on_the_weeks_sunday_when_today_is_outside_the_week) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
+- [ ] (e2e: dashboard_month_view_shows_a_full_month_grid) (#1558) Tapping "Month" shows a full month grid of day cells
+- [ ] (e2e: dashboard_month_view_tints_the_days_that_have_something_scheduled) (#1558) In Month view, days carrying a lesson, appointment or event are tinted
+- [ ] (e2e: dashboard_month_view_leaves_a_day_with_nothing_on_it_untinted) (#1558) In Month view, a day with nothing scheduled is left untinted
+- [ ] (e2e: dashboard_month_view_shows_that_days_items_when_a_day_is_tapped) (#1558) In Month view, tapping a day opens a panel listing that day's items
+- [ ] (e2e: dashboard_month_view_day_panel_links_a_lesson_to_its_detail_page) (#1558) In Month view, a lesson in the day panel is a tappable link to its detail page, not plain text
+- [ ] (e2e: dashboard_month_view_arrows_page_to_the_adjacent_month) (#1558) In Month view, the grid's own < / > arrows page to the adjacent month
+- [ ] (e2e: dashboard_month_view_hides_the_pages_own_date_pager) (#1558) In Month view, the Day/Week Prev/Next pager is hidden — the grid carries its own month arrows
 
 Lessons (`/barn/dev-barn/lessons`):
 
@@ -231,7 +238,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: an_owner_set_photo_hides_the_replace_and_remove_controls_from_a_manager) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove Photo** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
 - [ ] (e2e: the_horse_page_renders_its_five_sections_in_read_often_to_touched_rarely_order) (#1390) Apple's detail page shows five collapsible sections under the header, in this order: **Feed & Medication**, **Upcoming Lessons**, **Documents**, **Access**, **Horse Settings**
 - [ ] (e2e: the_horse_page_opens_with_feed_and_medication_alone_expanded) (#1390) Only **Feed & Medication** is expanded on load — the other four are shut, each showing its count or state on the closed row (`Documents · 2`, `Access · 1 member`, `Horse Settings · barn defaults`)
-- [ ] (e2e: the_access_tables_controls_all_submit_through_enhanced_forms) (#1390) On Apple's detail page, expand **Access** — every control there (Grant Access, Set as Owner, the three Documents buttons, Can View, Revoke) is a real form button rather than a script-only one, so none is a dead click in the moment before the page finishes loading. Verified against the HTML the server sends, not by clicking
+- [ ] (e2e: the_access_tables_controls_all_submit_through_enhanced_forms) (#1390) On Apple's detail page, expand **Access** — every control there (Grant Access, Set as Owner, the three Documents segments, the Lesson Schedule switch, Revoke) is a real form button rather than a script-only one, so none is a dead click in the moment before the page finishes loading. Verified against the HTML the server sends, not by clicking
 - [ ] (e2e: the_access_tables_forms_carry_their_action_reference_in_hidden_fields) (#1390) Those forms each carry their action's identity in hidden fields — the half that makes an early submit reach the right place rather than merely submit
 - [ ] (e2e: a_document_access_choice_survives_a_reload) (#1390) In a grant row's **Documents** column, tap a state other than the one already selected → reload the page → your choice is the selected one. #1390's testing round found the `<select>` this replaced leaving the chosen, stored and displayed values all disagreeing
 - [ ] (e2e: a_manager_saving_notes_on_an_unowned_horse_is_not_rejected) (#1390) Saving **Feed & Medication** on a horse with **no owning member** succeeds as manager, with no error above the form — this path now goes through `update_horse_notes`, which admitted the owning member alone until this issue
@@ -653,7 +660,7 @@ The Finances line below is the one that used to sit at the top of that section, 
 > - nothing in it is reachable or dismissible only by hover
 > - nothing non-interactive carries a hover state implying it is clickable
 
-- [ ] (manual) **Dashboard** — Day and Week views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
+- [ ] (manual) **Dashboard** — Day, Week and Month views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the edit form, and the cancel/delete confirmation pages (`/barn/dev-barn/lessons` and below)
 - [ ] (manual) **Expenses** — the list, the new/edit form with its month conflict calendar, and the delete confirmation page (`/barn/dev-barn/expenses` and below)
 - [ ] (manual) **Horses** — the list's sections and exhaustion bars, and a detail page's header and five collapsible sections (`/barn/dev-barn/horses`, `/horses/[id]`)

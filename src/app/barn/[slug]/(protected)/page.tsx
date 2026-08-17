@@ -11,10 +11,12 @@ import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
-import { isValidDateString, addDays, calendarDate, formatCalendarDate, getWeekDates } from '@/lib/local-day'
+import { isValidDateString, addDays, calendarDate, formatCalendarDate, getWeekDates, firstOfMonth } from '@/lib/local-day'
 import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
 import { CalendarDayView } from '@/components/calendar/CalendarDayView'
 import { CalendarWeekView } from '@/components/calendar/CalendarWeekView'
+import { DashboardMonthCalendar } from '@/components/calendar/DashboardMonthCalendar'
+import { getMonthGrid } from '@/lib/month-calendar'
 import type { CalendarDate, DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
@@ -44,8 +46,10 @@ export default async function BarnDashboardPage({
   let membershipId: string | undefined
   let selectedDate = calendarDate('')
   let todayStr = calendarDate('')
-  let view: 'day' | 'week' = 'day'
+  let view: 'day' | 'week' | 'month' = 'day'
   let weekDates: CalendarDate[] = []
+  let monthDays: { date: CalendarDate; items: DayScheduleDisplayItem[] }[] = []
+  let monthKey = ''
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)
@@ -56,12 +60,18 @@ export default async function BarnDashboardPage({
       todayStr = barnToday(barn.timezone)
       const { date: requestedDate, view: requestedView } = await searchParams
       selectedDate = requestedDate && isValidDateString(requestedDate) ? requestedDate : todayStr
-      view = requestedView === 'week' ? 'week' : 'day'
+      view = requestedView === 'week' ? 'week' : requestedView === 'month' ? 'month' : 'day'
       weekDates = getWeekDates(selectedDate)
+      monthKey = firstOfMonth(selectedDate).slice(0, 7)
+      // The picker's own 42-cell Sunday-start grid, spill-over days included -- the range has to
+      // match what the grid will display, or the leading/trailing days render permanently empty.
+      const monthDates = getMonthGrid(monthKey)
 
-      const rangeStartDate = view === 'week' ? weekDates[0] : selectedDate
+      const rangeStartDate = view === 'month' ? monthDates[0] : view === 'week' ? weekDates[0] : selectedDate
+      const rangeEndDate =
+        view === 'month' ? addDays(monthDates[41], 1) : addDays(rangeStartDate, view === 'week' ? 7 : 1)
       const rangeStart = wallClockToInstant(`${rangeStartDate}T00:00:00`, barn.timezone).toISOString()
-      const rangeEnd = wallClockToInstant(`${addDays(rangeStartDate, view === 'week' ? 7 : 1)}T00:00:00`, barn.timezone).toISOString()
+      const rangeEnd = wallClockToInstant(`${rangeEndDate}T00:00:00`, barn.timezone).toISOString()
 
       const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
         getScheduleForRange(barn.id, rangeStart, rangeEnd, barn.timezone),
@@ -92,7 +102,9 @@ export default async function BarnDashboardPage({
       // exactly the one the split removed from their reach.
       const expenses = expensesRaw.filter((expense) => expense.amount === null)
 
-      if (view === 'week') {
+      if (view === 'month') {
+        monthDays = groupScheduleItemsByDay(monthDates, scopedItems, lessons, expenses, events)
+      } else if (view === 'week') {
         weekDays = groupScheduleItemsByDay(weekDates, scopedItems, lessons, expenses, events)
       } else {
         dayItems = mergeDayScheduleDisplayItems(scopedItems, lessons, expenses, events)
@@ -115,7 +127,16 @@ export default async function BarnDashboardPage({
   const demoResetAt = barn.is_demo
     ? new Date(new Date(barn.created_at).getTime() + 7 * 60 * 60 * 1000).toISOString()
     : null
-  const dayPillDate = view === 'week' ? (weekIncludesToday ? todayStr : weekDates[0]) : selectedDate
+  // Same rule the Week view already used: land on today when today is inside the period being
+  // viewed, else on the period's first day -- never on the raw selectedDate, which in Month view
+  // is only the month anchor and may be a day the user never looked at.
+  const monthIncludesToday = todayStr.slice(0, 7) === monthKey
+  const dayPillDate =
+    view === 'month'
+      ? (monthIncludesToday ? todayStr : firstOfMonth(selectedDate))
+      : view === 'week'
+        ? (weekIncludesToday ? todayStr : weekDates[0])
+        : selectedDate
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -164,12 +185,17 @@ export default async function BarnDashboardPage({
             <Pill href={`/barn/${slug}?view=week&date=${selectedDate}`} active={view === 'week'}>
               Week
             </Pill>
+            <Pill href={`/barn/${slug}?view=month&date=${selectedDate}`} active={view === 'month'}>
+              Month
+            </Pill>
           </div>
           {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant
               every date pager renders from (#1394). Its own comment holds why an unpadded circular
               icon-arrow is a documented Button exception. These two are plain SSR links
               (?date=...) with no client JS; the class is the only thing they share with the
               picker's <button>s, and #1015 already asked for that much by hand. */}
+          {view !== 'month' && (
+            <>
           <div className="mb-4 flex items-center justify-between gap-2">
             <Link
               href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, -stepDays)}`}
@@ -197,7 +223,18 @@ export default async function BarnDashboardPage({
               </Button>
             </div>
           )}
-          {view === 'week' ? (
+            </>
+          )}
+          {view === 'month' ? (
+            <DashboardMonthCalendar
+              slug={slug}
+              month={monthKey}
+              selectedDate={dayPillDate}
+              days={monthDays}
+              role={userRole}
+              viewerMembershipId={membershipId}
+            />
+          ) : view === 'week' ? (
             <CalendarWeekView days={weekDays} todayStr={todayStr} role={userRole} slug={slug} viewerMembershipId={membershipId} />
           ) : (
             <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />
