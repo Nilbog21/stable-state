@@ -24,7 +24,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['html', 'json'],
-      include: ['src/**'],
+      // Extension-scoped, not a bare `src/**` (#1550): the v8 provider parses every included
+      // file that no test touched, so `src/components/ui/CLAUDE.md` came back as a PARSE_ERROR
+      // stack trace on every coverage run, CI's included. Same shape as the bug this issue fixed
+      // in `scripts/select-specs.sh` — a `src/**` prefix with no extension filter treating a doc
+      // as code.
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/app/layout.tsx',
         'src/lib/supabase/client.ts',
