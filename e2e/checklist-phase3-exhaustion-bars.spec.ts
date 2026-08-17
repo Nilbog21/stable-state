@@ -71,7 +71,7 @@
 // verbatim, so a digit-regex channel read makes `r > g` false for an obviously red element; its
 // `dotShape` normalises through a 1×1 canvas to survive that. This file needs none of it.
 // `ExhaustionBar` publishes its whole state as text and geometry — an
-// `aria-label="Exhaustion: {band} · {total} points from {n} lessons"` on the bar's button, and
+// `aria-label="{band} Exhaustion ({total}) from {n} lessons"` on the bar's button, and
 // `data-testid="exhaustion-bar-solid"`/`-ghost` segments each carrying an inline `width: N%`. So
 // every claim below is an exact number derived from the fixture table, and "the bar stays
 // **solid**" is asserted structurally — the ghost element is absent — rather than chromatically.
@@ -342,7 +342,7 @@ function solidBars(page: Page) {
 
 /** The bar's own button, the element carrying the `aria-label` every total below is read from. */
 function barButton(page: Page, horse: Horse) {
-  return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
+  return horseRow(page, horse).getByRole('button', { name: / Exhaustion \(/ })
 }
 
 /** The caption span inside one horse's bar — the bar's only text, so `> span` needs no test id. */
@@ -362,7 +362,7 @@ function barCaptionOf(page: Page, horse: Horse) {
  *  The band is recomputed from THRESHOLD_MODERATE/THRESHOLD_HIGH rather than written per call
  *  site, for `trackPct`'s reason one function down: it stays derived from the fixture table. */
 function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lessons: number; ghost?: number }): string {
-  return `Exhaustion: ${barCaption({ points, ghost })} from ${lessons} lessons`
+  return `${barCaption({ points, ghost })} from ${lessons} lessons`
 }
 
 /** The bar's visible caption (#1552). Composed *inside* `exhaustionLabel` rather than beside it,
@@ -371,7 +371,7 @@ function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lesso
 function barCaption({ points, ghost = 0 }: { points: number; ghost?: number }): string {
   const total = points + ghost
   const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
-  return `${band} · ${total} points`
+  return `${band} Exhaustion (${total})`
 }
 
 /** A points value as the percentage of the track `ExhaustionBar` paints for it, rounded.
@@ -721,7 +721,7 @@ test.describe('New Lesson — live exhaustion bars', () => {
   // pass against a bar that rendered no visible caption at all — which is the exact regression this
   // line exists to catch. Both ends are asserted because the band is the interesting half: Apple's
   // 7 alone is low against this barn's 10/20, and 7 plus HIGH_EXERTION is moderate, so a caption
-  // wired to `existingTotal` reads "Low · 7 points" in the second assertion and fails.
+  // wired to `existingTotal` reads "Low Exhaustion (7)" in the second assertion and fails.
   test('a_checked_horses_bar_caption_names_the_band_and_total_it_would_land_in @manager', async ({
     page,
   }) => {

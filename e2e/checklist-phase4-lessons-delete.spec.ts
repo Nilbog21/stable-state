@@ -4,7 +4,7 @@
 // covers: src/components/ExhaustionBar.tsx
 //
 // `ExhaustionBar` is declared because `waitForEditFormHydrated` below gates the two edit-and-save
-// tests on `getByRole('button', { name: /^Exhaustion: / })`, and that accessible name is that
+// tests on `getByRole('button', { name: / Exhaustion \(/ })`, and that accessible name is that
 // component's own `aria-label` (`ExhaustionBar.tsx:57`). #1281 put the whole of
 // `src/components/**` into select-specs.sh's ALWAYS_FULL, so this line now documents what the
 // spec drives rather than selecting it — it stays because the accuracy rule binds regardless

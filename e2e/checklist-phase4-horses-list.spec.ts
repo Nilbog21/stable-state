@@ -79,11 +79,11 @@ const APPLE_BREAKDOWN = '8 points from 2 lessons (±3-day window)'
 // fixes — Apple (8, moderate), Butter (15, high), Clover (2, low), the same totals and bands the
 // table above states for the fills. Written as literals for that table's reason: a caption composed
 // here from LESSON_PLAN would agree with any bug in the reduce that produced it.
-const EXPECTED_CAPTIONS = ['Moderate · 8 points', 'High · 15 points', 'Low · 2 points']
+const EXPECTED_CAPTIONS = ['Moderate Exhaustion (8)', 'High Exhaustion (15)', 'Low Exhaustion (2)']
 const APPLE_CAPTION = EXPECTED_CAPTIONS[0]
 
 const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
-const BAR_BUTTON = 'button[aria-label^="Exhaustion:"]'
+const BAR_BUTTON = 'button[aria-label*=" Exhaustion ("]'
 
 let appleId: string
 let butterId: string
@@ -151,7 +151,7 @@ function cardOf(page: Page, horseId: string) {
 }
 
 function bar(page: Page, horseId: string) {
-  return cardOf(page, horseId).getByRole('button', { name: /^Exhaustion:/ })
+  return cardOf(page, horseId).getByRole('button', { name: / Exhaustion \(/ })
 }
 
 /**

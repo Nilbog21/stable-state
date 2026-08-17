@@ -404,7 +404,7 @@ function horseFieldset(page: Page): Locator {
 /** Every exhaustion bar currently rendered. The bar is a button whose accessible name states its
  *  own totals, so this needs no test id and no class. */
 function bars(page: Page): Locator {
-  return page.getByRole('button', { name: /^Exhaustion: / })
+  return page.getByRole('button', { name: / Exhaustion \(/ })
 }
 
 /**
@@ -439,7 +439,7 @@ function settleProjection(page: Page): Promise<void> {
 function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lessons: number; ghost?: number }): string {
   const total = points + ghost
   const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
-  return `Exhaustion: ${band} · ${total} points from ${lessons} lessons`
+  return `${band} Exhaustion (${total}) from ${lessons} lessons`
 }
 
 /**

@@ -45,7 +45,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
   // touch. The `aria-label` keeps a copy so the lesson count survives in the accessible name;
   // staying a superstring of the visible caption is what keeps voice control able to say what
   // it reads (WCAG 2.5.3), and the label still overrides the contents, so it is announced once.
-  const caption = `${BAND_LABEL[band]} · ${combinedTotal} points`
+  const caption = `${BAND_LABEL[band]} Exhaustion (${combinedTotal})`
 
   const MIN_GHOST_PCT = 8
   if (hasGhost && ghostPct === 0 && existingPct >= 100) {
@@ -65,7 +65,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
           setOpen((o) => !o)
         }}
         aria-expanded={open}
-        aria-label={`Exhaustion: ${caption} from ${existingRows.length} lessons`}
+        aria-label={`${caption} from ${existingRows.length} lessons`}
         className="block w-full py-2"
       >
         <span className="mb-1 block text-left text-xs text-zinc-500 dark:text-zinc-400">{caption}</span>

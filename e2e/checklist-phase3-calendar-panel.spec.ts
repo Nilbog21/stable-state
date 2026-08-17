@@ -333,7 +333,7 @@ function exhaustionBarFill(page: Page, horse: Horse): Locator {
 
 /** The bar's own button, whose `aria-label` carries the point total the bar was built from. */
 function exhaustionBarButton(page: Page, horse: Horse): Locator {
-  return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
+  return horseRow(page, horse).getByRole('button', { name: / Exhaustion \(/ })
 }
 
 // ---------------------------------------------------------------------------
@@ -557,7 +557,7 @@ async function waitForExhaustionBar(page: Page, horse: Horse, points: number): P
   const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
   await expect(exhaustionBarButton(page, horse)).toHaveAttribute(
     'aria-label',
-    `Exhaustion: ${band} · ${total} points from 1 lessons`,
+    `${band} Exhaustion (${total}) from 1 lessons`,
     { timeout: SCHEDULE_FETCH_BUDGET }
   )
 }
