@@ -248,20 +248,22 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 // ---------------------------------------------------------------------------
 
 /**
- * The instant the browser's clock is pinned to for the **New Lesson** date and **Start Time**
- * pre-fill items: **01:00 Eastern on the
+ * The instant the browser's clock is pinned to for the **New Lesson** date pre-fill item:
+ * **01:00 Eastern on the
  * barn's own day**, i.e. 05:00 UTC, which Honolulu reads as 19:00 on the day *before*.
  *
  * `page.clock.setFixedTime`, never `page.clock.install()`: `install` also fakes the timers
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
- * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically — the one page
- * whose `LessonStartTime` computes its defaults from the browser clock in a `useState`
- * initialiser, which is exactly the surface those two items read.
+ * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically, off the browser-clock
+ * defaults that page computed in `useState` initialisers. #1578 removed one of the two: the create
+ * form's **Start Time** no longer derives anything from the clock (`LessonStartTime` now seeds
+ * `initialTime ?? ''`), so the surface this pin reaches is `LessonForm`'s `lessonDate`, which still
+ * seeds from `barnToday(timezone)` client-side.
  *
  * **Why this pin and not #1204's 1pm-Hawaii one.** Its six items all assert values the SERVER
  * rendered, so its pin put the browser's barn-zone day one day BEHIND the server's and every
- * assertion still named the server's answer. The two **New Lesson** pre-fill items are the
- * opposite: their answers are computed in the BROWSER, off this frozen clock, and read against a
+ * assertion still named the server's answer. The **New Lesson** date pre-fill item is the
+ * opposite: its answer is computed in the BROWSER, off this frozen clock, and read against a
  * month grid whose past-day cutoff comes from the server's `todayStr`. So the browser's barn-zone
  * day has to EQUAL the server's, while its *local* (Honolulu) day differs. Same frame, opposite
  * requirement, because of where the computation happens.

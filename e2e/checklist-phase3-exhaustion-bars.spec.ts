@@ -56,8 +56,10 @@
 //   2. "Before a date is picked no exhaustion bars render" names a state the form cannot be in.
 //      `LessonForm` seeds `lessonDate` from `barnToday(timezone)` and `MonthCalendarPicker` has
 //      no deselect, so since #1019 a day is always selected. The gate the line is really about is
-//      `lessonAt` being empty, and the reachable route to *that* is clearing the Start Time —
-//      which is what the line now says. Same gate, different route.
+//      `lessonAt` being empty, and the half of it that is actually unset is the Start Time — which
+//      is what the line now names. Same gate, other half. #1578 then made that half the form's
+//      OPENING state rather than one a manager reaches by clearing the field, and the line was
+//      reworded again to claim the arrival state directly.
 //
 //   3. "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar"
 //      is true but cannot fail: the render condition admits every available active horse whether
@@ -652,9 +654,14 @@ test.describe('New Lesson — live exhaustion bars', () => {
   // satisfied on its first poll therefore observes the settled state rather than a pre-render
   // window, and a regression that restored the pre-fill would fetch and would fail.
   //
-  // The positive anchor rule 4 requires is the second half: entering a time on dayA brings all
-  // three bars in, each carrying that day's fixture total. It proves the page region renders and
-  // that the fetch path is live, so the zero above is an absence rather than a blank page.
+  // The anchor rule 4 requires — same test, BEFORE the absence — is the `toHaveValue('')` line.
+  // `toHaveValue` has no "element absent" passing state, so unlike the `toHaveCount(0)` below it
+  // it cannot resolve against a page that has not drawn the form yet; it retries until the control
+  // attaches, which is exactly the render proof the rule asks for.
+  //
+  // The second half is the bonus rule 4 describes rather than the anchor it demands: entering a
+  // time on dayA brings all three bars in, each carrying that day's fixture total, which is what
+  // would catch a typo'd `solidBars` locator that made the zero above vacuous.
   test('the_new_lesson_form_opens_with_an_empty_start_time_and_no_exhaustion_bars @manager', async ({
     page,
   }) => {
