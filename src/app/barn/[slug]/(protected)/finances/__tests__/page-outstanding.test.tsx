@@ -46,9 +46,35 @@ import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import FinancesPage from '../page'
 import { calendarDate } from '@/lib/local-day'
+import { resolveFinancesMonth } from '@/lib/finances-month'
 
 const mockBarn = createMockBarn()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
+
+/**
+ * The `<details>` an `AccordionSection` renders, found by its title. #1550 replaced the three
+ * flat `<section>`s these tests used to reach for with three accordions, so every scoped read
+ * below goes through this rather than `.closest('section')`.
+ */
+function section(title: string): HTMLDetailsElement {
+  return screen.getByText(title).closest('details')!
+}
+
+/** A section's collapsed-row payload preview — the `hint` sibling of its title `<h2>`. */
+function hintOf(title: string): string {
+  return screen.getByText(title).nextElementSibling?.textContent ?? ''
+}
+
+const OUTSTANDING_LESSON = {
+  id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z',
+  instructor_name: null, rider_names: ['Alice'], fee: 75,
+}
+
+const OUTSTANDING_EXPENSE = {
+  id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null,
+  amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null,
+  applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '',
+}
 
 describe('FinancesPage', () => {
   beforeEach(() => {
@@ -75,49 +101,138 @@ describe('FinancesPage', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
-  it('should_not_show_outstanding_section_when_no_outstanding_lessons', async () => {
+  // -------------------------------------------------------------------------
+  // #1550 — the three accordion sections
+  // -------------------------------------------------------------------------
+
+  it('should_render_three_accordion_sections_in_order', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.queryByText('Outstanding Income')).toBeNull()
+    const { container } = render(jsx)
+    const titles = [...container.querySelectorAll('details > summary h2')].map((h) => h.textContent)
+    expect(titles).toEqual(['Outstanding Income', 'Outstanding Expenses', 'Monthly Breakdown'])
   })
 
+  it('should_open_outstanding_income_section_when_outstanding_lessons_exist', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Income').open).toBe(true)
+  })
+
+  // Renders rather than disappears (the pre-#1550 behaviour), so the page keeps one shape
+  // whatever the data — the flat-wall complaint the issue came from was partly that it didn't.
+  it('should_collapse_outstanding_income_section_when_nothing_is_outstanding', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Income').open).toBe(false)
+  })
+
+  it('should_hint_none_on_an_empty_outstanding_income_section', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(hintOf('Outstanding Income')).toBe('None')
+  })
+
+  it('should_hint_the_unpaid_count_on_the_outstanding_income_section', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(hintOf('Outstanding Income')).toBe('1 unpaid')
+  })
+
+  it('should_open_outstanding_expenses_section_when_outstanding_expenses_exist', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Expenses').open).toBe(true)
+  })
+
+  it('should_collapse_outstanding_expenses_section_when_nothing_is_outstanding', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Expenses').open).toBe(false)
+  })
+
+  it('should_hint_none_on_an_empty_outstanding_expenses_section', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(hintOf('Outstanding Expenses')).toBe('None')
+  })
+
+  it('should_hint_the_unresolved_count_on_the_outstanding_expenses_section', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(hintOf('Outstanding Expenses')).toBe('1 to resolve')
+  })
+
+  // Always open: unlike the two above it always has content — a table, or the EmptyState that
+  // stands in for one.
+  it('should_open_the_monthly_breakdown_section', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Monthly Breakdown').open).toBe(true)
+  })
+
+  it('should_hint_the_month_label_on_the_monthly_breakdown_section', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const { monthLabel } = resolveFinancesMonth(undefined, mockBarn.created_at, mockBarn.timezone)
+    expect(hintOf('Monthly Breakdown')).toBe(monthLabel)
+  })
+
+  // The month pager and the five tab pills only ever scoped this section's content; hoisting
+  // them above all three is what #1550 came to undo.
+  it('should_render_the_month_navigation_inside_monthly_breakdown', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const { monthLabel } = resolveFinancesMonth(undefined, mockBarn.created_at, mockBarn.timezone)
+    expect(within(section('Monthly Breakdown')).getAllByText(monthLabel).length).toBeGreaterThan(1)
+  })
+
+  it('should_render_the_tab_pills_inside_monthly_breakdown', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const pills = within(section('Monthly Breakdown')).getAllByRole('link', { name: /^By / })
+    expect(pills.map((p) => p.textContent)).toEqual(['By Horse', 'By Tier', 'By Rider', 'By Instructor', 'By Paid To'])
+  })
+
+  it('should_render_pending_income_inside_monthly_breakdown', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(within(section('Monthly Breakdown')).getByText('Pending income')).toBeDefined()
+  })
+
+  // -------------------------------------------------------------------------
+
   it('should_show_outstanding_section_when_outstanding_lessons_exist', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 75 },
-    ])
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Outstanding Income')).toBeDefined()
   })
 
-  it('should_highlight_outstanding_section_when_total_is_greater_than_zero', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 75 },
-    ])
+  // The amber moved off the section wrapper onto the total itself (#1550). It was only ever
+  // reaching the label anyway — every cell, link and figure below it sets its own colour.
+  it('should_highlight_the_outstanding_income_total_when_it_is_greater_than_zero', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText('Outstanding Income').closest('section')
-    expect(container?.className).toMatch(/amber/)
+    expect(within(section('Outstanding Income')).getByText('$75.00').className).toMatch(/amber/)
   })
 
-  it('should_not_highlight_outstanding_section_when_total_is_zero', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 0 },
-    ])
+  it('should_not_highlight_the_outstanding_income_total_when_it_is_zero', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ ...OUTSTANDING_LESSON, fee: 0 }])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText('Outstanding Income').closest('section')
-    expect(container?.className).not.toMatch(/amber/)
+    expect(within(section('Outstanding Income')).getByText('$0.00').className).not.toMatch(/amber/)
   })
 
   it('should_render_info_button_on_outstanding_label', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 75 },
-    ])
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const outstandingSection = screen.getByText('Outstanding Income').closest('section')
-    expect(outstandingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(section('Outstanding Income').querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
   it('should_show_link_to_outstanding_route_when_outstanding_lessons_exist', async () => {
@@ -203,13 +318,11 @@ describe('FinancesPage', () => {
     expect(screen.getByRole('link', { name: /Dr\. Smith/ })).toHaveProperty('href', expect.stringContaining('/barn/green-acres/expenses/expense-1'))
   })
 
-  it('should_not_show_outstanding_income_section_when_only_outstanding_expenses_exist', async () => {
-    vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
-    ])
+  it('should_collapse_outstanding_income_section_when_only_outstanding_expenses_exist', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('Outstanding Income')).toBeNull()
+    expect(section('Outstanding Income').open).toBe(false)
   })
 
   it('should_sum_only_known_amounts_in_the_outstanding_expenses_total', async () => {
@@ -219,28 +332,30 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const section = screen.getByText('Outstanding Expenses').closest('section')!
-    expect(within(section).getByText('$120.00')).toBeDefined()
+    expect(within(section('Outstanding Expenses')).getByText('$120.00')).toBeDefined()
   })
 
   it('should_render_info_button_on_outstanding_expenses_label', async () => {
-    vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
-    ])
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const section = screen.getByText('Outstanding Expenses').closest('section')
-    expect(section?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(section('Outstanding Expenses').querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
-  it('should_always_style_outstanding_expenses_section_amber', async () => {
-    vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
-    ])
+  // Amber on the count, not on the total: an entry with no amount yet still needs attention,
+  // and it contributes $0 to the figure. Gated on there being an entry at all, since #1550 the
+  // section renders even when there is nothing wrong — an amber $0.00 there would be a lie.
+  it('should_style_the_outstanding_expenses_total_amber_even_when_no_amount_is_known', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const section = screen.getByText('Outstanding Expenses').closest('section')
-    expect(section?.className).toMatch(/amber/)
+    expect(within(section('Outstanding Expenses')).getByText('$0.00').className).toMatch(/amber/)
+  })
+
+  it('should_not_style_the_outstanding_expenses_total_amber_when_nothing_is_outstanding', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(within(section('Outstanding Expenses')).getByText('$0.00').className).not.toMatch(/amber/)
   })
 
 })
