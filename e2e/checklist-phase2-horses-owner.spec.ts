@@ -136,6 +136,9 @@ const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.las
  */
 const OWNER_COLUMN = 1
 const DOCUMENTS_COLUMN = 2
+/** Only the static (owner-row) read needs the index — the control read goes through
+ *  `settledLessonState`, which finds the switch by role inside the same cell. */
+const LESSON_COLUMN = 3
 const ACCESS_COLUMNS = ['Member', 'Owner', 'Documents', 'Lesson Schedule', 'Actions']
 
 /**
@@ -247,23 +250,37 @@ async function openAccess(page: Page, horseName: string) {
  *
  * Read together and asserted as a single value because the promotion item is a conjunction —
  * one tap, three consequences — and splitting it would let two pass while the third silently
- * described a different row. The Documents state is "which button is pressed" rather than a
- * cell text, since all three labels render in that cell at all times and only `aria-pressed`
- * tells them apart. Lesson access is `aria-checked` on the cell's switch for a stronger version
- * of the same reason: since #1548 that control carries no text at all, the `Can View`/`Cannot
- * View` label pair having been the state rather than the control's name.
+ * described a different row.
+ *
+ * Both access columns read two ways, because #1547 made the row *render* two ways. On a non-owner
+ * row the Documents cell shows all three labels at once and only `aria-pressed` tells them apart,
+ * so the state is "which segment is pressed"; the Lesson Schedule cell holds a switch that since
+ * #1548 carries no text at all — the `Can View`/`Cannot View` label pair having been the state
+ * rather than the control's name — so its state is `aria-checked`. On the **owner's** row there is
+ * no control in either cell: ownership confers write and lesson read through `auth_is_horse_owner`
+ * whatever the stored grant says, so offering controls that govern nothing would be a lie, and each
+ * cell shows its one effective value as text instead.
+ *
+ * `form` picks which pair of reads applies — and it is not a convenience, it is load-bearing:
+ * passing `'static'` for the owner row means an owner row that kept its controls yields
+ * `['NoneReadWrite']` for documents and finds no text in the lesson cell, so the expected
+ * `['Write']`/`['Can View']` assert the new form as well as the values.
  *
  * The switch is waited on before its attribute is read — `settledLessonState` carries that rule,
  * and lives in `support/horse-pages.ts` beside the rest of this table's vocabulary so the two
  * specs reading the column can't drift apart on how they read it.
  */
-async function rowState(row: Locator) {
+async function rowState(row: Locator, form: 'controls' | 'static' = 'controls') {
+  const documents = row.locator('td').nth(DOCUMENTS_COLUMN)
   return {
     owner: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
     documents: await settledInnerTexts(
-      row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
+      form === 'controls' ? documents.locator('button[aria-pressed="true"]') : documents
     ),
-    lesson: await settledLessonState(row),
+    lesson:
+      form === 'controls'
+        ? await settledLessonState(row)
+        : await settledInnerTexts(row.locator('td').nth(LESSON_COLUMN)),
   }
 }
 
@@ -399,10 +416,22 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
       timeout: SETTLE_AFTER_WRITE,
     })
 
-    expect({ before, after: await rowState(row) }).toEqual({
+    // `before` is still an ordinary grant row, so it reads through the controls; `after` is the
+    // owner's, which since #1547 has none. The switch's `aria-checked` on one side and the cell's
+    // text on the other is that difference, not two ways of saying the same thing.
+    expect({ before, after: await rowState(row, 'static') }).toEqual({
       before: { owner: ['Set as Owner'], documents: ['None'], lesson: 'false' },
-      after: { owner: ['Owner'], documents: ['Write'], lesson: 'true' },
+      after: { owner: ['Owner'], documents: ['Write'], lesson: ['Can View'] },
     })
+  })
+
+  // #1547: the two cells above lost their controls, and this is the sentence that says why. It
+  // renders only when a row in the table is the owner — which is the state the promotion above just
+  // produced, so this test's position in the chain is what gives it something to find. Scoped
+  // through the section, so a copy of the line elsewhere on the page couldn't satisfy it.
+  test('the_owner_row_explains_where_its_access_comes_from @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    await expect(accessSection(page).getByText(/unset the owner/i)).toBeVisible()
   })
 
   // Narrowed — see divergence 2 in the header. The assertion is the *change*, which is what

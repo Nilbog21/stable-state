@@ -153,43 +153,58 @@ export function HorseAccessSection({
                         </Button>
                       </form>
                     </Td>
-                    <Td>
-                      <div
-                        className={`inline-flex items-center ${SEGMENT_DIVIDER}`}
-                        role="group"
-                        aria-label="Document access"
-                      >
-                        {DOCUMENT_STATES.map(({ value, label }, index) => {
-                          const active = grant.documentPrivileges === value
-                          return (
-                            <form key={value} action={onUpdateDocument.bind(null, grant.id, value)}>
-                              {/* The fill is the only thing telling the three apart, so the same
-                                  state goes out through aria-pressed rather than colour alone. */}
-                              <Button
-                                type="submit"
-                                size="sm"
-                                variant={active ? 'primary' : 'secondary'}
-                                aria-pressed={active}
-                                className={segmentCorners(index, DOCUMENT_STATES.length)}
-                              >
-                                {label}
-                              </Button>
-                            </form>
-                          )
-                        })}
-                      </div>
-                    </Td>
-                    <Td>
-                      {/* A switch, not a Can View/Cannot View button (#1548): the label was carrying
-                          the state, which left nothing saying what the control was. The column
-                          header names the setting and the knob says which way it is thrown. */}
-                      <form action={onUpdateLesson.bind(null, grant.id, !grant.lessonReadPrivileges)}>
-                        <Switch
-                          checked={grant.lessonReadPrivileges}
-                          label={`Lesson schedule access for ${grant.name}`}
-                        />
-                      </form>
-                    </Td>
+                    {/* #1547: ownership confers document write and lesson read on its own, through
+                        `auth_is_horse_owner`, whatever this row stores — so on the owner's row these
+                        two controls governed nothing and displayed a state the DB would ignore.
+                        Effective values as plain cells instead. Blocking the write server-side was
+                        the other option and is worse: the control would keep looking live. */}
+                    {isOwner ? (
+                      <>
+                        <Td>Write</Td>
+                        <Td>Can View</Td>
+                      </>
+                    ) : (
+                      <>
+                        <Td>
+                          <div
+                            className={`inline-flex items-center ${SEGMENT_DIVIDER}`}
+                            role="group"
+                            aria-label="Document access"
+                          >
+                            {DOCUMENT_STATES.map(({ value, label }, index) => {
+                              const active = grant.documentPrivileges === value
+                              return (
+                                <form key={value} action={onUpdateDocument.bind(null, grant.id, value)}>
+                                  {/* The fill is the only thing telling the three apart, so the same
+                                      state goes out through aria-pressed rather than colour alone. */}
+                                  <Button
+                                    type="submit"
+                                    size="sm"
+                                    variant={active ? 'primary' : 'secondary'}
+                                    aria-pressed={active}
+                                    className={segmentCorners(index, DOCUMENT_STATES.length)}
+                                  >
+                                    {label}
+                                  </Button>
+                                </form>
+                              )
+                            })}
+                          </div>
+                        </Td>
+                        <Td>
+                          {/* A switch, not a Can View/Cannot View button (#1548): the label was
+                              carrying the state, which left nothing saying what the control was. The
+                              column header names the setting and the knob says which way it is
+                              thrown. */}
+                          <form action={onUpdateLesson.bind(null, grant.id, !grant.lessonReadPrivileges)}>
+                            <Switch
+                              checked={grant.lessonReadPrivileges}
+                              label={`Lesson schedule access for ${grant.name}`}
+                            />
+                          </form>
+                        </Td>
+                      </>
+                    )}
                     <TableActions>
                       <form action={onRevoke.bind(null, grant.id)}>
                         <Button
@@ -211,6 +226,15 @@ export function HorseAccessSection({
               })}
             </tbody>
           </table>
+
+          {/* Only when there is an owner row to explain — otherwise it describes nothing on screen.
+              Inside the scroll container beneath the table, so it travels with what it annotates. */}
+          {grants.some((grant) => grant.memberId === ownerMemberId) && (
+            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+              The owner&apos;s document and lesson access comes from owning the horse, so it can&apos;t be
+              narrowed here. Unset the owner to edit their access as an ordinary grant.
+            </p>
+          )}
         </div>
       )}
     </div>
