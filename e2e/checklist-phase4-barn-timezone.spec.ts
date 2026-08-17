@@ -255,10 +255,12 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * `page.clock.setFixedTime`, never `page.clock.install()`: `install` also fakes the timers
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
  * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically, off the browser-clock
- * defaults that page computed in `useState` initialisers. #1578 removed one of the two: the create
- * form's **Start Time** no longer derives anything from the clock (`LessonStartTime` now seeds
- * `initialTime ?? ''`), so the surface this pin reaches is `LessonForm`'s `lessonDate`, which still
- * seeds from `barnToday(timezone)` client-side.
+ * defaults that page computed in `useState` initialisers. #1578 moved one of the two: the create
+ * form's **Start Time** field no longer derives anything from the clock (`LessonStartTime` seeds
+ * `initialTime ?? ''`), but `LessonForm` reads it in two places of its own — `lessonDate`, which
+ * still seeds from `barnToday(timezone)`, and `estimateAt`'s hour, which stands in for an unentered
+ * start time. The date pre-fill item below is written against the first; nothing in this file
+ * asserts the second, which reaches only the exhaustion fetch and the calendar's band shading.
  *
  * **Why this pin and not #1204's 1pm-Hawaii one.** Its six items all assert values the SERVER
  * rendered, so its pin put the browser's barn-zone day one day BEHIND the server's and every

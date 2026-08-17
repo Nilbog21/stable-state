@@ -588,14 +588,16 @@ test('a_past_start_instant_renders_no_exhaustion_bars @manager', async ({ page }
 })
 
 // The future day is selected explicitly before the past one, rather than the test leaning on the
-// form's opening state, and that is not ceremony. Two independent reasons, and either alone is
-// enough: since #1578 the form opens with NO start time at all, so its opening state has no bars
-// on any run; and `openNewLessonForm` then pins the start time to BARRIER_TIME on the barn's
-// *today*, so on any run after that hour the form is already-past and still renders none.
-// Anchoring on the opening state would therefore assert nothing, and the zero-guard below —
-// itself an absence assertion, so bound by rule 4 — would be satisfied without a bar ever having
-// been drawn. Going future → past → future makes the round trip the checklist line names the
-// thing actually asserted.
+// form's opening state, and that is not ceremony: `openNewLessonForm` pins the start time to
+// BARRIER_TIME on the barn's *today*, so on any run after that hour the form opens already-past
+// and renders no bars at all. Anchoring on the opening state would therefore assert nothing for
+// most of the day, and the zero-guard below — itself an absence assertion, so bound by rule 4 —
+// would be satisfied without a bar ever having been drawn. Going future → past → future makes the
+// round trip the checklist line names the thing actually asserted.
+//
+// #1578's estimate does not change that. It stands in only while `lessonAt` is `''`, and this
+// helper fills the field before anything below runs, so the form here always holds a real instant
+// on the barn's today rather than an estimated one.
 test('returning_the_start_instant_to_the_future_restores_the_exhaustion_bars @manager', async ({
   page,
 }) => {
