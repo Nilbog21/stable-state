@@ -7,18 +7,20 @@
  * membership half left the dev in a state no real user occupies, so a manual checklist walk
  * exercised profile/document behaviour nobody would ever see (#1563).
  *
- * Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`, else a numbered prompt
- * over all barns), refuses unless the developer already holds a membership row there, lists
- * the barn's active members, then vacates the currently-inhabited rows — restoring their
- * rightful owner's `user_id`, or `null` for the dev's own rows — before taking over the
+ * Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`, else a numbered prompt over
+ * the barns `selectableBarns` admits). Every barn `isTeardownOwnedBarn` rejects is refused on
+ * both paths independently and regardless of `--allow-prod`, as is any barn the developer holds
+ * no membership row in. Then it lists the barn's active members and vacates the
+ * currently-inhabited rows — restoring their rightful owner's `user_id`, or `null` for the
+ * dev's own rows — before taking over the
  * selected member's rows. `planUserIdMoves` owns that ordering and its UNIQUE-constraint
  * rationale. Because `profiles.user_id` is now a column this script *writes*, it can no
  * longer be read as the answer to "whose auth user is this really?" — `auth.users`, via
  * `findAuthUserIdsByEmails`, is that source of truth instead.
  *
  * Gated by `assertDevProject` unless `CHANGE_USER_ALLOW_PROD` is set, which in turn requires
- * an explicit barn slug (#986). The pure formatters and the move planner are the module's
- * test surface (`change-user.test.ts`).
+ * an explicit barn slug (#986). The pure formatters, the barn-refusal pair and the move planner
+ * are the module's test surface (`change-user.test.ts`).
  */
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
@@ -45,6 +47,22 @@ export function assertSlugRequiredForProd(barnSlug: string | undefined, allowPro
   if (allowProd && !barnSlug) {
     throw new Error('CHANGE_USER_BARN_SLUG is required when CHANGE_USER_ALLOW_PROD is true')
   }
+}
+
+// Both flags mark a barn whose roster an automated teardown owns: `/demo` + the reset-demo cron,
+// and `seed-test-barn` + `teardown-test-barn` + `run-checklist-suite.sh`'s EXIT trap. The developer
+// holds a real membership in both kinds, and a swap nulls their own `profiles.user_id` — which is
+// exactly what `teardownBarnData`'s `user_id IS NULL` delete reaps, taking their profile row and
+// its photo with it. The seeded member they swapped onto is poisoned the other way: it now carries
+// devUserId, so no reap ever clears it and the next seed of that identity dies on
+// `profiles_email_unique` for every visitor, not just this developer (#1587). Nothing is lost by
+// refusing — a test barn's three members *are* the real `E2E_USERS` logins, so log in as one.
+export function isTeardownOwnedBarn(barn: { is_demo: boolean; is_test_barn: boolean }): boolean {
+  return barn.is_demo || barn.is_test_barn
+}
+
+export function selectableBarns<B extends { is_demo: boolean; is_test_barn: boolean }>(barns: B[]): B[] {
+  return barns.filter((b) => !isTeardownOwnedBarn(b))
 }
 
 export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
@@ -124,14 +142,29 @@ async function run() {
       console.error(`no barn found for slug "${BARN_SLUG}"`)
       process.exit(1)
     }
+    // Deliberately outside the `allowProd` branch above: `--allow-prod` widens which *project*
+    // may be targeted, never which barns within it are safe to inhabit.
+    if (isTeardownOwnedBarn(barn)) {
+      const kind = barn.is_demo ? 'demo barn (is_demo)' : 'test barn (is_test_barn)'
+      console.error(
+        `"${BARN_SLUG}" is a ${kind} — its roster is owned by an automated teardown that would delete your own profile row.\n` +
+          'Use dev-barn, or log in as that barn\'s own manager/trainer/rider instead of swapping into them.'
+      )
+      process.exit(1)
+    }
     barnId = barn.id
   } else {
-    const barns = mustSucceed(
-      await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
-      'fetch barns'
+    const barns = selectableBarns(
+      mustSucceed<{ id: string; name: string; slug: string; is_demo: boolean; is_test_barn: boolean }[]>(
+        await supabase
+          .from('barns')
+          .select('id, name, slug, is_demo, is_test_barn')
+          .order('name', { ascending: true }),
+        'fetch barns'
+      )
     )
     if (barns.length === 0) {
-      console.error('no barns found')
+      console.error('no barns available to swap into')
       process.exit(1)
     }
     barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))

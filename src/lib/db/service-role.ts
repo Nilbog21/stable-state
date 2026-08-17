@@ -104,9 +104,14 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
     // claimed-member state and not restoring it. 43 rows had leaked that way by the time this was
     // found. One caveat since #1563: scripts/change-user.ts is a third writer of profiles.user_id
     // and nulls the developer's own claimed row for as long as they inhabit another member, so
-    // "null means unclaimed stub" holds for every barn this function is actually pointed at
-    // (demo barns via /demo and the reset cron, per-run e2e barns) but is not a whole-project
-    // invariant. Don't widen a caller to a barn the developer holds a membership in.
+    // "null means unclaimed stub" is not a whole-project invariant. It holds for every barn this
+    // function is actually pointed at (demo barns via /demo and the reset cron, per-run e2e
+    // barns) only because change-user itself refuses those barns — isTeardownOwnedBarn rejects
+    // is_demo and is_test_barn on both of its barn-resolution paths, so the developer can never
+    // be inhabiting a member of one when a teardown runs (#1587). Before that refusal existed
+    // /demo was already the counterexample: it grants the developer a manager membership, and a
+    // swap there left their own profile row matching this delete. A new caller pointed at a barn
+    // the developer holds a membership in needs its own answer to that, not this one.
     await removePhotoPathStorage(
       'profiles',
       await supabase.from('profiles').select('photo_path').is('user_id', null).in('id', membershipProfileIds),

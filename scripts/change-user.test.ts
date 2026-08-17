@@ -5,6 +5,8 @@ import {
   mergeMembersWithProfiles,
   planUserIdMoves,
   assertSlugRequiredForProd,
+  isTeardownOwnedBarn,
+  selectableBarns,
 } from './change-user'
 
 describe('formatProfileLine', () => {
@@ -64,6 +66,43 @@ describe('assertSlugRequiredForProd', () => {
 
   it('should_not_throw_when_allow_prod_false_and_slug_missing', () => {
     expect(() => assertSlugRequiredForProd(undefined, false)).not.toThrow()
+  })
+})
+
+describe('isTeardownOwnedBarn', () => {
+  it('should_refuse_a_demo_barn', () => {
+    expect(isTeardownOwnedBarn({ is_demo: true, is_test_barn: false })).toBe(true)
+  })
+
+  it('should_refuse_a_test_barn', () => {
+    expect(isTeardownOwnedBarn({ is_demo: false, is_test_barn: true })).toBe(true)
+  })
+
+  it('should_refuse_a_barn_carrying_both_flags', () => {
+    expect(isTeardownOwnedBarn({ is_demo: true, is_test_barn: true })).toBe(true)
+  })
+
+  it('should_admit_a_barn_carrying_neither_flag', () => {
+    expect(isTeardownOwnedBarn({ is_demo: false, is_test_barn: false })).toBe(false)
+  })
+})
+
+describe('selectableBarns', () => {
+  const devBarn = { slug: 'dev-barn', is_demo: false, is_test_barn: false }
+  const demoBarn = { slug: 'demo-a1b2c3d4', is_demo: true, is_test_barn: false }
+  const testBarn = { slug: 'test-barn-pr-99', is_demo: false, is_test_barn: true }
+
+  it('should_drop_demo_and_test_barns', () => {
+    expect(selectableBarns([demoBarn, devBarn, testBarn])).toEqual([devBarn])
+  })
+
+  it('should_preserve_the_order_of_admitted_barns', () => {
+    const other = { slug: 'aardvark-acres', is_demo: false, is_test_barn: false }
+    expect(selectableBarns([devBarn, demoBarn, other])).toEqual([devBarn, other])
+  })
+
+  it('should_return_empty_when_every_barn_is_teardown_owned', () => {
+    expect(selectableBarns([demoBarn, testBarn])).toEqual([])
   })
 })
 
