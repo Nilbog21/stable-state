@@ -182,6 +182,35 @@ describe('LessonForm — month conflict calendar', () => {
     expect(getScheduleRange).toHaveBeenCalledWith('2026-05-28', '2026-07-15')
   })
 
+  // #1580 — the day panel is always open on this form and keeps the selected day as its heading
+  // however far the grid is paged, so the fetched range has to keep covering that day or the panel
+  // reads "Nothing scheduled for this day." under a day that has a lesson on it. Two pages, because
+  // one is already enough: month +1's grid reaches back only to ~the 25th of the current month.
+  //
+  // The pair covers both ends. `to` is exclusive, hence the selected day + 1 in the backward case.
+  async function pageMonths(direction: 'Previous' | 'Next', times: number) {
+    for (let i = 0; i < times; i++) {
+      fireEvent.click(screen.getByRole('button', { name: `${direction} month` }))
+      await act(async () => { await Promise.resolve() })
+    }
+  }
+
+  it('should_widen_the_fetched_range_back_to_the_selected_day_when_the_grid_pages_forward', async () => {
+    const { getScheduleRange } = await renderWithCalendar()
+
+    await pageMonths('Next', 2)
+
+    expect(getScheduleRange).toHaveBeenLastCalledWith('2026-06-01', '2026-09-09')
+  })
+
+  it('should_widen_the_fetched_range_forward_to_the_selected_day_when_the_grid_pages_back', async () => {
+    const { getScheduleRange } = await renderWithCalendar()
+
+    await pageMonths('Previous', 2)
+
+    expect(getScheduleRange).toHaveBeenLastCalledWith('2026-03-26', '2026-06-02')
+  })
+
   it('should_describe_a_lesson_by_the_names_its_participant_ids_resolve_to', async () => {
     await renderWithCalendar([createMockScheduleItem({ id: 'l1', start: '2026-06-10T14:00:00', horseIds: ['h1'], riderIds: ['r1'] })])
 
