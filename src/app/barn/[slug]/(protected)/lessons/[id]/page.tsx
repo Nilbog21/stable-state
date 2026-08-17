@@ -160,7 +160,7 @@ export default async function LessonDetailPage({
           </div>
           <div className="flex items-center gap-2">
             {canManage && (
-              <Button href={`/barn/${slug}/lessons/${lesson.id}/edit`} variant="ghost">
+              <Button href={`/barn/${slug}/lessons/${lesson.id}/edit`} variant="secondary">
                 Edit
               </Button>
             )}

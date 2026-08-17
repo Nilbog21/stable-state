@@ -417,7 +417,9 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
 }
 
 // Seven controls, seven forms: Grant Access, and then Set as Owner / the three document-access
-// buttons / the Can View toggle / Revoke on the single seeded grant row. Before #1390 every one
+// segments / the lesson-access switch / Revoke on the single seeded grant row. #1548 turned the
+// last of those from a Can View/Cannot View button into a `Switch`, which is still one form and one
+// submit — the count is unchanged, and that is the point of it being a count. Before #1390 every one
 // was a `<button type="button" onClick>` with no form at all, so each was a silent no-op inside
 // the hydration window — the defect #1385 fixed for member documents, on a page a manager lands
 // on and immediately clicks. Documents was a `<select>` carrying its value in `FormData` until

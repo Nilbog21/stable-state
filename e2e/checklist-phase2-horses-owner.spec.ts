@@ -61,7 +61,7 @@
 // "Tap **Set as Owner**" item and both `(#1069)` items. That is the issue's "genuinely one
 // indivisible interaction" carve-out and it is forced, not convenient: there is exactly one
 // `Set as Owner` tap available on Eclipse, and `set_horse_owner` elevates without ever
-// un-elevating, so the pre-promotion `None`/`Cannot View` state is unobservable to any later
+// un-elevating, so the pre-promotion `None`/lesson-access-off state is unobservable to any later
 // test. Split across tests, the two auto-elevation items could only assert the post-state — and
 // an elevation assertion with no pre-state passes just as well against a grant that was already
 // elevated, which is the vacuous-check class this batch has already paid for.
@@ -78,7 +78,7 @@
 //
 // Also not an oversight. Rule 4 binds absence assertions; this file makes none. Every claim is
 // positive — a card renders, a badge reads Unavailable, a button carries `aria-pressed="true"`,
-// an `href` resolves. The closest thing to an absence is the pre-promotion `None`/`Cannot View`
+// an `href` resolves. The closest thing to an absence is the pre-promotion `None`/lesson-access-off
 // state, and that is asserted as the *value the row shows*, not as the absence of another one,
 // so there is no matcher here that could be satisfied on its first poll (fact 18).
 import type { Locator } from '@playwright/test'
@@ -249,15 +249,23 @@ async function openAccess(page: Page, horseName: string) {
  * one tap, three consequences — and splitting it would let two pass while the third silently
  * described a different row. The Documents state is "which button is pressed" rather than a
  * cell text, since all three labels render in that cell at all times and only `aria-pressed`
- * tells them apart.
+ * tells them apart. Lesson access is `aria-checked` on the cell's switch for a stronger version
+ * of the same reason: since #1548 that control carries no text at all, the `Can View`/`Cannot
+ * View` label pair having been the state rather than the control's name.
+ *
+ * The switch is waited on before its attribute is read — the settled-read discipline of
+ * `support/read.ts` (rule 3) applied to an attribute, since a one-shot read of a row that hasn't
+ * rendered returns `null` and two of those compare equal.
  */
 async function rowState(row: Locator) {
+  const lessonSwitch = row.locator('td').nth(LESSON_COLUMN).getByRole('switch')
+  await lessonSwitch.waitFor()
   return {
     owner: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
     documents: await settledInnerTexts(
       row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
     ),
-    lesson: await settledInnerTexts(row.locator('td').nth(LESSON_COLUMN)),
+    lesson: await lessonSwitch.getAttribute('aria-checked'),
   }
 }
 
@@ -374,7 +382,7 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
    * is unobservable after the single tap that this test exists to make, so the two auto-elevation
    * items can only be asserted here, alongside the tap's own visible effect.
    *
-   * The `before` half is what makes them non-vacuous: without it, `Write`/`Can View` would pass
+   * The `before` half is what makes them non-vacuous: without it, `Write`/switch-on would pass
    * just as readily against a grant that had been elevated by hand, and the item's operative
    * phrase is "without tapping it directly".
    */
@@ -394,8 +402,8 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     })
 
     expect({ before, after: await rowState(row) }).toEqual({
-      before: { owner: ['Set as Owner'], documents: ['None'], lesson: ['Cannot View'] },
-      after: { owner: ['Owner'], documents: ['Write'], lesson: ['Can View'] },
+      before: { owner: ['Set as Owner'], documents: ['None'], lesson: 'false' },
+      after: { owner: ['Owner'], documents: ['Write'], lesson: 'true' },
     })
   })
 

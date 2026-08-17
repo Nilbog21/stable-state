@@ -49,7 +49,7 @@ export function TierForm({
             {isActive && onDeactivate && <DeactivateButton action={deactivateFormAction} />}
             {!isActive && onActivate && (
               <form action={onActivate}>
-                <Button type="submit" variant="ghost" size="sm">
+                <Button type="submit" variant="secondary" size="sm">
                   Activate
                 </Button>
               </form>

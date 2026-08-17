@@ -166,7 +166,7 @@ export default async function SettingsPage({
                   <tr key={tier.id}>
                     <Td>{tier.name}</Td>
                     <Td tone="secondary">${tier.price}</Td>
-                    <Td>{tier.is_default && <Badge tone="solid">Default</Badge>}</Td>
+                    <Td>{tier.is_default && <Badge tone="gray">Default</Badge>}</Td>
                     <Td>
                       {tier.is_active ? (
                         <span className="text-zinc-700 dark:text-zinc-300">Active</span>
@@ -175,7 +175,7 @@ export default async function SettingsPage({
                       )}
                     </Td>
                     <TableActions>
-                      <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="ghost" size="sm">
+                      <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="secondary" size="sm">
                         Edit
                       </Button>
                     </TableActions>
@@ -225,7 +225,7 @@ export default async function SettingsPage({
                       {event.visible_to_roles.join(', ')}
                     </Td>
                     <TableActions>
-                      <Button href={`/barn/${slug}/settings/events/${event.id}`} variant="ghost" size="sm">
+                      <Button href={`/barn/${slug}/settings/events/${event.id}`} variant="secondary" size="sm">
                         Edit
                       </Button>
                     </TableActions>
