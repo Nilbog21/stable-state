@@ -113,6 +113,45 @@ describe('ExhaustionBar', () => {
     expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('92%')
   })
 
+  it('should_caption_the_bar_with_its_band_and_point_total', () => {
+    render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }]} thresholds={thresholds} />)
+    expect(screen.getByText('Low · 3 points')).toBeDefined()
+  })
+
+  it('should_caption_with_the_moderate_band_when_total_is_moderate', () => {
+    render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 7 }]} thresholds={thresholds} />)
+    expect(screen.getByText('Moderate · 7 points')).toBeDefined()
+  })
+
+  it('should_caption_with_the_high_band_when_total_is_high', () => {
+    render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 11 }]} thresholds={thresholds} />)
+    expect(screen.getByText('High · 11 points')).toBeDefined()
+  })
+
+  it('should_caption_with_the_combined_total_when_a_ghost_value_is_present', () => {
+    render(
+      <ExhaustionBar
+        existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }]}
+        ghostValue={5}
+        thresholds={thresholds}
+      />
+    )
+    expect(screen.getByText('Moderate · 8 points')).toBeDefined()
+  })
+
+  it('should_open_expansion_panel_on_caption_tap', () => {
+    render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }]} thresholds={thresholds} />)
+    fireEvent.click(screen.getByText('Low · 3 points'))
+    expect(screen.getByText('3 points from 1 lessons (±3-day window)')).toBeDefined()
+  })
+
+  it('should_name_the_control_with_the_caption_text_so_it_is_announced_once', () => {
+    render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }]} thresholds={thresholds} />)
+    expect(screen.getByRole('button', { name: /exhaustion/i }).getAttribute('aria-label')).toBe(
+      'Exhaustion: Low · 3 points from 1 lessons'
+    )
+  })
+
   it('should_open_expansion_panel_on_bar_tap', () => {
     render(<ExhaustionBar existingRows={[{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }]} thresholds={thresholds} />)
     fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
