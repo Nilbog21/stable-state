@@ -1,17 +1,24 @@
 'use client'
-import { useState } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 
 export function InfoPopover({ text, align = 'right' }: { text: string; align?: 'left' | 'right' }) {
-  const [open, setOpen] = useState(false)
+  // <span>, not the hook's default <div>: this renders inside a <p> on the
+  // finances page, where a <div> is invalid HTML.
+  const { open, setOpen, ref } = useOutsideDismiss<HTMLSpanElement>()
   return (
-    <span className="relative inline-block">
+    <span ref={ref} className="relative inline-block">
       {/* Raw Tailwind, not <Button>: icon-only unpadded info trigger — same
-          reasoning as NotificationBell's bell trigger. */}
+          reasoning as NotificationBell's bell trigger. The zinc-500/400 pair is
+          the page's secondary-text pair, and the only one that clears WCAG AA
+          against both page backgrounds (#ffffff / #0a0a0a) — zinc-400 on white
+          is 2.5:1 and zinc-500 on the dark ground is 4.1:1 (#1551). text-base
+          keeps the glyph from shrinking to the text-xs of the <Th> it sits in. */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="ml-1 flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+        className="ml-1 flex min-h-[44px] min-w-[44px] items-center justify-center text-base text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         aria-label="Info"
+        aria-expanded={open}
       >
         ⓘ
       </button>

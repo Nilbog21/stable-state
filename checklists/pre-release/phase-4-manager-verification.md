@@ -357,6 +357,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: outstanding_expenses_lists_past_due_planned_expense_as_one_line) **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type)
 - [ ] (e2e: past_due_planned_expense_absent_from_outstanding_income_table) That past-due planned expense does **not** appear inside the Outstanding Income table itself
 - [ ] (e2e: outstanding_expenses_info_icon_explains_why_an_entry_is_listed) Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
+- [ ] (e2e: outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it) With that explanation open, tap anywhere outside it → it closes (#1551 — before it, only a second tap on the ⓘ itself would close it)
 - [ ] (e2e: past_due_expense_line_links_to_its_edit_page) Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
 - [ ] (e2e: past_due_expense_still_outstanding_after_amount_entered_without_payment_type) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**
 - [ ] (e2e: past_due_expense_amount_now_counts_toward_the_outstanding_expenses_total) That same expense now contributes its amount to the **Outstanding Expenses** bold total instead of $0

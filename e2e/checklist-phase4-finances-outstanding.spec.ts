@@ -1,4 +1,5 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/components/useOutsideDismiss.ts
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/lessons/[id]/cancel-rider/**
 import { test, expect, withBarn, type Page } from './support/test'
@@ -434,6 +435,17 @@ test('outstanding_expenses_info_icon_explains_why_an_entry_is_listed @manager', 
   await expect(
     section.getByText('Shown here because the expense is missing an amount, missing a payment type, or both')
   ).toBeVisible()
+})
+
+test('outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const section = outstandingExpenses(page)
+  await section.getByRole('button', { name: 'Info' }).click()
+  // Tapping the heading, not the icon: before #1551 only a second tap on the icon closed it.
+  await page.getByRole('heading', { name: 'Finances' }).click()
+  await expect(
+    section.getByText('Shown here because the expense is missing an amount, missing a payment type, or both')
+  ).toBeHidden()
 })
 
 // ---------------------------------------------------------------------------
