@@ -29,16 +29,24 @@ assert_fail() {
 
 # A holder that announces itself: it touches $2 the moment it owns a slot, then sleeps. Every probe
 # below waits on that marker rather than on a fixed sleep, so a slow machine delays the test instead
-# of turning it into a coin flip. Prints its pid so a case can SIGKILL it.
+# of turning it into a coin flip. Sets HOLDER_PID so a case can SIGKILL it.
 #
-# The pid printed is the *script's* — which is the holder, because e2e-slot.sh `exec`s its command.
+# The pid is the *script's* — which is the holder, because e2e-slot.sh `exec`s its command.
+#
+# Two mechanics, both learned the hard way. It sets a global rather than echoing its pid: read back
+# through `$(...)`, the backgrounded holder inherits the substitution's stdout pipe, so the
+# substitution blocks until the holder exits — the whole file hangs on its first setup line. And the
+# holder's own output goes to /dev/null for the same reason, so it holds no pipe this shell reads.
+# Setting a global also keeps the job a direct child, which is what makes `wait` in kill_holders
+# reap it instead of erroring on a grandchild.
+HOLDER_PID=
 start_holder() {
   local dir="$1" marker="$2" exclusive="${3:-}"
   local args=()
   [ -n "$exclusive" ] && args+=(--exclusive)
   E2E_SLOT_DIR="$dir" bash "$SCRIPT" "${args[@]}" \
-    bash -c "touch '$marker'; sleep 60" &
-  echo $!
+    bash -c "touch '$marker'; sleep 60" >/dev/null 2>&1 &
+  HOLDER_PID=$!
 }
 
 # Bounded wait for a holder to reach its marker. Non-zero if it never does, so a case reports a
@@ -88,7 +96,8 @@ DIR="$(mktemp -d)"
 pids=()
 ok=true
 for ((n = 1; n <= SLOTS; n++)); do
-  pids+=("$(start_holder "$DIR" "$DIR/holder-$n")")
+  start_holder "$DIR" "$DIR/holder-$n"
+  pids+=("$HOLDER_PID")
   await_marker "$DIR/holder-$n" || ok=false
 done
 if [ "$ok" = true ]; then
@@ -103,14 +112,15 @@ rm -rf "$DIR"
 DIR="$(mktemp -d)"
 pids=()
 for ((n = 1; n <= SLOTS; n++)); do
-  pids+=("$(start_holder "$DIR" "$DIR/holder-$n")")
+  start_holder "$DIR" "$DIR/holder-$n"
+  pids+=("$HOLDER_PID")
   await_marker "$DIR/holder-$n" || true
 done
 E2E_SLOT_DIR="$DIR" timeout 3 bash "$SCRIPT" true >/dev/null 2>&1 && rc=0 || rc=$?
 if [ "$rc" -eq 124 ]; then
-  assert_pass "the $((SLOTS + 1))th concurrent acquire blocks"
+  assert_pass "the N+1th ($((SLOTS + 1))) concurrent acquire blocks"
 else
-  assert_fail "the $((SLOTS + 1))th concurrent acquire blocks" "expected timeout 124, got $rc"
+  assert_fail "the N+1th ($((SLOTS + 1))) concurrent acquire blocks" "expected timeout 124, got $rc"
 fi
 kill_holders "${pids[@]}"
 rm -rf "$DIR"
@@ -122,7 +132,8 @@ rm -rf "$DIR"
 DIR="$(mktemp -d)"
 pids=()
 for ((n = 1; n <= SLOTS; n++)); do
-  pids+=("$(start_holder "$DIR" "$DIR/holder-$n")")
+  start_holder "$DIR" "$DIR/holder-$n"
+  pids+=("$HOLDER_PID")
   await_marker "$DIR/holder-$n" || true
 done
 kill_holders "${pids[0]}"
@@ -147,7 +158,8 @@ rm -rf "$DIR"
 # One slot, not all of them: this is the direction that bites, since a `db push` landing mid-suite
 # leaves the run reading half-applied schema and failing in ways no spec author can diagnose.
 DIR="$(mktemp -d)"
-holder="$(start_holder "$DIR" "$DIR/holder-1")"
+start_holder "$DIR" "$DIR/holder-1"
+holder="$HOLDER_PID"
 await_marker "$DIR/holder-1" || true
 E2E_SLOT_DIR="$DIR" timeout 3 bash "$SCRIPT" --exclusive true >/dev/null 2>&1 && rc=0 || rc=$?
 if [ "$rc" -eq 124 ]; then
@@ -160,7 +172,8 @@ rm -rf "$DIR"
 
 # --- Test 8: an acquire blocks while --exclusive is held -----------------------------------------
 DIR="$(mktemp -d)"
-holder="$(start_holder "$DIR" "$DIR/holder-x" exclusive)"
+start_holder "$DIR" "$DIR/holder-x" exclusive
+holder="$HOLDER_PID"
 await_marker "$DIR/holder-x" || true
 E2E_SLOT_DIR="$DIR" timeout 3 bash "$SCRIPT" true >/dev/null 2>&1 && rc=0 || rc=$?
 if [ "$rc" -eq 124 ]; then
@@ -175,7 +188,8 @@ rm -rf "$DIR"
 # The mirror of 8. Without it, a script that simply never acquires anything would pass 4, 7 and 8 —
 # "blocks" is only meaningful next to a case that proves it eventually doesn't.
 DIR="$(mktemp -d)"
-holder="$(start_holder "$DIR" "$DIR/holder-x" exclusive)"
+start_holder "$DIR" "$DIR/holder-x" exclusive
+holder="$HOLDER_PID"
 await_marker "$DIR/holder-x" || true
 kill_holders "$holder"
 if E2E_SLOT_DIR="$DIR" timeout 5 bash "$SCRIPT" true >/dev/null 2>&1; then
