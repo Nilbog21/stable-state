@@ -48,9 +48,14 @@ make_repo() {
   echo "$dir"
 }
 
-# Runs the selector inside $REPO with the given changed paths on stdin.
+# Runs the selector inside $REPO with the given changed paths on stdin, stdout only.
+#
+# stderr is dropped rather than merged (#1550): escalation now explains itself there, so a merge
+# would fold that sentence into every `mode=full` assertion below. The split is the point — the
+# `mode=`/`spec=` lines are the parsed contract, stderr is commentary, and `select_specs_stderr`
+# is how the commentary gets asserted. The `--lint` tests redirect for themselves.
 select_specs() {
-  printf '%s\n' "$@" | (cd "$REPO" && bash "$SCRIPT" 2>&1)
+  printf '%s\n' "$@" | (cd "$REPO" && bash "$SCRIPT" 2>/dev/null)
 }
 
 # Same, but stdout discarded — the warnings are the assertion, and merging the two
@@ -160,7 +165,9 @@ rm -rf "$REPO"
 # `gh pr diff --name-only` terminates its last line, but a bare `read` loop drops an
 # unterminated one — and it drops it toward mode=none, i.e. toward running no e2e.
 REPO="$(make_repo)"
-out="$(printf 'playwright.config.ts' | (cd "$REPO" && bash "$SCRIPT" 2>&1))"
+# Its own invocation rather than `select_specs`, which appends a newline via printf '%s\n' —
+# the missing terminator is the whole subject. stdout only, for the reason on `select_specs`.
+out="$(printf 'playwright.config.ts' | (cd "$REPO" && bash "$SCRIPT" 2>/dev/null))"
 if [ "$out" = "mode=full" ]; then
   assert_pass "unterminated final line still counts"
 else
@@ -214,14 +221,35 @@ rm -rf "$REPO"
 
 # Test 15: a tracked input path warns about nothing
 # The guard on Test 14 — a warning that fires on every path is worse than no warning.
+#
+# Deliberately a *scoped* path, not the `src/lib/db/types.ts` it used to be: #1550 gave escalation
+# its own stderr line, and every `src/lib/**` path is always-full, so the old fixture would assert
+# "no stderr" on the one input that now legitimately prints some. The claim under test is unchanged
+# — it is about the untracked-path warning, not about escalation.
 REPO="$(make_repo)"
-err="$(select_specs_stderr 'src/lib/db/types.ts')"
+err="$(select_specs_stderr 'src/app/barns/page.tsx')"
 if [ -z "$err" ]; then
   assert_pass "tracked input path emits no warning"
 else
   assert_fail "tracked input path emits no warning" "stderr=$err"
 fi
 rm -rf "$REPO"
+
+# Test 19: mode=full names the path and glob that forced it, on stderr
+# The reason a full run happened was previously nowhere: `mode=full` prints alone, so finding out
+# which of the diff's paths escalated meant reading ALWAYS_FULL against the diff by hand. #1550 —
+# a docs-only edit under src/components/ ran all 73 specs and the output said only "full".
+REPO="$(make_repo)"
+err="$(select_specs_stderr 'src/components/ExhaustionBar.tsx')"
+if echo "$err" | grep -q 'src/components/ExhaustionBar.tsx' && echo "$err" | grep -q 'src/components/\*\*'; then
+  assert_pass "mode=full names its triggering path and glob on stderr"
+else
+  assert_fail "mode=full names its triggering path and glob on stderr" "stderr=$err"
+fi
+rm -rf "$REPO"
+
+# The reason's "stderr, never stdout" half needs no test of its own: test 4 reads stdout alone and
+# asserts `mode=full` is the whole of it, so a reason line escaping onto stdout fails there.
 
 # Test 16: a markdown doc inside an always-full tree does not escalate the run
 # #1550 — ALWAYS_FULL's `src/components/**` is a literal prefix with no extension filter, so
