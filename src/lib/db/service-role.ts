@@ -100,9 +100,13 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   if (membershipProfileIds.length > 0) {
     // `user_id IS NULL`, not `is_managed = true` (#1282). Stubs are inserted with a null user_id
     // and `claim_managed_member` sets user_id and clears is_managed in the same UPDATE, so this
-    // filter is strictly stronger: it still can never delete a claimed login, and unlike the flag
-    // it survives a spec demoting a stub to reach the claimed-member state and not restoring it.
-    // 43 rows had leaked that way by the time this was found.
+    // filter is strictly stronger than the flag: it survives a spec demoting a stub to reach the
+    // claimed-member state and not restoring it. 43 rows had leaked that way by the time this was
+    // found. One caveat since #1563: scripts/change-user.ts is a third writer of profiles.user_id
+    // and nulls the developer's own claimed row for as long as they inhabit another member, so
+    // "null means unclaimed stub" holds for every barn this function is actually pointed at
+    // (demo barns via /demo and the reset cron, per-run e2e barns) but is not a whole-project
+    // invariant. Don't widen a caller to a barn the developer holds a membership in.
     await removePhotoPathStorage(
       'profiles',
       await supabase.from('profiles').select('photo_path').is('user_id', null).in('id', membershipProfileIds),
