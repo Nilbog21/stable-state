@@ -100,7 +100,7 @@ import { BARRIER_TIME, openNewLessonForm, selectHorse } from './support/lesson-f
 import { GRID_CELLS, cellFor, dayCell, dayCells, goToMonth, pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { getMonthGrid, shiftMonth } from '@/lib/month-calendar'
-import { formatMonthHeading } from '@/lib/local-day'
+import { calendarDate, formatCalendarDate, formatMonthHeading } from '@/lib/local-day'
 import type { Horse } from '@/lib/db/types'
 
 // ---------------------------------------------------------------------------
@@ -189,6 +189,10 @@ let selectDay: string
 let moderateLessonDay: string
 /** APPLE lesson, exertion 5 @ 10:00. Bands days 19–25 `high`. */
 let highLessonDay: string
+/** Month +3, day 15. APPLE lesson, exertion 5 @ 10:00 — the fetch barrier for the paged-away
+ *  panel test, and nothing else. #1580; the fixture-layout docstring works through why it can be
+ *  added without disturbing any assertion above. */
+let farLessonDay: string
 
 let apple: Horse
 let butter: Horse
@@ -201,6 +205,7 @@ let butter: Horse
  *   +1 day 15  moderateLessonDay   APPLE 3 @ 10:00
  *   +1 day 22  highLessonDay       APPLE 5 @ 10:00
  *   +1 day 26  selectDay           nothing
+ *   +3 day 15  farLessonDay        APPLE 5 @ 10:00   (#1580's fetch barrier, three months out)
  *
  * ## The window arithmetic, stated so it is checkable rather than trusted
  *
@@ -236,6 +241,28 @@ let butter: Horse
  * catch. (Days 12–14 *can* appear on month M's grid; that is harmless, because the test asserts
  * nothing about month M.)
  *
+ * ## `farLessonDay`, and why month +3 is far enough to be inert (#1580)
+ *
+ * It exists only as a fetch barrier: `..._still_lists_its_days_lesson_after_paging_two_months_away`
+ * has to know the +3 fetch has LANDED before it asserts, because `scheduleItems` is never reset on
+ * a month change (`waitForScheduleShading` states that staleness in full) and the pre-fetch state
+ * still holds +1's items — which would satisfy that assertion under the very code it exists to
+ * pin. Waiting on a `high` day only +3's fetch can produce is what makes the assertion a claim.
+ *
+ * It cannot join `..._is_shaded_by_that_months_lessons`'s exact set: that set is read off the +1
+ * grid, whose fetch tail is +2 day 18 (the paragraph above), so a +3 lesson is out of reach by more
+ * than a month. And it is out of reach in the other direction too — nothing below ever pages past
+ * +1 except this one test.
+ *
+ * ## #1580's widened fetch range does not reach any of this either
+ *
+ * `LessonForm` now stretches its range to cover the selected day, so on the +1 grid `from` is the
+ * day the form opened on (in month M) rather than `grid[0] − 3`. That admits month-M items no
+ * assertion here has ever seen — and it cannot change a single decoration, because `windowTotal`
+ * centres ±72h on `${date}T${hour}` and so reaches back at most to `grid[0] − 3`, which is exactly
+ * where the range used to start. Every newly admitted item is strictly earlier than that. It
+ * reaches `popupItems` and nothing else, which is the whole point of the change.
+ *
  * One horse per lesson, deliberately: `assert_lesson_participant_counts` constrains a normal
  * lesson's participants.
  */
@@ -262,6 +289,7 @@ const barn = withBarn('phase3-calendar-panel', async ({ supabase, barn: seededBa
   moderateLessonDay = `${fixtureMonth}-15`
   highLessonDay = `${fixtureMonth}-22`
   selectDay = `${fixtureMonth}-26`
+  farLessonDay = `${shiftMonth(fixtureMonth, 2)}-15`
 
   const dayAt = (day: string, time: string) =>
     wallClockToInstant(`${day}T${time}:00`, seededBarn.timezone)
@@ -283,6 +311,7 @@ const barn = withBarn('phase3-calendar-panel', async ({ supabase, barn: seededBa
   await seedLesson(panelDay, PANEL_LESSON_TIME, butter.id, MODERATE_EXERTION)
   await seedLesson(moderateLessonDay, '10:00', apple.id, MODERATE_EXERTION)
   await seedLesson(highLessonDay, '10:00', apple.id, HIGH_EXERTION)
+  await seedLesson(farLessonDay, '10:00', apple.id, HIGH_EXERTION)
 })
 
 // ---------------------------------------------------------------------------
@@ -647,6 +676,44 @@ test.describe('The day panel below the grid', () => {
 
     await expect(dayPanel(page).getByText('Nothing scheduled for this day.', { exact: true })).toBeVisible()
     await expect(dayPanelItems(page)).toHaveCount(0)
+  })
+
+  /**
+   * #1580 — this form's panel cannot close (it hosts the required Start Time field), so its heading
+   * stays on the selected day however far the grid is paged. The bug was that only the heading did:
+   * the schedule was refetched per DISPLAYED month, so the panel's body emptied under a day that
+   * has a lesson on it, and read "Nothing scheduled for this day." as if it were true.
+   *
+   * TWO PAGES, not one, and not because one is insufficient — one already breaks it, since month
+   * +1's grid reaches back only to ~the 25th of M. Two puts `panelDay` beyond the +3 grid's own
+   * spill-back (≤6 days into +2) by more than a month, so no calendar alignment can make this pass
+   * by accident. `goToMonth`'s `target` parameter is what makes two calls in one test safe — the
+   * file header records what a derived settle target does here.
+   *
+   * THE BARRIER IS THE TEST. `scheduleItems` is never reset on a month change, so between the
+   * second page and the +3 fetch landing the panel is still showing +1's items — which is the
+   * assertion's expected state. Waiting on `farLessonDay` at `high` first is what makes the read
+   * a claim about the NEW range rather than about a request still in flight; without it this test
+   * passes against the bug. APPLE is checked for that barrier alone: `popupItems` filters by date
+   * only, so the panel's line is unaffected by which horse is selected.
+   */
+  test('manager_the_day_panel_still_lists_its_days_lesson_after_paging_two_months_away @manager', async ({
+    page,
+  }) => {
+    await openNewLessonForm(page, barn)
+    await selectHorse(page, apple)
+    await goToFixtureMonth(page)
+    await pickDay(page, panelDay)
+    await expect(dayPanelItems(page)).toHaveText([panelLineFor(butter.name, RIDER_NAME)], {
+      timeout: SCHEDULE_FETCH_BUDGET,
+    })
+
+    await goToMonth(page, 'Next', shiftMonth(fixtureMonth, 1))
+    await goToMonth(page, 'Next', shiftMonth(fixtureMonth, 2))
+    await waitForScheduleShading(page, farLessonDay, 'high')
+
+    await expect(dayPanel(page).getByText(formatCalendarDate(calendarDate(panelDay)), { exact: true })).toBeVisible()
+    await expect(dayPanelItems(page)).toHaveText([panelLineFor(butter.name, RIDER_NAME)])
   })
 })
 
