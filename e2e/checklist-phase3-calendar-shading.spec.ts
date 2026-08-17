@@ -296,29 +296,35 @@ function dottedDates(cells: GridCell[]): string[] {
 }
 
 /**
- * The three adjectives of "a small red dot below the date number", measured off the rendered
- * dot rather than asserted as a class.
+ * The three adjectives of "a small dot below the date number, in the same colour as the number",
+ * measured off the rendered dot rather than asserted as a class.
  *
- * `redDominant` is `r > g && r > b`, deliberately loose: the dot is `bg-red-600` in light mode
- * and `bg-red-400` in dark, and a theme-token change should not turn this into a false failure.
- * A frozen hex would be a more brittle assertion, not a stronger one.
+ * `matchesTheDateText` compares the dot's painted background against the cell's own painted text
+ * colour (#1554) rather than naming either one. The dot is `bg-current`, so this holds in both
+ * colour modes and on a spill-over day — whose number is deliberately one step dimmer — without
+ * this helper knowing which of the four zinc values it is looking at. It replaced a `redDominant`
+ * check from when the dot was `bg-red-600`/`bg-red-400`.
  *
  * ## The channels come back through a 1×1 canvas, and that is not decoration
  *
  * Measured, and it cost this spec its first run. **Tailwind 4 ships its palette in `oklch()`,
- * and Chromium's `getComputedStyle` hands that format straight back** — `bg-red-600` computes to
+ * and Chromium's `getComputedStyle` hands that format straight back** — `bg-red-600` computed to
  * the string `oklch(0.577 0.245 27.325)`, not to an `rgb()` triple. Scraping numbers out of that
- * string with a digit regex yields `[0, 577, 0, 245, 27, 325]`, whose first two "channels" are
- * `0` and `577`, so `r > g` is false for a dot that is unmistakably red on screen. The first run
- * of this file failed on exactly that, reporting `redDominant: false`.
+ * string with a digit regex yielded `[0, 577, 0, 245, 27, 325]`, whose first two "channels" are
+ * `0` and `577`, so the old `r > g` was false for a dot that was unmistakably red on screen. The
+ * first run of this file failed on exactly that.
  *
  * Painting the value into a canvas and reading the pixel back is the format-agnostic fix: the
  * browser does the conversion, so this keeps working whatever colour syntax Tailwind emits next.
  * The probe that established it: `oklch(0.577 0.245 27.325)` → `[231, 0, 11, 255]`.
  *
+ * It matters twice over now that both sides go through it: `currentColor` and a zinc token can
+ * reach the same paint by different syntax, and only the rasterized triple compares them.
+ *
  * `fillStyle` is seeded to opaque black first, so a value Chromium cannot parse is silently
- * ignored and reads back as black — `r > g` is false, and the assertion fails loudly rather than
- * passing on a colour nobody measured.
+ * ignored and reads back as black. Seeding the two probes to *different* sentinels
+ * (black and white) is what keeps a pair of unparseable values from collapsing into a match —
+ * the assertion then fails loudly rather than passing on colours nobody measured.
  */
 async function dotShape(page: Page, date: string) {
   return dayCell(page, date).evaluate((node: HTMLElement) => {
@@ -332,14 +338,18 @@ async function dotShape(page: Page, date: string) {
     canvas.height = 1
     const ctx = canvas.getContext('2d')
     if (!ctx) return null
-    ctx.fillStyle = '#000000'
-    ctx.fillStyle = getComputedStyle(dot).backgroundColor
-    ctx.fillRect(0, 0, 1, 1)
-    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data
+    const rasterize = (value: string, fallback: string) => {
+      ctx.fillStyle = fallback
+      ctx.fillStyle = value
+      ctx.fillRect(0, 0, 1, 1)
+      return Array.from(ctx.getImageData(0, 0, 1, 1).data).join(',')
+    }
 
     return {
       belowTheNumber: box.top + box.height / 2 > cell.top + cell.height / 2,
-      redDominant: r > g && r > b,
+      matchesTheDateText:
+        rasterize(getComputedStyle(dot).backgroundColor, '#000000') ===
+        rasterize(getComputedStyle(node).color, '#ffffff'),
       smallRelativeToTheCell: box.height < cell.height / 2,
     }
   })
@@ -560,7 +570,8 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
     })
   })
 
-  // "A day where Apple already has a lesson shows a small red dot below the date number."
+  // "A day where Apple already has a lesson shows a small dot below the date number, in the same
+  // colour as the number."
   //
   // The dot set is asserted exactly, derived from the seed: APPLE has a lesson on three of the
   // four fixture days and none at all on `neighbourDay`. Asserting only that `riderDay` has a
@@ -580,7 +591,7 @@ test.describe('#1019 conflict calendar — grid and shading', () => {
       shape: await dotShape(page, riderDay),
     }).toEqual({
       dotted: [riderDay, appleHeavierDay, butterHeavierDay],
-      shape: { belowTheNumber: true, redDominant: true, smallRelativeToTheCell: true },
+      shape: { belowTheNumber: true, matchesTheDateText: true, smallRelativeToTheCell: true },
     })
   })
 

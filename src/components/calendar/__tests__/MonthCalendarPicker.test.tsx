@@ -105,6 +105,14 @@ describe('MonthCalendarPicker — day decoration', () => {
     expect(screen.getByTestId('conflict-dot-2026-03-11')).toBeDefined()
   })
 
+  it('should_paint_the_conflict_dot_in_the_day_cells_own_text_colour', () => {
+    renderPicker({ decorations: decorate({ '2026-03-11': { conflict: true } }) })
+
+    const dot = screen.getByTestId('conflict-dot-2026-03-11')
+    expect(dot.className).toContain('bg-current')
+    expect(dot.className).not.toMatch(/bg-red-/)
+  })
+
   it('should_not_render_a_conflict_dot_on_a_clear_day', () => {
     renderPicker({ decorations: decorate({ '2026-03-11': { conflict: false } }) })
 
