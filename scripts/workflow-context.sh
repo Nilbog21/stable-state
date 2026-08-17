@@ -154,6 +154,13 @@ echo "branch=$branch"
 echo "issue=$issue"
 echo "base=$base"
 echo "base_from_label=$base_from_label"
+# The current release branch, for /runChecklist (#1560), which verifies which branch it is
+# about to test a whole release against. `base` can't answer that: it derives from the
+# issue number in the branch name, so on `release/release-N` itself — the state the run
+# *wants* — there is no issue and `base` is empty, and on a leftover `patch-N` branch it
+# resolves to `main`. `release_ref` above is already the right value and is always set, so
+# this is a second name for it rather than a second derivation (#1118's rule).
+echo "release_base=${release_ref#origin/}"
 echo "pr=$pr"
 echo "pr_state=$pr_state"
 

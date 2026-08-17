@@ -12,7 +12,35 @@ You are driving one pass of `PRE_RELEASE_TEST_CHECKLIST.md` with the user: walki
 bash scripts/workflow-context.sh
 ```
 
-Record `worktree`, `worktree_path` and `port`. If `worktree` came back empty, ask which worktree to use and re-run the script from there. All commands below run from `{worktree_path}` with absolute paths.
+Record `worktree`, `worktree_path`, `port` and `release_base`. If `worktree` came back empty, ask which worktree to use and re-run the script from there. All commands below run from `{worktree_path}` with absolute paths.
+
+**Verify which branch you are about to test, before anything else** (#1560). This step comes first — ahead of the run file, whose header records what it establishes, and far ahead of the suite, which takes hours to report a verdict that is worthless if it was measured against the wrong tree. Wrapup 3 is the gate on the entire release, and a worktree that still has a merged feature branch or a week-old `release/release-N` checked out will produce a full green that says nothing about the code being shipped.
+
+`release_base` is the target — the current release branch. **Not `base`**, which answers a different question: it derives from the issue number in the branch name, so on `release/release-N` itself it comes back empty, and on a leftover `patch-N` branch it says `main`. Both are the stale-worktree case this check exists to catch.
+
+Three read-only commands:
+
+```
+git -C {worktree_path} fetch origin
+git -C {worktree_path} rev-list --left-right --count origin/{release_base}...HEAD
+git -C {worktree_path} status --porcelain
+```
+
+`rev-list --left-right --count` prints two numbers in the order the refs were given, so with `origin/{release_base}` on the left it is **behind first, ahead second** — `5	0` means five commits on the release branch that HEAD doesn't have. Reversing the refs silently reverses the reading, and "0 behind" is the answer that lets the run proceed, so keep them in this order.
+
+The `fetch` is unconditional and stays that way — it reads, it changes no branch and no file, and without it the behind count is a stale number that reports green on a release branch that moved yesterday. What the already-correct case below skips is the *state-changing* half, the checkout and the pull.
+
+Report the current branch, both counts, and whether the tree is clean, then branch on what you found:
+
+- **Dirty tree** — refuse to start the run, printing `git status --short`'s paths. Whether to stash, commit or revert is the user's call; this skill never touches their tree. A run against uncommitted edits is testing something that exists on no branch at all, which is worse than testing the wrong branch because nothing afterwards can reconstruct what was measured.
+- **On `{release_base}`, 0 ahead and 0 behind** — say so, with the HEAD SHA, and go straight to the run file. No checkout, no pull, no question. Re-invoking on an already-correct branch is a no-op that announces itself.
+- **Anything else** — report it and **offer** the correction, proceeding only on confirmation:
+
+  > HEAD is `{branch}` — {n} behind, {m} ahead of `{release_base}`. Check out `{release_base}` and pull? (yes/no)
+
+  On `yes`: `git -C {worktree_path} checkout {release_base} && git -C {worktree_path} pull --ff-only origin {release_base}`. On `no`: say plainly that the run's verdict will describe `{branch}` and not the release, and continue. Ahead-only counts here too — a local commit sitting unpushed on the release branch is the same false green pointed the other way.
+
+Record the branch and the HEAD SHA (`git -C {worktree_path} rev-parse --short HEAD`) — the run file header below carries them.
 
 **Run file:** `specs/checklist-run-$(date +%F).md`. `specs/` is gitignored scratch, so the record never enters git. Settle it *before* starting a server or the suite — a run that's already finished has nothing left to serve or re-run.
 
@@ -24,6 +52,7 @@ If it does not exist, create it:
 <!-- last-completed-section:  -->
 
 Server: http://localhost:{port} · worktree {worktree}
+Branch: {branch} @ {sha}
 ```
 
 **If it already exists**, read its `last-completed-section` marker and branch on it:
@@ -34,6 +63,8 @@ Server: http://localhost:{port} · worktree {worktree}
   > A run file for today already exists, last completed section **{marker}**. Type `resume` to pick up at the next section, or `restart` to start over (the existing file is overwritten):
 
   On `resume`, branch on the file's `Suite:` line: a **verdict** means the suite is already collected, so skip Step 0.5 and Step 3.5's collection; `Suite: RUNNING` means the background run died with the session that launched it, so relaunch it at Step 0.5; no line at all means it never launched. Step 0.4's before-suite checks are re-prompted only if the file carries no `## Before-suite checks` block — branch on the record itself, not on the `Suite:` line as a proxy for it: once the suite has launched those checks are behind it and cannot be redone, which is exactly why Step 0.4 writes them down before launching. Then begin Step 1 at the section after the marker. On `restart`, overwrite the file with a fresh header. An empty marker means no section has been flushed yet — resume starts at the first section either way.
+
+  Either way, the branch check above has already run — it runs on every invocation, resume included — so compare its answer against the file's `Branch:` line and, if they differ, say so and update the line. A resume normally *should* differ: Wrapup 3 works each finding to merge as the run goes, so the release branch moves under a multi-day run. A header still naming the SHA from before those fixes misattributes every section walked after them.
 
 **Ordering.** Dev server up → the `before-suite` checks, completed before anything else starts → the suite launched in the background → the rest of the manual walk, concurrent with it → the `after-suite` checks once the suite has landed.
 
