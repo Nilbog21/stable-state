@@ -235,10 +235,21 @@ async function run() {
     currentOwnerUserId = ownerAuthUserId ?? null
   }
 
-  // Both vacates precede both takeovers; the profile vacate is barn-scoped only because it
-  // mirrors the membership one. A dev holding memberships in two barns of the same project and
-  // swapping in both would hit a unique-violation from mustSucceed rather than silent
-  // corruption — loud enough for a dev tool aimed at a single-barn dev project.
+  // Both vacates precede both takeovers. Two known ceilings, both acceptable for a dev tool aimed
+  // at a single-barn dev project (dev-barn), neither reachable from one barn:
+  //
+  // 1. The profile vacate is barn-scoped only because it mirrors the membership one, so a dev
+  //    holding memberships in two barns and swapping in both ends up with the columns disagreeing.
+  //    With different target profiles the profiles takeover trips profiles_user_id_unique — but
+  //    only after the membership takeover of the same run has already committed. With one profile
+  //    shared across both barns it writes the value already there and raises nothing at all, and
+  //    reverting one barn then restores that profile while the other barn's membership still holds
+  //    devUserId. Upgrade path: scope both vacates by user_id across barns rather than by the
+  //    selected barn.
+  // 2. PostgREST gives no transaction, so these updates land one at a time and a failure mid-loop
+  //    leaves the two columns torn; the currentRow probe above reads barn_memberships only, so it
+  //    won't see a stale profiles row on the next run. The failing update names its table and id.
+  //    Upgrade path: a SECURITY DEFINER RPC applying the whole plan in one statement.
   const moves = planUserIdMoves({
     devUserId,
     devProfileId,
