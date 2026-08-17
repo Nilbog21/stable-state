@@ -61,7 +61,7 @@
 // "Tap **Set as Owner**" item and both `(#1069)` items. That is the issue's "genuinely one
 // indivisible interaction" carve-out and it is forced, not convenient: there is exactly one
 // `Set as Owner` tap available on Eclipse, and `set_horse_owner` elevates without ever
-// un-elevating, so the pre-promotion `None`/`Cannot View` state is unobservable to any later
+// un-elevating, so the pre-promotion `None`/lesson-access-off state is unobservable to any later
 // test. Split across tests, the two auto-elevation items could only assert the post-state — and
 // an elevation assertion with no pre-state passes just as well against a grant that was already
 // elevated, which is the vacuous-check class this batch has already paid for.
@@ -78,7 +78,7 @@
 //
 // Also not an oversight. Rule 4 binds absence assertions; this file makes none. Every claim is
 // positive — a card renders, a badge reads Unavailable, a button carries `aria-pressed="true"`,
-// an `href` resolves. The closest thing to an absence is the pre-promotion `None`/`Cannot View`
+// an `href` resolves. The closest thing to an absence is the pre-promotion `None`/lesson-access-off
 // state, and that is asserted as the *value the row shows*, not as the absence of another one,
 // so there is no matcher here that could be satisfied on its first poll (fact 18).
 import type { Locator } from '@playwright/test'
@@ -93,6 +93,7 @@ import {
   accessColumns,
   grantRow,
   grantedMembers,
+  settledLessonState,
 } from './support/horse-pages'
 import { E2E_USERS } from './support/fixtures'
 
@@ -135,6 +136,8 @@ const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.las
  */
 const OWNER_COLUMN = 1
 const DOCUMENTS_COLUMN = 2
+/** Only the static (owner-row) read needs the index — the control read goes through
+ *  `settledLessonState`, which finds the switch by role inside the same cell. */
 const LESSON_COLUMN = 3
 const ACCESS_COLUMNS = ['Member', 'Owner', 'Documents', 'Lesson Schedule', 'Actions']
 
@@ -249,16 +252,23 @@ async function openAccess(page: Page, horseName: string) {
  * one tap, three consequences — and splitting it would let two pass while the third silently
  * described a different row.
  *
- * The Documents column reads two ways because #1547 made the row *render* two ways. On a non-owner
- * row all three labels render at once and only `aria-pressed` tells them apart, so the state is
- * "which button is pressed". On the **owner's** row there are no buttons at all: ownership confers
- * write through `auth_is_horse_owner` whatever the stored grant says, so offering a control that
- * governs nothing would be a lie, and the cell shows the one effective value instead. `form` picks
- * which read applies — and it is not a convenience, it is load-bearing: passing `'static'` for the
- * owner row means an owner row that kept its buttons yields `['NoneReadWrite']` and fails, so the
- * expected `['Write']` asserts the new form as well as the value.
+ * Both access columns read two ways, because #1547 made the row *render* two ways. On a non-owner
+ * row the Documents cell shows all three labels at once and only `aria-pressed` tells them apart,
+ * so the state is "which segment is pressed"; the Lesson Schedule cell holds a switch that since
+ * #1548 carries no text at all — the `Can View`/`Cannot View` label pair having been the state
+ * rather than the control's name — so its state is `aria-checked`. On the **owner's** row there is
+ * no control in either cell: ownership confers write and lesson read through `auth_is_horse_owner`
+ * whatever the stored grant says, so offering controls that govern nothing would be a lie, and each
+ * cell shows its one effective value as text instead.
  *
- * The Lesson Schedule column needs no such split — it is one element's text either way.
+ * `form` picks which pair of reads applies — and it is not a convenience, it is load-bearing:
+ * passing `'static'` for the owner row means an owner row that kept its controls yields
+ * `['NoneReadWrite']` for documents and finds no text in the lesson cell, so the expected
+ * `['Write']`/`['Can View']` assert the new form as well as the values.
+ *
+ * The switch is waited on before its attribute is read — `settledLessonState` carries that rule,
+ * and lives in `support/horse-pages.ts` beside the rest of this table's vocabulary so the two
+ * specs reading the column can't drift apart on how they read it.
  */
 async function rowState(row: Locator, form: 'controls' | 'static' = 'controls') {
   const documents = row.locator('td').nth(DOCUMENTS_COLUMN)
@@ -267,7 +277,10 @@ async function rowState(row: Locator, form: 'controls' | 'static' = 'controls') 
     documents: await settledInnerTexts(
       form === 'controls' ? documents.locator('button[aria-pressed="true"]') : documents
     ),
-    lesson: await settledInnerTexts(row.locator('td').nth(LESSON_COLUMN)),
+    lesson:
+      form === 'controls'
+        ? await settledLessonState(row)
+        : await settledInnerTexts(row.locator('td').nth(LESSON_COLUMN)),
   }
 }
 
@@ -384,7 +397,7 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
    * is unobservable after the single tap that this test exists to make, so the two auto-elevation
    * items can only be asserted here, alongside the tap's own visible effect.
    *
-   * The `before` half is what makes them non-vacuous: without it, `Write`/`Can View` would pass
+   * The `before` half is what makes them non-vacuous: without it, `Write`/switch-on would pass
    * just as readily against a grant that had been elevated by hand, and the item's operative
    * phrase is "without tapping it directly".
    */
@@ -403,8 +416,11 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
       timeout: SETTLE_AFTER_WRITE,
     })
 
+    // `before` is still an ordinary grant row, so it reads through the controls; `after` is the
+    // owner's, which since #1547 has none. The switch's `aria-checked` on one side and the cell's
+    // text on the other is that difference, not two ways of saying the same thing.
     expect({ before, after: await rowState(row, 'static') }).toEqual({
-      before: { owner: ['Set as Owner'], documents: ['None'], lesson: ['Cannot View'] },
+      before: { owner: ['Set as Owner'], documents: ['None'], lesson: 'false' },
       after: { owner: ['Owner'], documents: ['Write'], lesson: ['Can View'] },
     })
   })

@@ -75,7 +75,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
               {existingTotal} points from {existingRows.length} lessons (±3-day window)
             </span>
             <Button
-              variant="ghost"
+              variant="secondary"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()

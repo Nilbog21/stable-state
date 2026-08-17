@@ -268,9 +268,9 @@ describe('NavigationConfirmDialog', () => {
     expect(dialog.getByRole('button', { name: /stay/i }).className).toContain('bg-zinc-900')
   })
 
-  it('should_render_leave_with_ghost_variant', () => {
+  it('should_render_leave_with_secondary_variant', () => {
     const dialog = openDialog()
-    expect(dialog.getByRole('button', { name: /leave/i }).className).toContain('border-zinc-300')
+    expect(dialog.getByRole('button', { name: /leave/i }).className).toContain('bg-zinc-200')
   })
 
   it('should_focus_stay_button_when_dialog_opens', () => {

@@ -95,7 +95,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
         This is an unlinked member. Use the following controls to invite this person to the barn.
       </p>
       <div className="flex items-center gap-2">
-        <Button type="button" variant="ghost" onClick={handleCopy} disabled={busy}>
+        <Button type="button" variant="secondary" onClick={handleCopy} disabled={busy}>
           {currentCopy?.error === null ? 'Copied!' : 'Copy Invite'}
         </Button>
         <form

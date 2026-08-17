@@ -150,7 +150,7 @@ export function NavigationConfirmDialog() {
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg dark:bg-zinc-900">
         <p className="mb-6 text-sm text-zinc-900 dark:text-zinc-50">{message}</p>
         <div className="flex justify-end gap-3">
-          <Button variant="ghost" onClick={handleLeave}>
+          <Button variant="secondary" onClick={handleLeave}>
             Leave
           </Button>
           {/* Rightmost, primary, and focused on open: Stay is the safe choice, so it carries the

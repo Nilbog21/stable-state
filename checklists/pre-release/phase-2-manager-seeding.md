@@ -24,18 +24,18 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] (e2e: granting_a_rider_access_adds_them_to_the_grants_list) On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list
 - [ ] (e2e: a_granted_riders_row_offers_set_as_owner) Dana's row carries an **Owner** column showing **Set as Owner**
 - [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) Tap **Set as Owner** on Dana's row → the button changes to **Owner**
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Documents** column now reads **Write** as plain text, with no None/Read/Write buttons — auto-elevated on becoming owner, and shown as a value rather than a control because ownership confers write whatever the stored grant says
-- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Lesson Schedule** column likewise reads **Can View** as plain text, with no toggle to tap
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Documents** column now reads **Write** as plain text, with no None/Read/Write segmented strip — auto-elevated on becoming owner, and shown as a value rather than a control because ownership confers write whatever the stored grant says
+- [ ] (e2e: promoting_a_granted_rider_to_owner_elevates_their_document_and_lesson_access) (#1069/#1547) Dana's **Lesson Schedule** column likewise reads **Can View** as plain text, with no switch to flick
 - [ ] (e2e: the_owner_row_explains_where_its_access_comes_from) (#1547) A line under the Access table explains that the owner's access comes from owning the horse and that unsetting the owner is how to edit it
 - [ ] (e2e: the_identity_header_owner_line_names_the_new_owner) Refresh the page → the identity header's owner line beside the photo now reads "Dana Rider" (it named the manager who created the horse before)
 - [ ] (e2e: the_identity_header_owner_line_links_to_the_owners_member_detail_page) That owner line links to Dana's member detail page
 - [ ] (e2e: the_owner_button_still_reads_owner_after_a_reload) Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
 - [ ] (e2e: granting_a_second_rider_adds_them_to_the_grants_list) Grant access to rider Emery → Emery appears in the grants list
 - [ ] (e2e: a_new_grants_document_access_starts_at_none) Emery's row shows Documents set to **None**
-- [ ] (e2e: a_new_grants_lesson_access_starts_at_cannot_view) Emery's row shows lesson access **Cannot View**
+- [ ] (e2e: a_new_grants_lesson_access_switch_starts_off) Emery's row shows the **Lesson Schedule** switch turned off
 - [ ] (e2e: a_document_access_choice_survives_a_reload) Tap **Read** in Emery's **Documents** column → refresh the page → **Read** is still the selected one
-- [ ] (e2e: tapping_cannot_view_flips_a_grant_to_can_view) Tap Emery's **Cannot View** button → it flips to **Can View**
-- [ ] (e2e: a_lesson_access_choice_survives_a_reload) Refresh the page → Emery's **Can View** selection persists
+- [ ] (e2e: tapping_the_lesson_access_switch_turns_it_on) Tap the **Lesson Schedule** switch on Emery's row → it flips on
+- [ ] (e2e: a_lesson_access_choice_survives_a_reload) Refresh the page → Emery's **Lesson Schedule** switch is still on
 - [ ] (e2e: an_owner_button_taps_back_to_set_as_owner) Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**
 - [ ] (e2e: clearing_the_owner_leaves_the_identity_header_reading_no_owner_set) Refresh the page → the identity header's owner line beside the photo now reads "No owner set" and no longer links to a member (there is no literal "Owner:" prefix in the app, and the line itself always renders — as the owner's name, or as this)
 - [ ] (e2e: revoking_the_owners_grant_removes_them_from_the_grants_list) Tap **Set as Owner** on Dana's row again, then tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list
