@@ -129,6 +129,6 @@ The no-hover-state rubric bullet is the line that used to sit under Active Agree
 
 Doc review — read either the guide page or its repo-root markdown file; they are the same content by construction:
 
-The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `ReactMarkdown`. Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+The page picks the file by role at `src/app/barn/[slug]/(protected)/guide/page.tsx:11-13` and renders it through `<MarkdownDocument>` — `<ReactMarkdown>` plus the generated contents list (#1556). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) The rider guide at `/barn/dev-barn/guide` still describes what a rider can actually do — `USER_GUIDE_RIDER.md`

@@ -51,4 +51,4 @@ Data resets at approximately [time]." — the reset instant (`barn.created_at + 
 
 **Roles:** All active members
 
-Role-specific user guide rendered from `USER_GUIDE_{ROLE}.md` at repo root using `react-markdown` with Tailwind `prose` styling
+Role-specific user guide rendered from `USER_GUIDE_{ROLE}.md` at repo root using `<MarkdownDocument>` (`react-markdown` with Tailwind `prose` styling, plus #1556's generated table of contents and slugged `##`/`###` ids)

@@ -142,7 +142,7 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 ## Profile & Guide
 
-Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, tap **User Guide** to open this guide from any page, or tap **About** for the app version and links to our Terms of Service and Privacy Policy. When you open Profile from within a barn, the full barn nav bar appears at the top so you can navigate back to any section without losing your place.
+Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, tap **User Guide** to open this guide from any page (a **Contents** list under the title jumps you straight to any section), or tap **About** for the app version and links to our Terms of Service and Privacy Policy. When you open Profile from within a barn, the full barn nav bar appears at the top so you can navigate back to any section without losing your place.
 
 If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns. If you tried our demo barn, it won't appear in this dropdown — that's intended, since most people already managing a real barn won't need it. It's still there: visiting `/demo` again takes you straight back to it.
 

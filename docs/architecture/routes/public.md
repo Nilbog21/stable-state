@@ -4,13 +4,13 @@
 
 **Roles:** unauthenticated
 
-Terms of Service; renders `TERMS_OF_SERVICE.md` (repo root) via `react-markdown`, no auth/barn scoping — same static-markdown-page pattern as `/barn/[slug]/guide` but public; generic "← Back" link to `/barns` above the content (#996 follow-up, same treatment as `/about`/`/changelog`); linked from `/login`
+Terms of Service; renders `TERMS_OF_SERVICE.md` (repo root) via `<MarkdownDocument>` (`react-markdown` plus #1556's generated table of contents and slugged `##`/`###` ids), no auth/barn scoping — same static-markdown-page pattern as `/barn/[slug]/guide` but public; generic "← Back" link to `/barns` above the content (#996 follow-up, same treatment as `/about`/`/changelog`); linked from `/login`
 
 ## `/privacy`
 
 **Roles:** unauthenticated
 
-Static privacy policy, rendered from `PRIVACY_POLICY.md` at repo root using `react-markdown` (same rendering approach as `/barn/[slug]/guide`, no auth check); generic "← Back" link to `/barns` above the content (#996 follow-up, same treatment as `/about`/`/changelog`).
+Static privacy policy, rendered from `PRIVACY_POLICY.md` at repo root using `<MarkdownDocument>` (same rendering approach as `/barn/[slug]/guide`, no auth check); generic "← Back" link to `/barns` above the content (#996 follow-up, same treatment as `/about`/`/changelog`).
 Linked from `/login`
 
 ## `/about`
@@ -25,5 +25,5 @@ Linked from the avatar dropdown (`UserMenu.tsx`), between User Guide and Sign ou
 
 **Roles:** unauthenticated
 
-Renders `CHANGELOG.md` (repo root) via `react-markdown`, same static-markdown-page pattern as `/terms`/`/privacy`, no auth check; same generic "← Back" link to `/barns` as `/about`.
+Renders `CHANGELOG.md` (repo root) via a bare `react-markdown`, no auth check; same generic "← Back" link to `/barns` as `/about`. #1556 moved `/terms` and `/privacy` off this shared pattern onto `<MarkdownDocument>` for its generated table of contents and left this page behind, so the three no longer render alike.
 Linked from `/about`'s Changelog bullet, and from the avatar dropdown via `/about`

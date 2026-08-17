@@ -4,7 +4,7 @@
 
 > Conventions, phase partitioning, automation tags, and route coverage: [`PRE_RELEASE_TEST_CHECKLIST.md`](../../PRE_RELEASE_TEST_CHECKLIST.md)
 
-> **Unauthenticated context:** no Playwright *project* supplies one — all four in `playwright.config.ts` bind a `storageState`. A spec gets one from `browser.newContext({ storageState: { cookies: [], origins: [] } })`, and only from that exact form: the `request` fixture and a bare `playwright.request.newContext()` both silently carry the auth cookie, so the wrong form passes for the wrong reason (`e2e/CLAUDE.md` fact 4, #1208; worked example in `checklist-phase4-calendar-feed.spec.ts`). That is a note, not a blocker — it applies to the six terms/privacy lines below, to the `/demo` and invite-redirect lines, and to the sign-out line at the end of Phase 7.
+> **Unauthenticated context:** no Playwright *project* supplies one — all four in `playwright.config.ts` bind a `storageState`. A spec gets one from `browser.newContext({ storageState: { cookies: [], origins: [] } })`, and only from that exact form: the `request` fixture and a bare `playwright.request.newContext()` both silently carry the auth cookie, so the wrong form passes for the wrong reason (`e2e/CLAUDE.md` fact 4, #1208; worked example in `checklist-phase4-calendar-feed.spec.ts`). That is a note, not a blocker — it applies to the seven terms/privacy lines below, to the `/demo` and invite-redirect lines, and to the sign-out line at the end of Phase 7.
 
 - [ ] (e2e: the_login_page_shows_a_terms_of_service_link) Visit `/login` — a **Terms of Service** link is present
 - [ ] (e2e: clicking_the_terms_of_service_link_opens_the_terms_page) Clicking the link opens `/terms`
@@ -12,6 +12,7 @@
 - [ ] (e2e: the_login_page_shows_a_privacy_policy_link) Visit `/login` — a **Privacy Policy** link is present
 - [ ] (e2e: clicking_the_privacy_policy_link_opens_the_privacy_page) Clicking the link opens `/privacy`
 - [ ] (e2e: the_privacy_page_renders_the_drafted_privacy_policy_content) The `/privacy` page renders the drafted privacy policy content
+- [ ] (e2e: the_terms_page_table_of_contents_links_to_each_heading) The `/terms` page's **Contents** list names every section and clicking an entry scrolls to it
 
 The `/demo` lines below are verdicted individually rather than as a block: they do not share an answer. Only the one needing the server restarted under different environment variables is out of a spec's reach — a fresh-context `/demo` visit and the `/api/cron/reset-demo` calls are ordinary Playwright work.
 
@@ -67,7 +68,7 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 
 Doc review — read either the page or its repo-root markdown file; they are the same content by construction:
 
-Both pages read that file at request time and render it through `ReactMarkdown` (`src/app/privacy/page.tsx:14,31`). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
+Both pages read that file at request time and render it through `<MarkdownDocument>` (`src/app/privacy/page.tsx:14,30`), which is `<ReactMarkdown>` plus the generated contents list (#1556). Deliberately unscoped: the line asks for a review and you decide how deep it needs to go.
 
 - [ ] (manual — a doc-accuracy judgement against what actually shipped; no click path asserts that prose is still true) `/terms` still describes what the app does — `TERMS_OF_SERVICE.md`
 - [ ] (manual — same judgement, and `CLAUDE.md`'s Privacy Policy section names the change classes that most often invalidate it) `/privacy` still describes what the app collects, stores and shares — `PRIVACY_POLICY.md`
