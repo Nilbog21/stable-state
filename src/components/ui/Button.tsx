@@ -21,13 +21,13 @@ export const buttonSizes: Record<Size, string> = {
  * in the component was `disabled:opacity-50` over those same classes, so enabled and disabled
  * landed at nearly the same weight and Edit buttons read as greyed out. Every variant now owns its
  * disabled pair, which is what makes the difference a declared colour rather than an alpha
- * multiplier. State is `Switch` or a segmented group of these, never a variant swap.
+ * multiplier. State is `Switch` or `Radio`, never a variant swap.
  *
- * One variant swap outlived #1548: `HorseAccessSection.tsx`'s Owner column, whose state is
- * single-select *across* rows rather than per-control, so neither idiom fits it — a switch would
- * claim the row toggles independently and a group would have to span the table. It is a known
- * exception with a fix already scoped, not a precedent: #1549 replaces that column with radios.
- * Nothing else may reach for the pattern in the meantime.
+ * One variant swap outlived #1548 — `HorseAccessSection.tsx`'s Owner column, whose state is
+ * single-select *across* rows rather than per-control, so neither idiom then available fit it: a
+ * switch would have claimed the row toggles independently and a segmented group would have had to
+ * span the table. #1549 closed it by adding `Radio`, which is single-select and needs no enclosing
+ * group when the column header names the setting. There is no exception left.
  */
 export const buttonVariants: Record<Variant, string> = {
   primary:

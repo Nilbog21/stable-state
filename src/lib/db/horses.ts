@@ -137,7 +137,9 @@ export async function updateHorseDetails(
     feed_notes: string | null
     medication_notes: string | null
     registered_name: string | null
-    owning_member_id: string | null
+    // Not `string | null` since #1549: `owning_member_id` is NOT NULL, so a null here would raise
+    // on the RPC's unconditional write rather than clear the owner the way it used to.
+    owning_member_id: string
   }
 ): Promise<void> {
   const supabase = await createClient()
