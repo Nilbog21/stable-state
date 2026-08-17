@@ -468,14 +468,16 @@ describe('computeDayDecorations — rider-only flat tint', () => {
 })
 
 describe('browseDayDecorations', () => {
-  it('should_tint_a_day_that_has_an_item', () => {
-    const result = browseDayDecorations([calendarDate('2026-03-10')], [item({ start: '2026-03-10T09:00:00' })])
+  const day = (date: string, count: number) => ({ date: calendarDate(date), items: Array(count).fill(item()) })
+
+  it('should_tint_a_day_that_has_items', () => {
+    const result = browseDayDecorations([day('2026-03-10', 1)])
 
     expect(result['2026-03-10'].scheduled).toBe(true)
   })
 
   it('should_not_tint_a_day_with_nothing_on_it', () => {
-    const result = browseDayDecorations([calendarDate('2026-03-10')], [item({ start: '2026-03-11T09:00:00' })])
+    const result = browseDayDecorations([day('2026-03-10', 0)])
 
     expect(result['2026-03-10'].scheduled).toBe(false)
   })
@@ -484,20 +486,19 @@ describe('browseDayDecorations', () => {
   // `past: true` would suppress the tint on every day already gone (MonthCalendarPicker's
   // tint precedence checks `past` first).
   it('should_still_tint_a_day_that_is_already_in_the_past', () => {
-    const result = browseDayDecorations([calendarDate('1999-01-04')], [item({ start: '1999-01-04T09:00:00' })])
+    const result = browseDayDecorations([day('1999-01-04', 1)])
 
     expect(result['1999-01-04']).toEqual({ past: false, band: null, scheduled: true, conflict: false })
   })
 
   it('should_carry_no_band_or_conflict_signal', () => {
-    const result = browseDayDecorations([calendarDate('2026-03-10')],
-      [item({ start: '2026-03-10T09:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 9 } })])
+    const result = browseDayDecorations([day('2026-03-10', 3)])
 
     expect(result['2026-03-10']).toEqual({ past: false, band: null, scheduled: true, conflict: false })
   })
 
-  it('should_decorate_every_requested_date_when_there_are_no_items', () => {
-    const result = browseDayDecorations([calendarDate('2026-03-10'), calendarDate('2026-03-11')], [])
+  it('should_decorate_every_requested_date', () => {
+    const result = browseDayDecorations([day('2026-03-10', 0), day('2026-03-11', 0)])
 
     expect(Object.keys(result)).toEqual(['2026-03-10', '2026-03-11'])
   })

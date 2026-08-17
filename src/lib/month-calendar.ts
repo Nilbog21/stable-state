@@ -119,11 +119,15 @@ function worstBand(
  *  dashboard browses history and `past` wins the tint precedence outright, so a past day
  *  would go blank exactly when the user paged back to look at it; `scheduled` keys off any
  *  item at all rather than off a selected rider's. `band`/`conflict` are selection concepts
- *  with no meaning outside a form. */
-export function browseDayDecorations(dates: CalendarDate[], items: ScheduleItem[]): Record<string, DayDecoration> {
-  const busy = new Set(items.map((i) => i.start.slice(0, 10)))
+ *  with no meaning outside a form.
+ *
+ *  Takes the *grouped display* items, not the raw `ScheduleItem`s the rest of this module
+ *  deals in, so the tint and the day panel can never disagree: the dashboard drops priced
+ *  appointments (page.tsx's `amount === null` filter) after grouping, and keying the tint off
+ *  the pre-filter list would tint days whose panel then opens empty. */
+export function browseDayDecorations<T>(days: { date: CalendarDate; items: T[] }[]): Record<string, DayDecoration> {
   return Object.fromEntries(
-    dates.map((date) => [date, { past: false, band: null, scheduled: busy.has(date), conflict: false }])
+    days.map(({ date, items }) => [date, { past: false, band: null, scheduled: items.length > 0, conflict: false }])
   )
 }
 
