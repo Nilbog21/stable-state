@@ -625,6 +625,7 @@ Notifications and profile:
 - [ ] (e2e: avatar_menu_about_opens_the_app_overview) Avatar menu → **About** (`/about`) renders the app overview
 - [ ] (e2e: the_changelog_link_on_about_includes_the_current_version) The **Changelog** link on `/about` includes the current version
 - [ ] (e2e: the_changelog_link_on_about_opens_the_changelog_page) That **Changelog** link opens `/changelog`
+- [ ] (e2e: the_changelog_contents_list_names_the_major_versions) `/changelog` opens with a **Contents** list naming every major version and nothing deeper
 - [ ] (e2e: the_terms_of_service_link_on_about_opens_the_terms_page) The **Terms of Service** link on `/about` opens `/terms`
 - [ ] (e2e: the_privacy_policy_link_on_about_opens_the_privacy_page) The **Privacy Policy** link on `/about` opens `/privacy`
 - [ ] (e2e: the_back_link_on_about_returns_to_the_barn_list) The **← Back** link on `/about` returns to `/barns`

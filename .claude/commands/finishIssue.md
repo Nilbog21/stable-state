@@ -241,11 +241,15 @@ If the issue does **not** have a `patch-N` label, skip this step entirely and go
    >
    > Use this, edit it, or tell me what to write instead."
 
-   Wait for confirmation or edits before proceeding. Add a new section at the top of `CHANGELOG.md` (after the `# Changelog` header):
-   ```
-   ## {new-tag} — {Month YYYY}
+   Wait for confirmation or edits before proceeding. The entry goes **inside** the top major's section, not above it — since #1589 a patch is a bullet under `### Later updates`, never its own `## ` heading. A new top-level `## {new-tag}` section would re-break the two things that restructure fixed: `/changelog`'s contents list (which names `##` headings only, so every patch would reappear in it) and both version parsers (`parseLatestVersion` and the e2e spec's `currentVersionFromChangelog`), which read the newest release out of that block.
 
-   {user's description}
+   Find the first `## v` heading in `CHANGELOG.md` — that's the current major.
+   - If the next heading beneath it is `### Later updates`, insert the entry as the **first** bullet under it, above the existing patch bullets, with no blank line between them (the list is tight, like the feature `###` sections').
+   - If there is no `### Later updates` yet (a freshly cut major's first patch), add that heading immediately after the `## v` heading, ahead of the major's first feature `###` section, and put the entry under it.
+
+   The entry is one bullet, keeping the existing prose's own bold headline if it has one:
+   ```
+   - **{new-tag} — {Month YYYY}.** {user's description}
    ```
    Commit and push directly to main:
    ```
