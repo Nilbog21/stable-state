@@ -344,7 +344,8 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 Finances (`/barn/dev-barn/finances`):
 
 - [ ] (e2e: finances_renders_three_accordion_sections_in_order) The page is three collapsible sections, in order: **Outstanding Income**, **Outstanding Expenses**, **Monthly Breakdown** (#1550)
-- [ ] (e2e: the_month_navigation_and_tab_pills_live_inside_monthly_breakdown) The month `←`/`→` navigation and the five tab pills live **inside** Monthly Breakdown, not above all three sections
+- [ ] (e2e: the_month_navigation_lives_inside_monthly_breakdown) The month `←`/`→` navigation lives **inside** Monthly Breakdown, not above all three sections
+- [ ] (e2e: the_tab_pills_live_inside_monthly_breakdown) The five tab pills live **inside** Monthly Breakdown, not above all three sections
 - [ ] (e2e: every_finances_section_header_is_at_least_44px_tall) Every section header is at least 44px tall, so it can be tapped to collapse the section
 - [ ] (e2e: an_empty_outstanding_section_renders_collapsed) An Outstanding section with nothing in it still renders, collapsed, rather than disappearing
 - [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons

@@ -226,8 +226,9 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     // Two matches since #1550 — the pager's own label, and the Monthly Breakdown accordion's
-    // `hint`, which names the month a collapsed section is showing. This test owns the pager
-    // one; `page-outstanding.test.tsx` owns the hint.
+    // `hint`, which names the month the section is scoped to. (That section is always open, so
+    // its hint is a restatement rather than the collapsed-row preview the other two carry.)
+    // This test owns the pager one; `page-outstanding.test.tsx` owns the hint.
     expect(screen.getAllByText('April 2026').length).toBe(2)
   })
 

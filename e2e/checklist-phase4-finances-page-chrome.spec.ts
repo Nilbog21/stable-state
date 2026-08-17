@@ -159,17 +159,24 @@ test('finances_renders_three_accordion_sections_in_order @manager', async ({ pag
   expect(await sectionTitles(page)).toEqual(['Outstanding Income', 'Outstanding Expenses', 'Monthly Breakdown'])
 })
 
-// Both the month pager and the pills only ever scoped this one section's content. Asserted as
-// a containment claim rather than a position one, because "inside Monthly Breakdown" is what
-// stops the page reading flat — where within it they sit is not this checkbox's business.
-test('the_month_navigation_and_tab_pills_live_inside_monthly_breakdown @manager', async ({ page }) => {
+// The pager and the pills only ever scoped this one section's content. Two tests, not one:
+// they are independently regressable — either could be hoisted back out without the other —
+// and one checkbox per assertion is what lets a partial failure be marked cleanly.
+//
+// Both are containment claims rather than position ones, because "inside Monthly Breakdown" is
+// what stops the page reading flat; where within it they sit is not these checkboxes' business.
+test('the_month_navigation_lives_inside_monthly_breakdown @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const breakdown = accordionSection(page, 'Monthly Breakdown')
-  await expect(breakdown.getByRole('link', { name: 'By Horse' })).toBeVisible()
   // By glyph rather than by role: at either end of the barn's month range the pager renders an
   // `invisible` placeholder `<span>` in place of the `<a>`, and this barn — seeded in its own
   // creation month — has no previous month to link to.
-  await expect(breakdown.getByText(/^[<>]$/)).toHaveCount(2)
+  await expect(accordionSection(page, 'Monthly Breakdown').getByText(/^[<>]$/)).toHaveCount(2)
+})
+
+test('the_tab_pills_live_inside_monthly_breakdown @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const pills = accordionSection(page, 'Monthly Breakdown').getByRole('link', { name: /^By / })
+  await expect(pills).toHaveCount(TABS.length)
 })
 
 // 44px is the touch-target floor, and a header the manager can't reliably tap is a section
@@ -177,8 +184,13 @@ test('the_month_navigation_and_tab_pills_live_inside_monthly_breakdown @manager'
 // than asserted on the class, since the class is the mechanism and the height is the claim.
 test('every_finances_section_header_is_at_least_44px_tall @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const heights = await page.locator('main details > summary').evaluateAll(
-    (summaries) => summaries.map((s) => s.getBoundingClientRect().height)
+  const summaries = page.locator('main details > summary')
+  // Same no-auto-wait hazard `awaitBreakdownTable` guards against, on a third locator. The
+  // `toHaveLength(3)` below catches a wholly-unrendered page, but a partial one — one or two
+  // of the three summaries painted — would fail as a bogus 44px violation without this.
+  await summaries.first().waitFor()
+  const heights = await summaries.evaluateAll(
+    (elements) => elements.map((s) => s.getBoundingClientRect().height)
   )
   expect(heights).toHaveLength(3)
   expect(Math.min(...heights)).toBeGreaterThanOrEqual(44)

@@ -223,6 +223,12 @@ export default async function FinancesPage({
         </div>
       )}
 
+      {/* Kept, not dropped with the move into the card (#1550 first removed it): the card
+          border wraps the whole of Monthly Breakdown and so separates nothing *within* it, and
+          this rule's job — since #262 put it here and #261 made it unconditional on purpose —
+          is to separate the pager/Pending income above from the tab switcher below. */}
+      <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
+
       <div className="mb-6 overflow-x-auto -mx-1">
         <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
           <Pill href={`?tab=horse${monthQ}`} active={tab === 'horse'}>

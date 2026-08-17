@@ -107,8 +107,10 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   const lessonDefaults = { at: lastMonth, instructorId: members.trainer.membershipId, tierName: tier.name }
 
   // Paid, not merely booked: every income breakdown counts collected rows only. Seeding
-  // everything collected also keeps both Outstanding Income and Outstanding Expenses off the
-  // page, so no assertion here has to work around them.
+  // everything collected also leaves both Outstanding Income and Outstanding Expenses empty —
+  // since #1550 they still render, collapsed, rather than vanishing, which is the state
+  // `an_empty_outstanding_section_renders_collapsed` below reads. Either way no assertion here
+  // has to work around their contents.
   await addPaidLesson(supabase, barn, {
     ...lessonDefaults,
     horseIds: [apollo.id],
