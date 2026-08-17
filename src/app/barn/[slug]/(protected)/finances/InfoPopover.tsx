@@ -8,11 +8,14 @@ export function InfoPopover({ text, align = 'right' }: { text: string; align?: '
   return (
     <span ref={ref} className="relative inline-block">
       {/* Raw Tailwind, not <Button>: icon-only unpadded info trigger — same
-          reasoning as NotificationBell's bell trigger. The zinc-500/400 pair is
-          the page's secondary-text pair, and the only one that clears WCAG AA
-          against both page backgrounds (#ffffff / #0a0a0a) — zinc-400 on white
-          is 2.5:1 and zinc-500 on the dark ground is 4.1:1 (#1551). text-base
-          keeps the glyph from shrinking to the text-xs of the <Th> it sits in. */}
+          reasoning as NotificationBell's bell trigger. Against the two page
+          backgrounds in globals.css (#ffffff / #0a0a0a), zinc-500 on white is
+          4.83:1 and zinc-400 on the dark ground is 7.53:1, both clearing WCAG
+          AA's 4.5:1 for normal text. The reverse pairing is what #1551 removed:
+          zinc-400 on white is only 2.63:1 and zinc-500 on the dark ground
+          4.10:1, so the shade has to swap with the mode, not stay put.
+          text-base keeps the glyph from shrinking to the text-xs of the <Th>
+          it sits in. */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
