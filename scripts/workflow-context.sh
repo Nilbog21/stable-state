@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Emits the Step 0 context the workflow skills (/beginIssue, /reviewIssue, /testIssue,
-# /finishIssue, /continueIssue) all need, as key=value lines. Single source of truth for
+# /finishIssue, /continueIssue, and /runChecklist for release_base alone — #1560) all
+# need, as key=value lines. Single source of truth for
 # the worktree->port map and the label->base-branch rule (#1118 — that rule had three
 # divergent copies, and process-for-release existed in only one of them).
 #
@@ -113,7 +114,7 @@ fi
 # one, so it needs the count; the map lives here rather than in the skill for the same
 # reason the port map does (#1118).
 #
-# Derived from local git alone — no `gh` calls. The other five skills read none of this
+# Derived from local git alone — no `gh` calls. The other six skills read none of this
 # and all call the script at Step 0, so a per-worktree network round trip would tax every
 # one of them for a field only `pick` wants.
 #
@@ -154,6 +155,16 @@ echo "branch=$branch"
 echo "issue=$issue"
 echo "base=$base"
 echo "base_from_label=$base_from_label"
+# The current release branch, for /runChecklist (#1560), which verifies which branch it is
+# about to test a whole release against. `base` can't answer that: it derives from the
+# issue number in the branch name, so on `release/release-N` itself — the state the run
+# *wants* — there is no issue and `base` is empty, and on a leftover `patch-N` branch it
+# resolves to `main`. `release_ref` above is already the right value and is always set, so
+# this is a second name for it rather than a second derivation (#1118's rule).
+#
+# It is only as fresh as the caller's remote-tracking refs — nothing here fetches, on
+# purpose (#1231). A caller that gates on it fetches first; see `docs/scripts.md`.
+echo "release_base=${release_ref#origin/}"
 echo "pr=$pr"
 echo "pr_state=$pr_state"
 
