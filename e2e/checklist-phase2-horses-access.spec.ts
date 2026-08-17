@@ -383,19 +383,27 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
    *
    * The header is read alongside the cell because the cell alone cannot tell "the write was a
    * no-op" from "the write never happened": both leave `Owner` on screen. A header still naming
-   * Dana after a round trip through `set_horse_owner` is the half that says the RPC ran and wrote
-   * her back to herself.
+   * Dana after a round trip through `setHorseOwnerAction` is the half that says the request
+   * completed rather than erroring the page.
+   *
+   * Awaited on the POST, and that is forced: the tap changes nothing on screen, so fact 8 has no
+   * attribute to offer. This wait *was* `selectedDocumentState(row)` reaching `Write`, which can
+   * never resolve — since #1547 the owner's Documents cell is static text with no `[role="radio"]`
+   * in it at all, so the locator matched nothing and the test timed out rather than settling.
+   * Matched on method and pathname per fact 14 — this page fires no other POST.
    */
   test('tapping_the_selected_owner_radio_leaves_it_selected @manager', async ({ page }) => {
     await openAccess(page)
     const row = grantRow(page, DANA)
     const before = await settledInnerTexts(ownerCell(row))
+    const { pathname } = new URL(page.url())
 
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname === pathname
+    )
     await row.getByRole('radio', { name: 'Owner', exact: true }).click()
-    // A wait, not the assertion: the table refreshes through the action's own `revalidatePath`
-    // with no navigation to wait on (fact 8). The Documents cell is the settling signal here
-    // rather than the Owner cell, which reads the same either way.
-    await expect(selectedDocumentState(row)).toHaveText('Write', { timeout: SETTLE_AFTER_WRITE })
+    await submitted
 
     expect({
       before,
