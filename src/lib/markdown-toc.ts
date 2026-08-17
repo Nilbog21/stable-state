@@ -31,7 +31,12 @@ function slugify(text: string, index: number): string {
  * remark renders as headings and this does not see — a `#` line inside a fenced code block (a
  * false positive), a setext heading (`Text` over `---`, missed entirely, so it renders with no
  * `id`), and a closing sequence (`## Heading ##`, whose trailing hashes land in the text and the
- * slug). None of the five documents this serves uses any of them. Parse properly if one does.
+ * slug). None of the six documents this serves uses any of them. Parse properly if one does.
+ *
+ * #1589 added the sixth, `CHANGELOG.md`, and it is the one to watch: the other five are hand-
+ * curated and rarely touched, while `/finishIssue` Step 3 writes to this one on every patch merge.
+ * Its `---` thematic breaks each keep a blank line above them, which is the only thing separating
+ * them from setext underlines — close that gap and the heading above renders with no `id`.
  */
 export function parseHeadings(content: string): ParsedHeadings {
   const headings: TocHeading[] = []

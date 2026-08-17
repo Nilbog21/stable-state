@@ -44,6 +44,16 @@ describe('parseLatestVersion', () => {
     expect(parseLatestVersion(markdown)).toBe('v4.0.0')
   })
 
+  // #1556's `markdown-toc.ts` fix (a37407d7 — `#  Title` was silently dropped) was the same defect
+  // shape: a marker regex hard-coding one space. Here the cost of a stray one is a `null` or a
+  // stale major, which reaches the user as a Changelog link with no version on it.
+  it('should_tolerate_extra_whitespace_after_the_heading_and_lead_in_markers', () => {
+    const markdown =
+      '# Changelog\n\n##  v3.0.0 — July 2026\n\n### Later updates\n\n**  v3.0.4 — July 2026.** Details.\n'
+
+    expect(parseLatestVersion(markdown)).toBe('v3.0.4')
+  })
+
   it('should_return_null_when_no_version_heading_present', () => {
     const markdown = '# Changelog\n\nNo version headings here.'
 
