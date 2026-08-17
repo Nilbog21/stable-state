@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
 import { calendarDate, formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
@@ -84,7 +84,19 @@ export function MonthCalendarPicker({
   // No `dayPanelAlwaysOpen` guard, because there is nothing to guard: `panelOpen` ORs that flag in,
   // so this is already a no-op for a form panel. Adding the branch anyway would only add a dead one
   // for `scripts/check-coverage.sh` to demand a meaningless test for.
-  useEffect(() => { setOpen(false) }, [month, setOpen])
+  //
+  // Adjusted during render rather than in an effect, because an effect runs *after* paint and the
+  // dashboard is the caller that can see the gap: its `month` and its `days` arrive in one RSC
+  // commit, so the stranded panel would render its "You're all clear" empty state against the new
+  // month's items for a frame — this bug, briefly — before the effect closed it. The form callers
+  // refetch asynchronously and keep the old items until it resolves, so they never showed it.
+  // jsdom cannot tell the two forms apart (RTL flushes effects inside `act`), so the tests below
+  // pass either way; the difference is only visible in a browser.
+  const [panelMonth, setPanelMonth] = useState(month)
+  if (month !== panelMonth) {
+    setPanelMonth(month)
+    setOpen(false)
+  }
 
   const days = getMonthGrid(month)
   const popupItems = items.filter((item) => item.start.slice(0, 10) === popupDate)

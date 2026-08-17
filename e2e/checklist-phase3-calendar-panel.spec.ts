@@ -46,12 +46,14 @@
 //     clock, which silently assumes the grid is sitting on the barn's current month; #1463 is the
 //     file that correction was actually written for, because its two barn-wide tests call it
 //     TWICE IN ONE TEST and the derived form would click through to month +2 while waiting on
-//     month +1's heading. **No test in THIS file calls it more than once** — every call is a
-//     single `goToFixtureMonth`, plus one direct call in the month-advance test — so the derived
-//     form would happen to be correct here. The parameter is kept anyway, and this note exists
-//     because an earlier draft of it claimed the opposite: a copied correction silently
-//     re-derived in the one file where its failure mode is dormant is how the correction gets
-//     lost. `pickDay` is what this file calls twice in one test, which is not the same thing.
+//     month +1's heading. **This file now has such a test too**, since #1580:
+//     `manager_the_day_panel_still_lists_its_days_lesson_after_paging_two_months_away` calls it
+//     for month +1 and again for month +2, so the parameter is what makes that test correct rather
+//     than a courtesy kept for consistency. It was kept back when the failure mode here really was
+//     dormant — every other call is a single `goToFixtureMonth`, plus one direct call in the
+//     month-advance test — and this note exists because an earlier draft of it claimed the derived
+//     form was therefore fine: a copied correction silently re-derived in the one file where its
+//     failure mode is dormant is how the correction gets lost. #1580 is that dormancy expiring.
 //   - `readGrid` guards on all 42 cells. The weaker "first cell is visible" form stops an empty
 //     read and not a short one, and several assertions below compare whole-grid rows — a 7-cell
 //     read would compare 7 against 7 and pass.
