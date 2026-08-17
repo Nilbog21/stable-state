@@ -19,11 +19,10 @@ vi.mock('fs', () => ({
   readFileSync: mockReadFileSync,
 }))
 
-vi.mock('react-markdown', () => ({
-  default: ({ children }: { children: string }) => (
-    <div data-testid="markdown">{children}</div>
-  ),
-}))
+// `react-markdown` is deliberately *not* mocked here, unlike the sibling `/terms` and `/privacy`
+// page tests. Since #1589 this page's contents list is emitted by `<MarkdownDocument>`'s `h1`
+// override, which only fires when the real pipeline walks the document — a stub renderer that
+// ignores `components` shows an empty page and asserts nothing.
 
 import ChangelogPage from '../page'
 
@@ -49,7 +48,7 @@ describe('ChangelogPage', () => {
     const jsx = ChangelogPage()
     render(jsx)
 
-    expect(screen.getByTestId('markdown').textContent).toBe('# Hello Changelog')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Hello Changelog')
   })
 
   it('should_render_back_link_to_barns', () => {
@@ -61,10 +60,9 @@ describe('ChangelogPage', () => {
     ).toContain('/barns')
   })
 
-  // #1589. `react-markdown` is mocked away above, so this asserts only what `<MarkdownDocument>`
-  // adds on top of it: a contents list limited to `##`, which is what routes this page through the
-  // component rather than the bare renderer. The `###` half of that contract — an excluded heading
-  // keeping its `id` — is asserted against the real pipeline in `MarkdownDocument.test.tsx`.
+  // #1589. The depth limit is this page's own choice, so it is asserted here rather than left to
+  // `MarkdownDocument.test.tsx` — a page that dropped `maxTocLevel` would still pass every test
+  // that component owns.
   it('should_list_only_the_major_version_headings_in_a_contents_list', () => {
     mockReadFileSync.mockReturnValue('# Changelog\n\n## v3.0.0 — July 2026\n\n### Lessons\n')
 

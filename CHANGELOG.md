@@ -4,25 +4,15 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
-## v3.0.4 — July 2026
-
-**Fixed: saving changes to a lesson could report a failure even though part of the change had already been saved.** Editing a lesson that had a horse attached would show "Failed to update lesson", leaving you unsure whether to redo the edit. Your changes now save reliably, and if anything does go wrong the message tells you exactly which part didn't save.
-
----
-
-## v3.0.3 — July 2026
-
-**A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
-
----
-
-## v3.0.2 — July 2026
-
-**A Terms of Service page is now available.** Read it any time from a link on the login page — it covers liability limits, uptime expectations, and account termination rights.
-
----
-
 ## v3.0.0 — July 2026
+
+### Later updates
+
+**v3.0.4 — July 2026.** **Fixed: saving changes to a lesson could report a failure even though part of the change had already been saved.** Editing a lesson that had a horse attached would show "Failed to update lesson", leaving you unsure whether to redo the edit. Your changes now save reliably, and if anything does go wrong the message tells you exactly which part didn't save.
+
+**v3.0.3 — July 2026.** **A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
+
+**v3.0.2 — July 2026.** **A Terms of Service page is now available.** Read it any time from a link on the login page — it covers liability limits, uptime expectations, and account termination rights.
 
 ### Leases & Boarding Agreements
 
@@ -113,31 +103,17 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
-## v2.0.4 — July 2026
-
-**Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
-
----
-
-## v2.0.3 — July 2026
-
-**Streamlined behind-the-scenes database setup files.** No user-facing changes.
-
----
-
-## v2.0.2 — June 2026
-
-**Fixed an issue that prevented automated tests from running correctly.** No user-facing changes.
-
----
-
-## v2.0.1 — June 2026
-
-**You can now add riders before they have an account.** On the Members page, use the new **Add Rider** form to create a rider record right away — no sign-in required. Add them to lessons immediately, then share their personal invite link when you're ready. When they tap the link and sign in, their account links automatically and all lesson history carries over. Use **Revoke** to invalidate and regenerate a link if it's shared with the wrong person.
-
----
-
 ## v2.0.0 — June 2026
+
+### Later updates
+
+**v2.0.4 — July 2026.** **Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
+
+**v2.0.3 — July 2026.** **Streamlined behind-the-scenes database setup files.** No user-facing changes.
+
+**v2.0.2 — June 2026.** **Fixed an issue that prevented automated tests from running correctly.** No user-facing changes.
+
+**v2.0.1 — June 2026.** **You can now add riders before they have an account.** On the Members page, use the new **Add Rider** form to create a rider record right away — no sign-in required. Add them to lessons immediately, then share their personal invite link when you're ready. When they tap the link and sign in, their account links automatically and all lesson history carries over. Use **Revoke** to invalidate and regenerate a link if it's shared with the wrong person.
 
 ### Profile & Contact Info
 
