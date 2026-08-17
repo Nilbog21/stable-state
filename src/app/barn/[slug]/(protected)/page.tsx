@@ -133,7 +133,7 @@ export default async function BarnDashboardPage({
   const monthIncludesToday = todayStr.slice(0, 7) === monthKey
   const dayPillDate =
     view === 'month'
-      ? (monthIncludesToday ? todayStr : calendarDate(`${monthKey}-01`))
+      ? (monthIncludesToday ? todayStr : firstOfMonth(selectedDate))
       : view === 'week'
         ? (weekIncludesToday ? todayStr : weekDates[0])
         : selectedDate

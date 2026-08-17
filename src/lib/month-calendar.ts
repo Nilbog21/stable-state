@@ -3,12 +3,23 @@ import { addDays, calendarDate } from '@/lib/local-day'
 import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
 
 /**
- * Pure month-grid + day-decoration model behind #1019's lesson-form conflict picker.
- * No React, no Supabase — every calendar cell's appearance is derived here from one
- * already-fetched `ScheduleItem[]` plus the form's current horse/rider selection, so
- * changing the selection re-renders without another round trip.
+ * Pure month-grid + day-decoration model behind every `MonthCalendarPicker` caller.
+ * No React, no Supabase — a calendar cell's appearance is always derived here, never in the
+ * component, so a caller can re-tint the grid without another round trip.
  *
- * Three signals, checked in this order. A barn-wide *selection* (#1020; labelled "All" on the
+ * Two decoration models, because the callers ask different questions:
+ *
+ * - `computeDayDecorations` — *picking* a day in a form (#1019). Derived from one
+ *   already-fetched `ScheduleItem[]` plus the form's current horse/rider selection, so
+ *   changing the selection re-renders immediately. Its three signals are described below.
+ * - `browseDayDecorations` — *browsing* a month on the dashboard (#1558). A flat
+ *   "something is on this day" tint and nothing else; see its own doc comment for why the
+ *   form model's answers are wrong here.
+ *
+ * `getMonthGrid` serves both, and the dashboard page directly — the range it fetches has to
+ * match the grid the picker will draw.
+ *
+ * `computeDayDecorations`' three signals, checked in this order. A barn-wide *selection* (#1020; labelled "All" on the
  * appointment form, rendered as "Entire Barn" on cards)
  * outranks everything: it reaches every horse, so the dot marks any booking that names a
  * horse and there is no heatmap to draw. Otherwise horse selection dominates: with at least
