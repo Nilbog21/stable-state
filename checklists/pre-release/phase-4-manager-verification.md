@@ -175,7 +175,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: days_before_today_are_greyed_out) Days before today are greyed out
 - [ ] (e2e: no_day_shows_a_dot_with_nothing_selected) With no horse checked and **All** unchecked, no day shows a dot
 - [ ] (e2e: no_day_is_exertion_shaded_on_the_expense_form) No day is exertion-shaded at any point on this form — an appointment carries no workload, so the grid stays untinted even on a horse's heaviest day
-- [ ] (e2e: checking_a_horse_dots_a_day_it_already_has_a_lesson_on) Check horse Apple — a day where Apple already has a lesson shows a small red dot
+- [ ] (e2e: checking_a_horse_dots_a_day_it_already_has_a_lesson_on) Check horse Apple — a day where Apple already has a lesson shows a small dot in the same colour as the date number
 - [ ] (e2e: checking_a_horse_dots_a_day_it_already_has_an_expense_on) Still with Apple checked, the day holding Apple's seeded vet/farrier expense also shows a dot (the vet+farrier same-day case)
 - [ ] (e2e: a_day_booked_only_for_another_horse_shows_no_dot) A day whose only booking belongs to a different horse shows no dot
 - [ ] (e2e: checking_all_dots_every_day_holding_a_lesson_or_expense) Uncheck Apple and check **All** — every day holding any lesson or expense shows a dot

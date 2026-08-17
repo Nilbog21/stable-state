@@ -119,10 +119,15 @@ export function MonthCalendarPicker({
               >
                 {Number(date.slice(8, 10))}
                 {decoration.conflict && (
+                  /* `bg-current`, not a literal pair (#1554): red read as an alert on a grid where
+                     red already means "heavily worked", and a literal would need its own copy of the
+                     text-colour conditional above -- wrong on a spill-over day, whose number is
+                     deliberately one step dimmer. currentColor tracks all of it, and inherits that
+                     comment's contrast audit against every tint the dot can sit on. */
                   <span
                     data-testid={`conflict-dot-${date}`}
                     aria-hidden
-                    className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400"
+                    className="absolute bottom-1 h-1.5 w-1.5 rounded-full bg-current"
                   />
                 )}
               </button>
