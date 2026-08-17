@@ -254,14 +254,17 @@ function outstandingExpenses(page: Page) {
 }
 
 /**
- * The bold figure each Outstanding section renders above its list — now its *first* paragraph,
- * since #1550 moved the label that used to precede it up into the accordion's `<summary>` as
- * the section title, and moved the section's `InfoPopover` down into this paragraph beside the
- * figure it explains. Callers read it with `toContainText`, not `toHaveText`, for that trailing
- * ⓘ glyph.
+ * The bold figure each Outstanding section renders above its list. #1550 moved the label that used
+ * to precede it up into the accordion's `<summary>` as the section title.
+ *
+ * Selected on `font-bold` rather than as the section's *first* paragraph, which it briefly was:
+ * that section now leads with a description (`sectionDescriptionClass`), so `p:first` picks up a
+ * sentence and the failure reads as a dollar amount not matching prose. `toContainText` is still
+ * right for the read — the figure carries no ⓘ now, but a thousands separator or a trailing
+ * currency glyph is not worth an exact match.
  */
 function sectionTotal(section: ReturnType<typeof outstandingIncome>) {
-  return section.locator('p').first()
+  return section.locator('p.font-bold')
 }
 
 /** rider2 also owns the two agreement charges, so the Type cell is what isolates the lesson. */
