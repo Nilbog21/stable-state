@@ -69,7 +69,7 @@ Policy-helper functions — all `SECURITY DEFINER` SQL, each existing to break a
 - `auth_has_horse_lesson_read_privilege(p_horse_id, p_barn_id)` — backs `lesson_horses_select_horse_privilege` and `get_horse_projected_exhaustion`'s check
 - `auth_lesson_has_privileged_horse(p_lesson_id, p_barn_id)` — backs `lessons_select_horse_privilege`/`lesson_riders_select_horse_privilege`
 
-RLS policies always go in a **separate migration file** from schema changes. `service_role` has blanket grants on all tables plus a default-privileges rule for future ones (detail in [`docs/architecture/rls.md`](docs/architecture/rls.md)).
+RLS policies always go in a **separate migration file** from schema changes. `service_role` has blanket grants on all tables and all functions, plus a default-privileges rule covering future ones of both kinds (#1546; detail in [`docs/architecture/rls.md`](docs/architecture/rls.md)).
 
 ## Routes
 
