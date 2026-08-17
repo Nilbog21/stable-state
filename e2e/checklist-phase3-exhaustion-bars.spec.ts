@@ -405,7 +405,7 @@ type BarShape = {
  */
 async function readBar(page: Page, horse: Horse): Promise<BarShape> {
   const raw = await horseRow(page, horse).evaluate((row: HTMLElement) => {
-    const button = row.querySelector('button[aria-label^="Exhaustion:"]')
+    const button = row.querySelector('button[aria-label*=" Exhaustion ("]')
     const solid = row.querySelector('[data-testid="exhaustion-bar-solid"]')
     const ghost = row.querySelector('[data-testid="exhaustion-bar-ghost"]')
     return {
