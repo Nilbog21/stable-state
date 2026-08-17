@@ -157,14 +157,14 @@ export default async function BarnDashboardPage({
           <div className="space-y-2">
             {unpaidLessonsCount > 0 && (
               <div>
-                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
+                <Button href={`/barn/${slug}/finances/outstanding?from=dashboard`} variant="warning">
                   {unpaidLessonsCount} unpaid lesson{unpaidLessonsCount !== 1 ? 's' : ''}
                 </Button>
               </div>
             )}
             {unpaidChargesCount > 0 && (
               <div>
-                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
+                <Button href={`/barn/${slug}/finances/outstanding?from=dashboard`} variant="warning">
                   {unpaidChargesCount} unpaid lease{unpaidChargesCount !== 1 ? 's' : ''}/boarding
                 </Button>
               </div>
