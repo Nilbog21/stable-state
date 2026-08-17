@@ -9,36 +9,47 @@ You are driving one pass of `PRE_RELEASE_TEST_CHECKLIST.md` with the user: walki
 ## Step 0 — Context, run file, dev server
 
 ```
+git fetch origin
 bash scripts/workflow-context.sh
 ```
 
 Record `worktree`, `worktree_path`, `port` and `release_base`. If `worktree` came back empty, ask which worktree to use and re-run the script from there. All commands below run from `{worktree_path}` with absolute paths.
 
+**The `fetch` runs first, and that order is the whole point.** `workflow-context.sh` derives `release_base` from local remote-tracking refs alone and never fetches — deliberately, since #1231 added that derivation for `worktree_state`, where a stale answer costs nothing. Reading it *after* a fetch instead of before is what makes it safe to promote to the release gate below: on a worktree that has never fetched the newly-cut `release/release-N+1`, an unfetched derivation names the previous release, and HEAD sitting on that old tip then reports 0 ahead and 0 behind — a confirmed-correct green against a branch nobody is shipping, which is #1560's own failure mode reproduced inside its fix. `/beginIssue` and `/issueBatch` fetch before the identical derivation for the same reason. Any re-run of the script in this session needs the fetch ahead of it too.
+
 **Verify which branch you are about to test, before anything else** (#1560). This step comes first — ahead of the run file, whose header records what it establishes, and far ahead of the suite, which takes hours to report a verdict that is worthless if it was measured against the wrong tree. Wrapup 3 is the gate on the entire release, and a worktree that still has a merged feature branch or a week-old `release/release-N` checked out will produce a full green that says nothing about the code being shipped.
 
 `release_base` is the target — the current release branch. **Not `base`**, which answers a different question: it derives from the issue number in the branch name, so on `release/release-N` itself it comes back empty, and on a leftover `patch-N` branch it says `main`. Both are the stale-worktree case this check exists to catch.
 
-Three read-only commands:
+Two read-only commands — the fetch they depend on has already run above:
 
 ```
-git -C {worktree_path} fetch origin
 git -C {worktree_path} rev-list --left-right --count origin/{release_base}...HEAD
 git -C {worktree_path} status --porcelain
 ```
 
-`rev-list --left-right --count` prints two numbers in the order the refs were given, so with `origin/{release_base}` on the left it is **behind first, ahead second** — `5	0` means five commits on the release branch that HEAD doesn't have. Reversing the refs silently reverses the reading, and "0 behind" is the answer that lets the run proceed, so keep them in this order.
+`rev-list --left-right --count` prints two numbers in the order the refs were given, so with `origin/{release_base}` on the left it is **behind first, ahead second** — `5	0` means five commits on the release branch that HEAD doesn't have. Reversing the refs silently reverses the reading, and "0 behind" is the answer that lets the run proceed, so keep them in this order. Report and phrase them behind-first throughout, matching the raw output.
 
-The `fetch` is unconditional and stays that way — it reads, it changes no branch and no file, and without it the behind count is a stale number that reports green on a release branch that moved yesterday. What the already-correct case below skips is the *state-changing* half, the checkout and the pull.
+The `fetch` is unconditional and stays that way — it reads, it changes no branch and no file, and without it both `release_base` and the behind count are stale numbers that report green on a release branch that moved yesterday. What the already-correct case below skips is the *state-changing* half, the checkout and the pull.
 
 Report the current branch, both counts, and whether the tree is clean, then branch on what you found:
 
 - **Dirty tree** — refuse to start the run, printing `git status --short`'s paths. Whether to stash, commit or revert is the user's call; this skill never touches their tree. A run against uncommitted edits is testing something that exists on no branch at all, which is worse than testing the wrong branch because nothing afterwards can reconstruct what was measured.
-- **On `{release_base}`, 0 ahead and 0 behind** — say so, with the HEAD SHA, and go straight to the run file. No checkout, no pull, no question. Re-invoking on an already-correct branch is a no-op that announces itself.
-- **Anything else** — report it and **offer** the correction, proceeding only on confirmation:
+- **On `{release_base}`, 0 behind and 0 ahead** — say so, with the HEAD SHA, and go straight to the run file. No checkout, no pull, no question. Re-invoking on an already-correct branch is a no-op that announces itself.
+- **Anything else** — report it, then **offer** the correction that actually fits what you found, proceeding only on confirmation. Which correction that is depends on the counts, because one command does not cover all three shapes:
 
-  > HEAD is `{branch}` — {n} behind, {m} ahead of `{release_base}`. Check out `{release_base}` and pull? (yes/no)
+  - **Behind only, or on a different branch** — `checkout` + `pull --ff-only` is the fix:
 
-  On `yes`: `git -C {worktree_path} checkout {release_base} && git -C {worktree_path} pull --ff-only origin {release_base}`. On `no`: say plainly that the run's verdict will describe `{branch}` and not the release, and continue. Ahead-only counts here too — a local commit sitting unpushed on the release branch is the same false green pointed the other way.
+    > HEAD is `{branch}` — {n} behind, {m} ahead of `{release_base}`. Check out `{release_base}` and pull? (yes/no)
+
+    On `yes`: `git -C {worktree_path} checkout {release_base} && git -C {worktree_path} pull --ff-only origin {release_base}`.
+
+  - **Ahead only** (already on `{release_base}`, 0 behind, commits `origin` doesn't have) — **do not offer `checkout` + `pull`**: checkout is a no-op, `pull --ff-only` reports already-up-to-date, and the extra commits survive, so the offer would report a correction that didn't happen. There is no read-only fix here and this skill never rewrites the user's history. Report the unpushed commits (`git -C {worktree_path} log --oneline origin/{release_base}..HEAD`) and say the run will describe local code that isn't on the release yet, then let them push, reset or accept it before you continue.
+  - **Diverged** (both counts nonzero) — same refusal, and for a harder reason: `pull --ff-only` errors out rather than fast-forwarding. Report both counts and hand it back; reconciling a diverged release branch is the user's call, not a prompt this skill can safely answer for them.
+
+  On `no` to any of these: say plainly that the run's verdict will describe `{branch}` and not the release, and continue. Ahead-only counts as a real finding even though it has no offered fix — a local commit sitting unpushed on the release branch is the same false green pointed the other way.
+
+  **One exception, and it is the guard `.claude/commands/CLAUDE.md` asks for:** if today's run file already exists and its `last-completed-section` marker names Phase 7's last section, the run is finished and the case below stops cold without prompting. Read the marker before offering anything here — a finished run has no sections left to measure, so there is no branch left to correct, and a checkout prompt in front of a stop-cold case contradicts that rule's "no prompting". Report the branch facts either way; withhold only the offer.
 
 Record the branch and the HEAD SHA (`git -C {worktree_path} rev-parse --short HEAD`) — the run file header below carries them.
 
