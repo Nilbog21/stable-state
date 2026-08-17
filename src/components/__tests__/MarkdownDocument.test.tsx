@@ -81,4 +81,26 @@ describe('MarkdownDocument', () => {
     expect(items[0].className).not.toContain('ml-4')
     expect(items[1].className).toContain('ml-4')
   })
+
+  // #1589. `/changelog` limits its list to `##`, since a document with a `###` per feature area
+  // emits a list longer than the reader's screen with entries that repeat verbatim.
+  describe('maxTocLevel', () => {
+    it('should_omit_h3_entries_from_the_table_of_contents_when_limited_to_h2', () => {
+      render(<MarkdownDocument content={'# Title\n\n## Section\n\n### Detail\n'} maxTocLevel={2} />)
+
+      expect(within(toc()).getAllByRole('link').map((a) => a.textContent)).toEqual(['Section'])
+    })
+
+    it('should_still_give_an_excluded_h3_its_linkable_id', () => {
+      render(<MarkdownDocument content={'# Title\n\n## Section\n\n### Detail\n'} maxTocLevel={2} />)
+
+      expect(screen.getByRole('heading', { name: 'Detail' }).id).toBe('detail')
+    })
+
+    it('should_render_no_table_of_contents_when_every_heading_is_excluded', () => {
+      render(<MarkdownDocument content={'# Title\n\n### Detail\n'} maxTocLevel={2} />)
+
+      expect(screen.queryByRole('navigation', { name: /contents/i })).toBeNull()
+    })
+  })
 })

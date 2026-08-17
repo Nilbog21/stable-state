@@ -8,6 +8,7 @@
 // covers: src/components/useOutsideDismiss.ts
 // covers: src/components/MarkdownDocument.tsx
 // covers: src/lib/markdown-toc.ts
+// covers: src/lib/changelog.ts
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/guide/**
@@ -228,21 +229,40 @@ async function openAvatarMenu(page: Page) {
   await expect(aboutMenuLink(page)).toBeVisible()
 }
 
+function changelogSource(): string {
+  // `__dirname`-relative rather than cwd-relative so the read cannot depend on where the runner
+  // was launched from.
+  return readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf-8')
+}
+
 /**
- * The current version, derived from CHANGELOG.md by splitting rather than by re-running
- * `parseLatestVersion`'s regex. Importing that helper — or copying its pattern — would make
- * the assertion agree with any bug in it; this reads the same file a different way.
- * `__dirname`-relative rather than cwd-relative so the read cannot depend on where the runner
- * was launched from.
+ * The current version, derived from CHANGELOG.md by taking the numerically highest version token
+ * anywhere in the file. `parseLatestVersion` (`src/lib/changelog.ts`) instead reads by *position* —
+ * the first `**vN.0.x` lead-in under the top `## vN.0.0` heading, falling back to the heading. Two
+ * different methods on purpose: importing that helper, or copying its pattern, would make the
+ * assertion agree with any bug in it, and this method is the one that survives #1589's restructure
+ * without inheriting its assumption about where the newest release sits in the document.
  */
 function currentVersionFromChangelog(): string {
-  const changelog = readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf-8')
-  const heading = changelog.split('\n').find((line) => line.startsWith('## '))
-  const version = heading?.slice(3).split(' ')[0] ?? ''
-  if (!/^v\d+\.\d+\.\d+$/.test(version)) {
-    throw new Error(`no version heading found in CHANGELOG.md (read "${heading ?? '<none>'}")`)
+  const rank = (v: string) =>
+    v
+      .slice(1)
+      .split('.')
+      .reduce((acc, part) => acc * 1000 + Number(part), 0)
+  const versions = changelogSource().match(/v\d+\.\d+\.\d+/g) ?? []
+  const newest = versions.sort((a, b) => rank(a) - rank(b)).at(-1)
+  if (newest === undefined) {
+    throw new Error('no version token found in CHANGELOG.md')
   }
-  return version
+  return newest
+}
+
+/** The text of every `## ` heading in CHANGELOG.md — post-#1589, one per major version. */
+function majorVersionHeadings(): string[] {
+  return changelogSource()
+    .split('\n')
+    .filter((line) => line.startsWith('## '))
+    .map((line) => line.slice(3))
 }
 
 // ---------------------------------------------------------------------------
@@ -531,6 +551,17 @@ test('the_changelog_link_on_about_opens_the_changelog_page @manager', async ({ p
   await page.getByRole('link', { name: /^Changelog/ }).click()
   await page.waitForURL((url) => url.pathname === '/changelog', { waitUntil: 'commit' })
   await expect(page.getByRole('heading', { name: 'Changelog', exact: true })).toBeVisible()
+})
+
+// #1589. Read against the file's own `## ` headings rather than a hardcoded version list, so the
+// assertion survives every release cut. That makes it a check on the *depth limit*: the file's 28
+// `###` feature headings are what an unlimited list would add, and a `toHaveText` array is exact on
+// count, so any of them appearing fails here.
+test('the_changelog_contents_list_names_the_major_versions @manager', async ({ page }) => {
+  await page.goto('/changelog')
+  await expect(
+    page.getByRole('navigation', { name: 'Contents' }).getByRole('link')
+  ).toHaveText(majorVersionHeadings())
 })
 
 test('the_terms_of_service_link_on_about_opens_the_terms_page @manager', async ({ page }) => {
