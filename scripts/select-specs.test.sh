@@ -35,6 +35,10 @@ make_repo() {
   touch "$dir/src/app/barn/[slug]/NavigationBlocker.tsx"
   touch "$dir/src/components/calendar/CalendarDayView.tsx"
   touch "$dir/src/components/ExhaustionBar.tsx"
+  # Non-runtime files sitting inside always-full trees — a doc and a unit test. Neither can
+  # change what the running app does, so neither may escalate the run (Tests 16-17).
+  mkdir -p "$dir/src/components/ui" && touch "$dir/src/components/ui/CLAUDE.md"
+  mkdir -p "$dir/src/lib/db/__tests__" && touch "$dir/src/lib/db/__tests__/types.test.ts"
   touch "$dir/src/app/actions/lessons.ts"
   touch "$dir/src/lib/db/types.ts"
   mkdir -p "$dir/src/app/barns" && touch "$dir/src/app/barns/page.tsx"
@@ -216,6 +220,42 @@ if [ -z "$err" ]; then
   assert_pass "tracked input path emits no warning"
 else
   assert_fail "tracked input path emits no warning" "stderr=$err"
+fi
+rm -rf "$REPO"
+
+# Test 16: a markdown doc inside an always-full tree does not escalate the run
+# #1550 — ALWAYS_FULL's `src/components/**` is a literal prefix with no extension filter, so
+# editing src/components/ui/CLAUDE.md ran all 73 specs to prove a doc had not changed the app.
+REPO="$(make_repo)"
+out="$(select_specs 'src/components/ui/CLAUDE.md')"
+if [ "$out" = "mode=none" ]; then
+  assert_pass "doc inside an always-full tree yields mode=none"
+else
+  assert_fail "doc inside an always-full tree yields mode=none" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 17: a unit test inside an always-full tree does not escalate the run
+# Same prefix bug, and the shape every TDD commit in this repo starts as: a vitest file
+# exercises the module in-process and cannot change what a browser sees.
+REPO="$(make_repo)"
+out="$(select_specs 'src/lib/db/__tests__/types.test.ts')"
+if [ "$out" = "mode=none" ]; then
+  assert_pass "unit test inside an always-full tree yields mode=none"
+else
+  assert_fail "unit test inside an always-full tree yields mode=none" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 18: the runtime sibling of Test 16's doc still escalates
+# The guard on both above — an exclusion that swallowed real component changes would turn
+# mode=full off entirely and nobody would notice until a regression shipped.
+REPO="$(make_repo)"
+out="$(select_specs 'src/components/ui/CLAUDE.md' 'src/components/ExhaustionBar.tsx')"
+if [ "$out" = "mode=full" ]; then
+  assert_pass "a runtime component alongside a doc still yields mode=full"
+else
+  assert_fail "a runtime component alongside a doc still yields mode=full" "output=$out"
 fi
 rm -rf "$REPO"
 
