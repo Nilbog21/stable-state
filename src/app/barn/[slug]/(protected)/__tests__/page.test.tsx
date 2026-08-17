@@ -487,7 +487,7 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     const link = screen.getByRole('link', { name: '1 unpaid lesson' }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/finances/outstanding')
+    expect(link.href).toContain('/barn/green-acres/finances/outstanding?from=dashboard')
   })
 
   it('should_render_unpaid_lessons_card_when_only_cancellation_fee_outstanding', async () => {
@@ -562,7 +562,7 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     const link = screen.getByRole('link', { name: '1 unpaid lease/boarding' }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/finances/outstanding')
+    expect(link.href).toContain('/barn/green-acres/finances/outstanding?from=dashboard')
   })
 
   it('should_call_getOutstandingLessons_with_user_id_and_role_for_rider', async () => {

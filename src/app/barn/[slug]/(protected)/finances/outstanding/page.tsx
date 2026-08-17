@@ -19,10 +19,13 @@ const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
 
 export default async function OutstandingPage({
   params,
+  searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<{ from?: string }>
 }) {
   const { slug } = await params
+  const { from } = await searchParams
   const { user, barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
   const role = membership.role as Role
@@ -33,7 +36,10 @@ export default async function OutstandingPage({
   ])
   const items = mergeOutstandingItems(lessons, charges, cancellationFees, barn.timezone)
 
-  const backHref = membership.role === 'manager' ? `/barn/${slug}/finances` : `/barn/${slug}`
+  // #1555 — this page has two entry points and role alone can't tell them apart. `from` is a
+  // fixed token, not a path, so nothing user-supplied ever reaches the href; anything other than
+  // the one token we emit falls through to the role-based target a direct visit gets.
+  const backHref = from === 'dashboard' || role !== 'manager' ? `/barn/${slug}` : `/barn/${slug}/finances`
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">

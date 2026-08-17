@@ -243,4 +243,34 @@ describe('OutstandingPage', () => {
       expect(screen.getByText('May 1, 2026')).toBeDefined()
     })
   })
+
+  // #1555 — the back link's target. `from` is a fixed token rather than a path, so an
+  // unrecognised value can only ever fall back; there is no URL here to validate.
+  describe('back link', () => {
+    const backHref = async (from?: string) => {
+      const jsx = await OutstandingPage({
+        params: Promise.resolve({ slug: 'green-acres' }),
+        searchParams: Promise.resolve({ from }),
+      })
+      render(jsx)
+      return (screen.getByRole('link', { name: '← Back' }) as HTMLAnchorElement).getAttribute('href')
+    }
+
+    it('should_return_to_dashboard_when_from_is_dashboard', async () => {
+      expect(await backHref('dashboard')).toBe('/barn/green-acres')
+    })
+
+    it('should_return_to_finances_for_manager_when_from_absent', async () => {
+      expect(await backHref()).toBe('/barn/green-acres/finances')
+    })
+
+    it('should_return_to_finances_for_manager_when_from_is_unrecognised', async () => {
+      expect(await backHref('https://evil.example')).toBe('/barn/green-acres/finances')
+    })
+
+    it('should_return_to_dashboard_for_rider_when_from_absent', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: riderMembership })
+      expect(await backHref()).toBe('/barn/green-acres')
+    })
+  })
 })

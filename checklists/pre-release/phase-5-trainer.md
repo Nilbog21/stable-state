@@ -102,7 +102,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_dashboard_month_view_tints_only_days_they_instruct_on) (#1558) In Month view, only days you instruct on are tinted — another instructor's day is left untinted
 - [ ] (e2e: trainer_dashboard_month_view_day_panel_shows_only_lessons_they_instruct) (#1558) In Month view, tapping a day shows only the lessons you instruct on it
 - [ ] (e2e: trainer_dashboard_reminders_carries_an_unpaid_lessons_card) With unpaid lessons among the ones you instruct, the Dashboard shows a "Reminders" section carrying an "N unpaid lessons" card
-- [ ] (e2e: trainer_unpaid_lessons_card_navigates_to_the_outstanding_page) That card links to `/barn/dev-barn/finances/outstanding` — your only nav path to that page, since the nav carries no Finances link
+- [ ] (e2e: trainer_unpaid_lessons_card_navigates_to_the_outstanding_page) That card links to `/barn/dev-barn/finances/outstanding?from=dashboard` — your only nav path to that page, since the nav carries no Finances link
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
