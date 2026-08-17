@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getMonthGrid, shiftMonth, computeDayDecorations, type DayDecorationOptions } from '../month-calendar'
+import { getMonthGrid, shiftMonth, computeDayDecorations, browseDayDecorations, type DayDecorationOptions } from '../month-calendar'
 import { createMockScheduleItem as item } from '@/test/fixtures'
 import { calendarDate } from '../local-day'
 
@@ -462,6 +462,42 @@ describe('computeDayDecorations — rider-only flat tint', () => {
 
   it('should_return_a_decoration_for_every_requested_date', () => {
     const result = computeDayDecorations([calendarDate('2026-03-10'), calendarDate('2026-03-11')], [], baseOpts)
+
+    expect(Object.keys(result)).toEqual(['2026-03-10', '2026-03-11'])
+  })
+})
+
+describe('browseDayDecorations', () => {
+  it('should_tint_a_day_that_has_an_item', () => {
+    const result = browseDayDecorations([calendarDate('2026-03-10')], [item({ start: '2026-03-10T09:00:00' })])
+
+    expect(result['2026-03-10'].scheduled).toBe(true)
+  })
+
+  it('should_not_tint_a_day_with_nothing_on_it', () => {
+    const result = browseDayDecorations([calendarDate('2026-03-10')], [item({ start: '2026-03-11T09:00:00' })])
+
+    expect(result['2026-03-10'].scheduled).toBe(false)
+  })
+
+  // The whole reason this is not computeDayDecorations: the dashboard browses history, and
+  // `past: true` would suppress the tint on every day already gone (MonthCalendarPicker's
+  // tint precedence checks `past` first).
+  it('should_still_tint_a_day_that_is_already_in_the_past', () => {
+    const result = browseDayDecorations([calendarDate('1999-01-04')], [item({ start: '1999-01-04T09:00:00' })])
+
+    expect(result['1999-01-04']).toEqual({ past: false, band: null, scheduled: true, conflict: false })
+  })
+
+  it('should_carry_no_band_or_conflict_signal', () => {
+    const result = browseDayDecorations([calendarDate('2026-03-10')],
+      [item({ start: '2026-03-10T09:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 9 } })])
+
+    expect(result['2026-03-10']).toEqual({ past: false, band: null, scheduled: true, conflict: false })
+  })
+
+  it('should_decorate_every_requested_date_when_there_are_no_items', () => {
+    const result = browseDayDecorations([calendarDate('2026-03-10'), calendarDate('2026-03-11')], [])
 
     expect(Object.keys(result)).toEqual(['2026-03-10', '2026-03-11'])
   })

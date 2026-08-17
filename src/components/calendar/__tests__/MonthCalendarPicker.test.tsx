@@ -259,3 +259,39 @@ describe('MonthCalendarPicker — day panel', () => {
     expect(screen.getByText('Wednesday, Mar 11')).toBeDefined()
   })
 })
+
+describe('MonthCalendarPicker — renderDayPanel', () => {
+  it('should_render_the_supplied_panel_instead_of_the_built_in_item_list', () => {
+    renderPicker({
+      items: [createMockScheduleItem({ start: '2026-03-10T09:00:00' })],
+      renderDayPanel: () => <p>Custom panel</p>,
+    })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.getByText('Custom panel')).toBeDefined()
+    expect(screen.queryByText('Lesson')).toBeNull()
+  })
+
+  it('should_call_the_panel_renderer_with_the_tapped_date', () => {
+    const renderDayPanel = vi.fn(() => <p>Custom panel</p>)
+    renderPicker({ renderDayPanel })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-12' }))
+
+    expect(renderDayPanel).toHaveBeenCalledWith('2026-03-12')
+  })
+
+  it('should_replace_the_nothing_scheduled_text_on_an_empty_day', () => {
+    renderPicker({ renderDayPanel: () => <p>Custom panel</p> })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.queryByText('Nothing scheduled for this day.')).toBeNull()
+  })
+
+  // Guards both form callers: neither passes the prop, and both must keep the built-in list.
+  it('should_keep_the_built_in_item_list_when_the_prop_is_omitted', () => {
+    renderPicker({ items: [createMockScheduleItem({ start: '2026-03-10T09:00:00' })] })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.getByText('Lesson')).toBeDefined()
+  })
+})
