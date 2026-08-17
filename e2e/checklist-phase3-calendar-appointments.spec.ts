@@ -135,6 +135,11 @@ const FARRIER_RECIPIENT = 'Ridgefield Hoofcare'
  * BARRIER_TIME's HOUR is separately load-bearing in this file: every test that does not drive the
  * start-time field runs the grid at hour 10, and the fixture-day table below is written against
  * that. Changing `10` breaks the two `earlyHourBarrierDay` transitions in the first test.
+ *
+ * Since #1578 that hour comes only from `openNewLessonForm`'s own fill — the form no longer
+ * pre-fills a start time, so hour 10 is a state every test here *enters* rather than one it
+ * inherits. A test that skipped the helper would sit on `estimateAt`'s hour instead, which is
+ * whatever the barn's clock reads when the suite runs and therefore pins nothing.
  */
 
 /** The start-time field's two ends for the shift test — "an early hour" and "a late one" in the
@@ -502,15 +507,18 @@ test.describe('#1021 start time shifts the shading', () => {
     // TWO barriers, because neither alone pins the hour the `early` grid is decorated for.
     //
     // The band wait is safe as a `low` wait only because the fetch was already proved above (at
-    // the form's opening hour of 10 this day reads `high`). But it proves only `hour < 8`, not
-    // `hour == 6`: `selectedHour` falls back to 0 whenever `lessonAt` is `''` (LessonForm.tsx),
-    // which `LessonStartTime` produces for an empty time input — and hours 0 and 6 give
+    // hour 10, which `openNewLessonForm`'s barrier fill put the form in — since #1578 the form
+    // opens with no start time, so nothing here inherits an hour from one). But it proves only
+    // `hour < 8`, not `hour == 6`: whenever `lessonAt` is `''` — which `LessonStartTime` produces
+    // for an empty time input — `selectedHour` comes off `estimateAt` instead (LessonForm.tsx),
+    // the barn's current hour, which is unpinned and on most runs is not 6. Different hours give
     // genuinely different grids, so that is not a distinction without a difference.
     //
     // The `lesson_at` wait closes it: only client-side `LessonStartTime` writes that value, and
-    // it is the sole input `selectedHour` is derived from, so the two together say the hour is
-    // exactly 6 AND the decorations have re-rendered against it. Ordered `lesson_at` first
-    // because it is the cause and the band is the effect.
+    // once it is non-empty it is what `selectedHour` is derived from — the estimate only stands
+    // in while it is `''` — so the two together say the hour is exactly 6 AND the decorations
+    // have re-rendered against it. Ordered `lesson_at` first because it is the cause and the band
+    // is the effect.
     await waitForStartTimeCommitted(page, tapDay, EARLY_TIME)
     await waitForScheduleShading(page, earlyHourBarrierDay, 'low')
     const early = await readGrid(page)

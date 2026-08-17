@@ -55,9 +55,14 @@
 //
 //   2. "Before a date is picked no exhaustion bars render" names a state the form cannot be in.
 //      `LessonForm` seeds `lessonDate` from `barnToday(timezone)` and `MonthCalendarPicker` has
-//      no deselect, so since #1019 a day is always selected. The gate the line is really about is
-//      `lessonAt` being empty, and the reachable route to *that* is clearing the Start Time —
-//      which is what the line now says. Same gate, different route.
+//      no deselect, so since #1019 a day is always selected. The gate the line was really about
+//      was `lessonAt` being empty, and the half of it that is actually unset is the Start Time —
+//      which is what the line's second draft named. #1578 then made that half the form's OPENING
+//      state rather than one a manager reaches by clearing the field, and finally REMOVED THE
+//      ABSENCE ALTOGETHER: an empty Start Time no longer means no instant, because `LessonForm`
+//      estimates one from the selected day at the barn's current hour until a real time is
+//      entered. The line now claims the arrival state positively — empty field, bars up — and
+//      there is no reachable state in this form with a day selected and no bars but a past one.
 //
 //   3. "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar"
 //      is true but cannot fail: the render condition admits every available active horse whether
@@ -97,7 +102,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
-import { editPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
+import { BARRIER_TIME, editPath, newLessonPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
 import { pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
@@ -435,7 +440,7 @@ async function readAllBars(page: Page) {
  *
  * This is the fetch barrier, not a convenience, and every test that reads a bar goes through it
  * first. `exhaustionData` starts `null` and `exhaustionByHorseId` is recomputed as
- * `exhaustionData?.lessonAt === lessonAt`, so between a date change and the Server Action
+ * `exhaustionData?.lessonAt === estimateAt`, so between a date change and the Server Action
  * resolving, *every* bar is unmounted — a read taken then sees an empty fieldset and a
  * `toHaveCount(0)` taken then would pass for the wrong reason.
  *
@@ -660,33 +665,49 @@ test.describe('New Lesson — the current-month paid lesson', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('New Lesson — live exhaustion bars', () => {
-  // "While creating it, with no start time entered (so no lesson instant is selected) no
-  // exhaustion bars render". See the header for why the line no longer says "before a date is
-  // picked": the create form has a day selected from its first render.
+  // "The New Lesson form OPENS with Start Time empty, and the exhaustion bars are already there —
+  // estimated from the barn's current hour; entering a time refreshes them."
   //
-  // THE ABSENCE IS DURABLE, WHICH IS WHAT MAKES IT ASSERTABLE (fact 18 / spec-maintenance rule
-  // 4). `LessonStartTime` reports `''` for the combined instant whenever either half is empty,
-  // and `LessonForm`'s fetch effect early-returns on an empty `lessonAt` — so once the time is
-  // cleared no request is outstanding and nothing can bring the bars back. A `toHaveCount(0)`
-  // satisfied on its first poll therefore observes the settled state rather than a pre-render
-  // window, and a regression that kept the bars up would never reach zero and would fail.
+  // TWO CLAIMS, AND THE SECOND IS THE ONE #1578 GOT WRONG FIRST. Emptying the Start Time field is
+  // right: a pre-filled hour is a value the manager never chose. But `lessonAt` was the sole
+  // input to the exhaustion fetch, so the first cut of #1578 took the bars down with it for the
+  // whole stretch a manager spends picking horses — which is exactly when they are read.
+  // `LessonForm` now derives an `estimateAt` (the selected day at the barn's current hour) that
+  // stands in until a real instant exists, so an empty field and no bars are no longer the same
+  // state. The old wording, which claimed the absence, was this line's second draft and is gone.
   //
-  // The positive anchor is the same locator's own count, in the same test, on the same page
-  // state: three bars, each already carrying dayA's fixture total, so the anchor also proves the
-  // fetch had landed before the clear.
-  test('with_no_start_time_entered_the_new_lesson_form_renders_no_exhaustion_bars @manager', async ({
+  // NOT `openNewLessonForm`, and that is forced rather than stylistic: that helper's hydration
+  // barrier *fills the start time*, which is the very field this asserts is empty. The barrier
+  // here is `waitForBarnPageHydrated` instead — driven through the nav bar's avatar menu, which
+  // shares a React root with the page and touches no form control at all (fact 13's prescribed
+  // workaround, `support/hydration.ts`).
+  //
+  // NO ABSENCE IS ASSERTED HERE ANY MORE, so fact 18 and spec-maintenance rule 4 no longer bind
+  // it — both halves are positive counts, which carry their own retry budget. `toHaveValue('')`
+  // is the exception that looks like an absence and is not: it has no "element missing" passing
+  // state, so it retries until the control attaches rather than resolving against an undrawn
+  // form, which is why it can stand first and pin the empty field on its own.
+  //
+  // A regression that restored the pre-fill fails on that first line. A regression that put the
+  // bars back on `lessonAt` alone fails on the count beneath it, which is unreachable without a
+  // fetch the form has nothing else to trigger.
+  test('the_new_lesson_form_opens_with_an_empty_start_time_and_estimated_exhaustion_bars @manager', async ({
     page,
   }) => {
-    await openFormOnDayA(page)
-    await waitForBarTotal(page, apple, DAY_A.apple)
+    await page.goto(newLessonPath(barn))
+    await waitForBarnPageHydrated(page)
+
+    await expect(page.locator('#lesson-start-time')).toHaveValue('')
     await expect(solidBars(page)).toHaveCount(HORSE_COUNT)
 
-    await page.locator('#lesson-start-time').fill('')
-    // Settles on React having committed the clear, so the count below is a claim about the
-    // cleared form rather than a race against the keystroke.
-    await expect(page.locator('#lesson-start-time')).toHaveValue('')
-
-    await expect(solidBars(page)).toHaveCount(0)
+    // The refresh half. dayA's totals are the fixture's, and none of them can be produced by the
+    // opening estimate: it sits on the barn's *today*, a month away from every seeded lesson, so
+    // this wait cannot be satisfied by the bars that were already on screen.
+    await goToFixtureMonth(page)
+    await pickDay(page, dayA)
+    await page.locator('#lesson-start-time').fill(BARRIER_TIME)
+    await waitForBarTotal(page, apple, DAY_A.apple)
+    await expect(solidBars(page)).toHaveCount(HORSE_COUNT)
   })
 
   // "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar."

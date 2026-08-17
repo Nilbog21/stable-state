@@ -314,7 +314,8 @@ function barnDayOffset(delta: number): CalendarDate {
  * waiting on `#lesson-start-time` to merely *exist* proves nothing, since `dayPanelAlwaysOpen` puts
  * it in the server-rendered HTML. The barrier is the hidden `lesson_at` input carrying the
  * combination of the barn's today and the time just filled, which only client-side
- * `LessonStartTime` can write.
+ * `LessonStartTime` can write — and since #1578 that input is not server-rendered at all, because
+ * the Start Time field opens empty and the hidden input is gated on the combination.
  *
  * `test.slow()` rather than a number on the wait: every `waitFor*` is unbounded already, so a
  * number could only tighten it (fact 1).
@@ -617,6 +618,10 @@ test('a_past_start_instant_renders_no_exhaustion_bars @manager', async ({ page }
 // most of the day, and the zero-guard below — itself an absence assertion, so bound by rule 4 —
 // would be satisfied without a bar ever having been drawn. Going future → past → future makes the
 // round trip the checklist line names the thing actually asserted.
+//
+// #1578's estimate does not change that. It stands in only while `lessonAt` is `''`, and this
+// helper fills the field before anything below runs, so the form here always holds a real instant
+// on the barn's today rather than an estimated one.
 test('returning_the_start_instant_to_the_future_restores_the_exhaustion_bars @manager', async ({
   page,
 }) => {

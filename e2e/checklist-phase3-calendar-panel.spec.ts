@@ -546,7 +546,7 @@ async function expectLessonDated(page: Page, date: string): Promise<void> {
  * on screen and then assert the answer was on screen.
  *
  * It has to be a barrier at all because `LessonForm` gates the bar on
- * `exhaustionData.lessonAt === lessonAt` — so between tapping a day and its Server Action
+ * `exhaustionData.lessonAt === estimateAt` — so between tapping a day and its Server Action
  * resolving, the bar is either unmounted or still showing the previous day's totals.
  */
 async function waitForExhaustionBar(page: Page, horse: Horse, points: number): Promise<void> {
