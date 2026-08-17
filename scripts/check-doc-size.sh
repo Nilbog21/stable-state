@@ -64,7 +64,11 @@ BUDGETS=(
   "supabase/CLAUDE.md:2550"
   ".claude/commands/CLAUDE.md:1450"
   # Lowered from 8000 by #1468: the file is 5145 and had been banking 2855 (55% slack).
-  "src/components/ui/CLAUDE.md:5400"
+  # Raised from 5400 by #1550: 5394 -> 5631. Two genuinely new primitives landed concurrently on
+  # either side of the merge — `<Switch>` (#1390) and `sectionDescriptionClass` (#1550) — each one
+  # index entry, not elaboration of an existing one. Both sides were already inside 20 characters
+  # of the cap, so neither could absorb the other. Ceiling: never above 8000, the pre-#1468 value.
+  "src/components/ui/CLAUDE.md:5700"
 )
 
 fail=0
