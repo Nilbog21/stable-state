@@ -301,6 +301,53 @@ describe('HorseDetailPage', () => {
     expect(screen.queryByText('No documents yet')).toBeNull()
   })
 
+  // #1547: the delete affordance follows ownership, not role. The ownership half of
+  // auth_get_horse_document_privilege lives in SQL, so 'write' is mocked here as the value the
+  // fixed helper returns for an owner -- what these assert is the page's own gating, which was
+  // `role === 'manager'` and is now manager-or-owner.
+  describe('owner document deletion', () => {
+    const ownedHorse = createMockHorse({ id: 'horse-1', owning_member_id: riderMembership.id })
+
+    beforeEach(() => {
+      vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+      vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
+      vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    })
+
+    it('should_render_delete_button_for_rider_owner_when_document_exists', async () => {
+      mockRequireMembershipAs(riderMembership)
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+    })
+
+    it('should_render_actions_column_header_for_rider_owner_when_document_exists', async () => {
+      mockRequireMembershipAs(riderMembership)
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+      expect(screen.getByText('Actions')).toBeDefined()
+    })
+
+    // Role-blind, like update_horse_notes' and update_horse_photo's owner branches: a trainer who
+    // owns the horse is admitted on the same basis, and the trainer above who doesn't still isn't.
+    it('should_render_delete_button_for_trainer_owner_when_document_exists', async () => {
+      mockRequireMembershipAs(createMockMembership({ role: 'trainer', status: 'active', id: ownedHorse.owning_member_id! }))
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+    })
+
+    // The boundary AC 3's ownership gating draws: a manager-granted 'write' rider uploads and reads
+    // but does not delete, so the Access section's three-way control keeps meaning what it says.
+    it('should_not_render_delete_button_for_rider_with_write_document_privilege', async () => {
+      mockRequireMembershipAs(riderMembership)
+      vi.mocked(getHorseById).mockResolvedValue(availableHorse)
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+    })
+  })
+
   it('should_render_documents_table_for_manager_when_documents_exist', async () => {
     vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
