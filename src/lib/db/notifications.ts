@@ -32,10 +32,10 @@ export async function createNotification(params: {
 }
 
 // createNotification goes through the create_or_update_notification RPC, which a
-// service-role client can't call at all: EXECUTE was never granted to service_role
-// (only authenticated), so the call dies at the ACL with permission denied -- and the
-// body's membership check reads auth.uid() (NULL with no user JWT, no NULL bypass), so
-// it would raise not_authorized even if execution were reached. Upsert directly against
+// service-role client can't use: the body's membership check reads auth.uid() (NULL with
+// no user JWT, no NULL bypass), so it raises not_authorized. Before #1546's blanket
+// service_role grant the call died earlier still, at the ACL -- EXECUTE had never been
+// granted to service_role (only authenticated). Upsert directly against
 // the table instead, matching
 // scripts/CLAUDE.md's guidance for RPCs with auth checks that block service-role callers.
 export async function upsertNotification(

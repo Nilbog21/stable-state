@@ -207,7 +207,8 @@ if [ "$fail" -ne 0 ]; then
   echo "A function created (or dropped and recreated) without a following" >&2
   echo "'REVOKE ALL ON FUNCTION <sig> FROM PUBLIC;' keeps Postgres' default PUBLIC EXECUTE on a" >&2
   echo "from-scratch replay, making it callable with the anon key via PostgREST. Add the REVOKE" >&2
-  echo "and the matching GRANT to authenticated (plus service_role if a script reaches it)." >&2
+  echo "and the matching GRANT to authenticated (service_role needs none since #1546 — its" >&2
+  echo "blanket grant plus default-privileges rule covers every public function)." >&2
   echo "See docs/architecture/rls.md." >&2
 else
   echo "OK: every non-trigger function in supabase/migrations/ is revoked from PUBLIC after its last create"
