@@ -49,7 +49,7 @@ Acceptance criteria to paste into that issue:
 
 ### 2. Line up the second real person for Closeout
 
-`POST_RELEASE_TEST_CHECKLIST.md`'s cross-identity checks need a genuinely different human, with their own Google account, on their own device, reachable while you run it. That is a person dependency, not a task — line them up days ahead, not on the day. The window itself is Closeout step 5's to settle, once there is a merge date to settle it against; pinning one here would be a guess, since everything between this step and the merge is open-ended.
+`POST_RELEASE_TEST_CHECKLIST.md`'s cross-identity checks need a genuinely different human, with their own Google account, on their own device, reachable while you run it. That is a person dependency, not a task — line them up days ahead, not on the day. The actual window is agreed later, once there is a merge date to agree it against; pinning one here would be a guess, since everything between this step and the merge is open-ended.
 
 - [ ] (manual) A second person is confirmed as available when you're ready to deploy
 - [ ] (manual) They know they'll need to sign in with their own Google account
