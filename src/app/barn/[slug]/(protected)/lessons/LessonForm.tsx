@@ -263,10 +263,13 @@ export function LessonForm({
   const selectedRiderIds = lessonType === 'normal'
     ? (normalRiderId ? [normalRiderId] : [])
     : [...checkedRiderIds]
-  // Falls back to midnight only for the first render, before LessonStartTime's mount effect
-  // reports a lessonAt — by the time a horse is selected the real hour is in hand. Deliberately
-  // still the hour alone: `computeDayDecorations` buckets by hour for its +/-3-day exertion
-  // window (see month-calendar.ts), so the minutes #1021 added are not wanted here.
+  // Falls back to midnight for as long as no start time is entered, which since #1578 is the
+  // create form's whole opening state — a manager picks horses well before setting a time, so
+  // this is sustained rather than a first-render blip. Accepted: it feeds only
+  // `computeDayDecorations`' +/-3-day exertion window (see month-calendar.ts), and a 14-hour
+  // shift on a +/-72-hour window barely moves day-level shading. It does not reach the conflict
+  // dots. Deliberately still the hour alone, since that window buckets by hour and the minutes
+  // #1021 added are not wanted here.
   const selectedHour = lessonAt ? Number(instantToLocalWallClock(new Date(lessonAt), timezone).slice(11, 13)) : 0
   const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
     selectedHorseIds: [...checkedHorseIds],
