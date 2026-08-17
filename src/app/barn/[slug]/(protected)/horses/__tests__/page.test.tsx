@@ -209,14 +209,18 @@ describe('HorsesPage', () => {
     expect(screen.getByText('Retired')).toBeDefined()
   })
 
-  it('should_render_lower_exertion_horse_before_higher_exertion_horse', async () => {
-    const lowExertion = createMockHorseExertionSummary({ id: 'horse-a', name: 'Lazy', is_active: true, is_available: true, totalExertion: 2 })
-    const highExertion = createMockHorseExertionSummary({ id: 'horse-b', name: 'Busy', is_active: true, is_available: true, totalExertion: 10 })
+  // #1553: the page does no sorting of its own — get_horse_exertion_summary already ends in
+  // `ORDER BY h.name`, so Available/Unavailable/Inactive all render in the order the summary
+  // hands them over. The mock's order is name order and disagrees with exertion order, so a
+  // page that re-sorted by exertion (as it did before #1553) would put 'Busy' first and fail.
+  it('should_render_available_horses_in_the_summarys_name_order', async () => {
+    const highExertion = createMockHorseExertionSummary({ id: 'horse-a', name: 'Apple', is_active: true, is_available: true, totalExertion: 10 })
+    const lowExertion = createMockHorseExertionSummary({ id: 'horse-b', name: 'Busy', is_active: true, is_available: true, totalExertion: 2 })
     vi.mocked(getHorseExertionSummary).mockResolvedValue([highExertion, lowExertion])
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const links = screen.getAllByRole('link')
-    expect(links[0].textContent).toBe('Lazy')
+    expect(links[0].textContent).toBe('Apple')
   })
 
   it('should_show_empty_state_when_no_horses', async () => {

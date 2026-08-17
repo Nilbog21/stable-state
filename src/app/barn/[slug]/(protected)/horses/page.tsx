@@ -69,9 +69,13 @@ export default async function HorsesPage({
 
     // Owned horses come out of these three sections and are rendered by My Horses instead
     // (#1000); they rejoin the exhaustion fan-out below.
-    const availableFull = horses
-      .filter((h) => h.is_active && h.is_available && !ownedIds.has(h.id))
-      .sort((a, b) => a.totalExertion - b.totalExertion)
+    //
+    // No sort of any kind here (#1553): get_horse_exertion_summary ends in `ORDER BY h.name`, so
+    // all three sections read A-Z off the RPC. The total-exertion-ascending sort deleted here came
+    // from #388, and #936 only re-windowed the total it sorted on to the bar's ±3 days. It answered
+    // "which horse has capacity" — the question LessonForm still answers with its own bucketed sort
+    // on /lessons/new and /lessons/[id]/edit, not this page's, where the user hunts a named horse.
+    const availableFull = horses.filter((h) => h.is_active && h.is_available && !ownedIds.has(h.id))
     const unavailableFull = horses.filter((h) => h.is_active && !h.is_available && !ownedIds.has(h.id))
     available = availableFull
     unavailable = unavailableFull
