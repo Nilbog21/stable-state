@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js'
 import { addHorse, addTier, daysFromNow, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
 import { BROWSER_TIMEZONE } from './support/timezone'
 import { saveLessonForm } from './support/lesson-pages'
+import { openNewLessonForm } from './support/lesson-form'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -59,7 +60,17 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   const time = LESSON_TIME // 2:30 PM, entered as barn-local wall clock
   const dateStr = LESSON_DATE
 
-  await page.goto(`/barn/${barn.slug}/lessons/new`)
+  // Barrier before the first interaction, not a bare `goto`: every drive below — the checkbox,
+  // the `<select>`, the month taps, the day tap and the fill — is lost outright if React has not
+  // mounted yet, and nothing replays any of them (facts 9 and 10). `openNewLessonForm` is the
+  // shared barrier for exactly this form; it fills BARRIER_TIME and waits on the hidden
+  // `lesson_at` only client-side `LessonStartTime` can write, so it settles on hydration itself
+  // rather than on markup the server also renders.
+  //
+  // Its BARRIER_TIME is then overwritten by this test's own `fill` further down, which is why the
+  // barrier costs nothing here: the assertion is on the stored instant, and only the last value
+  // the field holds at submit reaches storage.
+  await openNewLessonForm(page, barn)
 
   await page.getByRole('checkbox', { name: 'Apollo' }).check()
   await page.locator('#rider_id').selectOption({ label: `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}` })
@@ -83,7 +94,9 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   //
   // Since #1578 the fill is also mandatory rather than merely corrective: the field opens empty,
   // so a fill that never reached React leaves no `lesson_at` at all and the submit below is
-  // blocked outright — where it used to sail through carrying the barn's current hour.
+  // blocked outright — where it used to sail through carrying the barn's current hour. That is
+  // what the barrier above is protecting; without it this line's loss is a 30s `waitForURL`
+  // timeout here plus a cascade through every test after it (fact 15), not a fast miss.
   await page.locator('#lesson-start-time').fill(time)
 
   // Keyboard activation instead of a raw pointer .click(): Submit sits at the
