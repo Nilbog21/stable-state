@@ -20,6 +20,7 @@ import {
   buildCalendarBandLessons,
   DEV_CALENDAR_BAND_THRESHOLDS,
   withEmailDomain,
+  buildHorseDocumentSeeds,
 } from './seed-barn'
 
 describe('buildLessonDates', () => {
@@ -382,6 +383,30 @@ describe('expenseDateFor', () => {
 
   it('should_shift_the_date_forward_for_a_positive_offset', () => {
     expect(expenseDateFor(NOW, 10)).toBe('2026-07-14')
+  })
+})
+
+// #1559: the two guarantees a reseed months later depends on — a reminder date that is still a
+// believable 14 days overdue (a hardcoded literal keeps feeding the dashboard card either way,
+// since `getDueDocuments` filters `reminder_date <= today` with no lower bound; it just drifts
+// into an implausible figure), and a document on the rider-owned horse so the Phase 6 owner
+// walk has something to open.
+describe('buildHorseDocumentSeeds', () => {
+  const NOW = new Date('2026-07-04T10:00:00.000Z')
+
+  it('should_give_the_butter_document_a_past_due_reminder_date', () => {
+    const butter = buildHorseDocumentSeeds(NOW).find((s) => s.recordType === 'coggins')
+    expect(butter?.reminderDate).toBe('2026-06-20')
+  })
+
+  it('should_leave_the_apple_document_without_a_reminder', () => {
+    const apple = buildHorseDocumentSeeds(NOW).find((s) => s.recordType === 'shot_record')
+    expect(apple?.reminderDate).toBeNull()
+  })
+
+  it('should_seed_the_unreminded_document_on_the_rider_owned_horse', () => {
+    const apple = buildHorseDocumentSeeds(NOW).find((s) => s.recordType === 'shot_record')
+    expect(apple?.horseIndex).toBe(0)
   })
 })
 

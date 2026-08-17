@@ -276,6 +276,36 @@ export function expenseDateFor(now: Date, daysOffset: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+export type HorseDocumentSeed = {
+  horseIndex: number
+  recordType: string
+  fileName: string
+  reminderDate: string | null
+}
+
+// #1559: two horse documents, not one. Butter's (the #1359 privilege fixture) carries a
+// past-due reminder so the manager dashboard's due-documents card has real data; Apple's is
+// the owner path — Apple is the rider-owned horse set below, so the Phase 6 Horses sweep has
+// a document to open as owner — and deliberately has no reminder, preserving a "no reminder
+// set" row for contrast. The reminder is derived from `now` (via expenseDateFor, which is
+// just this file's generic YYYY-MM-DD-offset helper despite the expense-flavoured name)
+// rather than a literal so it stays a believable "14 days overdue" on every reseed — not to
+// keep it due at all: `getDueDocuments` filters `reminder_date <= today` with no lower bound,
+// so a literal would still read as due months later, just absurdly so.
+export const DEV_DUE_DOCUMENT_DAYS_AGO = 14
+
+export function buildHorseDocumentSeeds(now: Date): HorseDocumentSeed[] {
+  return [
+    {
+      horseIndex: 1,
+      recordType: 'coggins',
+      fileName: 'butter-coggins.pdf',
+      reminderDate: expenseDateFor(now, -DEV_DUE_DOCUMENT_DAYS_AGO),
+    },
+    { horseIndex: 0, recordType: 'shot_record', fileName: 'apple-shot-record.pdf', reminderDate: null },
+  ]
+}
+
 export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
   // now + 2h rather than a fixed time, so it's always still upcoming (mirrors buildLessonDates).
   // Date and time are both derived from this same shifted instant so they can't disagree
@@ -527,29 +557,33 @@ export async function seedBarn(
 
   // #1359: a document on the privileged horse, so the read grant above is manually visible —
   // pre-fix, a document row here was exactly what 500'd the horse page for the granted rider.
+  // #1559 added the second one — see buildHorseDocumentSeeds for what each is for.
   // Same existsSync guard as the photos (see the #505 note above).
-  const butterDocPath = join(DATA_DIR, 'test_1_kb.pdf')
-  if (existsSync(butterDocPath)) {
-    const butterDocBytes = readFileSync(butterDocPath)
-    const butterDocStoragePath = `${barnId}/horses/${horseIds[1]}/butter-coggins.pdf`
-    mustSucceed(
-      await supabase.storage.from('documents').upload(butterDocStoragePath, butterDocBytes, {
-        contentType: 'application/pdf',
-        upsert: true,
-      }),
-      'upload seed horse document'
-    )
-    mustSucceed(
-      await supabase.from('horse_documents').insert({
-        barn_id: barnId,
-        horse_id: horseIds[1],
-        record_type: 'coggins',
-        storage_path: butterDocStoragePath,
-        file_name: 'butter-coggins.pdf',
-        file_size: butterDocBytes.length,
-      }),
-      'seed horse document row'
-    )
+  const horseDocPath = join(DATA_DIR, 'test_1_kb.pdf')
+  if (existsSync(horseDocPath)) {
+    const horseDocBytes = readFileSync(horseDocPath)
+    for (const doc of buildHorseDocumentSeeds(now)) {
+      const storagePath = `${barnId}/horses/${horseIds[doc.horseIndex]}/${doc.fileName}`
+      mustSucceed(
+        await supabase.storage.from('documents').upload(storagePath, horseDocBytes, {
+          contentType: 'application/pdf',
+          upsert: true,
+        }),
+        'upload seed horse document'
+      )
+      mustSucceed(
+        await supabase.from('horse_documents').insert({
+          barn_id: barnId,
+          horse_id: horseIds[doc.horseIndex],
+          record_type: doc.recordType,
+          storage_path: storagePath,
+          file_name: doc.fileName,
+          file_size: horseDocBytes.length,
+          reminder_date: doc.reminderDate,
+        }),
+        'seed horse document row'
+      )
+    }
   }
 
   const lessonDates = buildLessonDates(now)
