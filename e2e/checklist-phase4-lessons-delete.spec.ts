@@ -34,6 +34,7 @@ import {
   daysFromNow,
 } from './support/fixtures'
 import { settledTextContents } from './support/read'
+import { accordionSection } from './support/accordion'
 import { CANCELLED_BADGE, detailField, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
 import { mustSucceed } from '@/lib/db/service-role'
 import { mustAffect } from './support/must-affect'
@@ -356,11 +357,12 @@ function horseNotesTextarea(page: Page): Locator {
 
 /**
  * The Outstanding Income table on `/finances`, scoped by the section heading rather than by
- * position: the page renders a second `<section>` for Outstanding *Expenses* and a breakdown table
- * below both, so `main table` alone is ambiguous.
+ * position: the page renders a second section for Outstanding *Expenses* and a breakdown table
+ * below both, so `main table` alone is ambiguous. Reached through the shared accordion scope helper since
+ * #1550 made all three an `AccordionSection`.
  */
 function outstandingTable(page: Page): Locator {
-  return page.locator('main section').filter({ hasText: 'Outstanding Income' }).locator('table')
+  return accordionSection(page, 'Outstanding Income').locator('table')
 }
 
 /**

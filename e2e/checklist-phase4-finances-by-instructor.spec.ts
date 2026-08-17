@@ -147,11 +147,15 @@ function drilldownUrl(trainerId: string): string {
 
 /**
  * The active tab's BreakdownTable — and, on the drill-down page, its single lesson table.
- * Scoped to a direct `main > div` child so it can't also match a table nested inside one of
- * the Finances page's Outstanding `<section>`s.
+ *
+ * Two alternatives because the two pages nest differently and exactly one branch can match on
+ * either. On Finances every table now sits inside an `AccordionSection` (#1550), so it's picked
+ * by the reconciliation `<tfoot>` the Outstanding Income table above it doesn't have; the
+ * trainer drill-down has no accordion and no footer, so its lone table is still a direct
+ * `main > div` child.
  */
 function table(page: Page) {
-  return page.locator('main > div > table')
+  return page.locator('main table:has(tfoot), main > div > table')
 }
 
 function bodyRows(page: Page) {

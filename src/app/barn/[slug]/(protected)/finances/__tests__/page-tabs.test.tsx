@@ -74,12 +74,10 @@ describe('FinancesPage', () => {
   afterEach(() => {
     vi.useRealTimers()
   })
-  it('should_render_separator_before_tab_bar', async () => {
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    const tabBarWrapper = screen.getByRole('link', { name: 'By Horse' }).closest('div')!.parentElement!
-    expect(tabBarWrapper.previousElementSibling?.tagName).toBe('HR')
-  })
+  // #1550 removed `should_render_separator_before_tab_bar`: the <hr> it asserted on separated
+  // the tab bar from the Pending income line above it, and both now sit inside the Monthly
+  // Breakdown accordion, whose own card border does that job. Its replacement — the tab pills
+  // living inside that section — is in page-outstanding.test.tsx.
 
   // Tab bar
 

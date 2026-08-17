@@ -12,6 +12,7 @@ import {
   monthAnchor,
   type SeededAppointment,
 } from './support/fixtures'
+import { accordionSection } from './support/accordion'
 import { settledInnerTexts } from './support/read'
 import { mustAffect } from './support/must-affect'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -242,17 +243,25 @@ function barnLocalDate(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: barn.data.barn.timezone }).format(new Date(iso))
 }
 
+// Each Outstanding section is an `AccordionSection` since #1550 — a `<details>`, not the
+// `<section>` these two used to locate — so both go through the shared scope helper.
 function outstandingIncome(page: Page) {
-  return page.locator('main section').filter({ hasText: 'Outstanding Income' })
+  return accordionSection(page, 'Outstanding Income')
 }
 
 function outstandingExpenses(page: Page) {
-  return page.locator('main section').filter({ hasText: 'Outstanding Expenses' })
+  return accordionSection(page, 'Outstanding Expenses')
 }
 
-/** The bold figure each Outstanding section renders above its list — its second paragraph. */
+/**
+ * The bold figure each Outstanding section renders above its list — now its *first* paragraph,
+ * since #1550 moved the label that used to precede it up into the accordion's `<summary>` as
+ * the section title, and moved the section's `InfoPopover` down into this paragraph beside the
+ * figure it explains. Callers read it with `toContainText`, not `toHaveText`, for that trailing
+ * ⓘ glyph.
+ */
 function sectionTotal(section: ReturnType<typeof outstandingIncome>) {
-  return section.locator('p').nth(1)
+  return section.locator('p').first()
 }
 
 /** rider2 also owns the two agreement charges, so the Type cell is what isolates the lesson. */
@@ -404,7 +413,7 @@ test('outstanding_income_lease_charge_date_renders_as_plain_calendar_date @manag
 test('outstanding_expenses_total_sums_only_entries_with_a_known_amount @manager', async ({ page }) => {
   await page.goto(financesUrl())
   // Both seeded expenses are listed; only the priced one has an amount to contribute.
-  await expect(sectionTotal(outstandingExpenses(page))).toHaveText(formatCurrency(seeded.pricedExpense.amount!))
+  await expect(sectionTotal(outstandingExpenses(page))).toContainText(formatCurrency(seeded.pricedExpense.amount!))
 })
 
 test('outstanding_expenses_lists_past_due_planned_expense_as_one_line @manager', async ({ page }) => {
@@ -576,7 +585,7 @@ test.describe.serial('resolving a past-due planned expense', () => {
 
   test('past_due_expense_amount_now_counts_toward_the_outstanding_expenses_total @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await expect(sectionTotal(outstandingExpenses(page))).toHaveText(
+    await expect(sectionTotal(outstandingExpenses(page))).toContainText(
       formatCurrency(seeded.pricedExpense.amount! + PLANNED_EXPENSE_AMOUNT)
     )
   })

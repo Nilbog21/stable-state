@@ -329,10 +329,12 @@ async function feeOnDetailPage(page: Page): Promise<string> {
  * The block is addressed by its label and then by position within itself — the same
  * "label `<p>` above a big-figure `<p>`" structure `checklist-phase4-finances-page-chrome`
  * reads, whose own checkboxes own the claim that the label and the layout are right. The
- * `^` anchor keeps `hasText` from matching an ancestor that merely contains the phrase.
+ * `^` anchor keeps `hasText` from matching an ancestor that merely contains the phrase, which
+ * is the whole reason the depth stopped mattering when #1550 moved this block one level down,
+ * inside the Monthly Breakdown accordion.
  */
 async function pendingIncome(page: Page): Promise<number> {
-  const block = page.locator('main > div').filter({ hasText: /^Pending income/ })
+  const block = page.locator('main div').filter({ hasText: /^Pending income/ })
   const text = (await settledTextContents(block.locator('p').nth(1)))[0].trim()
   return Number(text.replace(/[$,]/g, ''))
 }

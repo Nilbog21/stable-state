@@ -343,6 +343,10 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 Finances (`/barn/dev-barn/finances`):
 
+- [ ] (e2e: finances_renders_three_accordion_sections_in_order) The page is three collapsible sections, in order: **Outstanding Income**, **Outstanding Expenses**, **Monthly Breakdown** (#1550)
+- [ ] (e2e: the_month_navigation_and_tab_pills_live_inside_monthly_breakdown) The month `←`/`→` navigation and the five tab pills live **inside** Monthly Breakdown, not above all three sections
+- [ ] (e2e: every_finances_section_header_is_at_least_44px_tall) Every section header is at least 44px tall, so it can be tapped to collapse the section
+- [ ] (e2e: an_empty_outstanding_section_renders_collapsed) An Outstanding section with nothing in it still renders, collapsed, rather than disappearing
 - [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
 - [ ] (e2e: outstanding_income_row_leaves_list_once_payment_type_set) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
 - [ ] (e2e: outstanding_income_lesson_date_renders_in_barn_timezone) A lesson row's date in **Outstanding Income** is the barn-local date of the time you entered for that lesson, not shifted by your own machine's UTC offset
@@ -369,7 +373,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: outstanding_page_omits_outstanding_expenses) Outstanding expenses do **not** appear on that page (no Outstanding Expenses equivalent there)
 - [ ] (e2e: month_navigation_arrows_update_the_month_query_param) Month navigation `←`/`→` works and updates `?month=YYYY-MM`
 - [ ] (e2e: previous_month_reflects_its_own_seeded_lesson) Navigate to the previous month → the previous month's seeded lesson is reflected
-- [ ] (e2e: pending_income_line_appears_once_below_the_outstanding_sections) Below the Outstanding sections, only a single **Pending income** line appears for the current month
+- [ ] (e2e: pending_income_line_appears_once_inside_monthly_breakdown) Inside **Monthly Breakdown**, only a single **Pending income** line appears for the current month
 - [ ] (e2e: pending_income_line_has_no_month_year_suffix) That **Pending income** line carries no month/year suffix (the month picker above already shows it)
 - [ ] (e2e: no_gross_expenses_net_summary_boxes_remain_on_the_page) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
 - [ ] (e2e: every_tab_shows_the_same_gross_expenses_net_columns) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
@@ -652,7 +656,7 @@ The Finances line below is the one that used to sit at the top of that section, 
 - [ ] (manual) **Expenses** — the list, the new/edit form with its month conflict calendar, and the delete confirmation page (`/barn/dev-barn/expenses` and below)
 - [ ] (manual) **Horses** — the list's sections and exhaustion bars, and a detail page's header and five collapsible sections (`/barn/dev-barn/horses`, `/horses/[id]`)
 - [ ] (manual) **Members** — the roster, a member detail page's Contact Info, Documents, Active Agreements and Instructor Access sections, and the document upload page (`/barn/dev-barn/members` and below, `/documents/new`)
-- [ ] (manual) **Finances** — the Outstanding sections, the tab pills, every tab's table and footer, and the four drill-downs (`/barn/dev-barn/finances` and below)
+- [ ] (manual) **Finances** — the three collapsible sections open and shut, their collapsed-row hints, the tab pills, every tab's table and footer, and the four drill-downs (`/barn/dev-barn/finances` and below)
 - [ ] (manual) **Manage Barn** — the collapsible sections, the tier and event forms, and the Data Backup section (`/barn/dev-barn/settings` and below)
 - [ ] (manual) **Notifications and profile** — the bell dropdown, the avatar menu, `/profile`, `/about` and `/changelog`
 - [ ] (manual) **Calendar feed** — the Calendar Feed section on `/profile?barn=dev-barn` and its Get link / Copy Link / Regenerate controls

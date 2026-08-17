@@ -65,6 +65,14 @@ function hintOf(title: string): string {
   return screen.getByText(title).nextElementSibling?.textContent ?? ''
 }
 
+/**
+ * A section's headline figure: the first `<p>` in its body. Read structurally rather than by
+ * its text, because the same amount can also appear in a Fee cell of the table below it.
+ */
+function totalOf(title: string): HTMLParagraphElement {
+  return section(title).querySelector('p')!
+}
+
 const OUTSTANDING_LESSON = {
   id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z',
   instructor_name: null, rider_names: ['Alice'], fee: 75,
@@ -218,14 +226,16 @@ describe('FinancesPage', () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(within(section('Outstanding Income')).getByText('$75.00').className).toMatch(/amber/)
+    expect(totalOf('Outstanding Income').textContent).toContain('$75.00')
+    expect(totalOf('Outstanding Income').className).toMatch(/amber/)
   })
 
   it('should_not_highlight_the_outstanding_income_total_when_it_is_zero', async () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([{ ...OUTSTANDING_LESSON, fee: 0 }])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(within(section('Outstanding Income')).getByText('$0.00').className).not.toMatch(/amber/)
+    expect(totalOf('Outstanding Income').textContent).toContain('$0.00')
+    expect(totalOf('Outstanding Income').className).not.toMatch(/amber/)
   })
 
   it('should_render_info_button_on_outstanding_label', async () => {
@@ -349,13 +359,15 @@ describe('FinancesPage', () => {
     vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(within(section('Outstanding Expenses')).getByText('$0.00').className).toMatch(/amber/)
+    expect(totalOf('Outstanding Expenses').textContent).toContain('$0.00')
+    expect(totalOf('Outstanding Expenses').className).toMatch(/amber/)
   })
 
   it('should_not_style_the_outstanding_expenses_total_amber_when_nothing_is_outstanding', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(within(section('Outstanding Expenses')).getByText('$0.00').className).not.toMatch(/amber/)
+    expect(totalOf('Outstanding Expenses').textContent).toContain('$0.00')
+    expect(totalOf('Outstanding Expenses').className).not.toMatch(/amber/)
   })
 
 })

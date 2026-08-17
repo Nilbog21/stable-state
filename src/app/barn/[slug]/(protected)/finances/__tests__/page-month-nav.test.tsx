@@ -225,7 +225,10 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-04' }),
     })
     render(jsx)
-    expect(screen.getByText('April 2026')).toBeDefined()
+    // Two matches since #1550 — the pager's own label, and the Monthly Breakdown accordion's
+    // `hint`, which names the month a collapsed section is showing. This test owns the pager
+    // one; `page-outstanding.test.tsx` owns the hint.
+    expect(screen.getAllByText('April 2026').length).toBe(2)
   })
 
   it('should_show_prev_link_when_viewing_january', async () => {

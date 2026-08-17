@@ -17,6 +17,7 @@ import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
+import { AccordionSection } from '@/components/ui/AccordionSection'
 import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -127,53 +128,64 @@ export default async function FinancesPage({
         Finances
       </h1>
 
-      {outstandingItems.length > 0 && (
-        <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
-          <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding Income
-            <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
-          </p>
-          <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
-            {formatFee(outstandingTotal)}
-          </p>
-          <div className="mt-4">
-            <OutstandingTable items={outstandingItems} barnSlug={slug} />
-          </div>
-          <div className="mt-3">
-            <Link
-              href={`/barn/${slug}/finances/outstanding`}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
-              View all outstanding →
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* #1550 — three AccordionSections rather than five flat sibling blocks. Each part now has
+          a boundary, and the manager can put away what they aren't working on. Both Outstanding
+          sections render whatever the data and collapse when they have nothing, so the page keeps
+          one shape; the month pager and the tab pills sit inside Monthly Breakdown, the only
+          section they ever scoped. */}
+      <AccordionSection
+        title="Outstanding Income"
+        hint={outstandingItems.length === 0 ? 'None' : `${outstandingItems.length} unpaid`}
+        defaultOpen={outstandingItems.length > 0}
+      >
+        {/* No empty-case branch: OutstandingTable returns null at zero items, and the total below
+            renders $0.00 in its own not-amber styling. */}
+        <p className={`text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+          {formatFee(outstandingTotal)}
+          <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
+        </p>
+        <div className="mt-4">
+          <OutstandingTable items={outstandingItems} barnSlug={slug} />
+        </div>
+        <div className="mt-3">
+          <Link
+            href={`/barn/${slug}/finances/outstanding`}
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            View all outstanding →
+          </Link>
+        </div>
+      </AccordionSection>
 
-      {outstandingExpenses.length > 0 && (
-        <section className="mb-10 text-amber-700 dark:text-amber-400">
-          <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding Expenses
-            <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
-          </p>
-          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-            {formatCurrency(outstandingExpensesTotal)}
-          </p>
-          <ul className="mt-4 space-y-1">
-            {outstandingExpenses.map((expense) => (
-              <li key={expense.id}>
-                <Link
-                  href={`/barn/${slug}/expenses/${expense.id}`}
-                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
-                >
-                  {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <AccordionSection
+        title="Outstanding Expenses"
+        hint={outstandingExpenses.length === 0 ? 'None' : `${outstandingExpenses.length} to resolve`}
+        defaultOpen={outstandingExpenses.length > 0}
+      >
+        {/* Amber gated on there being an entry, not on the total: an expense with no amount yet
+            still needs attention and contributes $0 to the figure — but an amber $0.00 on a
+            section with nothing in it would be a false alarm. */}
+        <p className={`text-2xl font-bold ${outstandingExpenses.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+          {formatCurrency(outstandingExpensesTotal)}
+          <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
+        </p>
+        <ul className="mt-4 space-y-1">
+          {outstandingExpenses.map((expense) => (
+            <li key={expense.id}>
+              <Link
+                href={`/barn/${slug}/expenses/${expense.id}`}
+                className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+              >
+                {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </AccordionSection>
 
+      {/* Always open — unlike the two above it always has content, a table or the EmptyState
+          standing in for one. */}
+      <AccordionSection title="Monthly Breakdown" hint={monthLabel} defaultOpen>
       {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant this
           pager, the month calendar picker's arrows and the dashboard's day/week ones all render
           from (#1394). Its own comment holds why an unpadded circular icon-arrow is a documented
@@ -210,8 +222,6 @@ export default async function FinancesPage({
           </p>
         </div>
       )}
-
-      <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
 
       <div className="mb-6 overflow-x-auto -mx-1">
         <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
@@ -294,6 +304,7 @@ export default async function FinancesPage({
           />
         )
       )}
+      </AccordionSection>
     </main>
   )
 }

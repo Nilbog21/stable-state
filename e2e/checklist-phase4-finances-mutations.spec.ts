@@ -182,12 +182,13 @@ function horseDrilldownUrl(horseId: string): string {
 }
 
 /**
- * The active tab's breakdown table. Scoped to a direct `main > div` child so it can't also
- * match the Outstanding Income table, which has a thead of its own but sits deeper, inside
- * its own `<section>`.
+ * The active tab's breakdown table. Picked by its reconciliation `<tfoot>`, which the
+ * Outstanding Income table above it doesn't have — a structural `main > div > table` read used
+ * to do this job, and #1550's move of every table inside an `AccordionSection` is exactly what
+ * a depth-counting locator can't survive.
  */
 function breakdownTable(page: Page): Locator {
-  return page.locator('main > div > table')
+  return page.locator('main table:has(tfoot)')
 }
 
 function footerRow(page: Page, label: RegExp): Locator {
