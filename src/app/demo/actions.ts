@@ -9,9 +9,14 @@ import { getBarnBySlug, createDemoBarn, countDemoBarns, getOldestDemoBarn, delet
 import { getUserMembership, createActiveMembership } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { createServiceClient, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
-import { seedBarn, DEV_MANAGER_2 } from '../../../scripts/seed-barn'
+import { seedBarn, withEmailDomain, DEV_MANAGER_2 } from '../../../scripts/seed-barn'
 
 const DEMO_BARN_SLUG_COOKIE = 'demo_barn_slug'
+// #1579: `profiles.email` is globally unique, so a demo barn seeded on the dev DB was competing
+// with `dev-barn` for one roster — silently overwriting its profiles, and failing outright with
+// 23505 once `change-user.ts` (a writer of `profiles.user_id` since #1563) moved the developer
+// onto a seed identity and `upsertProfile`'s `onConflict: 'user_id'` no longer matched.
+const DEMO_EMAIL_DOMAIN = 'demo.local'
 const DEMO_COOKIE_MAX_AGE = 60 * 60 * 24 // 24h
 
 function cookieOptions(path: string) {
@@ -96,8 +101,13 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   const slug = `demo-${randomUUID().slice(0, 8)}`
   const barn = await createDemoBarn(slug, serviceClient)
 
-  const morganUserId = await findOrCreateAuthUser(DEV_MANAGER_2.email, serviceClient)
-  await seedBarn(serviceClient, barn.id, barn.slug, morganUserId)
+  // ponytail: one `*@demo.local` roster shared by every demo barn, not one per barn — so a
+  // visitor editing a seeded member's contact info or photo changes it in every concurrent demo
+  // barn. Per-barn identities are the upgrade path, but need `teardownBarnData` to delete auth
+  // users first: it only removes `user_id IS NULL` profiles (`service-role.ts:116`), so per-barn
+  // emails would leak ~9 `auth.users` rows per reaped demo barn.
+  const morganUserId = await findOrCreateAuthUser(withEmailDomain(DEV_MANAGER_2.email, DEMO_EMAIL_DOMAIN), serviceClient)
+  await seedBarn(serviceClient, barn.id, barn.slug, morganUserId, new Date(), DEMO_EMAIL_DOMAIN)
 
   await createActiveMembership(user.id, profile.id, barn.id, 'manager', serviceClient)
 

@@ -25,10 +25,17 @@ vi.mock('@/lib/db/service-role', async (importOriginal) => {
     teardownBarnData: vi.fn(),
   }
 })
-vi.mock('../../../../scripts/seed-barn', () => ({
-  seedBarn: vi.fn(),
-  DEV_MANAGER_2: { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' },
-}))
+vi.mock('../../../../scripts/seed-barn', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../../scripts/seed-barn')>()
+  return {
+    ...actual,
+    seedBarn: vi.fn(),
+    // Pinned rather than taken from `actual` so the assertions below don't drift if the
+    // fixture's name or address changes; `withEmailDomain` stays real, since what's
+    // asserted is the composed email and a stub would only prove `actions.ts` calls something.
+    DEV_MANAGER_2: { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' },
+  }
+})
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -237,8 +244,8 @@ describe('createOrResumeDemoBarn', () => {
   it('should_seed_the_new_barn_and_add_the_visitor_as_manager', async () => {
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(findOrCreateAuthUser).toHaveBeenCalledWith('manager2@dev.local', expect.anything())
-    expect(seedBarn).toHaveBeenCalledWith(expect.anything(), 'new-barn-1', 'demo-abc12345', 'morgan-user-1')
+    expect(findOrCreateAuthUser).toHaveBeenCalledWith('manager2@demo.local', expect.anything())
+    expect(seedBarn).toHaveBeenCalledWith(expect.anything(), 'new-barn-1', 'demo-abc12345', 'morgan-user-1', expect.anything(), 'demo.local')
     expect(createActiveMembership).toHaveBeenCalledWith('demo-user-1', 'profile-1', 'new-barn-1', 'manager', expect.anything())
   })
 

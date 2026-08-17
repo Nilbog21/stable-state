@@ -1,6 +1,6 @@
 /**
  * Shared barn-seeding module (#502): `seedBarn(supabase, barnId, barnSlug,
- * managerUserId, now?)` seeds a complete fixture barn — the manager2 membership with
+ * managerUserId, now?, emailDomain?)` seeds a complete fixture barn — the manager2 membership with
  * contact info, two pricing tiers, the trainer/rider rosters, the horse set (including
  * the retired and unavailable ones), horse and profile photos from `scripts/data/`,
  * lessons spanning the prior three months through the coming week with alternating
@@ -30,6 +30,15 @@ import type { PaymentType } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { barnDay } from '@/lib/barn-timezone'
 import { mustSucceed, findOrCreateAuthUser } from './script-utils'
+
+// #1579: `profiles_email_unique` is a partial unique index on `email` across the whole table,
+// not per barn, so two fixture barns on one DB compete for a single roster. `seedBarn`'s
+// `emailDomain` parameter is what separates them — the `DEV_*` constants below keep their
+// `@dev.local` literals (they are the module's exported test surface, and `reset-db.ts` reads
+// them for its summary) and every seeding call site runs them through this instead.
+export function withEmailDomain(email: string, domain: string): string {
+  return `${email.split('@')[0]}@${domain}`
+}
 
 export const DEV_TRAINERS = [
   { email: 'trainer1@dev.local', firstName: 'Alex',  lastName: 'Trainer' },
@@ -327,11 +336,14 @@ export async function seedBarn(
   barnId: string,
   barnSlug: string,
   managerUserId: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  emailDomain: string = 'dev.local'
 ): Promise<SeedBarnResult> {
   console.log(`Seeding barn ${barnSlug}…`)
 
-  const m2Profile = await upsertProfile(managerUserId, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
+  const email = (e: string) => withEmailDomain(e, emailDomain)
+
+  const m2Profile = await upsertProfile(managerUserId, email(DEV_MANAGER_2.email), DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
   const m2Membership = mustSucceed<{ id: string }>(
     await supabase.from('barn_memberships').insert({
       user_id: managerUserId,
@@ -358,23 +370,23 @@ export async function seedBarn(
 
   const trainerIds: string[] = []
   for (const t of DEV_TRAINERS) {
-    trainerIds.push(await findOrCreateAuthUser(t.email, supabase))
+    trainerIds.push(await findOrCreateAuthUser(email(t.email), supabase))
   }
 
   const riderIds: string[] = []
   for (const r of DEV_RIDERS) {
-    riderIds.push(await findOrCreateAuthUser(r.email, supabase))
+    riderIds.push(await findOrCreateAuthUser(email(r.email), supabase))
   }
 
   const trainerProfileIds: string[] = []
   for (let i = 0; i < DEV_TRAINERS.length; i++) {
-    const p = await upsertProfile(trainerIds[i], DEV_TRAINERS[i].email, DEV_TRAINERS[i].firstName, DEV_TRAINERS[i].lastName, supabase)
+    const p = await upsertProfile(trainerIds[i], email(DEV_TRAINERS[i].email), DEV_TRAINERS[i].firstName, DEV_TRAINERS[i].lastName, supabase)
     trainerProfileIds.push(p.id)
   }
 
   const riderProfileIds: string[] = []
   for (let i = 0; i < DEV_RIDERS.length; i++) {
-    const p = await upsertProfile(riderIds[i], DEV_RIDERS[i].email, DEV_RIDERS[i].firstName, DEV_RIDERS[i].lastName, supabase)
+    const p = await upsertProfile(riderIds[i], email(DEV_RIDERS[i].email), DEV_RIDERS[i].firstName, DEV_RIDERS[i].lastName, supabase)
     riderProfileIds.push(p.id)
   }
 
@@ -418,8 +430,8 @@ export async function seedBarn(
 
   // #950: 4th trainer, created outside DEV_TRAINERS/trainerRowIds so it doesn't disturb the
   // existing round-robin instructor assignment — gets exactly one ($0 comped) lesson below.
-  const t4UserId = await findOrCreateAuthUser(DEV_TRAINER_4.email, supabase)
-  const t4Profile = await upsertProfile(t4UserId, DEV_TRAINER_4.email, DEV_TRAINER_4.firstName, DEV_TRAINER_4.lastName, supabase)
+  const t4UserId = await findOrCreateAuthUser(email(DEV_TRAINER_4.email), supabase)
+  const t4Profile = await upsertProfile(t4UserId, email(DEV_TRAINER_4.email), DEV_TRAINER_4.firstName, DEV_TRAINER_4.lastName, supabase)
   const t4Membership = mustSucceed<{ id: string }>(
     await supabase.from('barn_memberships').insert({
       user_id: t4UserId,
