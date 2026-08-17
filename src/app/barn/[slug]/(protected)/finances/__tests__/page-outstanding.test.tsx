@@ -238,11 +238,45 @@ describe('FinancesPage', () => {
     expect(totalOf('Outstanding Income').className).not.toMatch(/amber/)
   })
 
-  it('should_render_info_button_on_outstanding_label', async () => {
+  // #1550 — both Outstanding sections explain themselves in a description that leads the
+  // section, the same shape Manage Barn's sections use (#1557), rather than behind an ⓘ the
+  // reader has to know to tap. The four tests come in pairs: the description is present, and
+  // the popover it replaced is gone — the second half is what fails if an ⓘ is reintroduced
+  // alongside the prose, leaving the page saying the same thing twice.
+  it('should_describe_what_outstanding_income_lists', async () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(section('Outstanding Income').querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(
+      within(section('Outstanding Income')).getByText(
+        'All-time unpaid lessons, leases, and boarding charges — not only the month shown below.'
+      )
+    ).not.toBeNull()
+  })
+
+  it('should_not_render_an_info_button_in_the_outstanding_income_section', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([OUTSTANDING_LESSON])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Income').querySelector('button[aria-label="Info"]')).toBeNull()
+  })
+
+  it('should_describe_why_an_entry_is_in_outstanding_expenses', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(
+      within(section('Outstanding Expenses')).getByText(
+        'Expenses past their scheduled time that are still missing an amount, a payment type, or both. The total counts only the ones with an amount.'
+      )
+    ).not.toBeNull()
+  })
+
+  it('should_not_render_an_info_button_in_the_outstanding_expenses_section', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(section('Outstanding Expenses').querySelector('button[aria-label="Info"]')).toBeNull()
   })
 
   it('should_show_link_to_outstanding_route_when_outstanding_lessons_exist', async () => {

@@ -436,22 +436,43 @@ test('past_due_planned_expense_absent_from_outstanding_income_table @manager', a
   ).toHaveCount(0)
 })
 
-test('outstanding_expenses_info_icon_explains_why_an_entry_is_listed @manager', async ({ page }) => {
+// #1550 replaced both Outstanding sections' ⓘ with a description leading the section, so these
+// two are plain visibility reads with no click: the text is on the page for a reader who never
+// knew there was an icon to tap.
+test('outstanding_income_description_explains_what_it_lists @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const section = outstandingExpenses(page)
-  await section.getByRole('button', { name: 'Info' }).click()
   await expect(
-    section.getByText('Shown here because the expense is missing an amount, missing a payment type, or both')
+    outstandingIncome(page).getByText(
+      'All-time unpaid lessons, leases, and boarding charges — not only the month shown below.'
+    )
   ).toBeVisible()
 })
 
-test('outstanding_expenses_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+test('outstanding_expenses_description_explains_why_an_entry_is_listed @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const section = outstandingExpenses(page)
+  await expect(
+    outstandingExpenses(page).getByText(
+      'Expenses past their scheduled time that are still missing an amount, a payment type, or both. The total counts only the ones with an amount.'
+    )
+  ).toBeVisible()
+})
+
+// Re-pointed from the Outstanding Expenses ⓘ to Pending income's, which #1550 left in place:
+// this was #1551's only coverage anywhere in e2e/, so deleting it with the icon it happened to
+// be written against would have dropped the outside-tap fix silently.
+test('pending_income_info_icon_dismisses_on_a_tap_outside_it @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const section = accordionSection(page, 'Monthly Breakdown')
   const explanation = section.getByText(
-    'Shown here because the expense is missing an amount, missing a payment type, or both'
+    "Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut"
   )
-  await section.getByRole('button', { name: 'Info' }).click()
+  // Scoped to the Pending income label rather than `.first()` — Monthly Breakdown also holds
+  // the three column-header ⓘ, so a positional pick would follow the table's layout around.
+  await section
+    .locator('p')
+    .filter({ hasText: /^Pending income/ })
+    .getByRole('button', { name: 'Info' })
+    .click()
   // Rule 4's same-test anchor: without it a regression to the open path leaves the
   // explanation hidden throughout, and the dismissal assertion below passes on nothing.
   await expect(explanation).toBeVisible()
