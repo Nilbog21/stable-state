@@ -86,6 +86,10 @@ export default async function HorseDetailPage({
   const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
   const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
   const canWriteNotes = isManager || isOwner
+  // #1547: ownership, not role. canWriteDocuments above admits a manager-granted 'write' rider too,
+  // and that grant deliberately stops short of deletion -- so this is the one document control that
+  // can't be derived from the privilege.
+  const canDeleteDocuments = isManager || isOwner
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
   const upcomingLessons = canSeeSchedule ? await getUpcomingLessonsForHorse(horse.id, barn.id, barn.timezone) : []
@@ -271,7 +275,7 @@ export default async function HorseDetailPage({
                     <Th>Notes</Th>
                     <Th>Link</Th>
                     <Th>Reminder Date</Th>
-                    {role === 'manager' && <Th align="right">Actions</Th>}
+                    {canDeleteDocuments && <Th align="right">Actions</Th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -299,7 +303,7 @@ export default async function HorseDetailPage({
                           <ReminderDueBadge reminderDate={doc.reminder_date} today={barnToday(barn.timezone)} />
                         </div>
                       </Td>
-                      {role === 'manager' && (
+                      {canDeleteDocuments && (
                         <TableActions>
                           <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
                             <Button type="submit" variant="danger" size="sm">
