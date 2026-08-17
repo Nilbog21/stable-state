@@ -386,9 +386,11 @@ describe('expenseDateFor', () => {
   })
 })
 
-// #1559: the two guarantees a reseed months later depends on — a reminder date that is still
-// past-due (hardcode a literal and it silently stops feeding the dashboard card), and a
-// document on the rider-owned horse so the Phase 6 owner walk has something to open.
+// #1559: the two guarantees a reseed months later depends on — a reminder date that is still a
+// believable 14 days overdue (a hardcoded literal keeps feeding the dashboard card either way,
+// since `getDueDocuments` filters `reminder_date <= today` with no lower bound; it just drifts
+// into an implausible figure), and a document on the rider-owned horse so the Phase 6 owner
+// walk has something to open.
 describe('buildHorseDocumentSeeds', () => {
   const NOW = new Date('2026-07-04T10:00:00.000Z')
 

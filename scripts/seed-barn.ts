@@ -289,7 +289,9 @@ export type HorseDocumentSeed = {
 // a document to open as owner — and deliberately has no reminder, preserving a "no reminder
 // set" row for contrast. The reminder is derived from `now` (via expenseDateFor, which is
 // just this file's generic YYYY-MM-DD-offset helper despite the expense-flavoured name)
-// rather than a literal, so a reseed months later still reads as due.
+// rather than a literal so it stays a believable "14 days overdue" on every reseed — not to
+// keep it due at all: `getDueDocuments` filters `reminder_date <= today` with no lower bound,
+// so a literal would still read as due months later, just absurdly so.
 export const DEV_DUE_DOCUMENT_DAYS_AGO = 14
 
 export function buildHorseDocumentSeeds(now: Date): HorseDocumentSeed[] {
