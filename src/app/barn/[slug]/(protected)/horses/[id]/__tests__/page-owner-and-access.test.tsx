@@ -166,17 +166,16 @@ describe('HorseDetailPage', () => {
     )
   })
 
-  it('should_not_render_owner_line_when_owner_is_unset', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByText(/^owner/i)).toBeNull()
-  })
-
-  it('should_not_call_resolveMemberNames_when_owner_is_unset', async () => {
+  // #1549: every horse has an owner, so the name is always looked up — there is no unset branch to
+  // skip the round trip for any more.
+  it('should_always_resolve_the_owner_name', async () => {
     await HorseDetailPage({ params: pageParams })
-    expect(resolveMemberNames).not.toHaveBeenCalled()
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-owner'], mockBarn.id)
   })
 
+  // Still reachable, and not the same thing as an unset owner: a membership always points at a
+  // profile, but the profile row can be missing or unreadable, and the header would rather say
+  // nothing than render a blank link.
   it('should_not_render_owner_line_when_owner_name_fails_to_resolve', async () => {
     vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())

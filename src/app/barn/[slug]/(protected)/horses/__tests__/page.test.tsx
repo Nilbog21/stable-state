@@ -426,7 +426,7 @@ describe('HorsesPage', () => {
     expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('true')
   })
 
-  describe('My Horses section', () => {
+  describe('My Owned Horses section', () => {
     it('should_call_getOwnedHorses_scoped_to_barn_and_membership', async () => {
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
@@ -444,7 +444,7 @@ describe('HorsesPage', () => {
       vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
-      expect(screen.getByText('My Horses')).toBeDefined()
+      expect(screen.getByText('My Owned Horses')).toBeDefined()
     })
 
     it('should_render_owned_horse_name', async () => {
@@ -464,7 +464,7 @@ describe('HorsesPage', () => {
     it('should_not_render_my_horses_heading_when_no_owned_horses', async () => {
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
-      expect(screen.queryByText('My Horses')).toBeNull()
+      expect(screen.queryByText('My Owned Horses')).toBeNull()
     })
 
     it('should_exclude_owned_horse_from_available_section', async () => {

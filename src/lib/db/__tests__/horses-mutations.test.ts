@@ -27,7 +27,7 @@ describe('createHorse', () => {
       }),
     } as any)
 
-    const result = await createHorse('barn-1', 'Blaze')
+    const result = await createHorse('barn-1', 'Blaze', 'mem-1')
 
     expect(result).toEqual(newHorse)
   })
@@ -43,7 +43,7 @@ describe('createHorse', () => {
       }),
     } as any)
 
-    await expect(createHorse('barn-1', 'Blaze')).rejects.toThrow('db error')
+    await expect(createHorse('barn-1', 'Blaze', 'mem-1')).rejects.toThrow('db error')
   })
 
   it('should_not_call_createClient_when_client_is_injected', async () => {
@@ -58,7 +58,7 @@ describe('createHorse', () => {
       }),
     } as any
 
-    await createHorse('barn-1', 'Blaze', undefined, injectedClient)
+    await createHorse('barn-1', 'Blaze', 'mem-1', injectedClient)
 
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
@@ -74,7 +74,7 @@ describe('createHorse', () => {
     })
     const injectedClient = { from: mockFrom } as any
 
-    await createHorse('barn-1', 'Blaze', undefined, injectedClient)
+    await createHorse('barn-1', 'Blaze', 'mem-1', injectedClient)
 
     expect(mockFrom).toHaveBeenCalled()
   })
@@ -94,7 +94,9 @@ describe('createHorse', () => {
     expect(insert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Blaze', owning_member_id: 'mem-1' })
   })
 
-  it('should_insert_with_null_owning_member_id_when_omitted', async () => {
+  // #1549: the owner is a required argument, so there is no "omitted" case left to fall back
+  // from. The column is NOT NULL and the type error at every call site is what enforces it.
+  it('should_insert_the_owner_it_was_given_verbatim', async () => {
     const insert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: newHorse, error: null }),
@@ -104,9 +106,9 @@ describe('createHorse', () => {
       from: vi.fn().mockReturnValue({ insert }),
     } as any)
 
-    await createHorse('barn-1', 'Blaze')
+    await createHorse('barn-1', 'Blaze', 'mem-9')
 
-    expect(insert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Blaze', owning_member_id: null })
+    expect(insert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Blaze', owning_member_id: 'mem-9' })
   })
 })
 
