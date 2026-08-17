@@ -103,13 +103,15 @@ curl -sf http://localhost:{port} -o /dev/null
 
 **If not:** start one in the background from the worktree:
 ```
-cd {worktree-path} && npm run dev -- -p {port} > /tmp/testissue-{worktree}.log 2>&1 &
+cd {worktree-path} && npm run dev -- -p {port} > /tmp/devserver-{port}.log 2>&1 &
 ```
 Then wait for it in one blocking call rather than polling yourself:
 ```
 timeout 60 bash -c 'until curl -sf http://localhost:{port} -o /dev/null; do sleep 2; done'
 ```
-If that exits non-zero (the server never came up within a minute), print the tail of `/tmp/testissue-{worktree}.log` and **stop**.
+If that exits non-zero (the server never came up within a minute), print the tail of `/tmp/devserver-{port}.log` and **stop**.
+
+`/tmp/devserver-{port}.log` is the **one** dev-server log path, keyed by port rather than by worktree or skill (#1569). A port has exactly one server, so a per-skill path meant whichever skill didn't start it was tailing a file nobody wrote; `run-checklist-suite.sh`'s post-suite recycle writes here too, so Step 4's traffic check below keeps reading a live file across it.
 
 (Nice-to-have, not built: the browser tab title reflecting the worktree, e.g. "test-{worktree}" — `next dev` has no flag for this since it's the page's own `<title>` metadata, not a server option. Would need a small conditional in the root layout keyed off an env var if ever wanted.)
 
@@ -170,7 +172,7 @@ For each item, one at a time:
 3. **If the user confirms it's correct:** if this item came from the carried-over deferred list, remove its entry from `specs/issue-{N}.md` (it's resolved). Move to the next item. Treat a bare `c` or `y` (case-insensitive) as confirmation, same as an explicit "yes"/"confirmed"/"looks good".
 4. **If the user reports a problem:** first check they were actually looking at this worktree's server, *then* classify it.
 
-   **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/testissue-{worktree}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — several worktrees are typically running dev servers at once, and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (If the server was reused rather than started here, the log may be missing or stale — say the check was inconclusive and fall through to normal diagnosis.)
+   **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/devserver-{port}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — several worktrees are typically running dev servers at once, and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (Since #1569 every writer of a server on this port — Step 3, `/runChecklist`, and `run-checklist-suite.sh`'s recycle — writes this one file, so it's normally live even when Step 3 reused a server it didn't start. If it's missing anyway, say the check was inconclusive and fall through to normal diagnosis.)
 
    **Notification check?** If the item involves a notification whose recipient is someone *other* than the persona currently being impersonated, don't expect it in that person's bell at all — verify the row directly with `mcp__supabase__execute_sql` against `notifications` (correct `user_id`, title, body, link). `change-user.ts` keeps exactly one physical auth account: switching to a persona rewrites their `barn_memberships.user_id` to the shared dev user and reverts the previous persona to their own permanent `profiles.user_id`, so the recipient's row is permanently disconnected from the id the notification was keyed to the moment you switch to them. One persona always kicks the other out of the seat; this is not an app bug and shouldn't be debugged as one unless the DB row itself is wrong.
 
