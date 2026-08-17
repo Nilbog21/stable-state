@@ -25,21 +25,29 @@ export default defineConfig({
   // percentage on purpose — a fraction of core count misreads the bottleneck ('25%' on a
   // 64-core box is 16 workers, which saturates the one server just the same).
   //
-  // 4 -> 2 in #1295, on two measurements that 4 could not survive. **Peak RSS**: one server costs
-  // ~1.4 GB serving a single route and ~10 GB once it has served this suite — route breadth, not a
-  // leak (#1569) — and with several worktrees open, the sum OOM-killed the machine twice, most
-  // recently at test 909/1027 with swap fully exhausted. **Near-disjoint failures**: two full runs
-  // an hour apart failed 5 and 11 tests with exactly one in common, nearly all ~30s timeouts that
-  // went green when the same specs were re-run in isolation. That disjointness is the evidence
-  // this is suite-level capacity rather than N flaky assertions — and since `retries: 0` above is
-  // deliberate, nothing absorbs it, so every full run cost a triage round in which a genuine
-  // regression and a contention timeout were indistinguishable. Halving the workers hits peak RSS,
-  // compile contention and timeout pressure at once, in one line, with no cold-start cost.
+  // 4 -> 2 in #1295, to buy **timeout headroom, and only that**. Two full runs at 4 an hour apart
+  // failed 5 and 11 tests with exactly one in common, nearly all ~30s timeouts that went green when
+  // the same specs were re-run in isolation. That near-disjointness is the evidence it was
+  // suite-level capacity rather than N flaky assertions, and since `retries: 0` above is deliberate
+  // nothing absorbed it — so every full run cost a triage round in which a genuine regression and a
+  // contention timeout were indistinguishable. At 2 the same suite ran **1034 passed, 0 failed**.
   //
-  // This is the per-run half. The cross-run half is `scripts/e2e-slot.sh`, a kernel-held 2-slot
-  // semaphore that `run-checklist-suite.sh` runs Playwright under, so concurrent runs in other
-  // worktrees can no longer stack on top of each other. Neither alone is sufficient: this setting
-  // does nothing about a sibling worktree, and the semaphore does nothing about one run's own load.
+  // **It does not reduce the dev server's memory, and #1295 expected it to.** Measured across a
+  // full run at 2: peak RSS 10.18 GB, peak committed V8 heap 7.19 GB — indistinguishable from the
+  // ~10 GB measured at 4 (#1569). That is #1569's "route breadth, not uptime" finding holding
+  // harder than it was read: the cost is set by how many distinct routes get compiled, which is the
+  // same however many workers request them, so halving the workers halves neither. Don't raise this
+  // number expecting memory to be the thing that stops you, and don't lower it expecting relief —
+  // the lever for memory is elsewhere.
+  //
+  // Elsewhere is `scripts/e2e-slot.sh`, the kernel-held 2-slot semaphore `run-checklist-suite.sh`
+  // runs Playwright under: it bounds how many ~10 GB servers can be hot at once, which is the
+  // actual failure that OOM-killed the machine twice (several worktrees' servers summing, most
+  // recently at test 909/1027 with swap exhausted). Given the measurement above, the semaphore is
+  // carrying the memory fix essentially alone and this setting is carrying the timeout fix.
+  //
+  // Fixed rather than a percentage, same reason as the paragraph above: a fraction of core count
+  // misreads the bottleneck.
   workers: 2,
   use: {
     baseURL: process.env.E2E_BASE_URL,
