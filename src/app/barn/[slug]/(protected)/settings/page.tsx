@@ -27,8 +27,8 @@ import { DownloadButton } from './DownloadButton'
 
 /**
  * #1557 — one style for every section's description, so the sizes can't drift apart again (two
- * sections had gone `text-xs`). Each description is its section's first child, above that
- * section's controls.
+ * sections had gone `text-xs`). Each description leads its section — or, in Data Backup's
+ * two-download layout, its own block — above that block's controls.
  */
 const DESCRIPTION_CLASS = 'mb-3 text-sm text-zinc-500 dark:text-zinc-400'
 
