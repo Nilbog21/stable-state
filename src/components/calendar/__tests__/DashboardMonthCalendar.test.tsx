@@ -70,6 +70,15 @@ describe('DashboardMonthCalendar', () => {
     expect(screen.getByText("You're all clear")).toBeDefined()
   })
 
+  // The grid always renders 42 cells; `days` is built from the same grid, so a gap means the
+  // page wired the two to different months. Render that day empty rather than crash.
+  it('should_render_an_empty_day_when_the_tapped_date_has_no_bucket', () => {
+    renderCalendar()
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-15' }))
+
+    expect(screen.getByText("You're all clear")).toBeDefined()
+  })
+
   // Selecting a day is pure client state — the whole month is already loaded, so opening the
   // panel must not cost a round trip.
   it('should_not_navigate_when_a_day_is_tapped', () => {

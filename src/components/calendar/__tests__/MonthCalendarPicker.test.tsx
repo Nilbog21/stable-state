@@ -47,6 +47,12 @@ describe('MonthCalendarPicker — grid', () => {
     expect(screen.getByText('Starting Date')).toBeDefined()
   })
 
+  it('should_render_no_field_label_when_none_is_supplied', () => {
+    renderPicker({ label: undefined })
+
+    expect(screen.queryByText('Date')).toBeNull()
+  })
+
   it('should_mark_the_selected_day_as_pressed', () => {
     renderPicker({ value: '2026-03-10' })
 

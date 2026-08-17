@@ -50,7 +50,9 @@ export function MonthCalendarPicker({
    *  a `renderDayPanel` caller supplies its own panel and never reaches either one. */
   items?: ScheduleItem[]
   describeItem?: (item: ScheduleItem) => string
-  label: string
+  /** Optional: the form callers name their date field with it. The dashboard omits it — the
+   *  grid's own month heading and the active view pill already say what this is. */
+  label?: string
   /** Extra content for the day panel, below that day's schedule — #1021's lesson start-time
    *  field. Omitted by ExpenseForm, which wants the schedule alone. */
   dayPanel?: ReactNode
@@ -80,7 +82,7 @@ export function MonthCalendarPicker({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
+      {label && <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>}
 
       <div ref={ref} className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
         <div className="mb-2 flex items-center justify-between gap-2">
