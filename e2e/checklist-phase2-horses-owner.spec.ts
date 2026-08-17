@@ -412,8 +412,10 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
    *
    * Awaited on the POST rather than on a redraw, and that is forced: a successful no-op moves not
    * one pixel, so fact 8 has no attribute to offer and an immediate read would pass *before* the
-   * failure it exists to catch had arrived (fact 17). Matched on method and pathname per fact 14 —
-   * this page fires no other POST.
+   * failure it exists to catch had arrived. Matched on method and pathname per fact 14, which the
+   * page itself does not make safe: Grant Access, the document radios, the lesson switch and Revoke
+   * are all bound forms POSTing to this same pathname. Nothing else on the page is driven here, so
+   * the only POST after the click is the owner submission.
    */
   test('re_tapping_a_grantless_owners_radio_leaves_it_selected @manager', async ({ page }) => {
     await openAccess(page, ECLIPSE)
