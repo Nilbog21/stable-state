@@ -19,6 +19,7 @@ import {
   EXHAUSTION_FUTURE_BOUNDARY_INDEX,
   buildCalendarBandLessons,
   DEV_CALENDAR_BAND_THRESHOLDS,
+  withEmailDomain,
 } from './seed-barn'
 
 describe('buildLessonDates', () => {
@@ -128,6 +129,16 @@ describe('computeExhaustionWindowTotals', () => {
 
   it('should_keep_clover_within_the_high_band_across_a_full_day', () => {
     expect(totalsAcrossDay.every((t) => t.clover > 11)).toBe(true)
+  })
+})
+
+describe('withEmailDomain', () => {
+  it('should_replace_the_domain_and_keep_the_local_part', () => {
+    expect(withEmailDomain('trainer1@dev.local', 'demo.local')).toBe('trainer1@demo.local')
+  })
+
+  it('should_return_the_email_unchanged_for_its_own_domain', () => {
+    expect(withEmailDomain(DEV_MANAGER_2.email, 'dev.local')).toBe(DEV_MANAGER_2.email)
   })
 })
 

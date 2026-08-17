@@ -28,6 +28,9 @@ vi.mock('@/lib/db/service-role', async (importOriginal) => {
 vi.mock('../../../../scripts/seed-barn', () => ({
   seedBarn: vi.fn(),
   DEV_MANAGER_2: { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' },
+  // Real implementation, not a stub — what's asserted below is the composed email, so a
+  // stub would only prove `actions.ts` calls something.
+  withEmailDomain: (email: string, domain: string) => `${email.split('@')[0]}@${domain}`,
 }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -237,8 +240,8 @@ describe('createOrResumeDemoBarn', () => {
   it('should_seed_the_new_barn_and_add_the_visitor_as_manager', async () => {
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(findOrCreateAuthUser).toHaveBeenCalledWith('manager2@dev.local', expect.anything())
-    expect(seedBarn).toHaveBeenCalledWith(expect.anything(), 'new-barn-1', 'demo-abc12345', 'morgan-user-1')
+    expect(findOrCreateAuthUser).toHaveBeenCalledWith('manager2@demo.local', expect.anything())
+    expect(seedBarn).toHaveBeenCalledWith(expect.anything(), 'new-barn-1', 'demo-abc12345', 'morgan-user-1', expect.anything(), 'demo.local')
     expect(createActiveMembership).toHaveBeenCalledWith('demo-user-1', 'profile-1', 'new-barn-1', 'manager', expect.anything())
   })
 
