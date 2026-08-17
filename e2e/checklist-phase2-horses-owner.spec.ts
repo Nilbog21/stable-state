@@ -398,6 +398,49 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
   })
 
   /**
+   * The re-tap on a **grantless** owner (#1549 review round). `HorseAccessSection` binds each row's
+   * own member id, so re-tapping the selected Owner radio submits the owner to themselves — and the
+   * owner here is the manager who created Eclipse through the inline form, holding no
+   * `member_horse_privileges` row at all. `set_horse_owner`'s elevation `UPDATE … RETURNING id`
+   * matched nothing and raised `privilege_grant_not_found`, which `setHorseOwnerAction` neither
+   * caught nor could recover from: a tap that should do nothing errored the page instead.
+   *
+   * Dana carries the same re-tap in checklist-phase2-horses-access.spec.ts and cannot catch this —
+   * she is promoted *from* a grant, so her row is the one case with something to elevate. The
+   * grantless owner is reachable only here, before the promotion below moves ownership off the
+   * manager, which is why this sits mid-chain rather than at the end with its sibling.
+   *
+   * Awaited on the POST rather than on a redraw, and that is forced: a successful no-op moves not
+   * one pixel, so fact 8 has no attribute to offer and an immediate read would pass *before* the
+   * failure it exists to catch had arrived (fact 17). Matched on method and pathname per fact 14 —
+   * this page fires no other POST.
+   */
+  test('re_tapping_a_grantless_owners_radio_leaves_it_selected @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    const row = grantRow(page, CREATING_MANAGER)
+    const before = await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN))
+    const { pathname } = new URL(page.url())
+
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname === pathname
+    )
+    await row.getByRole('radio', { name: 'Owner', exact: true }).click()
+    await submitted
+
+    // The header travels with the cell because the cell alone cannot say the round trip
+    // *completed*, and that is measured rather than assumed: on the unguarded action this test was
+    // written against, the Owner cell read went on passing off the DOM the failed submission left
+    // behind, and only the identity header went. So the cell is the claim and the header is what
+    // makes it non-vacuous.
+    expect({
+      before,
+      after: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
+      header: await settledInnerTexts(headerLines(page)),
+    }).toEqual({ before: ['Owner'], after: ['Owner'], header: [CREATING_MANAGER] })
+  })
+
+  /**
    * Three checkboxes, one test — the issue's "genuinely one indivisible interaction" carve-out,
    * and forced rather than convenient. See the header's `(#1069)` block: the pre-promotion state
    * is unobservable after the single tap that this test exists to make, so the two auto-elevation

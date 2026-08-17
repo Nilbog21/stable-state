@@ -908,6 +908,8 @@ describe('revokeHorseAccessAction', () => {
 })
 
 describe('setHorseOwnerAction', () => {
+  // `createMockHorse` defaults `owning_member_id` to 'mem-owner', so every test below that passes
+  // 'mem-rider-1' is a genuine transfer -- the re-tap case has to name the owner explicitly.
   const existingHorse = createMockHorse({ id: 'horse-1' })
 
   beforeEach(() => {
@@ -947,5 +949,16 @@ describe('setHorseOwnerAction', () => {
     vi.mocked(getHorseById).mockResolvedValue(null)
     await expect(setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')).rejects.toThrow('NEXT_NOT_FOUND')
     expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  /**
+   * Re-tapping the selected Owner radio submits the owner's own id -- `HorseAccessSection` binds
+   * the row's member id, which on the owner's row is the owner. There is nothing to write, and
+   * `set_horse_owner` raises `privilege_grant_not_found` on an owner holding no
+   * `member_horse_privileges` row, which is the ordinary state of a `createHorse`-created horse.
+   */
+  it('should_not_call_setHorseOwner_when_the_member_is_already_the_owner', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', existingHorse.owning_member_id)
+    expect(setHorseOwner).not.toHaveBeenCalled()
   })
 })
