@@ -7,7 +7,7 @@ import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
-import { addDays } from '@/lib/local-day'
+import { addDays, calendarDate } from '@/lib/local-day'
 import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 
@@ -227,15 +227,33 @@ export function LessonForm({
 
   // One fetch per displayed month, widened by the exertion window's 3 days at each end so
   // the grid's spill-over cells still get a correct ±3-day sum. `to` is exclusive.
+  //
+  // Also always stretched to reach the selected day (#1580). The day panel is always open on this
+  // form and keeps `lessonDate` as its heading however far the grid is paged, so a range covering
+  // only the displayed month would leave that heading over an empty body — and after just one page,
+  // since month M+1's grid reaches back only to ~the 25th of M.
+  //
+  // The stretch cannot move a single day's decoration, only the panel's contents: `windowTotal`
+  // centres ±72h on `${date}T${hour}`, so from the earliest grid day it reaches back at most to
+  // `grid[0] - 3` — exactly the unstretched `from` — and forward at most to `grid[41] + 3`, inside
+  // the unstretched exclusive `to`. Every item the stretch newly admits lies outside both.
+  //
+  // `lessonDate` is in the deps, so a day tap refetches. Not needed — a tapped day is by definition
+  // already on the displayed grid — but the alternative is a ref written purely to satisfy
+  // exhaustive-deps, for one extra read on a form that already fires one per tap.
   useEffect(() => {
     if (!getScheduleRange) return
     const grid = getMonthGrid(calendarMonth)
+    const selected = calendarDate(lessonDate)
+    // ISO dates sort lexicographically, so this is min/max with no branch to cover.
+    const from = [addDays(grid[0], -3), selected].sort()[0]
+    const to = [addDays(grid[41], 4), addDays(selected, 1)].sort()[1]
     let cancelled = false
-    getScheduleRange(addDays(grid[0], -3), addDays(grid[41], 4)).then((items) => {
+    getScheduleRange(from, to).then((items) => {
       if (!cancelled) setScheduleItems(items)
     })
     return () => { cancelled = true }
-  }, [calendarMonth, getScheduleRange])
+  }, [calendarMonth, lessonDate, getScheduleRange])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return

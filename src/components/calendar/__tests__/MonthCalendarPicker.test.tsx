@@ -12,8 +12,8 @@ function decorate(overrides: Record<string, Partial<DayDecoration>> = {}): Recor
   return Object.fromEntries(Object.entries(overrides).map(([date, d]) => [date, { ...NEUTRAL, ...d }]))
 }
 
-function renderPicker(props: Partial<React.ComponentProps<typeof MonthCalendarPicker>> = {}) {
-  return render(
+function picker(props: Partial<React.ComponentProps<typeof MonthCalendarPicker>> = {}) {
+  return (
     <MonthCalendarPicker
       value="2026-03-10"
       onChange={vi.fn()}
@@ -26,6 +26,17 @@ function renderPicker(props: Partial<React.ComponentProps<typeof MonthCalendarPi
       {...props}
     />
   )
+}
+
+/** The element is built separately so a test can hand `rerender` a *changed* prop set — the only
+ *  way to drive a month change, since `onMonthChange` is a spy and `month` is owned by the caller. */
+function renderPicker(props: Partial<React.ComponentProps<typeof MonthCalendarPicker>> = {}) {
+  const result = render(picker(props))
+  return {
+    ...result,
+    rerenderWith: (next: Partial<React.ComponentProps<typeof MonthCalendarPicker>>) =>
+      result.rerender(picker({ ...props, ...next })),
+  }
 }
 
 describe('MonthCalendarPicker — grid', () => {
@@ -263,6 +274,30 @@ describe('MonthCalendarPicker — day panel', () => {
     fireEvent.click(screen.getByRole('button', { name: '2026-03-11' }))
 
     expect(screen.getByText('Wednesday, Mar 11')).toBeDefined()
+  })
+})
+
+// #1580 — the panel's heading is the selected day, but its body comes from the caller's per-month
+// schedule read, so a day left selected behind the displayed month keeps its heading and silently
+// loses its contents. A transient popup closes rather than lying; the always-open form panel can't,
+// which is why LessonForm widens its fetch range instead.
+describe('MonthCalendarPicker — paging away from an open panel', () => {
+  it('should_close_the_day_panel_when_the_displayed_month_changes', () => {
+    const { rerenderWith } = renderPicker({ items: [] })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-11' }))
+    expect(screen.getByText('Nothing scheduled for this day.')).toBeDefined()
+
+    rerenderWith({ month: '2026-04' })
+
+    expect(screen.queryByText('Nothing scheduled for this day.')).toBeNull()
+  })
+
+  it('should_keep_the_day_panel_open_across_a_month_change_when_always_open', () => {
+    const { rerenderWith } = renderPicker({ value: '2026-03-10', dayPanelAlwaysOpen: true })
+
+    rerenderWith({ month: '2026-04' })
+
+    expect(screen.getByText('Tuesday, Mar 10')).toBeDefined()
   })
 })
 

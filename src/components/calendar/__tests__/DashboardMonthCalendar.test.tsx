@@ -26,8 +26,8 @@ const event = (id: string, title: string): DayScheduleDisplayItem => ({
   },
 })
 
-function renderCalendar(props: Partial<React.ComponentProps<typeof DashboardMonthCalendar>> = {}) {
-  return render(
+function calendar(props: Partial<React.ComponentProps<typeof DashboardMonthCalendar>> = {}) {
+  return (
     <DashboardMonthCalendar
       slug="green-acres"
       month="2026-03"
@@ -41,6 +41,17 @@ function renderCalendar(props: Partial<React.ComponentProps<typeof DashboardMont
       {...props}
     />
   )
+}
+
+/** Paging is a `router.push`, which is mocked here — the month and its days arrive as new props on
+ *  the same mounted component, so a paging test drives `rerender` rather than the arrow. */
+function renderCalendar(props: Partial<React.ComponentProps<typeof DashboardMonthCalendar>> = {}) {
+  const result = render(calendar(props))
+  return {
+    ...result,
+    rerenderWith: (next: Partial<React.ComponentProps<typeof DashboardMonthCalendar>>) =>
+      result.rerender(calendar({ ...props, ...next })),
+  }
 }
 
 describe('DashboardMonthCalendar', () => {
@@ -100,6 +111,20 @@ describe('DashboardMonthCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next month' }))
 
     expect(push).toHaveBeenCalledWith('/barn/green-acres?view=month&date=2026-04-01', { scroll: false })
+  })
+
+  // #1580 — `days` is the *displayed* month's buckets, so a day left selected behind it misses
+  // `itemsByDay` and the panel renders "You're all clear" under that day's own heading, as if
+  // nothing were on it. Closing the panel is the honest answer for a browse surface.
+  it('should_close_the_day_panel_when_the_grid_pages_to_another_month', () => {
+    const { rerenderWith } = renderCalendar()
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+    expect(screen.getByText('Barn meeting')).toBeDefined()
+
+    rerenderWith({ month: '2026-04', selectedDate: calendarDate('2026-04-01'), days: [] })
+
+    expect(screen.queryByText('Barn meeting')).toBeNull()
+    expect(screen.queryByText("You're all clear")).toBeNull()
   })
 
   it('should_render_the_rider_empty_state_subtext_for_a_rider', () => {

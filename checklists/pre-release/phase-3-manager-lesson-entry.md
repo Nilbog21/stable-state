@@ -47,6 +47,7 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: manager_the_day_panel_shows_each_items_horse_names) (#1019) That day panel shows each item's horse names
 - [ ] (e2e: manager_the_day_panel_shows_each_items_rider_names) (#1019) That day panel shows each item's rider names
 - [ ] (e2e: manager_tapping_a_day_with_nothing_on_it_reads_nothing_scheduled_for_this_day) (#1019) Tap a day with nothing on it — the day panel reads "Nothing scheduled for this day."
+- [ ] (e2e: manager_the_day_panel_still_lists_its_days_lesson_after_paging_two_months_away) (#1580) Tap a day that has a lesson on it, then page the grid two months forward — the day panel still lists that lesson under that day's own date
 - [ ] (e2e: manager_tapping_a_day_rings_it_and_takes_it_as_the_lessons_date) (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
 - [ ] (e2e: manager_tapping_next_month_advances_the_grid_one_month) (#1019) Tap **&gt;** — the grid advances one month
 - [ ] (e2e: manager_the_advanced_months_grid_is_shaded_by_that_months_lessons) (#1019) After advancing a month, the new grid's shading reflects that month's lessons

@@ -64,11 +64,39 @@ export function MonthCalendarPicker({
   /** Makes the day panel a permanent part of the form rather than a transient popup: open on
    *  `value` from first render, and no Close button (#1021). The lesson form needs this because
    *  the panel hosts a required field — behind a tap, a lesson's own start time would be
-   *  invisible on the edit form until its day was tapped. Off for ExpenseForm. */
+   *  invisible on the edit form until its day was tapped. Off for ExpenseForm.
+   *
+   *  It is also what exempts a caller from the close-on-month-change below (#1580), and the
+   *  exemption is a *duty*: a panel that cannot close cannot use closing to avoid outliving its
+   *  data, so an always-open caller owes its own guarantee that `items` still covers `value`
+   *  after the grid pages away. `LessonForm` pays that by widening its fetched range. */
   dayPanelAlwaysOpen?: boolean
 }) {
   const { open, setOpen, ref } = useOutsideDismiss()
   const [popupDate, setPopupDate] = useState(calendarDate(dayPanelAlwaysOpen ? value : ''))
+
+  // Paging the grid strands an open panel: the heading is still the selected day — correct, the day
+  // is still selected — but the caller has refetched around the *new* month, so that day's items
+  // are out of window and the body silently empties under its own date (#1580). Closing is the
+  // transient callers' answer (ExpenseForm, the dashboard). Keyed off the prop rather than off the
+  // pager buttons, so the dashboard's browser Back closes it too — its month is a URL param.
+  //
+  // No `dayPanelAlwaysOpen` guard, because there is nothing to guard: `panelOpen` ORs that flag in,
+  // so this is already a no-op for a form panel. Adding the branch anyway would only add a dead one
+  // for `scripts/check-coverage.sh` to demand a meaningless test for.
+  //
+  // Adjusted during render rather than in an effect, because an effect runs *after* paint and the
+  // dashboard is the caller that can see the gap: its `month` and its `days` arrive in one RSC
+  // commit, so the stranded panel would render its "You're all clear" empty state against the new
+  // month's items for a frame — this bug, briefly — before the effect closed it. The form callers
+  // refetch asynchronously and keep the old items until it resolves, so they never showed it.
+  // jsdom cannot tell the two forms apart (RTL flushes effects inside `act`), so the tests below
+  // pass either way; the difference is only visible in a browser.
+  const [panelMonth, setPanelMonth] = useState(month)
+  if (month !== panelMonth) {
+    setPanelMonth(month)
+    setOpen(false)
+  }
 
   const days = getMonthGrid(month)
   const popupItems = items.filter((item) => item.start.slice(0, 10) === popupDate)

@@ -59,6 +59,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_month_view_shows_that_days_items_when_a_day_is_tapped) (#1558) In Month view, tapping a day opens a panel listing that day's items
 - [ ] (e2e: dashboard_month_view_day_panel_links_a_lesson_to_its_detail_page) (#1558) In Month view, a lesson in the day panel is a tappable link to its detail page, not plain text
 - [ ] (e2e: dashboard_month_view_arrows_page_to_the_adjacent_month) (#1558) In Month view, the grid's own < / > arrows page to the adjacent month
+- [ ] (e2e: dashboard_month_view_closes_the_day_panel_when_the_grid_pages_to_another_month) (#1580) In Month view, tap a day to open its panel, then page to the adjacent month — the panel is gone, not left showing an empty day under the old day's heading
 - [ ] (e2e: dashboard_month_view_hides_the_pages_own_date_pager) (#1558) In Month view, the Day/Week Prev/Next pager is hidden — the grid carries its own month arrows
 
 Lessons (`/barn/dev-barn/lessons`):

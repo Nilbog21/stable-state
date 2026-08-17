@@ -11,7 +11,7 @@ import { openSection } from './support/accordion'
 import { goToDaysAhead } from './support/dashboard'
 import { GRID_CELLS, dayCell, dayCells, goToMonth, pickDay } from './support/calendar'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
-import { addDays } from '@/lib/local-day'
+import { addDays, calendarDate, formatCalendarDate } from '@/lib/local-day'
 import {
   addBarnEvent,
   addExpense,
@@ -1045,6 +1045,30 @@ test('dashboard_month_view_arrows_page_to_the_adjacent_month @manager', async ({
   await goToMonth(page, 'Next', '2030-06')
 
   await expect(dayCell(page, '2030-06-15')).toBeVisible()
+})
+
+/**
+ * #1580 — the day panel's contents come from the DISPLAYED month's buckets, so a day left selected
+ * behind the grid misses `itemsByDay` entirely and `CalendarDayView` renders "You're all clear"
+ * under that day's own heading, as if the day were empty. This is a browse surface whose panel is
+ * pure context, so it closes rather than lying. (The lesson form's panel can't close — it hosts a
+ * required field — and widens its fetched range instead; that half is phase 3's.)
+ *
+ * The absence assertions get two positive anchors in the same test (rule 4 / fact 18, both of
+ * which `toHaveCount(0)` needs): the event line read before paging, which proves the panel opened
+ * on a day that really does carry something, and `goToMonth`'s own settle on June's heading, which
+ * proves the page had re-rendered before anything was claimed to be missing from it.
+ */
+test('dashboard_month_view_closes_the_day_panel_when_the_grid_pages_to_another_month @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await pickDay(page, '2030-05-17')
+  await expect(calendarSection(page).getByText('Spring Open House')).toBeVisible()
+
+  await goToMonth(page, 'Next', '2030-06')
+
+  const panelHeading = formatCalendarDate(calendarDate('2030-05-17'))
+  await expect(calendarSection(page).getByText(panelHeading, { exact: true })).toHaveCount(0)
+  await expect(calendarSection(page).getByText('Spring Open House')).toHaveCount(0)
 })
 
 // The grid renders its own month heading and arrows, so the page's own day/week pager must not
