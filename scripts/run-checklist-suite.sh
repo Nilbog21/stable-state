@@ -233,6 +233,18 @@ E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
   npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
 
+# Written as a loop over a captured value rather than `ss … | grep -q`, which is scripts/CLAUDE.md's
+# pipefail race. Non-zero if the port is still held when the budget runs out, so the caller can
+# escalate instead of relaunching into it.
+wait_for_port_release() {
+  local port="$1" secs="$2" i
+  for ((i = 0; i < secs; i++)); do
+    [ -z "$(ss -lntH "sport = :$port")" ] && return 0
+    sleep 1
+  done
+  [ -z "$(ss -lntH "sport = :$port")" ]
+}
+
 # A `next dev` server costs ~1.4 GB serving one route and ~10 GB once it has served this suite,
 # and never gives that back — it's route breadth, not uptime (#1569). Nothing else reclaims it:
 # `/testIssue` Step 3 reuses whatever answers the port and `/finishIssue` Step 6 is the only thing
@@ -287,15 +299,27 @@ recycle_dev_server() {
     return 0
   fi
   echo "Recycling dev server on port $port (pid $pid, pgid $pgid) — it is holding this run's compiled routes."
-  kill -- "-$pgid" 2>/dev/null || true
 
-  # The relaunch loses the race to a port the kernel hasn't released yet, so wait for it. Written
-  # as a loop over a captured value rather than `ss … | grep -q`, which is the pipefail race above.
-  local i
-  for ((i = 0; i < 15; i++)); do
-    [ -z "$(ss -lntH "sport = :$port")" ] && break
-    sleep 1
-  done
+  # SIGINT is ignored from here until the relaunch is airborne. A Ctrl-C in between would leave the
+  # port with no server and no diagnosis — the one window in this script where an interrupt destroys
+  # state rather than just abandoning it. Restored before `setsid` so the child doesn't inherit the
+  # ignore, which would outlive this script along with it.
+  trap '' INT
+
+  # The relaunch loses the race to a port the kernel hasn't released yet, so wait for it — and
+  # escalate rather than launching into a port that's still held. The explicit -p below disables
+  # Next's port-hunting fallback, so a relaunch that loses this race dies on EADDRINUSE and the
+  # only symptom is the 90s timeout further down: a dead port behind a misleading message.
+  if ! wait_for_port_release "$port" 15; then
+    echo "Dev server on port $port still holds it 15s after SIGTERM — escalating to SIGKILL."
+    kill -9 -- "-$pgid" 2>/dev/null || true
+    if ! wait_for_port_release "$port" 5; then
+      trap 'exit 130' INT
+      echo "WARNING: port $port is still held after SIGKILL, so it is not this run's dev server — not relaunching, since an explicit -p would only fail with EADDRINUSE. Holder: $(ss -lptnH "sport = :$port")" >&2
+      return 0
+    fi
+  fi
+  trap 'exit 130' INT
 
   # setsid: the fresh server has to outlive this script — the next /testIssue step reuses whatever
   # answers the port — and needs its own session so it isn't in the process group of whatever kills
@@ -304,7 +328,7 @@ recycle_dev_server() {
   # script's own stdout is a tee into that file, and the child would otherwise inherit it.
   setsid npm run dev -- -p "$port" > "/tmp/devserver-$port.log" 2>&1 < /dev/null &
 
-  local up=false
+  local up=false i
   for ((i = 0; i < 45; i++)); do
     if curl -sf -o /dev/null "http://localhost:$port/"; then
       up=true
