@@ -3,10 +3,12 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/components/calendar/**
+// covers: src/lib/month-calendar.ts
 import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { openSection } from './support/accordion'
 import { goToDaysAhead } from './support/dashboard'
+import { GRID_CELLS, dayCell, dayCells, goToMonth, pickDay } from './support/calendar'
 import { BARN_TIMEZONES, barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { addDays } from '@/lib/local-day'
 import {
@@ -782,9 +784,9 @@ const daySections = (page: Page) => calendarSection(page).locator('section')
 const dayHeadings = (page: Page) => calendarSection(page).getByRole('heading', { level: 3 })
 
 /**
- * Every view/period control in the Calendar section: the two pills plus the current-period
- * link, which reads "This Week" in Week view (page.tsx's currentPeriodLabel) and "Today" in
- * Day view. Prev/Next are excluded — their accessible names come from aria-label
+ * Every view/period control in the Calendar section: the three pills (#1558 added Month) plus
+ * the current-period link, which reads "This Week" in Week view (page.tsx's currentPeriodLabel)
+ * and "Today" in Day view. Prev/Next are excluded — their accessible names come from aria-label
  * ("Previous week"/"Next week") — as are the lesson and appointment cards.
  *
  * Shared deliberately between the two presence-rule tests, and asserted as a positive array in
@@ -796,13 +798,13 @@ const dayHeadings = (page: Page) => calendarSection(page).getByRole('heading', {
  * Be precise about what the array proves, though, because it is less than it looks: these are
  * plain <a>s, so each accessible name *is* its normalised text, and the locator already
  * filters on exactly those three strings. The expectation therefore adds cardinality and DOM
- * order, not the labels themselves — the real evidence is "three matches here, two there".
+ * order, not the labels themselves — the real evidence is "four matches here, three there".
  * That is still enough to falsify the checklist claim in both directions, which is why the
  * locator stands; it is not enough to justify reading the assertion as proof that each
  * control is correctly labelled.
  */
 const periodControls = (page: Page) =>
-  calendarSection(page).getByRole('link', { name: /^(Day|Week|This Week)$/ })
+  calendarSection(page).getByRole('link', { name: /^(Day|Week|Month|This Week)$/ })
 
 /** The day section whose heading carries the "· Today" suffix CalendarWeekView appends. */
 const todayDaySection = (page: Page) =>
@@ -841,9 +843,9 @@ async function stepWeek(page: Page, label: 'Previous week' | 'Next week', expect
   await page.waitForURL((url) => url.searchParams.get('date') === expectedDate, { waitUntil: 'commit' })
 }
 
-test('dashboard_day_and_week_pill_switcher_appears_above_the_calendar @manager', async ({ page }) => {
+test('dashboard_day_week_and_month_pill_switcher_appears_above_the_calendar @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  await expect(pillRow(page).getByRole('link')).toHaveText(['Day', 'Week'])
+  await expect(pillRow(page).getByRole('link')).toHaveText(['Day', 'Week', 'Month'])
 })
 
 // The line says the Day *view* is active, so the pill alone is not enough: which pill carries
@@ -961,7 +963,7 @@ test('dashboard_week_view_prev_and_next_move_the_visible_range_by_seven_days @ma
 // 2030 is never today, so this direction needs no clock control of any kind.
 test('dashboard_week_view_shows_the_this_week_link_when_today_is_outside_the_visible_week @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
-  await expect(periodControls(page)).toHaveText(['Day', 'Week', 'This Week'])
+  await expect(periodControls(page)).toHaveText(['Day', 'Week', 'Month', 'This Week'])
 })
 
 // No ?date= at all, so the server resolves the week from the barn's own today — the link's
@@ -969,7 +971,75 @@ test('dashboard_week_view_shows_the_this_week_link_when_today_is_outside_the_vis
 // See periodControls on why this is a positive two-element assertion rather than a zero count.
 test('dashboard_week_view_hides_the_this_week_link_when_today_is_inside_the_visible_week @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}?view=week`)
-  await expect(periodControls(page)).toHaveText(['Day', 'Week'])
+  await expect(periodControls(page)).toHaveText(['Day', 'Week', 'Month'])
+})
+
+// ---------------------------------------------------------------------------
+// Month view (#1558)
+// ---------------------------------------------------------------------------
+
+/**
+ * The Month view reuses the same May 2030 fixtures the Week view above is pinned to, for the
+ * same reason: four years out, so none of them can reach the days -3..+4 where every
+ * exact-count assertion in this file lives. Within that month, Tuesday the 14th carries a
+ * lesson, Thursday the 16th an appointment and Friday the 17th an event, and every other day
+ * is empty — which is what makes both a tinted and an untinted cell assertable by date.
+ *
+ * MONTH_ANCHOR is a mid-month day rather than the 1st, so the tests also prove the page
+ * derives the displayed month from `?date=` instead of only honouring a first-of-month value.
+ */
+const MONTH_ANCHOR = '2030-05-15'
+
+test('dashboard_month_view_shows_a_full_month_grid @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await expect(dayCells(page)).toHaveCount(GRID_CELLS)
+})
+
+test('dashboard_month_view_tints_the_days_that_have_something_scheduled @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+
+  await expect(dayCell(page, '2030-05-14')).toHaveAttribute('data-scheduled', 'true')
+  await expect(dayCell(page, '2030-05-16')).toHaveAttribute('data-scheduled', 'true')
+  await expect(dayCell(page, '2030-05-17')).toHaveAttribute('data-scheduled', 'true')
+})
+
+// The control for the assertion above: a cell that resolves but is *not* tinted, so a locator
+// matching the wrong element — or a grid tinting every day — fails here.
+test('dashboard_month_view_leaves_a_day_with_nothing_on_it_untinted @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await expect(dayCell(page, '2030-05-13')).toHaveAttribute('data-scheduled', 'false')
+})
+
+test('dashboard_month_view_shows_that_days_items_when_a_day_is_tapped @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await pickDay(page, '2030-05-17')
+
+  await expect(calendarSection(page).getByText('Spring Open House')).toBeVisible()
+})
+
+// The panel renders CalendarDayView, not a text list (#1558's renderDayPanel), so a lesson in
+// it is a link to its own detail page — the whole reason the month view is not a dead end.
+test('dashboard_month_view_day_panel_links_a_lesson_to_its_detail_page @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await pickDay(page, '2030-05-14')
+
+  await expect(calendarSection(page).getByRole('link', { name: /Apollo/ })).toBeVisible()
+})
+
+test('dashboard_month_view_arrows_page_to_the_adjacent_month @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await goToMonth(page, 'Next', '2030-06')
+
+  await expect(dayCell(page, '2030-06-15')).toBeVisible()
+})
+
+// The grid renders its own month heading and arrows, so the page's own day/week pager must not
+// also be present — two pagers disagreeing about what "next" means is the failure this pins.
+test('dashboard_month_view_hides_the_pages_own_date_pager @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=month&date=${MONTH_ANCHOR}`)
+  await expect(dayCells(page)).toHaveCount(GRID_CELLS)
+
+  await expect(calendarSection(page).getByRole('link', { name: /^(Previous|Next) (day|week)$/ })).toHaveCount(0)
 })
 
 /**

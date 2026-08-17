@@ -38,7 +38,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
 - [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
-- [ ] (e2e: dashboard_day_and_week_pill_switcher_appears_above_the_calendar) (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (e2e: dashboard_day_week_and_month_pill_switcher_appears_above_the_calendar) (#1016, #1558) A "Day"/"Week"/"Month" pill switcher appears above the calendar
 - [ ] (e2e: dashboard_day_pill_is_the_active_view_on_load) (#1016) The Day view is active by default
 - [ ] (e2e: dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_the_viewed_date) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
 - [ ] (e2e: dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days) (#1016) In Week view, each of the 7 days shows its own date heading
@@ -52,6 +52,13 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_week_view_tints_todays_day_section_in_dark_mode) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
 - [ ] (e2e: dashboard_week_to_day_view_lands_on_today_when_today_is_inside_the_week) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
 - [ ] (e2e: dashboard_week_to_day_view_lands_on_the_weeks_sunday_when_today_is_outside_the_week) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
+- [ ] (e2e: dashboard_month_view_shows_a_full_month_grid) (#1558) Tapping "Month" shows a full month grid of day cells
+- [ ] (e2e: dashboard_month_view_tints_the_days_that_have_something_scheduled) (#1558) In Month view, days carrying a lesson, appointment or event are tinted
+- [ ] (e2e: dashboard_month_view_leaves_a_day_with_nothing_on_it_untinted) (#1558) In Month view, a day with nothing scheduled is left untinted
+- [ ] (e2e: dashboard_month_view_shows_that_days_items_when_a_day_is_tapped) (#1558) In Month view, tapping a day opens a panel listing that day's items
+- [ ] (e2e: dashboard_month_view_day_panel_links_a_lesson_to_its_detail_page) (#1558) In Month view, a lesson in the day panel is a tappable link to its detail page, not plain text
+- [ ] (e2e: dashboard_month_view_arrows_page_to_the_adjacent_month) (#1558) In Month view, the grid's own < / > arrows page to the adjacent month
+- [ ] (e2e: dashboard_month_view_hides_the_pages_own_date_pager) (#1558) In Month view, the Day/Week Prev/Next pager is hidden — the grid carries its own month arrows
 
 Lessons (`/barn/dev-barn/lessons`):
 
@@ -647,7 +654,7 @@ The Finances line below is the one that used to sit at the top of that section, 
 > - nothing in it is reachable or dismissible only by hover
 > - nothing non-interactive carries a hover state implying it is clickable
 
-- [ ] (manual) **Dashboard** — Day and Week views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
+- [ ] (manual) **Dashboard** — Day, Week and Month views, the calendar cards, and the Reminders section (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the edit form, and the cancel/delete confirmation pages (`/barn/dev-barn/lessons` and below)
 - [ ] (manual) **Expenses** — the list, the new/edit form with its month conflict calendar, and the delete confirmation page (`/barn/dev-barn/expenses` and below)
 - [ ] (manual) **Horses** — the list's sections and exhaustion bars, and a detail page's header and five collapsible sections (`/barn/dev-barn/horses`, `/horses/[id]`)

@@ -51,6 +51,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_dashboard_day_view_shows_no_appointment_cards) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
 - [ ] (e2e: rider_dashboard_day_view_hides_an_event_outside_her_visible_to_roles) It shows no events outside her role's `visible_to_roles`
 - [ ] (e2e: rider_dashboard_week_view_shows_only_her_enrolled_lessons_across_the_week) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
+- [ ] (e2e: rider_dashboard_month_view_tints_only_days_she_is_enrolled_on) (#1558) In Month view, only days Dana is enrolled on are tinted — another rider's day is left untinted
+- [ ] (e2e: rider_dashboard_month_view_day_panel_shows_no_appointment_cards) (#1558) In Month view, tapping a day shows her enrolled lessons and no appointment cards
+- [ ] (e2e: rider_dashboard_month_view_scoping_survives_paging_to_another_month) (#1558) In Month view, paging to another month and back keeps the same rider-scoped tinting
 - [ ] (e2e: rider_lessons_list_shows_only_enrolled_lessons) Lessons list shows only Dana's enrolled lessons
 - [ ] (e2e: rider_filter_pills_omit_my_lessons_and_by_rider) Its filter pills are `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill
 - [ ] (e2e: rider_own_name_absent_from_own_lesson_cards) Dana's own name does not appear on her own lesson cards
@@ -113,7 +116,7 @@ The no-hover-state rubric bullet is the line that used to sit under Active Agree
 > - nothing in it is reachable or dismissible only by hover
 > - nothing non-interactive carries a hover state implying it is clickable
 
-- [ ] (manual) **Dashboard** — Day and Week views and the Reminders section, as the rider sees them (`/barn/dev-barn`)
+- [ ] (manual) **Dashboard** — Day, Week and Month views and the Reminders section, as the rider sees them (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, an enrolled lesson's detail page, and the cancel page (`/barn/dev-barn/lessons` and below)
 - [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable cards and a detail page's header, Feed & Medication, Documents and Upcoming Lessons sections (`/barn/dev-barn/horses`, `/horses/[id]`)
 - [ ] (manual) **Members** — the roster, your own member page's Documents and Active Agreements cards, and another member's detail page (`/barn/dev-barn/members`, `/members/[membership_id]`)
