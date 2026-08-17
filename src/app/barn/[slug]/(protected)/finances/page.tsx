@@ -18,6 +18,7 @@ import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
 import { AccordionSection } from '@/components/ui/AccordionSection'
+import { sectionDescriptionClass } from '@/components/ui/section-description'
 import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -138,11 +139,17 @@ export default async function FinancesPage({
         hint={outstandingItems.length === 0 ? 'None' : `${outstandingItems.length} unpaid`}
         defaultOpen={outstandingItems.length > 0}
       >
+        {/* Prose, not an ⓘ (#1550): a popover asks the reader to know there is something to tap
+            before it will tell them anything, and both of these sections exist to explain a list
+            the reader did not ask for. Same shape and style as Manage Barn's section
+            descriptions (#1557), whose class this now shares. */}
+        <p className={sectionDescriptionClass}>
+          All-time unpaid lessons, leases, and boarding charges — not only the month shown below.
+        </p>
         {/* No empty-case branch: OutstandingTable returns null at zero items, and the total below
             renders $0.00 in its own not-amber styling. */}
         <p className={`text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
           {formatFee(outstandingTotal)}
-          <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
         </p>
         <div className="mt-4">
           <OutstandingTable items={outstandingItems} barnSlug={slug} />
@@ -162,12 +169,18 @@ export default async function FinancesPage({
         hint={outstandingExpenses.length === 0 ? 'None' : `${outstandingExpenses.length} to resolve`}
         defaultOpen={outstandingExpenses.length > 0}
       >
+        {/* The "counts only the ones with an amount" half is here rather than left implicit: it is
+            the whole reason this total can read $0.00 with entries listed under it, which reads as
+            a bug until you know why. */}
+        <p className={sectionDescriptionClass}>
+          Expenses past their scheduled time that are still missing an amount, a payment type, or
+          both. The total counts only the ones with an amount.
+        </p>
         {/* Amber gated on there being an entry, not on the total: an expense with no amount yet
             still needs attention and contributes $0 to the figure — but an amber $0.00 on a
             section with nothing in it would be a false alarm. */}
         <p className={`text-2xl font-bold ${outstandingExpenses.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
           {formatCurrency(outstandingExpensesTotal)}
-          <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
         </p>
         <ul className="mt-4 space-y-1">
           {outstandingExpenses.map((expense) => (

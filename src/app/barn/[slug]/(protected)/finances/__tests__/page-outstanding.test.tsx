@@ -66,11 +66,15 @@ function hintOf(title: string): string {
 }
 
 /**
- * A section's headline figure: the first `<p>` in its body. Read structurally rather than by
- * its text, because the same amount can also appear in a Fee cell of the table below it.
+ * A section's headline figure. Read structurally rather than by its text, because the same amount
+ * can also appear in a Fee cell of the table below it.
+ *
+ * The bold `<p>`, not the first one: #1550 put a description ahead of the figure, and "first `<p>`
+ * in the body" silently became the prose — five assertions started comparing a sentence to a
+ * dollar amount.
  */
 function totalOf(title: string): HTMLParagraphElement {
-  return section(title).querySelector('p')!
+  return section(title).querySelector('p.font-bold')!
 }
 
 const OUTSTANDING_LESSON = {
@@ -379,12 +383,8 @@ describe('FinancesPage', () => {
     expect(within(section('Outstanding Expenses')).getByText('$120.00')).toBeDefined()
   })
 
-  it('should_render_info_button_on_outstanding_expenses_label', async () => {
-    vi.mocked(getOutstandingExpenses).mockResolvedValue([OUTSTANDING_EXPENSE])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(section('Outstanding Expenses').querySelector('button[aria-label="Info"]')).not.toBeNull()
-  })
+  // #1550 removed this section's ⓘ in favour of the description asserted above; its inverse now
+  // lives there as `should_not_render_an_info_button_in_the_outstanding_expenses_section`.
 
   // Amber on the count, not on the total: an entry with no amount yet still needs attention,
   // and it contributes $0 to the figure. Gated on there being an entry at all, since #1550 the
