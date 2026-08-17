@@ -238,7 +238,7 @@ function changelogSource(): string {
 /**
  * The current version, derived from CHANGELOG.md by taking the numerically highest version token
  * anywhere in the file. `parseLatestVersion` (`src/lib/changelog.ts`) instead reads by *position* —
- * the first `**vN.0.x` lead-in under the top `## vN.0.0` heading, falling back to the heading. Two
+ * the first `- **vN.0.x` bullet under the top `## vN.0.0` heading, falling back to the heading. Two
  * different methods on purpose: importing that helper, or copying its pattern, would make the
  * assertion agree with any bug in it, and this method is the one that survives #1589's restructure
  * without inheriting its assumption about where the newest release sits in the document.
