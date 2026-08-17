@@ -93,6 +93,7 @@ import {
   accessColumns,
   grantRow,
   grantedMembers,
+  settledLessonState,
 } from './support/horse-pages'
 import { E2E_USERS } from './support/fixtures'
 
@@ -135,7 +136,6 @@ const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.las
  */
 const OWNER_COLUMN = 1
 const DOCUMENTS_COLUMN = 2
-const LESSON_COLUMN = 3
 const ACCESS_COLUMNS = ['Member', 'Owner', 'Documents', 'Lesson Schedule', 'Actions']
 
 /**
@@ -253,19 +253,17 @@ async function openAccess(page: Page, horseName: string) {
  * of the same reason: since #1548 that control carries no text at all, the `Can View`/`Cannot
  * View` label pair having been the state rather than the control's name.
  *
- * The switch is waited on before its attribute is read — the settled-read discipline of
- * `support/read.ts` (rule 3) applied to an attribute, since a one-shot read of a row that hasn't
- * rendered returns `null` and two of those compare equal.
+ * The switch is waited on before its attribute is read — `settledLessonState` carries that rule,
+ * and lives in `support/horse-pages.ts` beside the rest of this table's vocabulary so the two
+ * specs reading the column can't drift apart on how they read it.
  */
 async function rowState(row: Locator) {
-  const lessonSwitch = row.locator('td').nth(LESSON_COLUMN).getByRole('switch')
-  await lessonSwitch.waitFor()
   return {
     owner: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
     documents: await settledInnerTexts(
       row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
     ),
-    lesson: await lessonSwitch.getAttribute('aria-checked'),
+    lesson: await settledLessonState(row),
   }
 }
 

@@ -29,12 +29,26 @@ type Grant = {
  * one joined strip with a single filled segment reads as one setting with three values, which is
  * what it is. Radios would say the same thing natively but would need JS to submit on tap — the
  * defect above, reintroduced — so these stay three submits and only the corners changed.
+ *
+ * The strip carries a divider because two of the three states leave the two *unselected* segments
+ * adjacent (`none` puts Read next to Write, `write` puts None next to Read), and both are then the
+ * same `secondary` fill with the gap that used to separate them gone. Without a seam those two
+ * read as one segment and the strip claims two values rather than three. The divider is a shade
+ * darker than the fill in light mode and lighter in dark, the same inversion the switch's off
+ * track needs, because zinc-300-on-zinc-200 is 1.3:1 and disappears.
  */
 const DOCUMENT_STATES: { value: DocumentPrivilege; label: string }[] = [
   { value: 'none', label: 'None' },
   { value: 'read', label: 'Read' },
   { value: 'write', label: 'Write' },
 ]
+
+/**
+ * The seam between two adjacent segments. Exported so `HorseAccessSection.test.tsx` can assert the
+ * pair clears WCAG's 3:1 non-text floor against `secondary`'s fill in both schemes, the same way
+ * `Button.test.tsx` asserts every variant — a bare class string here would drift from the palette.
+ */
+export const SEGMENT_DIVIDER = 'divide-x divide-zinc-500 dark:divide-zinc-400'
 
 /** Squares off the edges a segment shares with its neighbour, leaving the strip's outer two round. */
 function segmentCorners(index: number, total: number): string {
@@ -140,7 +154,11 @@ export function HorseAccessSection({
                       </form>
                     </Td>
                     <Td>
-                      <div className="inline-flex items-center" role="group" aria-label="Document access">
+                      <div
+                        className={`inline-flex items-center ${SEGMENT_DIVIDER}`}
+                        role="group"
+                        aria-label="Document access"
+                      >
                         {DOCUMENT_STATES.map(({ value, label }, index) => {
                           const active = grant.documentPrivileges === value
                           return (

@@ -1,12 +1,28 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 
-import { HorseAccessSection } from '../HorseAccessSection'
+import { buttonVariants } from '@/components/ui/Button'
+import { bgColors, contrast } from '@/test/tailwind-contrast'
+
+import { HorseAccessSection, SEGMENT_DIVIDER } from '../HorseAccessSection'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
 })
+
+/**
+ * The two colour tokens `SEGMENT_DIVIDER` declares, read back out of the class string rather than
+ * restated here — Tailwind's scanner needs the literal, so the component can't build its string
+ * from a shared constant, and a restated pair would keep passing after the real one darkened.
+ */
+function dividerTones(): { light: string; dark: string } {
+  const classes = SEGMENT_DIVIDER.split(' ')
+  return {
+    light: classes.find((c) => /^divide-[a-z]+-\d+$/.test(c))!.replace('divide-', ''),
+    dark: classes.find((c) => /^dark:divide-[a-z]+-\d+$/.test(c))!.replace('dark:divide-', ''),
+  }
+}
 
 const grants = [
   { id: 'privilege-1', memberId: 'mem-1', name: 'Dana Rider', documentPrivileges: 'read' as const, lessonReadPrivileges: false },
@@ -262,6 +278,20 @@ describe('HorseAccessSection', () => {
         documentButton('Dana Rider', label).className.includes('bg-zinc-900')
       )
       expect(fills).toEqual([false, true, false])
+    })
+
+    it('should_separate_the_segments_with_a_seam', () => {
+      render(<HorseAccessSection {...makeProps()} />)
+      const row = screen.getByText('Dana Rider').closest('tr')!
+      expect(within(row).getByRole('group').className).toContain('divide-x')
+    })
+
+    it('should_clear_the_non_text_floor_between_seam_and_unselected_fill_in_light_mode', () => {
+      expect(contrast(dividerTones().light, bgColors(buttonVariants.secondary).light)).toBeGreaterThanOrEqual(3)
+    })
+
+    it('should_clear_the_non_text_floor_between_seam_and_unselected_fill_in_dark_mode', () => {
+      expect(contrast(dividerTones().dark, bgColors(buttonVariants.secondary).dark)).toBeGreaterThanOrEqual(3)
     })
   })
 
