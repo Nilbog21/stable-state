@@ -75,7 +75,15 @@ const EXPECTED_NAME_ORDER = [APPLE, BUTTER, CLOVER]
 // so a reader doesn't mistake this line for a typo if the file ever grows a Clover case.
 const APPLE_BREAKDOWN = '8 points from 2 lessons (±3-day window)'
 
+// The captions ExhaustionBar prints above each bar since #1552, in the DOM order EXPECTED_NAME_ORDER
+// fixes — Apple (8, moderate), Butter (15, high), Clover (2, low), the same totals and bands the
+// table above states for the fills. Written as literals for that table's reason: a caption composed
+// here from LESSON_PLAN would agree with any bug in the reduce that produced it.
+const EXPECTED_CAPTIONS = ['Moderate Exhaustion (8)', 'High Exhaustion (15)', 'Low Exhaustion (2)']
+const APPLE_CAPTION = EXPECTED_CAPTIONS[0]
+
 const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
+const BAR_BUTTON = 'button[aria-label*=" Exhaustion ("]'
 
 let appleId: string
 let butterId: string
@@ -130,8 +138,8 @@ function availableSection(page: Page) {
  *
  * `> a` pins the match to the Card root: HorseCard renders the Link as a direct child of Card's
  * bordered div, and the ExhaustionBar sits beside it as a sibling — so this div's text is the
- * horse's name plus whatever the popover is currently showing, and nothing else. That is what the
- * two dismissal tests read.
+ * horse's name, the bar's caption (#1552) and whatever the popover is currently showing, and
+ * nothing else. That is what the two dismissal tests read.
  *
  * This constant is deliberately shared with the tests that assert something *present* inside the
  * card (a bar, an open breakdown). A locator that silently resolved to nothing would make the
@@ -143,7 +151,7 @@ function cardOf(page: Page, horseId: string) {
 }
 
 function bar(page: Page, horseId: string) {
-  return cardOf(page, horseId).getByRole('button', { name: /^Exhaustion:/ })
+  return cardOf(page, horseId).getByRole('button', { name: / Exhaustion \(/ })
 }
 
 /**
@@ -193,9 +201,30 @@ test('the_three_bars_land_in_three_different_color_bands @manager', async ({ pag
   ])
 })
 
+// Same array form as the band-colour test above, and for the same reasons: it pins the count as
+// well as the three strings, so three missing captions fail rather than matching nothing, and no
+// horse can borrow another's band. Read off the caption spans themselves — a card-level text read
+// would also swallow the horse's name and the popover, and could not tell a caption apart from a
+// breakdown line that happened to contain the same words.
+test('each_available_horse_card_captions_its_bar_with_that_horses_band_and_total @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/horses`)
+  await expect(availableSection(page).locator(`${BAR_BUTTON} > span`)).toHaveText(EXPECTED_CAPTIONS)
+})
+
 // ---------------------------------------------------------------------------
 // The breakdown popover
 // ---------------------------------------------------------------------------
+
+// The caption sits inside the bar's own button, so it opens the same popover the bar does — the
+// point of #1552, which put it there rather than above the control precisely so a tap on the words
+// is not dead on touch. Tapped by its text rather than by the button, so a caption that had drifted
+// out of the tap target would miss it and fail.
+test('tapping_the_caption_expands_the_same_breakdown_the_bar_does @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/horses`)
+  await cardOf(page, appleId).getByText(APPLE_CAPTION, { exact: true }).click()
+
+  await expect(breakdown(page, appleId, APPLE_BREAKDOWN)).toBeVisible()
+})
 
 // The header is asserted rather than the <li> rows, and it covers them: `existingRows.length`
 // renders both the "2 lessons" here and the <ul> beneath it, and a zero-length popover renders
@@ -210,8 +239,10 @@ test('tapping_a_bar_expands_the_three_day_lesson_breakdown @manager', async ({ p
 })
 
 // Asserted as the card's *whole* text rather than as a count of the popover: closed, this div holds
-// the horse's name and nothing else, so there is no N-plus-or-minus-one a stale mid-transition DOM
-// could satisfy, and a card that stopped rendering fails instead of counting zero.
+// the horse's name and its bar's caption and nothing else, so there is no N-plus-or-minus-one a
+// stale mid-transition DOM could satisfy, and a card that stopped rendering fails instead of
+// counting zero. The caption joined that text in #1552 and is included deliberately — dropping to a
+// substring match to avoid naming it would give the popover somewhere to hide.
 //
 // The waitFor between the two taps is a guard, not the assertion — without it the second tap could
 // land before the popover ever opened, and "again" would be the wrong word for what happened.
@@ -221,7 +252,7 @@ test('tapping_the_bar_again_dismisses_the_breakdown @manager', async ({ page }) 
   await breakdown(page, appleId, APPLE_BREAKDOWN).waitFor()
   await bar(page, appleId).click()
 
-  await expect(cardOf(page, appleId)).toHaveText(APPLE)
+  await expect(cardOf(page, appleId)).toHaveText(`${APPLE}${APPLE_CAPTION}`)
 })
 
 // "Elsewhere" is the page heading: outside the ExhaustionBar's ref'd container, inside the page, and
@@ -233,7 +264,7 @@ test('tapping_elsewhere_dismisses_the_breakdown @manager', async ({ page }) => {
   await breakdown(page, appleId, APPLE_BREAKDOWN).waitFor()
   await page.getByRole('heading', { name: 'Horses', exact: true }).click()
 
-  await expect(cardOf(page, appleId)).toHaveText(APPLE)
+  await expect(cardOf(page, appleId)).toHaveText(`${APPLE}${APPLE_CAPTION}`)
 })
 
 // Recorded navigations rather than a final URL read, because a URL read cannot express this

@@ -215,7 +215,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: available_section_is_sorted_by_horse_name) The Available section is sorted by horse name
 - [ ] (e2e: each_available_horse_card_shows_an_exhaustion_bar) Apple/Butter/Clover each show an exhaustion bar
 - [ ] (e2e: the_three_bars_land_in_three_different_color_bands) Those bars land in different color bands from one another
+- [ ] (e2e: each_available_horse_card_captions_its_bar_with_that_horses_band_and_total) (#1552) Each bar is captioned above with its band and total — `Moderate Exhaustion (8)` — naming the same band the fill is painted
 - [ ] (e2e: tapping_a_bar_expands_the_three_day_lesson_breakdown) Tapping a bar expands the ±3-day lesson breakdown
+- [ ] (e2e: tapping_the_caption_expands_the_same_breakdown_the_bar_does) (#1552) Tapping the caption opens that same breakdown — it sits inside the bar's tap target, not above it
 - [ ] (e2e: tapping_the_bar_again_dismisses_the_breakdown) Tapping the bar again dismisses the breakdown
 - [ ] (e2e: tapping_elsewhere_dismisses_the_breakdown) Tapping elsewhere dismisses the breakdown
 - [ ] (e2e: tapping_the_bar_does_not_navigate_to_the_horse_detail_page) Tapping the bar does not navigate to the horse detail page

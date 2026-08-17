@@ -71,7 +71,7 @@
 // verbatim, so a digit-regex channel read makes `r > g` false for an obviously red element; its
 // `dotShape` normalises through a 1×1 canvas to survive that. This file needs none of it.
 // `ExhaustionBar` publishes its whole state as text and geometry — an
-// `aria-label="Exhaustion: {total} points from {n} lessons"` on the bar's button, and
+// `aria-label="{band} Exhaustion ({total}) from {n} lessons"` on the bar's button, and
 // `data-testid="exhaustion-bar-solid"`/`-ghost` segments each carrying an inline `width: N%`. So
 // every claim below is an exact number derived from the fixture table, and "the bar stays
 // **solid**" is asserted structurally — the ghost element is absent — rather than chromatically.
@@ -342,14 +342,36 @@ function solidBars(page: Page) {
 
 /** The bar's own button, the element carrying the `aria-label` every total below is read from. */
 function barButton(page: Page, horse: Horse) {
-  return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
+  return horseRow(page, horse).getByRole('button', { name: / Exhaustion \(/ })
+}
+
+/** The caption span inside one horse's bar — the bar's only text, so `> span` needs no test id. */
+function barCaptionOf(page: Page, horse: Horse) {
+  return barButton(page, horse).locator('span')
 }
 
 /** `ExhaustionBar`'s `aria-label`, composed here rather than transcribed, so a test's expectation
  *  and the component's template cannot drift into agreeing about the wrong thing. The component
- *  does not pluralise; neither does this. */
-function exhaustionLabel({ points, lessons }: { points: number; lessons: number }): string {
-  return `Exhaustion: ${points} points from ${lessons} lessons`
+ *  does not pluralise; neither does this.
+ *
+ *  `ghost` is the exertion of the horse's own checkbox, and defaults to none because most reads
+ *  below are of an unchecked horse. Since #1552 the label carries the **combined** total and its
+ *  band — the same pair the caption shows and the fill is painted from — so a checked horse's
+ *  label moves with its exertion field, and every caller that expects one has to say so.
+ *
+ *  The band is recomputed from THRESHOLD_MODERATE/THRESHOLD_HIGH rather than written per call
+ *  site, for `trackPct`'s reason one function down: it stays derived from the fixture table. */
+function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lessons: number; ghost?: number }): string {
+  return `${barCaption({ points, ghost })} from ${lessons} lessons`
+}
+
+/** The bar's visible caption (#1552). Composed *inside* `exhaustionLabel` rather than beside it,
+ *  because the component composes its label the same way round — so a caption that drifted from
+ *  the accessible name could not be expressed here without one of the two tests noticing. */
+function barCaption({ points, ghost = 0 }: { points: number; ghost?: number }): string {
+  const total = points + ghost
+  const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
+  return `${band} Exhaustion (${total})`
 }
 
 /** A points value as the percentage of the track `ExhaustionBar` paints for it, rounded.
@@ -383,7 +405,7 @@ type BarShape = {
  */
 async function readBar(page: Page, horse: Horse): Promise<BarShape> {
   const raw = await horseRow(page, horse).evaluate((row: HTMLElement) => {
-    const button = row.querySelector('button[aria-label^="Exhaustion:"]')
+    const button = row.querySelector('button[aria-label*=" Exhaustion ("]')
     const solid = row.querySelector('[data-testid="exhaustion-bar-solid"]')
     const ghost = row.querySelector('[data-testid="exhaustion-bar-ghost"]')
     return {
@@ -423,7 +445,11 @@ async function readAllBars(page: Page) {
  * Carries EXHAUSTION_FETCH_BUDGET because it is the only wait in this file spanning that round
  * trip; every other settle here is local re-render.
  */
-async function waitForBarTotal(page: Page, horse: Horse, total: { points: number; lessons: number }): Promise<void> {
+async function waitForBarTotal(
+  page: Page,
+  horse: Horse,
+  total: { points: number; lessons: number; ghost?: number }
+): Promise<void> {
   await expect(barButton(page, horse)).toHaveAttribute('aria-label', exhaustionLabel(total), {
     timeout: EXHAUSTION_FETCH_BUDGET,
   })
@@ -681,10 +707,32 @@ test.describe('New Lesson — live exhaustion bars', () => {
     await selectHorse(page, clover)
 
     expect(await readAllBars(page)).toEqual({
-      apple: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(DEFAULT_EXERTION) },
-      butter: { label: exhaustionLabel(DAY_A.butter), solidPct: trackPct(DAY_A.butter.points), ghostPct: trackPct(DEFAULT_EXERTION) },
-      clover: { label: exhaustionLabel(DAY_A.clover), solidPct: trackPct(DAY_A.clover.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      apple: { label: exhaustionLabel({ ...DAY_A.apple, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      butter: { label: exhaustionLabel({ ...DAY_A.butter, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.butter.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      clover: { label: exhaustionLabel({ ...DAY_A.clover, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.clover.points), ghostPct: trackPct(DEFAULT_EXERTION) },
     })
+  })
+
+  // "Each bar is captioned with the band and total it would land in, and the caption tracks the
+  //  exertion field." (#1552)
+  //
+  // Read as the caption's own text rather than through the `aria-label` the tests around this one
+  // use: the label is composed in the component from the same string, so a label assertion would
+  // pass against a bar that rendered no visible caption at all — which is the exact regression this
+  // line exists to catch. Both ends are asserted because the band is the interesting half: Apple's
+  // 7 alone is low against this barn's 10/20, and 7 plus HIGH_EXERTION is moderate, so a caption
+  // wired to `existingTotal` reads "Low Exhaustion (7)" in the second assertion and fails.
+  test('a_checked_horses_bar_caption_names_the_band_and_total_it_would_land_in @manager', async ({
+    page,
+  }) => {
+    await openFormOnDayA(page)
+    await waitForBarTotal(page, apple, DAY_A.apple)
+    await expect(barCaptionOf(page, apple)).toHaveText(barCaption(DAY_A.apple))
+
+    await selectHorse(page, apple)
+    await setExertion(page, apple, HIGH_EXERTION)
+
+    await expect(barCaptionOf(page, apple)).toHaveText(barCaption({ ...DAY_A.apple, ghost: HIGH_EXERTION }))
   })
 
   // "Adjust a checked horse's exertion level — its ghost segment moves live."
@@ -693,6 +741,11 @@ test.describe('New Lesson — live exhaustion bars', () => {
   // the bar is read on the same page. The solid segment is asserted unchanged in the same object
   // — the ghost is the projection and the solid is the history, and a form that recomputed both
   // from the edited value would still satisfy a ghost-only assertion.
+  //
+  // Since #1552 the label moves too, and its band with it: Apple's 7 plus LOW_EXERTION is 8 and
+  // low, plus HIGH_EXERTION is 12 and moderate, against this barn's 10/20. That is the caption
+  // being live, which is the same claim one level up — the solid segment is what still carries
+  // "the history did not move".
   test('raising_a_checked_horses_exertion_widens_its_ghost_segment_without_moving_its_solid_segment @manager', async ({
     page,
   }) => {
@@ -706,8 +759,8 @@ test.describe('New Lesson — live exhaustion bars', () => {
     const after = await readBar(page, apple)
 
     expect({ before, after }).toEqual({
-      before: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(LOW_EXERTION) },
-      after: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(HIGH_EXERTION) },
+      before: { label: exhaustionLabel({ ...DAY_A.apple, ghost: LOW_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(LOW_EXERTION) },
+      after: { label: exhaustionLabel({ ...DAY_A.apple, ghost: HIGH_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(HIGH_EXERTION) },
     })
   })
 
@@ -743,7 +796,7 @@ test.describe('New Lesson — live exhaustion bars', () => {
       clover: { label: exhaustionLabel(DAY_A.clover), solidPct: trackPct(DAY_A.clover.points), ghostPct: null },
     }
     const appleAt = (exertion: number) => ({
-      label: exhaustionLabel(DAY_A.apple),
+      label: exhaustionLabel({ ...DAY_A.apple, ghost: exertion }),
       solidPct: trackPct(DAY_A.apple.points),
       ghostPct: trackPct(exertion),
     })
@@ -812,7 +865,7 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
     test.slow()
     await page.goto(editPath(barn, cloverDayALesson.id))
     await waitForEditFormHydrated(page)
-    await waitForBarTotal(page, clover, CLOVER_EXCLUDING_ITSELF)
+    await waitForBarTotal(page, clover, { ...CLOVER_EXCLUDING_ITSELF, ghost: CLOVER_DAY_A_EXERTION })
 
     expect(await readAllBars(page)).toEqual({
       apple: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: null },
@@ -820,7 +873,7 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
       // Checked, because it is this lesson's own horse — so its bar carries the ghost for the
       // exertion the lesson was seeded with.
       clover: {
-        label: exhaustionLabel(CLOVER_EXCLUDING_ITSELF),
+        label: exhaustionLabel({ ...CLOVER_EXCLUDING_ITSELF, ghost: CLOVER_DAY_A_EXERTION }),
         solidPct: trackPct(CLOVER_EXCLUDING_ITSELF.points),
         ghostPct: trackPct(CLOVER_DAY_A_EXERTION),
       },
