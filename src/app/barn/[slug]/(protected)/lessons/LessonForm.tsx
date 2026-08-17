@@ -185,14 +185,45 @@ export function LessonForm({
         : 'You have unsaved changes. Leave without saving?'
   useUnsavedChangesGuard(shouldWarn, guardMessage)
 
+  // The instant everything that only needs "roughly when" measures against: the real one once a
+  // start time exists, and until then the selected day at the barn's CURRENT hour.
+  //
+  // #1578 emptied the Start Time field, and the bars, the horse picker's least-to-most-worked
+  // sort and the calendar's exertion shading all hung off `lessonAt` alone — so all three went
+  // dark for the whole stretch a manager spends picking horses, which is precisely when they are
+  // read. The estimate is a sound stand-in because every one of those consumers buckets by a
+  // +/-3-day exertion window: shifting the hour moves a 72-hour sum by at most a few points, and
+  // it is replaced by the real instant the moment a time is entered.
+  //
+  // The hour is read through the barn's zone, so a device elsewhere estimates the same day and
+  // hour, and it is deliberately the top of the hour — the same reading `isPastLessonAt`
+  // measures against, so an opening estimate is never its own past lesson, at any hour and
+  // across the boundary between two.
+  //
+  // CREATE ONLY. The edit form is seeded from the stored instant, which `LessonStartTime` reports
+  // on its own mount effect — one render after `lessonAt`'s initial `''`. Estimating into that
+  // render would cost every edit-form open a second round trip, and would flash a past lesson's
+  // bars for one frame before the real instant gates them off again.
+  //
+  // `lessonDate` is guarded for the reason `LessonStartTime` guards its own combination: the
+  // no-calendar branch's native date input is clearable, and an empty half builds an Invalid Date
+  // that throws RangeError out of `wallClockToInstant` *during render*, unmounting the form and
+  // taking every other filled-in field with it.
+  const estimateHour = instantToLocalWallClock(new Date(), timezone).slice(11, 13)
+  const estimateAt = lessonAt
+    ? lessonAt
+    : mode === 'new' && lessonDate
+      ? wallClockToInstant(`${lessonDate}T${estimateHour}:00:00`, timezone).toISOString()
+      : ''
+
   useEffect(() => {
-    if (!lessonAt || !getProjectedExhaustion) return
+    if (!estimateAt || !getProjectedExhaustion) return
     let cancelled = false
-    getProjectedExhaustion(lessonAt, horses.map(h => h.id)).then((result) => {
-      if (!cancelled) setExhaustionData({ lessonAt, data: result })
+    getProjectedExhaustion(estimateAt, horses.map(h => h.id)).then((result) => {
+      if (!cancelled) setExhaustionData({ lessonAt: estimateAt, data: result })
     })
     return () => { cancelled = true }
-  }, [lessonAt, getProjectedExhaustion, horses])
+  }, [estimateAt, getProjectedExhaustion, horses])
 
   // One fetch per displayed month, widened by the exertion window's 3 days at each end so
   // the grid's spill-over cells still get a correct ±3-day sum. `to` is exclusive.
@@ -274,18 +305,22 @@ export function LessonForm({
 
   const isCustom = selectedId === CUSTOM_ID
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
-  const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
-  const isPastLesson = isPastLessonAt(lessonAt, timezone)
+  const exhaustionByHorseId = exhaustionData?.lessonAt === estimateAt ? exhaustionData.data : undefined
+  // The estimate rather than the real instant, so that a past DAY still suppresses the bars while
+  // the time half is empty — the native date input accepts one even though the calendar's past
+  // days are unclickable.
+  const isPastLesson = isPastLessonAt(estimateAt, timezone)
   const dateLabel = isRecurring ? 'Starting Date' : 'Date'
 
   const selectedRiderIds = lessonType === 'normal'
     ? (normalRiderId ? [normalRiderId] : [])
     : [...checkedRiderIds]
-  // Falls back to midnight only for the first render, before LessonStartTime's mount effect
-  // reports a lessonAt — by the time a horse is selected the real hour is in hand. Deliberately
-  // still the hour alone: `computeDayDecorations` buckets by hour for its +/-3-day exertion
-  // window (see month-calendar.ts), so the minutes #1021 added are not wanted here.
-  const selectedHour = lessonAt ? Number(instantToLocalWallClock(new Date(lessonAt), timezone).slice(11, 13)) : 0
+  // Off `estimateAt`, so the shading agrees with the bars about which instant the form is
+  // currently talking about — before a start time is entered as well as after. Midnight remains
+  // the fallback for the one state that has no instant at all, a cleared date, which also has no
+  // grid worth shading. Deliberately the hour alone, since `computeDayDecorations`' +/-3-day
+  // window buckets by hour and the minutes #1021 added are not wanted here.
+  const selectedHour = estimateAt ? Number(instantToLocalWallClock(new Date(estimateAt), timezone).slice(11, 13)) : 0
   const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
     selectedHorseIds: [...checkedHorseIds],
     selectedRiderIds,

@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/page.tsx
 // covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
+// covers: src/app/barn/[slug]/(protected)/finances/outstanding/**
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/components/calendar/**
@@ -412,13 +413,26 @@ test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manage
 test('dashboard_unpaid_lesson_reminder_links_to_outstanding @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
   const unpaidLessons = page.getByRole('link', { name: /unpaid lesson/ })
-  await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding`)
+  await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding?from=dashboard`)
 })
 
 test('dashboard_unpaid_lease_reminder_links_to_outstanding @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
   const unpaidLease = page.getByRole('link', { name: /unpaid lease/ })
-  await expect(unpaidLease).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding`)
+  await expect(unpaidLease).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding?from=dashboard`)
+})
+
+// #1555 — the whole point of the `?from=dashboard` the two assertions above pin: a manager's
+// role-based fallback is Finances, so the dashboard is the one destination this can only reach
+// by carrying the caller. Real clicks in both directions — the href assertions already cover the
+// attribute, and what's under test here is where pressing Back actually lands.
+test('dashboard_unpaid_lesson_card_back_link_returns_to_the_dashboard @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}`)
+  await page.getByRole('link', { name: /unpaid lesson/ }).click()
+  await page.getByRole('link', { name: '← Back' }).click()
+  // waitForURL is the assertion, and carries no timeout for the reason given at the sibling
+  // click test in checklist-phase56-outstanding.spec.ts (#1211).
+  await page.waitForURL((url) => url.pathname === `/barn/${barn.slug}`, { waitUntil: 'commit' })
 })
 
 // =============================================================================================

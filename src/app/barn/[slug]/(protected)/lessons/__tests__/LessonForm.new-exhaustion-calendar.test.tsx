@@ -26,9 +26,82 @@ describe('LessonForm exhaustion bars', () => {
   const horse2 = createMockHorse({ id: 'h2', name: 'Shadow', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
   const thresholds = { high: 11, moderate: 5 }
 
+  /**
+   * The create form with no start time entered, which since #1578 is its opening state — the
+   * field opens empty and stays that way until a manager fills it.
+   *
+   * The bars do NOT wait for that. `LessonForm` estimates the instant from the selected day at
+   * the barn's *current* hour whenever `lessonAt` is empty, so every test below fetches on mount
+   * exactly as it did before #1578.
+   */
+  function renderCreateForm(props: Partial<Parameters<typeof LessonForm>[0]>) {
+    return render(<LessonForm timezone={'America/New_York'} {...baseProps} {...props} />)
+  }
+
+  it('should_render_exhaustion_bars_before_any_start_time_is_entered', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      h1: { existingRows: [], thresholds },
+    })
+    renderCreateForm({ horses: [horse], getProjectedExhaustion })
+
+    expect(screen.getByLabelText('Start Time')).toHaveProperty('value', '')
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+  })
+
+  // The estimate's hour is the barn's current one, and this is the assertion that says so — a
+  // midnight (or host-zone) estimate passes every other test in this file, since they all read
+  // the day and not the hour. 18:30 UTC is 14:30 in the barn's Eastern, and the estimate rounds
+  // down to the top of that hour: the same reading `isPastLessonAt` measures against, so the
+  // opening estimate can never be its own past lesson.
+  it('should_estimate_the_opening_instant_from_the_barns_current_hour', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-01T18:30:00Z'))
+    try {
+      const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+      renderCreateForm({ horses: [horse], getProjectedExhaustion })
+
+      const received = getProjectedExhaustion.mock.calls[0][0] as string
+      expect(instantToLocalWallClock(new Date(received), 'America/New_York')).toBe('2026-06-01T14:00:00')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('should_refetch_with_the_entered_instant_once_a_start_time_is_set', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    renderCreateForm({ horses: [horse], getProjectedExhaustion })
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
+
+    // 23:59 on the form's own default day, so no hour of the real clock makes this a past
+    // lesson: the last minute of the day is never before the start of the current hour.
+    fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '23:59' } })
+
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
+    const received = getProjectedExhaustion.mock.calls[1][0] as string
+    expect(instantToLocalWallClock(new Date(received), 'America/New_York').slice(11)).toBe('23:59:00')
+  })
+
+  // The estimate combines two halves, and the native date input is clearable, so the empty half
+  // has to be guarded — for the same reason `LessonStartTime` guards its own combination: an
+  // empty half builds an Invalid Date, which throws RangeError out of `wallClockToInstant`
+  // *during render* and unmounts the form, taking every other field the manager had filled in.
+  it('should_survive_the_date_being_cleared_with_no_start_time_entered', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    const { container } = renderCreateForm({ horses: [horse], getProjectedExhaustion })
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
+
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '' } })
+
+    expect(screen.getByLabelText('Start Time')).not.toBeNull()
+    expect(getProjectedExhaustion).toHaveBeenCalledTimes(1)
+  })
+
   it('should_not_render_exhaustion_bar_before_getProjectedExhaustion_resolves', () => {
     const getProjectedExhaustion = vi.fn().mockImplementation(() => new Promise(() => {}))
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    renderCreateForm({ horses: [horse], getProjectedExhaustion })
     expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
   })
 
@@ -36,7 +109,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       h1: { existingRows: [], thresholds },
     })
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    renderCreateForm({ horses: [horse], getProjectedExhaustion })
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -47,7 +120,7 @@ describe('LessonForm exhaustion bars', () => {
       h1: { existingRows: [], thresholds },
       h2: { existingRows: [], thresholds },
     })
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    renderCreateForm({ horses: [horse, horse2], getProjectedExhaustion })
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
     })
@@ -58,7 +131,7 @@ describe('LessonForm exhaustion bars', () => {
       h1: { existingRows: [], thresholds },
       h2: { existingRows: [], thresholds },
     })
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    renderCreateForm({ horses: [horse, horse2], getProjectedExhaustion })
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
     })
@@ -68,7 +141,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_refetch_when_date_changes', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = renderCreateForm({ horses: [horse], getProjectedExhaustion })
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
@@ -77,7 +150,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_call_getProjectedExhaustion_with_the_new_date_after_a_date_change', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = renderCreateForm({ horses: [horse], getProjectedExhaustion })
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
@@ -91,7 +164,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_call_getProjectedExhaustion_with_the_ids_of_every_horse_passed_in_props', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    renderCreateForm({ horses: [horse, horse2], getProjectedExhaustion })
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     expect(getProjectedExhaustion.mock.calls[0][1]).toEqual(['h1', 'h2'])
   })
@@ -101,7 +174,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn()
       .mockResolvedValueOnce({ h1: { existingRows: [], thresholds } })
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecondFetch = resolve }))
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = renderCreateForm({ horses: [horse], getProjectedExhaustion })
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -124,7 +197,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       h1: { existingRows: [], thresholds },
     })
-    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = renderCreateForm({ horses: [horse], getProjectedExhaustion })
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })

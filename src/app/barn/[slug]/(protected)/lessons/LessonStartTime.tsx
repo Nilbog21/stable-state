@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { wallClockToInstant } from '@/lib/barn-timezone'
 
 /**
  * The lesson form's start-time field (#1021), replacing `DateHourPicker`'s hour `<select>`.
@@ -26,17 +26,15 @@ export function LessonStartTime({
   timezone: string
   /** The selected day, "YYYY-MM-DD", owned by the calendar above. Empty clears the field. */
   date: string
-  /** "HH:MM", barn-local. Defaults to the top of the barn's current hour. */
+  /** "HH:MM", barn-local — the edit form's stored time. Absent (the create form) opens the field
+   *  empty, which is #1578: the pre-#1578 fallback to the top of the barn's current hour was a
+   *  value the user never chose and had no reason to look at, so a wrong one was invisible, and
+   *  `required` could not catch it because the field was never empty. */
   initialTime?: string
-  /** Reports the combined instant as an ISO string — `''` while no date is selected. */
+  /** Reports the combined instant as an ISO string — `''` while either half is unset. */
   onChange?: (lessonAt: string) => void
 }) {
-  const [time, setTime] = useState(
-    // Minutes default to :00 rather than the barn's current minute: a lesson starting at
-    // "14:37 because that is when the form was opened" would be a worse default than the top
-    // of the hour, and this keeps the pre-#1021 default instant exactly.
-    initialTime ?? (() => `${instantToLocalWallClock(new Date(), timezone).slice(11, 13)}:00`)
-  )
+  const [time, setTime] = useState(initialTime ?? '')
 
   // Both halves are guarded, and `time` is not the redundant one it looks like: a native time
   // input reports '' whenever the user clears it, which the hour `<select>` this replaced could

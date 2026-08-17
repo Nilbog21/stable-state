@@ -72,7 +72,7 @@ export async function sortedVisibleLessonIds(page: Page): Promise<string[]> {
  * This function is only the choice of signal.
  */
 export async function waitForEditFormHydrated(page: Page): Promise<void> {
-  await waitForHydrated(page.getByRole('button', { name: /^Exhaustion: / }))
+  await waitForHydrated(page.getByRole('button', { name: / Exhaustion \(/ }))
 }
 
 /**

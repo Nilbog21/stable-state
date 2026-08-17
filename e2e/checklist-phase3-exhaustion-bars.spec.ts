@@ -55,9 +55,14 @@
 //
 //   2. "Before a date is picked no exhaustion bars render" names a state the form cannot be in.
 //      `LessonForm` seeds `lessonDate` from `barnToday(timezone)` and `MonthCalendarPicker` has
-//      no deselect, so since #1019 a day is always selected. The gate the line is really about is
-//      `lessonAt` being empty, and the reachable route to *that* is clearing the Start Time —
-//      which is what the line now says. Same gate, different route.
+//      no deselect, so since #1019 a day is always selected. The gate the line was really about
+//      was `lessonAt` being empty, and the half of it that is actually unset is the Start Time —
+//      which is what the line's second draft named. #1578 then made that half the form's OPENING
+//      state rather than one a manager reaches by clearing the field, and finally REMOVED THE
+//      ABSENCE ALTOGETHER: an empty Start Time no longer means no instant, because `LessonForm`
+//      estimates one from the selected day at the barn's current hour until a real time is
+//      entered. The line now claims the arrival state positively — empty field, bars up — and
+//      there is no reachable state in this form with a day selected and no bars but a past one.
 //
 //   3. "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar"
 //      is true but cannot fail: the render condition admits every available active horse whether
@@ -71,7 +76,7 @@
 // verbatim, so a digit-regex channel read makes `r > g` false for an obviously red element; its
 // `dotShape` normalises through a 1×1 canvas to survive that. This file needs none of it.
 // `ExhaustionBar` publishes its whole state as text and geometry — an
-// `aria-label="Exhaustion: {total} points from {n} lessons"` on the bar's button, and
+// `aria-label="{band} Exhaustion ({total}) from {n} lessons"` on the bar's button, and
 // `data-testid="exhaustion-bar-solid"`/`-ghost` segments each carrying an inline `width: N%`. So
 // every claim below is an exact number derived from the fixture table, and "the bar stays
 // **solid**" is asserted structurally — the ghost element is absent — rather than chromatically.
@@ -97,7 +102,7 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addTier, addUnpaidLesson } from './support/fixtures'
 import { waitForBarnPageHydrated } from './support/hydration'
 import { lessonCards, saveLessonForm, waitForEditFormHydrated } from './support/lesson-pages'
-import { editPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
+import { BARRIER_TIME, editPath, newLessonPath, openNewLessonForm, selectHorse, submitNewLesson } from './support/lesson-form'
 import { pickDay } from './support/calendar'
 import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { shiftMonth } from '@/lib/month-calendar'
@@ -342,14 +347,36 @@ function solidBars(page: Page) {
 
 /** The bar's own button, the element carrying the `aria-label` every total below is read from. */
 function barButton(page: Page, horse: Horse) {
-  return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
+  return horseRow(page, horse).getByRole('button', { name: / Exhaustion \(/ })
+}
+
+/** The caption span inside one horse's bar — the bar's only text, so `> span` needs no test id. */
+function barCaptionOf(page: Page, horse: Horse) {
+  return barButton(page, horse).locator('span')
 }
 
 /** `ExhaustionBar`'s `aria-label`, composed here rather than transcribed, so a test's expectation
  *  and the component's template cannot drift into agreeing about the wrong thing. The component
- *  does not pluralise; neither does this. */
-function exhaustionLabel({ points, lessons }: { points: number; lessons: number }): string {
-  return `Exhaustion: ${points} points from ${lessons} lessons`
+ *  does not pluralise; neither does this.
+ *
+ *  `ghost` is the exertion of the horse's own checkbox, and defaults to none because most reads
+ *  below are of an unchecked horse. Since #1552 the label carries the **combined** total and its
+ *  band — the same pair the caption shows and the fill is painted from — so a checked horse's
+ *  label moves with its exertion field, and every caller that expects one has to say so.
+ *
+ *  The band is recomputed from THRESHOLD_MODERATE/THRESHOLD_HIGH rather than written per call
+ *  site, for `trackPct`'s reason one function down: it stays derived from the fixture table. */
+function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lessons: number; ghost?: number }): string {
+  return `${barCaption({ points, ghost })} from ${lessons} lessons`
+}
+
+/** The bar's visible caption (#1552). Composed *inside* `exhaustionLabel` rather than beside it,
+ *  because the component composes its label the same way round — so a caption that drifted from
+ *  the accessible name could not be expressed here without one of the two tests noticing. */
+function barCaption({ points, ghost = 0 }: { points: number; ghost?: number }): string {
+  const total = points + ghost
+  const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
+  return `${band} Exhaustion (${total})`
 }
 
 /** A points value as the percentage of the track `ExhaustionBar` paints for it, rounded.
@@ -383,7 +410,7 @@ type BarShape = {
  */
 async function readBar(page: Page, horse: Horse): Promise<BarShape> {
   const raw = await horseRow(page, horse).evaluate((row: HTMLElement) => {
-    const button = row.querySelector('button[aria-label^="Exhaustion:"]')
+    const button = row.querySelector('button[aria-label*=" Exhaustion ("]')
     const solid = row.querySelector('[data-testid="exhaustion-bar-solid"]')
     const ghost = row.querySelector('[data-testid="exhaustion-bar-ghost"]')
     return {
@@ -413,7 +440,7 @@ async function readAllBars(page: Page) {
  *
  * This is the fetch barrier, not a convenience, and every test that reads a bar goes through it
  * first. `exhaustionData` starts `null` and `exhaustionByHorseId` is recomputed as
- * `exhaustionData?.lessonAt === lessonAt`, so between a date change and the Server Action
+ * `exhaustionData?.lessonAt === estimateAt`, so between a date change and the Server Action
  * resolving, *every* bar is unmounted — a read taken then sees an empty fieldset and a
  * `toHaveCount(0)` taken then would pass for the wrong reason.
  *
@@ -423,7 +450,11 @@ async function readAllBars(page: Page) {
  * Carries EXHAUSTION_FETCH_BUDGET because it is the only wait in this file spanning that round
  * trip; every other settle here is local re-render.
  */
-async function waitForBarTotal(page: Page, horse: Horse, total: { points: number; lessons: number }): Promise<void> {
+async function waitForBarTotal(
+  page: Page,
+  horse: Horse,
+  total: { points: number; lessons: number; ghost?: number }
+): Promise<void> {
   await expect(barButton(page, horse)).toHaveAttribute('aria-label', exhaustionLabel(total), {
     timeout: EXHAUSTION_FETCH_BUDGET,
   })
@@ -634,33 +665,49 @@ test.describe('New Lesson — the current-month paid lesson', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('New Lesson — live exhaustion bars', () => {
-  // "While creating it, with no start time entered (so no lesson instant is selected) no
-  // exhaustion bars render". See the header for why the line no longer says "before a date is
-  // picked": the create form has a day selected from its first render.
+  // "The New Lesson form OPENS with Start Time empty, and the exhaustion bars are already there —
+  // estimated from the barn's current hour; entering a time refreshes them."
   //
-  // THE ABSENCE IS DURABLE, WHICH IS WHAT MAKES IT ASSERTABLE (fact 18 / spec-maintenance rule
-  // 4). `LessonStartTime` reports `''` for the combined instant whenever either half is empty,
-  // and `LessonForm`'s fetch effect early-returns on an empty `lessonAt` — so once the time is
-  // cleared no request is outstanding and nothing can bring the bars back. A `toHaveCount(0)`
-  // satisfied on its first poll therefore observes the settled state rather than a pre-render
-  // window, and a regression that kept the bars up would never reach zero and would fail.
+  // TWO CLAIMS, AND THE SECOND IS THE ONE #1578 GOT WRONG FIRST. Emptying the Start Time field is
+  // right: a pre-filled hour is a value the manager never chose. But `lessonAt` was the sole
+  // input to the exhaustion fetch, so the first cut of #1578 took the bars down with it for the
+  // whole stretch a manager spends picking horses — which is exactly when they are read.
+  // `LessonForm` now derives an `estimateAt` (the selected day at the barn's current hour) that
+  // stands in until a real instant exists, so an empty field and no bars are no longer the same
+  // state. The old wording, which claimed the absence, was this line's second draft and is gone.
   //
-  // The positive anchor is the same locator's own count, in the same test, on the same page
-  // state: three bars, each already carrying dayA's fixture total, so the anchor also proves the
-  // fetch had landed before the clear.
-  test('with_no_start_time_entered_the_new_lesson_form_renders_no_exhaustion_bars @manager', async ({
+  // NOT `openNewLessonForm`, and that is forced rather than stylistic: that helper's hydration
+  // barrier *fills the start time*, which is the very field this asserts is empty. The barrier
+  // here is `waitForBarnPageHydrated` instead — driven through the nav bar's avatar menu, which
+  // shares a React root with the page and touches no form control at all (fact 13's prescribed
+  // workaround, `support/hydration.ts`).
+  //
+  // NO ABSENCE IS ASSERTED HERE ANY MORE, so fact 18 and spec-maintenance rule 4 no longer bind
+  // it — both halves are positive counts, which carry their own retry budget. `toHaveValue('')`
+  // is the exception that looks like an absence and is not: it has no "element missing" passing
+  // state, so it retries until the control attaches rather than resolving against an undrawn
+  // form, which is why it can stand first and pin the empty field on its own.
+  //
+  // A regression that restored the pre-fill fails on that first line. A regression that put the
+  // bars back on `lessonAt` alone fails on the count beneath it, which is unreachable without a
+  // fetch the form has nothing else to trigger.
+  test('the_new_lesson_form_opens_with_an_empty_start_time_and_estimated_exhaustion_bars @manager', async ({
     page,
   }) => {
-    await openFormOnDayA(page)
-    await waitForBarTotal(page, apple, DAY_A.apple)
+    await page.goto(newLessonPath(barn))
+    await waitForBarnPageHydrated(page)
+
+    await expect(page.locator('#lesson-start-time')).toHaveValue('')
     await expect(solidBars(page)).toHaveCount(HORSE_COUNT)
 
-    await page.locator('#lesson-start-time').fill('')
-    // Settles on React having committed the clear, so the count below is a claim about the
-    // cleared form rather than a race against the keystroke.
-    await expect(page.locator('#lesson-start-time')).toHaveValue('')
-
-    await expect(solidBars(page)).toHaveCount(0)
+    // The refresh half. dayA's totals are the fixture's, and none of them can be produced by the
+    // opening estimate: it sits on the barn's *today*, a month away from every seeded lesson, so
+    // this wait cannot be satisfied by the bars that were already on screen.
+    await goToFixtureMonth(page)
+    await pickDay(page, dayA)
+    await page.locator('#lesson-start-time').fill(BARRIER_TIME)
+    await waitForBarTotal(page, apple, DAY_A.apple)
+    await expect(solidBars(page)).toHaveCount(HORSE_COUNT)
   })
 
   // "Pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar."
@@ -681,10 +728,32 @@ test.describe('New Lesson — live exhaustion bars', () => {
     await selectHorse(page, clover)
 
     expect(await readAllBars(page)).toEqual({
-      apple: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(DEFAULT_EXERTION) },
-      butter: { label: exhaustionLabel(DAY_A.butter), solidPct: trackPct(DAY_A.butter.points), ghostPct: trackPct(DEFAULT_EXERTION) },
-      clover: { label: exhaustionLabel(DAY_A.clover), solidPct: trackPct(DAY_A.clover.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      apple: { label: exhaustionLabel({ ...DAY_A.apple, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      butter: { label: exhaustionLabel({ ...DAY_A.butter, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.butter.points), ghostPct: trackPct(DEFAULT_EXERTION) },
+      clover: { label: exhaustionLabel({ ...DAY_A.clover, ghost: DEFAULT_EXERTION }), solidPct: trackPct(DAY_A.clover.points), ghostPct: trackPct(DEFAULT_EXERTION) },
     })
+  })
+
+  // "Each bar is captioned with the band and total it would land in, and the caption tracks the
+  //  exertion field." (#1552)
+  //
+  // Read as the caption's own text rather than through the `aria-label` the tests around this one
+  // use: the label is composed in the component from the same string, so a label assertion would
+  // pass against a bar that rendered no visible caption at all — which is the exact regression this
+  // line exists to catch. Both ends are asserted because the band is the interesting half: Apple's
+  // 7 alone is low against this barn's 10/20, and 7 plus HIGH_EXERTION is moderate, so a caption
+  // wired to `existingTotal` reads "Low Exhaustion (7)" in the second assertion and fails.
+  test('a_checked_horses_bar_caption_names_the_band_and_total_it_would_land_in @manager', async ({
+    page,
+  }) => {
+    await openFormOnDayA(page)
+    await waitForBarTotal(page, apple, DAY_A.apple)
+    await expect(barCaptionOf(page, apple)).toHaveText(barCaption(DAY_A.apple))
+
+    await selectHorse(page, apple)
+    await setExertion(page, apple, HIGH_EXERTION)
+
+    await expect(barCaptionOf(page, apple)).toHaveText(barCaption({ ...DAY_A.apple, ghost: HIGH_EXERTION }))
   })
 
   // "Adjust a checked horse's exertion level — its ghost segment moves live."
@@ -693,6 +762,11 @@ test.describe('New Lesson — live exhaustion bars', () => {
   // the bar is read on the same page. The solid segment is asserted unchanged in the same object
   // — the ghost is the projection and the solid is the history, and a form that recomputed both
   // from the edited value would still satisfy a ghost-only assertion.
+  //
+  // Since #1552 the label moves too, and its band with it: Apple's 7 plus LOW_EXERTION is 8 and
+  // low, plus HIGH_EXERTION is 12 and moderate, against this barn's 10/20. That is the caption
+  // being live, which is the same claim one level up — the solid segment is what still carries
+  // "the history did not move".
   test('raising_a_checked_horses_exertion_widens_its_ghost_segment_without_moving_its_solid_segment @manager', async ({
     page,
   }) => {
@@ -706,8 +780,8 @@ test.describe('New Lesson — live exhaustion bars', () => {
     const after = await readBar(page, apple)
 
     expect({ before, after }).toEqual({
-      before: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(LOW_EXERTION) },
-      after: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(HIGH_EXERTION) },
+      before: { label: exhaustionLabel({ ...DAY_A.apple, ghost: LOW_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(LOW_EXERTION) },
+      after: { label: exhaustionLabel({ ...DAY_A.apple, ghost: HIGH_EXERTION }), solidPct: trackPct(DAY_A.apple.points), ghostPct: trackPct(HIGH_EXERTION) },
     })
   })
 
@@ -743,7 +817,7 @@ test.describe('New Lesson — live exhaustion bars', () => {
       clover: { label: exhaustionLabel(DAY_A.clover), solidPct: trackPct(DAY_A.clover.points), ghostPct: null },
     }
     const appleAt = (exertion: number) => ({
-      label: exhaustionLabel(DAY_A.apple),
+      label: exhaustionLabel({ ...DAY_A.apple, ghost: exertion }),
       solidPct: trackPct(DAY_A.apple.points),
       ghostPct: trackPct(exertion),
     })
@@ -812,7 +886,7 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
     test.slow()
     await page.goto(editPath(barn, cloverDayALesson.id))
     await waitForEditFormHydrated(page)
-    await waitForBarTotal(page, clover, CLOVER_EXCLUDING_ITSELF)
+    await waitForBarTotal(page, clover, { ...CLOVER_EXCLUDING_ITSELF, ghost: CLOVER_DAY_A_EXERTION })
 
     expect(await readAllBars(page)).toEqual({
       apple: { label: exhaustionLabel(DAY_A.apple), solidPct: trackPct(DAY_A.apple.points), ghostPct: null },
@@ -820,7 +894,7 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
       // Checked, because it is this lesson's own horse — so its bar carries the ghost for the
       // exertion the lesson was seeded with.
       clover: {
-        label: exhaustionLabel(CLOVER_EXCLUDING_ITSELF),
+        label: exhaustionLabel({ ...CLOVER_EXCLUDING_ITSELF, ghost: CLOVER_DAY_A_EXERTION }),
         solidPct: trackPct(CLOVER_EXCLUDING_ITSELF.points),
         ghostPct: trackPct(CLOVER_DAY_A_EXERTION),
       },

@@ -891,8 +891,11 @@ test.describe('Manage Barn — barn day versus device day', () => {
   // Outside that window UTC and Eastern name the same date and the regression passes unnoticed,
   // and it can't be closed from here — BARN_TODAY comes from the real clock, and a browser
   // context cannot fake the server's. Same shape as `checklist-phase4-barn-timezone.spec.ts`'s
-  // `assertPinArithmetic`: no *date* assertion separates all three frames at once, and only an
-  // *hour* does.
+  // `assertPinArithmetic`, whose third check asserts the same limit as an executable equality: no
+  // *date* assertion separates all three frames at once, and only an *hour* does. That guard used
+  // to prove the hour half too, off its pin's spread; #1578 deleted the create-form item that
+  // carried it, so the guard is date-only now and the file's remaining hour-frame separation is
+  // `edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_start_time`'s 16:00-vs-20:00 read.
 
   // The #1149 setup line's "set **Barn Timezone** to Eastern", done as a write to this file's own barn rather
   // than through the UI: the settings-page path is already covered by the timezone items

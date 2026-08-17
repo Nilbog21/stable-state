@@ -13,17 +13,14 @@ import type { Horse } from '@/lib/db/types'
 /**
  * The time `openNewLessonForm` fills to prove React has taken the form over.
  *
- * ITS MINUTES MUST NOT BE `:00`, and that is the whole reason for the odd-looking value —
- * surfaced by #1372's review (the issue itself is about a timeout tier and did not measure this).
- * `LessonStartTime` initialises `time` to the top of the barn's CURRENT hour (`${HH}:00`) and
- * runs that initialiser on the server too, so the hidden `lesson_at` input already carries
- * today at `HH:00` in the server-rendered HTML. A barrier time of `10:00` would therefore
- * *already match* whenever the suite happens to run during the barn's 10:00–10:59 hour:
- * `isLive()` returns true on its first pre-drive call, the fill is never dispatched, and the
- * barrier resolves having proved nothing — leaving every click after it exposed to the
- * lost-click hazard (e2e/CLAUDE.md facts 9 and 10) for one hour a day. Non-zero minutes cannot
- * be produced by that default at any hour, so a match can only come from the driving spec's own
- * fill.
+ * ITS HOUR IS LOAD-BEARING and its minutes are not. Hour 10 is what
+ * `checklist-phase3-calendar-appointments.spec.ts`'s fixture-day table and
+ * `checklist-phase3-calendar-panel.spec.ts`'s band expectations are written against — each names
+ * `BARRIER_TIME` and computes the ±3-day exertion window from that hour — so changing `10` breaks
+ * them. The `:37` is inert since #1578 and kept only to avoid a pointless churn across those
+ * files: with the Start Time field opening empty, the create form server-renders no `lesson_at`
+ * input at all (`LessonStartTime.tsx` gates it on `combinedValue`), so the barrier below cannot
+ * pre-match at any hour and any time would do.
  */
 export const BARRIER_TIME = '10:37'
 
@@ -45,8 +42,10 @@ export function editPath(barn: BarnHandle, lessonId: string): string {
  * it would race hydration — a click dispatched before React is listening is simply lost and
  * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
  * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write. See BARRIER_TIME for why those minutes
- * are not `:00`.
+ * which only client-side `LessonStartTime` can write.
+ *
+ * Since #1578 that input does not exist at all until a time is entered, so the barrier is
+ * unambiguous by construction: there is no server-rendered value it could match against.
  *
  * The drive is a `fill` of a fixed time, so re-entering it is idempotent — the property
  * `hydrateByDriving` needs to retry safely. `isLive` is a single `page.evaluate` with no

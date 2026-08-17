@@ -35,8 +35,9 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
 - [ ] (e2e: dashboard_document_reminder_card_sits_directly_under_reminders_without_its_own_heading) That card appears directly under Reminders with no separate "Document Reminders" heading above it
 - [ ] (e2e: dashboard_document_reminder_card_links_to_the_horses_detail_page) That card links to the horse's or member's detail page
-- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
+- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding?from=dashboard`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
+- [ ] (e2e: dashboard_unpaid_lesson_card_back_link_returns_to_the_dashboard) (#1555) Tap that card, then **← Back** on Outstanding Payments → lands back on the Dashboard, not on Finances
 - [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
 - [ ] (e2e: dashboard_day_week_and_month_pill_switcher_appears_above_the_calendar) (#1016, #1558) A "Day"/"Week"/"Month" pill switcher appears above the calendar
 - [ ] (e2e: dashboard_day_pill_is_the_active_view_on_load) (#1016) The Day view is active by default
@@ -215,7 +216,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: available_section_is_sorted_by_horse_name) The Available section is sorted by horse name
 - [ ] (e2e: each_available_horse_card_shows_an_exhaustion_bar) Apple/Butter/Clover each show an exhaustion bar
 - [ ] (e2e: the_three_bars_land_in_three_different_color_bands) Those bars land in different color bands from one another
+- [ ] (e2e: each_available_horse_card_captions_its_bar_with_that_horses_band_and_total) (#1552) Each bar is captioned above with its band and total — `Moderate Exhaustion (8)` — naming the same band the fill is painted
 - [ ] (e2e: tapping_a_bar_expands_the_three_day_lesson_breakdown) Tapping a bar expands the ±3-day lesson breakdown
+- [ ] (e2e: tapping_the_caption_expands_the_same_breakdown_the_bar_does) (#1552) Tapping the caption opens that same breakdown — it sits inside the bar's tap target, not above it
 - [ ] (e2e: tapping_the_bar_again_dismisses_the_breakdown) Tapping the bar again dismisses the breakdown
 - [ ] (e2e: tapping_elsewhere_dismisses_the_breakdown) Tapping elsewhere dismisses the breakdown
 - [ ] (e2e: tapping_the_bar_does_not_navigate_to_the_horse_detail_page) Tapping the bar does not navigate to the horse detail page
@@ -549,7 +552,6 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: edit_form_opens_on_the_lessons_barn_local_date_and_four_pm_start_time) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/start-time picker (#1222)
 - [ ] (e2e: resaving_the_edit_form_unchanged_leaves_the_stored_time_untouched) Under that setup, saving that **Edit** form without changing anything leaves the stored time untouched (#1222)
 - [ ] (e2e: new_lesson_date_prefills_the_barns_day_not_the_devices) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
-- [ ] (e2e: new_lesson_start_time_opens_on_the_barns_hour_not_the_devices) Under that setup, **New Lesson**'s **Start Time** field opens on the barn's current hour, not your device's (#1222)
 - [ ] (e2e: creating_a_lesson_at_four_pm_stores_four_pm_barn_local) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
 - [ ] (e2e: adding_an_expense_at_eleven_thirty_pm_stores_it_barn_local_in_transactions) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
 - [ ] (e2e: a_month_end_eleven_thirty_pm_expense_buckets_into_that_month_on_finances) Under that setup, an expense entered at 11:30 PM barn-local on the last day of a month appears under **that** month on Finances, not the next

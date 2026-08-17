@@ -126,6 +126,9 @@ const THRESHOLD_MODERATE = 2
 const THRESHOLD_HIGH = 4
 const MODERATE_EXERTION = 3
 const HIGH_EXERTION = 5
+/** The exertion the hue test's own checked Apple contributes on top of the seeded window, which
+ *  the bar's caption and `aria-label` include since #1552. */
+const GHOST_EXERTION = 1
 
 /**
  * The panel lesson's wall clock, and the 12-hour rendering the checklist demands of it.
@@ -361,7 +364,7 @@ function exhaustionBarFill(page: Page, horse: Horse): Locator {
 
 /** The bar's own button, whose `aria-label` carries the point total the bar was built from. */
 function exhaustionBarButton(page: Page, horse: Horse): Locator {
-  return horseRow(page, horse).getByRole('button', { name: /^Exhaustion: / })
+  return horseRow(page, horse).getByRole('button', { name: / Exhaustion \(/ })
 }
 
 // ---------------------------------------------------------------------------
@@ -574,13 +577,18 @@ async function expectLessonDated(page: Page, date: string): Promise<void> {
  * on screen and then assert the answer was on screen.
  *
  * It has to be a barrier at all because `LessonForm` gates the bar on
- * `exhaustionData.lessonAt === lessonAt` — so between tapping a day and its Server Action
+ * `exhaustionData.lessonAt === estimateAt` — so between tapping a day and its Server Action
  * resolving, the bar is either unmounted or still showing the previous day's totals.
  */
 async function waitForExhaustionBar(page: Page, horse: Horse, points: number): Promise<void> {
+  // `ghost` is the exertion this test's own checked horse contributes; since #1552 the label
+  // carries the combined total and its band, so the barrier has to name it. Both callers check
+  // the horse and fill 1 before reaching here.
+  const total = points + GHOST_EXERTION
+  const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
   await expect(exhaustionBarButton(page, horse)).toHaveAttribute(
     'aria-label',
-    `Exhaustion: ${points} points from 1 lessons`,
+    `${band} Exhaustion (${total}) from 1 lessons`,
     { timeout: SCHEDULE_FETCH_BUDGET }
   )
 }
@@ -894,8 +902,8 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
   }) => {
     await openNewLessonForm(page, barn)
     await selectHorse(page, apple)
-    await page.locator(`#exertion_${apple.id}`).fill('1')
-    await expect(page.locator(`#exertion_${apple.id}`)).toHaveValue('1')
+    await page.locator(`#exertion_${apple.id}`).fill(String(GHOST_EXERTION))
+    await expect(page.locator(`#exertion_${apple.id}`)).toHaveValue(String(GHOST_EXERTION))
     await goToFixtureMonth(page)
     // Day 22, not day 15: month M's fetch reaches day 15 on some calendar alignments, so a
     // barrier there can be satisfied by the previous month's stale items. See

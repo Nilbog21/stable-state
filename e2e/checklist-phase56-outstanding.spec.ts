@@ -360,7 +360,10 @@ test('rider_dashboard_reminders_carries_an_unpaid_leases_boarding_card @rider', 
 // exercises a real click on this same component.
 test('rider_reminder_cards_link_to_the_outstanding_page @rider', async ({ page }) => {
   await page.goto(dashboardPath())
-  expect(await reminderCardHrefs(page)).toEqual([outstandingPath(), outstandingPath()])
+  // ?from=dashboard (#1555) is decorative for a rider — their role-based fallback is already the
+  // dashboard — but the dashboard emits it for every role, so the href carries it here too.
+  const cardHref = `${outstandingPath()}?from=dashboard`
+  expect(await reminderCardHrefs(page)).toEqual([cardHref, cardHref])
 })
 
 // The "card still appears (its count includes the cancellation fee)" line (#938). Arranged rather
