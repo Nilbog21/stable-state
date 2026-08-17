@@ -204,7 +204,7 @@ Expenses (`/barn/dev-barn/expenses`):
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
-- [ ] (e2e: available_section_is_sorted_by_total_exertion_ascending) The Available section is sorted by total exertion (±3 days) ascending
+- [ ] (e2e: available_section_is_sorted_by_horse_name) The Available section is sorted by horse name
 - [ ] (e2e: each_available_horse_card_shows_an_exhaustion_bar) Apple/Butter/Clover each show an exhaustion bar
 - [ ] (e2e: the_three_bars_land_in_three_different_color_bands) Those bars land in different color bands from one another
 - [ ] (e2e: tapping_a_bar_expands_the_three_day_lesson_breakdown) Tapping a bar expands the ±3-day lesson breakdown
