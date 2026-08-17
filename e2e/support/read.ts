@@ -3,7 +3,7 @@
 // `Locator.allInnerTexts` and `Locator.allTextContents` are one-shot: unlike `expect`'s matchers
 // they do not auto-retry, so a table that hasn't rendered yet yields `[]` and the read returns
 // successfully with nothing in it. Under load — a `next dev` server compiling on demand while
-// several Playwright workers hit it — that window is wide enough to hit routinely (#1238).
+// Playwright workers hit it concurrently — that window is wide enough to hit routinely (#1238).
 //
 // ## Why `[]` is worse than a flake
 //

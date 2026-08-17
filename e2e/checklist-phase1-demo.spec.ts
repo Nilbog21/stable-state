@@ -380,7 +380,7 @@ test.describe.serial('the demo barn', () => {
     // `/demo` through a barn create-and-seed and out to `/barn/[slug]`, so a cold server adds
     // `next dev`'s compile of both routes inside the same budget. Cold alone is not what breaks
     // it: measured at 19.0s cold and unloaded, which still passed under the old 30s budget. It
-    // timed out in #1435's full-suite run, where that compile is paid while four workers
+    // timed out in #1435's full-suite run, where that compile is paid while other workers
     // contend — the two costs compound (fact 1). This test opens a `describe.serial`, so that
     // timeout takes the ten tests after it and strands the reaper block's two more on
     // `liveDemoBarn()` (fact 15). Per-test rather than inside `startDemoVisit`: the three other

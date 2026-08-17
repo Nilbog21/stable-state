@@ -336,7 +336,7 @@ export function throwawayAuthEmail(prefix: string, key: string, project: string)
  * contact fields, so that `/profile/complete` has something to complete. The three shared logins
  * cannot be that user: `scripts/e2e-auth-users.ts` fills `phone` and `emergency_contact_*` on all
  * three, and `profiles` is one global row per `user_id` rather than one per barn — so blanking a
- * shared login's row would race every other spec across the suite's four workers and leave the
+ * shared login's row would race every other spec across the suite's workers and leave the
  * project dirty on a failed run.
  *
  * **Why per-barn auth users still do not exist.** `E2E_USERS`' comment states the constraint and
