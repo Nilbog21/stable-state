@@ -418,7 +418,7 @@ async function readAllBars(page: Page) {
  *
  * This is the fetch barrier, not a convenience, and every test that reads a bar goes through it
  * first. `exhaustionData` starts `null` and `exhaustionByHorseId` is recomputed as
- * `exhaustionData?.lessonAt === lessonAt`, so between a date change and the Server Action
+ * `exhaustionData?.lessonAt === estimateAt`, so between a date change and the Server Action
  * resolving, *every* bar is unmounted — a read taken then sees an empty fieldset and a
  * `toHaveCount(0)` taken then would pass for the wrong reason.
  *

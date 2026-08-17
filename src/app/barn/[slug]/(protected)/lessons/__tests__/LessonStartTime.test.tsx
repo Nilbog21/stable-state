@@ -155,7 +155,10 @@ describe('LessonStartTime', () => {
   })
 
   // The create form's mount, since #1578. `LessonForm` leans on this being `''` rather than
-  // merely unset: it is what keeps the exhaustion bars off until a time is entered.
+  // merely unset: it is the signal that no time has been entered, which is what selects
+  // `estimateAt`'s stand-in instant (the selected day at the barn's current hour) over the real
+  // one — and what `parseLessonFormData` rejects if the field is never filled. It does NOT keep
+  // the exhaustion bars off; the estimate is there precisely so they stay up meanwhile.
   it('should_call_onChange_with_an_empty_string_on_mount_when_no_initialTime_is_given', () => {
     const onChange = vi.fn()
 
