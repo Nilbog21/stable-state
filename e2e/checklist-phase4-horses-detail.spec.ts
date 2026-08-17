@@ -11,7 +11,7 @@
 // here is the real one and everything below it is running against a re-seeded Apple — a cascade,
 // not twenty regressions. Fix the top one and re-run before reading any of the rest.
 import { test, expect, withBarn, type Page } from './support/test'
-import { addHorse, updateBarnSettings } from './support/fixtures'
+import { addHorse, updateBarnSettings, E2E_USERS } from './support/fixtures'
 import { openSection, accordionSection } from './support/accordion'
 import { mustSucceed } from '@/lib/db/service-role'
 
@@ -30,6 +30,11 @@ const APPLE_REJECTED = 'Apple Rejected'
 const APPLE_RENAMED_TWICE = 'Apple Bloom'
 const FEED_NOTES = 'Two flakes of hay, morning and night.'
 const MEDICATION_NOTES = 'Bute 1g with the evening feed.'
+
+// The two Access-table rows, named the way the page names them (`first_name last_name`, per
+// resolveMemberNames) and derived from the fixture so a renamed seed can't leave these stale.
+const MANAGER_NAME = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.lastName}`
+const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 
 // Three distinct override pairs, one per save. Each is different from what the form already
 // shows when the test loads it, so no assertion below can pass without its save having landed.
@@ -90,6 +95,21 @@ const barn = withBarn('phase4-horses-detail', async ({ supabase, barn, members }
       .single(),
     'grant the manager access to Clover'
   )
+
+  // #1547: the manager's row becomes the *owner's* row in the #1000 block below, and an owner's
+  // Documents and Lesson Schedule cells are static text — ownership confers that access on its
+  // own, so the controls governed nothing. The #1390 block's whole claim is about those controls'
+  // markup, so it needs a row that still has them. This second grant is that row, and it has to
+  // be seeded here rather than granted through the UI: the #1390 tests read the *served* HTML,
+  // which is the state this file leaves them, not a state they set up themselves.
+  mustSucceed(
+    await supabase
+      .from('member_horse_privileges')
+      .insert({ barn_id: barn.id, horse_id: cloverId, member_id: members.rider.membershipId })
+      .select('id')
+      .single(),
+    'grant the rider access to Clover'
+  )
 })
 
 // ---------------------------------------------------------------------------
@@ -98,6 +118,16 @@ const barn = withBarn('phase4-horses-detail', async ({ supabase, barn, members }
 
 function horseHref(horseId: string): string {
   return `/barn/${barn.slug}/horses/${horseId}`
+}
+
+/**
+ * One member's row in the Access table. Clover carries two grants since #1547, so "Set as Owner"
+ * and "Owner" are no longer unique on the page and the member name is what tells the rows apart.
+ * Derived from the fixture rather than written as a literal, per this file's seed-inputs rule —
+ * and safe as a `hasText` substring because no seeded name contains another (`E2E_STUB_RIDER`).
+ */
+function accessRow(page: Page, memberName: string) {
+  return accordionSection(page, 'Access').getByRole('row').filter({ hasText: memberName })
 }
 
 /**
@@ -338,11 +368,11 @@ test('horses_list_card_shows_registered_name_in_parentheses @manager', async ({ 
 test('setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
   await openSection(page, 'Access')
-  await page.getByRole('button', { name: 'Set as Owner', exact: true }).click()
+  await accessRow(page, MANAGER_NAME).getByRole('button', { name: 'Set as Owner', exact: true }).click()
   // A wait, not an assertion: the row refreshes through the action's own revalidatePath with no
   // navigation to wait on (#1390 dropped the router.refresh() that used to do this alongside it),
   // and the button relabelling is the signal the action resolved.
-  await page.getByRole('button', { name: 'Owner', exact: true }).waitFor()
+  await accessRow(page, MANAGER_NAME).getByRole('button', { name: 'Owner', exact: true }).waitFor()
 
   await page.goto(`/barn/${barn.slug}/horses`)
   await expect(page.locator('main > section').first().getByRole('heading')).toHaveText('My Horses')
@@ -416,20 +446,25 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
   return html.slice(start, end)
 }
 
-// Seven controls, seven forms: Grant Access, and then Set as Owner / the three document-access
-// buttons / the Can View toggle / Revoke on the single seeded grant row. Before #1390 every one
-// was a `<button type="button" onClick>` with no form at all, so each was a silent no-op inside
-// the hydration window — the defect #1385 fixed for member documents, on a page a manager lands
-// on and immediately clicks. Documents was a `<select>` carrying its value in `FormData` until
-// #1390's own testing round found it didn't persist; three bound buttons replaced it, which is
-// where three of these seven come from.
+// Nine controls, nine forms: Grant Access, then Owner + Revoke on the manager's row, and Set as
+// Owner / the three document-access buttons / the Can View toggle / Revoke on the rider's. Before
+// #1390 every one was a `<button type="button" onClick>` with no form at all, so each was a silent
+// no-op inside the hydration window — the defect #1385 fixed for member documents, on a page a
+// manager lands on and immediately clicks. Documents was a `<select>` carrying its value in
+// `FormData` until #1390's own testing round found it didn't persist; three bound buttons replaced
+// it, which is where three of these nine come from.
 //
-// A count rather than six presence checks, and taken on the *served* markup: React emits the
+// The split across two rows is #1547's: the manager owns Clover by the time this runs, and an
+// owner's Documents and Lesson Schedule cells are static text rather than the four forms the
+// rider's row still carries. So this count now pins both halves at once — a regression that put
+// controls back on the owner's row overshoots it just as a control that lost its form undershoots.
+//
+// A count rather than eight presence checks, and taken on the *served* markup: React emits the
 // enhanced `method="POST"` form only for a Server Function or a `.bind` of one, so a control
 // that regressed to an inline closure — the shape e2e/CLAUDE.md fact 10 warns about — drops out
 // of this count while still looking correct in the browser and still passing every other test in
 // this file.
-const EXPECTED_ACCESS_FORMS = 7
+const EXPECTED_ACCESS_FORMS = 9
 
 test('the_access_tables_controls_all_submit_through_enhanced_forms @manager', async ({ page }) => {
   const markup = await servedAccessMarkup(page, cloverId)
@@ -452,12 +487,14 @@ test('the_access_tables_forms_carry_their_action_reference_in_hidden_fields @man
 // disagreeing, and every test in the suite passed through it — the served markup was well-formed
 // and jsdom saw the right FormData, so only a real round-trip plus a reload could see it.
 //
-// A downgrade, not an upgrade: the `set_horse_owner` above elevated this grant to `write`, so
-// `read` is a value nothing else in the chain could have left behind.
+// The rider's row, not the manager's: since #1547 the owner's row has no document buttons to
+// click. Its grant is still at the schema default `none` — nothing in the chain touches it, and
+// `set_horse_owner`'s elevation reached the manager's row alone — so `read` remains a value only
+// this test's own click could have left behind.
 test('a_document_access_choice_survives_a_reload @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
   await openSection(page, 'Access')
-  const readButton = accordionSection(page, 'Access').getByRole('button', { name: 'Read', exact: true })
+  const readButton = accessRow(page, RIDER_NAME).getByRole('button', { name: 'Read', exact: true })
   await readButton.click()
   // A wait, not the assertion: the row refreshes through the action's own revalidatePath with no
   // navigation to wait on, and `aria-pressed` moving is the signal the action resolved (fact 8 —

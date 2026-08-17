@@ -8,7 +8,7 @@
 //
 // `document_privileges` in three states and `lesson_read_privileges` in two, and every *absent*
 // state needs a horse of its own, because a horse cannot simultaneously hold a grant and not hold
-// one. Hence three horses, all in one barn:
+// one. Hence four horses, all in one barn:
 //
 //   Apple   lesson_read_privileges = true, document_privileges = 'none'
 //           two future lessons, neither of which the rider login is enrolled in
@@ -16,10 +16,20 @@
 //           at its false default
 //           one future lesson, likewise unenrolled; one seeded document (#1359)
 //   Pepper  no privileges row at all
+//   Ginger  no privileges row either — owned by the rider login instead (#1547)
+//           one future lesson, likewise unenrolled; one seeded document, deleted mid-file
 //
 // The rider login is enrolled in **nothing** in this barn. That is the whole point: every lesson
 // this file reaches, it reaches through a horse privilege rather than through enrolment, which is
 // the claim `auth_lesson_has_privileged_horse` exists to make.
+//
+// ## Why Ginger holds no privileges row (#1547)
+//
+// Ownership is the *only* thing admitting the rider to Ginger, which is the claim #1547 makes: both
+// helpers gained an `auth_is_horse_owner` branch, so an owner needs no grant. A Ginger with a row
+// as well would pass every assertion below through the pre-#1547 path and prove nothing. She is
+// therefore Pepper's twin in every respect but ownership — and Pepper stays, because the "neither
+// owns nor holds a grant" absence needs a horse that is neither, which Ginger no longer is.
 //
 // ## Why Butter, and not Pepper, carries the "no lesson-read privilege" lines
 //
@@ -59,6 +69,7 @@ import { mustSucceed } from '@/lib/db/service-role'
 const APPLE = 'Apple' // lesson-read privileged
 const BUTTER = 'Butter' // document privileged, read then write; no lesson-read
 const PEPPER = 'Pepper' // no privileges row at all
+const GINGER = 'Ginger' // no privileges row either; owned by the rider login (#1547)
 
 // Apple's two lessons. The `_TOTAL` that sat here went with #1390's removal of the ExhaustionBar
 // from the horse detail page — the bar's label and popover heading were the only readers of a
@@ -76,6 +87,11 @@ const BUTTER_EXERTION = 3
 const BUTTER_DOC = 'butter-coggins.pdf'
 const BUTTER_DOC_CONTENT = 'test document'
 
+// Ginger's own seeded document and lesson (#1547) — the document the owner-delete test removes, and
+// the lesson the ownership half of `auth_has_horse_lesson_read_privilege` has to surface.
+const GINGER_DOC = 'ginger-coggins.pdf'
+const GINGER_EXERTION = 2
+
 // The committed asset the write-privileged upload test submits through the real form.
 const UPLOAD_PDF = 'test_1_kb.pdf'
 
@@ -92,12 +108,18 @@ const STUB_RIDER_NAME = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
 let appleId: string
 let butterId: string
 let pepperId: string
+let gingerId: string
 let appleLessonIds: string[]
+let gingerLessonId: string
 
 const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, members }) => {
   appleId = (await addHorse(supabase, barn.id, APPLE)).id
   butterId = (await addHorse(supabase, barn.id, BUTTER)).id
   pepperId = (await addHorse(supabase, barn.id, PEPPER)).id
+  // The only horse here with an owner, and the rider login is it. addHorse writes
+  // owning_member_id straight through createHorse; set_horse_owner is not on this path, so no
+  // member_horse_privileges row comes with it — which is the state #1547 is about.
+  gingerId = (await addHorse(supabase, barn.id, GINGER, { owningMemberId: members.rider.membershipId })).id
 
   // Two lessons on Apple and one on Butter, all in the future and all inside the ±3-day window
   // get_horse_projected_exhaustion reads — +1 and +2 days clears both bounds without approaching
@@ -127,6 +149,20 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
     exertionLevels: [BUTTER_EXERTION],
     fee: 50,
   })
+
+  // Ginger's lesson (#1547). The stub rider again, so the owner reaches it through ownership alone
+  // rather than through enrolment — the same discipline every other lesson in this file keeps.
+  gingerLessonId = (
+    await addUnpaidLesson(supabase, barn, {
+      at: daysFromNow(2, barn.timezone),
+      time: '15:00',
+      instructorId: members.trainer.membershipId,
+      horseIds: [gingerId],
+      riderIds: [members.rider2.membershipId],
+      exertionLevels: [GINGER_EXERTION],
+      fee: 50,
+    })
+  ).id
 
   // The notes the horse-notes and hidden-notes lines assert on. Inline service-role writes rather
   // than builder options: create_lesson_with_participants takes neither horse notes nor rider
@@ -203,6 +239,15 @@ const barn = withBarn('phase6-horse-privileges', async ({ supabase, barn, member
   // URL for every row it renders and the signed-link test reads the served bytes.
   await addHorseDocument(supabase, barn, butterId, {
     fileName: BUTTER_DOC,
+    recordType: 'coggins',
+    content: Buffer.from(BUTTER_DOC_CONTENT),
+  })
+
+  // Ginger's document (#1547), likewise a real object: the owner-delete test asserts the object is
+  // gone as well as the row, which is the only thing that can catch `rider_horse_documents_delete`
+  // regressing — deleteHorseDocumentAction swallows a storage failure by design.
+  await addHorseDocument(supabase, barn, gingerId, {
+    fileName: GINGER_DOC,
     recordType: 'coggins',
     content: Buffer.from(BUTTER_DOC_CONTENT),
   })
@@ -423,6 +468,96 @@ test('rider_without_a_document_privilege_sees_no_documents_section @rider', asyn
 
   await expect(horseHeading(page, PEPPER)).toBeVisible()
   await expect(documentsHeading(page)).toHaveCount(0)
+})
+
+// ---------------------------------------------------------------------------
+// Ownership (#1547) — an owner needs no grant, and gets the delete a grant never confers
+//
+// Serial, because the delete is the last link of a chain: the section renders, its Add Document
+// button renders, and then the document it lists is removed. Ginger's document exists once, so the
+// three reads have to happen in that order — and the object assertion has nothing to observe until
+// the delete above it has run.
+// ---------------------------------------------------------------------------
+
+test.describe.serial('ownership on Ginger', () => {
+  // The bucket sweep phase-4's Willow chain explains at length: this chain ends with the row gone,
+  // so `teardownBarnData` — which reaches objects *through* `storage_path` on the rows — can no
+  // longer reach the object. If `rider_horse_documents_delete` regressed, the orphan the deletion
+  // failed to remove would accumulate one per run per project with every test still green.
+  test.afterAll(async () => {
+    const { supabase, barn: seededBarn } = barn.data
+    const prefix = `${seededBarn.id}/horses/${gingerId}`
+    const { data, error } = await supabase.storage.from('documents').list(prefix)
+    if (error) throw new Error(`list Ginger document objects: ${error.message}`)
+    const paths = (data ?? []).map((object) => `${prefix}/${object.name}`)
+    if (paths.length === 0) return
+    const { error: removeError } = await supabase.storage.from('documents').remove(paths)
+    if (removeError) throw new Error(`remove orphaned Ginger document objects: ${removeError.message}`)
+  })
+
+  // Ownership alone reaching the section is the whole claim: pre-#1547
+  // `auth_get_horse_document_privilege` read `member_horse_privileges` and nothing else, and Ginger
+  // has no row there, so this page had no Documents section at all for its own owner.
+  test('rider_owned_horse_shows_the_documents_section @rider', async ({ page }) => {
+    await page.goto(horseHref(gingerId))
+    await expect(documentsHeading(page)).toBeVisible()
+  })
+
+  // An owner scores 'write', the top of the ladder, rather than 'read' — so the upload affordance
+  // is here too. Opened first for the same reason as Butter's: Add Document is the accordion's
+  // headerExtra and is hidden while the `<details>` is shut (#1390).
+  test('rider_owned_horse_shows_the_add_document_button @rider', async ({ page }) => {
+    await page.goto(horseHref(gingerId))
+    await openSection(page, 'Documents')
+    await expect(addDocumentLink(page)).toBeVisible()
+  })
+
+  // The delete a *grant* never confers: `horse_documents_delete_ownership` is gated on ownership
+  // and not on `document_privileges = 'write'`, which is why Butter's write-privileged block above
+  // has no counterpart to this one.
+  //
+  // Guarded on the empty state before the row is counted, phase-4's `deleting_a_horse_document_
+  // removes_its_row` rationale exactly: the count would otherwise be read while 1 is still
+  // transiently true, between the click and the revalidate.
+  test('rider_owned_horse_document_delete_removes_its_row @rider', async ({ page }) => {
+    await page.goto(horseHref(gingerId))
+    await openSection(page, 'Documents')
+
+    const documents = accordionSection(page, 'Documents')
+    await documents.getByRole('button', { name: 'Delete', exact: true }).click()
+    await documents.getByText('No documents yet', { exact: true }).waitFor()
+
+    await expect(documents.getByRole('link', { name: GINGER_DOC, exact: true })).toHaveCount(0)
+  })
+
+  // The storage half, which nothing on the page can report: `deleteHorseDocumentAction` swallows a
+  // `removeFile` failure by design, so without `rider_horse_documents_delete` the row above would
+  // still vanish and the object would silently survive — the same table-grant-without-storage-half
+  // shape #1359 fixed for reads. The positive anchor rule 4 asks for is the test above it in this
+  // chain: the object is only expected gone because the row demonstrably went.
+  test('rider_owned_horse_document_delete_removes_its_stored_object @rider', async () => {
+    const { supabase, barn: seededBarn } = barn.data
+    const { data, error } = await supabase.storage
+      .from('documents')
+      .list(`${seededBarn.id}/horses/${gingerId}`)
+    if (error) throw new Error(`list Ginger document objects: ${error.message}`)
+
+    expect((data ?? []).map((object) => object.name)).toEqual([])
+  })
+})
+
+// The lesson-read half of the same ownership branch (`auth_has_horse_lesson_read_privilege`), and
+// standalone because it reads a section the chain above never touches. Ginger's lesson has the stub
+// rider on it, so this is reached through ownership rather than enrolment — the collapsed-section
+// and membership claims mirror Apple's grant-driven test above, on a horse holding no grant.
+test('rider_owned_horse_shows_a_collapsed_upcoming_lessons_section @rider', async ({ page }) => {
+  await page.goto(horseHref(gingerId))
+
+  await expect(upcomingLessonsHeading(page)).toBeVisible()
+  await expect(upcomingLessonsSection(page).locator('ul')).toBeHidden()
+
+  await expandUpcomingLessons(page)
+  expect(await upcomingLessonHrefs(page)).toEqual([lessonHref(gingerLessonId)])
 })
 
 // ---------------------------------------------------------------------------
