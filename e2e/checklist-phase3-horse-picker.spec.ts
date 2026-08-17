@@ -148,6 +148,18 @@ const CLOVER_EXERTION = 2
  */
 const WILLOW_HISTORY_EXERTION = 4
 
+/** The exertion of Willow's *edit* lesson. Excluded from that page's own window, but still the
+ *  ghost its checked horse contributes — so since #1552 it is part of the bar's caption and
+ *  accessible name, which is why it stopped being a literal at the seed call. */
+const WILLOW_LESSON_EXERTION = 3
+
+/** The barn's exhaustion thresholds. Not written by this file — these are `barns`' column defaults
+ *  (`5`/`11`), restated because #1552 put the band they decide into the accessible name every
+ *  locator below matches on. Willow's edit-page bar is 4 + 3, which is moderate against them;
+ *  Apple's 5 alone and every empty window are low. */
+const THRESHOLD_MODERATE = 5
+const THRESHOLD_HIGH = 11
+
 /** Barn-local wall clock for every seeded lesson. Pinned rather than inherited from the runner's
  *  clock, per LessonOptions.time's note (#1150). */
 const SEEDED_LESSON_TIME = '09:00'
@@ -236,7 +248,7 @@ const barn = withBarn('phase3-horse-picker', async ({ supabase, barn: seeded, me
     time: SEEDED_LESSON_TIME,
     instructorId: trainerMembershipId,
     horseIds: [willow.id],
-    exertionLevels: [3],
+    exertionLevels: [WILLOW_LESSON_EXERTION],
     riderIds: [riderMembershipId],
     fee: HOUSE_DEFAULT.price,
     tierName: HOUSE_DEFAULT.name,
@@ -414,22 +426,34 @@ function bars(page: Page): Locator {
 function settleProjection(page: Page): Promise<void> {
   return expect(
     page.getByRole('button', {
-      name: `Exhaustion: ${APPLE_EXERTION} points from 1 lessons`,
+      name: exhaustionLabel({ points: APPLE_EXERTION, lessons: 1 }),
       exact: true,
     })
   ).toBeVisible({ timeout: EXHAUSTION_FETCH_BUDGET })
+}
+
+/** `ExhaustionBar`'s `aria-label` (#1552), composed rather than transcribed so this file's
+ *  expectations and the component's template cannot drift into agreeing about the wrong thing.
+ *  `ghost` is the checked horse's own exertion, which the label counts alongside the window; the
+ *  component does not pluralise "lessons" and neither does this. */
+function exhaustionLabel({ points, lessons, ghost = 0 }: { points: number; lessons: number; ghost?: number }): string {
+  const total = points + ghost
+  const band = total <= THRESHOLD_MODERATE ? 'Low' : total <= THRESHOLD_HIGH ? 'Moderate' : 'High'
+  return `Exhaustion: ${band} · ${total} points from ${lessons} lessons`
 }
 
 /**
  * Willow's bar specifically, by the totals only Willow's bar can carry.
  *
  * On the edit page the projection excludes the lesson being edited, so Willow's remaining row is
- * the single WILLOW_HISTORY_OFFSET lesson and every other bar on the page reads "0 points from 0
- * lessons". Both numbers come from the seed rather than from a literal.
+ * the single WILLOW_HISTORY_OFFSET lesson and every other bar on the page reads "Low · 0 points
+ * from 0 lessons". Every number comes from the seed rather than from a literal — including the
+ * ghost, since Willow is this lesson's own horse and therefore checked, and since #1552 the label
+ * counts that ghost.
  */
 function willowBar(page: Page): Locator {
   return page.getByRole('button', {
-    name: `Exhaustion: ${WILLOW_HISTORY_EXERTION} points from 1 lessons`,
+    name: exhaustionLabel({ points: WILLOW_HISTORY_EXERTION, lessons: 1, ghost: WILLOW_LESSON_EXERTION }),
     exact: true,
   })
 }
