@@ -319,7 +319,10 @@ outruns the Bash tool's 600s foreground ceiling. Two things to check, both per `
 the `=== run-checklist-suite.sh — barn prefix … — started {date} ===` header belongs to *this* run,
 and the log ends with the `=== run-checklist-suite.sh exited {code} … ===` terminator, which the
 script's `EXIT` trap writes on every path including the early bails that kill it before Playwright
-writes a line. `exited 0` is the whole verdict on a green run; read the per-test lines only on a red
+writes a line. Since #1621 "ends with" is a guarantee rather than the common case, so reading the
+tail is a valid completion check; the two limits are stated in `/testIssue` Step 4 — a SIGKILLed run
+has no terminator at all, and a `WARNING: the log writer did not drain …` line above it means the
+verdict is good but the log's tail is missing. `exited 0` is the whole verdict on a green run; read the per-test lines only on a red
 one.
 
 **On red:** re-run the failing spec(s) alone once, same command with `--spec` narrowed to them. One

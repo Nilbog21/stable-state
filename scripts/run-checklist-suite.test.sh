@@ -973,6 +973,12 @@ unset FAKE_TEARDOWN_SLEEP TEARDOWN_TIMEOUT_SECONDS
 #     unblocking rather than before, and why it fails deterministically rather than usually.
 # Measured while designing #1621: 40 956-byte log ending in the terminator, versus a 101 050-byte
 # log with the terminator ~40 KB from the end.
+# `--base-url` is not incidental. A blocked console can also block the run *before* `cleanup`
+# reaches its drain — `stop_server`'s own echoes go through the writer like everything else — and
+# the drain bounds this handler's tail, not the whole run. A `--base-url` run has no server to stop
+# and so emits nothing there, which keeps this case aimed at the property it is about. Don't
+# "improve" it into a self-served run expecting the same timings.
+#
 # Launched through `start_suite` rather than in the foreground, for the same reason every signal
 # case is: a run whose console is blocked and whose script is broken never returns, and a
 # foreground launch would hang this gate instead of failing the case. The recorded pgid also lets
