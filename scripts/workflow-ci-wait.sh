@@ -17,22 +17,6 @@ INTERVAL=15
 deadline=$(( SECONDS + TIMEOUT_MIN * 60 ))
 conflicting_streak=0
 
-# The anchor (#1622). `gh pr view`'s headRefOid is a field on GitHub's PR *record*, and that record
-# lags a push by seconds — during which the rollup and the head_sha runs query below both describe
-# the previous head, agree with each other, and produce a verdict for a commit nobody asked about.
-# Observed twice on PR #1615: an inherited `CI: fail` for a head that passed, and an inherited
-# `CI: pass` for a head that in fact failed — which /finishIssue would have merged on.
-#
-# So the verdict is anchored to a SHA that cannot itself be stale: the remote-tracking ref, which
-# `git push` updates as part of the very push that opens the window. Not HEAD — that includes
-# commits not yet pushed, which CI was never asked to evaluate and which would pend forever.
-#
-# Only when this worktree is on the PR's branch (both callers `cd` into it first, already required
-# for gh's repo resolution). Otherwise there is nothing trustworthy to compare against and the gate
-# behaves as it did before — a documented limitation, not silent coverage. See docs/scripts.md.
-anchor_sha=$(git rev-parse '@{u}' 2>/dev/null) || anchor_sha=""
-anchor_ref=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null) || anchor_ref=""
-
 # ponytail: every check counts as required. gh 2.46 has no `gh pr checks --json`,
 # and statusCheckRollup's isRequired comes back null (the GraphQL field needs a
 # pullRequestNumber: argument gh doesn't pass). Stricter than required-only, and
@@ -80,10 +64,35 @@ while :; do
   fi
 
   # Cross-check the rollup against the real workflow runs for this exact SHA on
-  # every poll, not once — the rollup lags for a minute or two after a push and
-  # can briefly show only an unrelated passing check.
+  # every poll it reaches, not once — the rollup lags for a minute or two after a
+  # push and can briefly show only an unrelated passing check. (A poll the anchor
+  # below vetoes never reaches it: there is nothing worth asking about that head.)
   sha=$(jq -er .headRefOid <<<"$pr_json") || exit 4
   head_ref=$(jq -er .headRefName <<<"$pr_json") || exit 4
+
+  # The anchor (#1622). `headRefOid` above is a field on GitHub's PR *record*, and that record lags
+  # a push by seconds — during which the rollup and the head_sha runs query below both describe the
+  # previous head, agree with each other, and produce a verdict for a commit nobody asked about.
+  # Observed twice on PR #1615: an inherited `CI: fail` for a head that passed, and an inherited
+  # `CI: pass` for a head that in fact failed, which /finishIssue would have merged on.
+  #
+  # So the verdict is anchored to a SHA that cannot itself be stale: the remote-tracking ref, which
+  # `git push` updates as part of the very push that opens the window. Not HEAD — that includes
+  # commits never pushed, which CI was never asked to evaluate and which would pend to the deadline.
+  #
+  # Read per poll, and *after* the PR record rather than before it. Once before the loop was the
+  # first cut, and it turned a second push landing mid-wait into a permanent mismatch: the cached
+  # anchor could never equal the head GitHub eventually caught up to, so a real verdict — including
+  # a real failure — degraded into a timeout. Reading after the PR payload also means a push landing
+  # during that very API call reads as a mismatch rather than being missed.
+  #
+  # The branch is matched through `branch.<local>.merge` rather than by assuming the remote is
+  # called `origin`: a fork remote under any other name would otherwise silently disable the anchor,
+  # which is the one failure this must not have. Where the anchor genuinely can't be resolved — a
+  # worktree not on the PR's branch at all — the gate behaves as it did before, a documented
+  # limitation rather than silent coverage. See docs/scripts.md.
+  anchor_sha=$(git rev-parse '@{u}' 2>/dev/null) || anchor_sha=""
+  anchor_branch=$(git config "branch.$(git symbolic-ref --short HEAD 2>/dev/null).merge" 2>/dev/null) || anchor_branch=""
 
   # Both sources below — the rollup already read, and the runs query keyed on the same SHA — speak
   # for whatever head the PR record currently names. When that isn't the head we pushed, neither is
@@ -91,7 +100,7 @@ while :; do
   # marker to it: the fail branch exits *before* pending is assembled, and would fire regardless.
   # A head newer than ours is vetoed too — someone else pushed, and those runs score a commit this
   # worktree has never seen.
-  if [ -n "$anchor_sha" ] && [ "$anchor_ref" = "origin/$head_ref" ] && [ "$anchor_sha" != "$sha" ]; then
+  if [ -n "$anchor_sha" ] && [ "$anchor_branch" = "refs/heads/$head_ref" ] && [ "$anchor_sha" != "$sha" ]; then
     status=$(printf 'PENDING\thead %s not yet reported by GitHub (PR head %s)' \
       "${anchor_sha:0:8}" "${sha:0:8}")
   else

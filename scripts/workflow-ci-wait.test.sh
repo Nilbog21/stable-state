@@ -9,11 +9,12 @@
 #   - `gh` — `gh pr view --json …` and `gh api …/actions/runs?head_sha=…`. A shim directory
 #     prepended to PATH replaces exactly `gh`, dispatching on its argv and answering from
 #     per-SHA fixture files, so no network call is ever made.
-#   - `git` — the anchor (`git rev-parse @{u}`). Deliberately **not** stubbed. Each case runs in
-#     an mktemp'd repo with a real branch, a real `origin` remote and a real remote-tracking ref
-#     planted by `git update-ref`, so the anchor reads a genuine upstream the way it will in a
-#     worktree. A stubbed `git` would let the anchor agree with a fixture that agrees with it,
-#     which is the shape of self-verification this gate exists to stop.
+#   - `git` — the anchor (`git rev-parse @{u}` plus the `branch.<local>.merge` config read).
+#     Deliberately **not** stubbed. Each case runs in an mktemp'd repo with a real branch, a real
+#     `origin` remote and a real remote-tracking ref (written as a loose ref file — see
+#     `upstream_sha` below for why not `git update-ref`), so the anchor reads a genuine upstream the
+#     way it will in a worktree. A stubbed `git` would let the anchor agree with a fixture that
+#     agrees with it, which is the shape of self-verification this gate exists to stop.
 #
 # Every case passes timeout-minutes `0`, which makes the deadline expire on the first poll: a
 # pending read therefore surfaces immediately as exit 3 naming its reason, instead of sleeping
@@ -65,7 +66,15 @@ make_repo() {
   cat > "$dir/shim/gh" <<'EOF'
 #!/usr/bin/env bash
 case "$1" in
-  pr) cat "$PWD/fixtures/pr.json" ;;
+  pr)
+    cat "$PWD/fixtures/pr.json"
+    # A push landing *while the gate is polling*: the upstream ref moves during this very API call.
+    # One-shot, so the next poll sees a settled repo rather than a ref that keeps running away.
+    if [ -f "$PWD/fixtures/push-mid-poll" ]; then
+      cat "$PWD/fixtures/push-mid-poll" > "$GATE_TEST_REF"
+      rm -f "$PWD/fixtures/push-mid-poll"
+    fi
+    ;;
   api)
     sha="${2##*head_sha=}"
     if [ -f "$PWD/fixtures/runs-$sha.json" ]; then
@@ -113,7 +122,8 @@ EOF
 # Runs the gate inside the fixture repo with the shim on PATH and a 0-minute timeout.
 run_gate() {
   local dir="$1"
-  ( cd "$dir" && PATH="$dir/shim:$PATH" bash scripts/workflow-ci-wait.sh 1 0 2>/dev/null )
+  ( cd "$dir" && PATH="$dir/shim:$PATH" GATE_TEST_REF="$dir/.git/refs/remotes/origin/$BRANCH" \
+      bash scripts/workflow-ci-wait.sh 1 0 2>/dev/null )
 }
 
 # --- Test 1: a stale PASS is never emitted for a head GitHub hasn't caught up to -------------------
@@ -240,6 +250,49 @@ if [ "$rc" -eq 3 ]; then
   assert_pass "head newer than ours: vetoed too, not passed"
 else
   assert_fail "head newer than ours: vetoed too, not passed" "exit $rc, output: $out"
+fi
+rm -rf "$DIR"
+
+# --- Test 8: the anchor is re-read per poll, not cached once at startup ----------------------------
+#
+# A second push landing while the gate is already polling. Reading the anchor once before the loop
+# — the first cut of #1622 — cached the *first* head forever, so once GitHub caught up to the second
+# one the cached anchor could never match it again and a real verdict, failure included, degraded
+# into a timeout. Reading it per poll and *after* the PR payload is what makes that recoverable, and
+# is also what lets this case run in a single poll: the shim moves the ref during `gh pr view`, so a
+# startup-only read still sees the old value and emits the (agreeing, but now wrong) `CI: pass`.
+DIR="$(make_repo)"
+upstream_sha "$DIR" "$OLD_SHA"
+pr_fixture "$DIR" "$OLD_SHA" "SUCCESS"
+runs_fixture "$DIR" "$OLD_SHA" "completed" '"success"'
+printf '%s\n' "$NEW_SHA" > "$DIR/fixtures/push-mid-poll"
+out="$(run_gate "$DIR")" && rc=0 || rc=$?
+if [ "$rc" -eq 3 ] && [ "${out#*db71db81}" != "$out" ]; then
+  assert_pass "a push landing mid-poll is picked up on the same run, not cached away"
+else
+  assert_fail "a push landing mid-poll is picked up on the same run, not cached away" \
+    "exit $rc, output: $out"
+fi
+rm -rf "$DIR"
+
+# --- Test 9: the anchor holds when the upstream remote isn't called `origin` -----------------------
+#
+# The branch match reads `branch.<local>.merge`, not the `origin/…` shape of `--abbrev-ref @{u}`, so
+# a fork remote under another name doesn't silently disable the veto — the one failure mode this
+# must not have, since it fails *open* and looks exactly like a healthy run.
+DIR="$(make_repo)"
+git -C "$DIR" remote rename origin upstream
+mkdir -p "$DIR/.git/refs/remotes/upstream"
+printf '%s\n' "$NEW_SHA" > "$DIR/.git/refs/remotes/upstream/$BRANCH"
+git -C "$DIR" config "branch.$BRANCH.remote" upstream
+git -C "$DIR" config "branch.$BRANCH.merge" "refs/heads/$BRANCH"
+pr_fixture "$DIR" "$OLD_SHA" "SUCCESS"
+runs_fixture "$DIR" "$OLD_SHA" "completed" '"success"'
+out="$(run_gate "$DIR")" && rc=0 || rc=$?
+if [ "$rc" -eq 3 ]; then
+  assert_pass "non-origin remote: the veto still engages"
+else
+  assert_fail "non-origin remote: the veto still engages" "exit $rc, output: $out"
 fi
 rm -rf "$DIR"
 
