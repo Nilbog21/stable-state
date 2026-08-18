@@ -74,7 +74,14 @@ export default defineConfig({
   // **The raise was then confirmed on n=2, deliberately.** #1601 rejected 4 on a single run; taking
   // it on a single run in the other direction would be the same mistake. So #1606 ran the full
   // suite at 4 twice — once with the fix applied, once as a pure confirming run with no diff after
-  // it. Figures for both are in #1606's PR body.
+  // it. The first: **1038 passed, 0 failed, 10.0 min**. That 1038 is the same count #1601 got at 2,
+  // which is the check that matters — a raise that silenced tests would show up here as a *lower*
+  // pass count, not as a failure. Both runs' figures are in #1606's PR body.
+  //
+  // On the wall-clock, expect a spread rather than a number: #1601 measured 8.8 min at this setting
+  // and #1606 measured 10.0 on a box with a busy sibling worktree. Both are honest; the durable
+  // claim is ~6-7 min saved against `workers: 2`, not any particular figure. Anyone re-measuring
+  // should record what else was running.
   //
   // Note the blind spot #1601's run carried, which #1606 recorded rather than fixed: the failing
   // test sits **second** of 6 in a `describe.serial` block, so the **4** tests after it never ran
