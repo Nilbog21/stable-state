@@ -46,7 +46,8 @@ const TABS = [
 ] as const
 
 /**
- * A custom timeout (the suite's other is members-access.spec.ts's), and only for the two
+ * The first of this file's two custom timeouts (the other is SETTLE_AFTER_SOFT_NAV below; the
+ * suite's other is members-access.spec.ts's), and only for the two
  * assertions that follow a payment-type `selectOption`. The 5s default is sized for a page
  * assertion; those two wait on a server
  * action *plus* the revalidate and RSC round trip it triggers, which has been observed
@@ -55,6 +56,27 @@ const TABS = [
  * genuine failure in the suite down.
  */
 const SETTLE_AFTER_WRITE = 15_000
+
+/**
+ * The second custom timeout, for `readTabExpenseTotals`'s one header assertion — the soft nav a
+ * tab switch performs, rather than a write. Same 15s value as SETTLE_AFTER_WRITE above, and
+ * deliberately a separate constant: that one's comment scopes itself in terms to the two
+ * post-`selectOption` assertions, so reusing it would falsify the thing that makes it legible.
+ *
+ * Widened on **two measurements, two server architectures apart**, which is what makes this a bug
+ * rather than a flake to re-roll. `specs/issue-1309.md` (2026-08-04) recorded this same helper's
+ * same assertion timing out at `workers: 2` against the old `next dev` suite, and filed it as a
+ * pre-existing timing flake. #1601's full run at `workers: 4` against the production server hit it
+ * again: 14 polls, still reading the previous tab's `"Rider ▲"` where `"Trainer"` was expected.
+ * That is the only assertion in the suite that has ever failed this way, and until #1606 it was
+ * what capped `playwright.config.ts`'s worker count — see the comment at that setting.
+ *
+ * An explicit matcher timeout is the *only* lever that reaches it. A web-first `expect` runs on
+ * expect's fixed 5000 ms, which is e2e-framework-facts.md fact 1's third tier — the one
+ * `test.slow()` cannot raise — and fact 1 names an explicit timeout as the legitimate way to
+ * loosen it. Costs ~0 on a green run, since a web-first assertion returns on first match.
+ */
+const SETTLE_AFTER_SOFT_NAV = 15_000
 
 type Seeded = {
   apollo: Horse
@@ -299,7 +321,8 @@ function breakdownTable(page: Page) {
  * without it the re-render races the read and returns the *previous* tab's figure — the hazard
  * checklist-phase4-finances-by-tier.spec.ts's by_tier_tab_lists_every_barn_tier documents.
  * `toContainText`, because every breakdown table sorts by its first column by default, so that
- * header also carries a sort glyph.
+ * header also carries a sort glyph. It carries SETTLE_AFTER_SOFT_NAV because it is the assertion
+ * whose fixed 5s budget capped the suite's worker count until #1606 — see that constant.
  *
  * No hydration barrier is needed, which is the property that makes this substitution safe
  * everywhere: a pill is an anchor, so a click landing before React is listening navigates the
@@ -311,7 +334,9 @@ async function readTabExpenseTotals(page: Page): Promise<number[]> {
   const totals: number[] = []
   for (const [i, tab] of TABS.entries()) {
     if (i > 0) await page.getByRole('link', { name: tab.pill, exact: true }).click()
-    await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column)
+    await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column, {
+      timeout: SETTLE_AFTER_SOFT_NAV,
+    })
     // Column *order* is uniform across every tab — label, Gross, Expenses, Net — so Expenses is
     // always the third cell, even though the label header itself is what differs (see TABS).
     totals.push(parseMoney(await footerTotalRow(page).locator('td').nth(2).innerText()))
