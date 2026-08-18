@@ -65,6 +65,11 @@ make_repo() {
   cat > "$dir/scripts/teardown-test-barn.sh" <<'EOF'
 #!/usr/bin/env bash
 touch "$PWD/teardown-started"
+# This stub's own process group, recorded because `timeout` puts its child in a new one — so the
+# run's pgid, which every other signal case uses, does not reach here. A case that wants to signal
+# the teardown itself has to address this group, and it must come from the fixture rather than from
+# a name match.
+ps -o pgid= -p $$ 2>/dev/null | tr -d ' ' > "$PWD/teardown-pgid"
 sleep "${FAKE_TEARDOWN_SLEEP:-0}"
 # To stdout as well as to the marker, because the real script prints here too: that output goes
 # through the log writer, and it is what the terminator has to be ordered *after*.
@@ -1013,6 +1018,45 @@ else
 fi
 cleanup_repo "$REPO"
 unset SUITE_STDOUT FAKE_TEARDOWN_NOISE TEARDOWN_TIMEOUT_SECONDS DRAIN_TIMEOUT_SECONDS
+
+# Test 31: the teardown stays uninterruptible **through the `timeout` wrapper** (#1621).
+#
+# This case exists because a mutation pass found a survivor. `cleanup` masks INT/TERM/HUP for its
+# whole length, and #1621 wrapped the teardown call in `timeout` — which catches those signals
+# before it forks, so a *caught* disposition resets to SIG_DFL across `exec` and the mask silently
+# stops covering the teardown. Measured: `/proc/<child>/status` `SigIgn` goes 0x8007 -> 0.
+#
+# Tests 24 and 25 do **not** catch it, and that is not an oversight in them: `timeout` also puts its
+# child in a new process group, so the group signal those cases send to the *run* no longer reaches
+# the teardown at all. Removing the re-installed `trap '' INT TERM HUP` therefore left the whole
+# 30-case file green. This case addresses the teardown's own group instead — the pgid the stub
+# records for itself — which is the only delivery that can still reach it.
+REPO="$(make_repo)"
+started31=true
+FAKE_TEARDOWN_SLEEP=6 start_suite --base-url http://127.0.0.1:9999 || started31=false
+if [ "$started31" = true ]; then
+  await_file "$REPO/state/playwright-started" 600 || started31=false
+  await_file "$REPO/teardown-pgid" 600 || started31=false
+fi
+teardown_pgid="$(cat "$REPO/teardown-pgid" 2>/dev/null || true)"
+signalled31=false
+if [ -n "$teardown_pgid" ] && [ "$teardown_pgid" -gt 1 ] 2>/dev/null &&
+  kill -0 -"$teardown_pgid" 2>/dev/null; then
+  # HUP rather than TERM: `timeout` is in this group too and would report a TERM as its own expiry,
+  # which would muddle a failure into looking like the bound firing.
+  kill -HUP -"$teardown_pgid" 2>/dev/null && signalled31=true
+fi
+await_log "run-checklist-suite.sh exited" 600
+if [ "$started31" = true ] && [ "$signalled31" = true ] &&
+  [ -e "$REPO/teardown-called.log" ] &&
+  terminator_is_last; then
+  assert_pass "a signal aimed at the teardown's own process group cannot abandon it"
+else
+  assert_fail "a signal aimed at the teardown's own process group cannot abandon it" \
+    "started=$started31 signalled=$signalled31 pgid=$teardown_pgid completed=$([ -e "$REPO/teardown-called.log" ] && echo yes || echo no) last='$(tail -1 "$REPO/checklist-suite.log" 2>/dev/null)'"
+fi
+cleanup_repo "$REPO"
+unset FAKE_TEARDOWN_SLEEP
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

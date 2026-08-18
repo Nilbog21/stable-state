@@ -222,9 +222,13 @@ cleanup() {
     #   - `timeout` catches INT/QUIT/HUP/TERM before it forks, and a *caught* disposition resets to
     #     SIG_DFL across `exec` — only an *ignored* one is inherited. Measured on this host:
     #     `/proc/<child>/status` `SigIgn` goes `0x8007` -> `0` across `timeout`. So a bare
-    #     `timeout … bash scripts/teardown-test-barn.sh` would silently un-mask this whole call and
-    #     hand back exactly the failure the harness's two second-signal cases exist to hold. The
-    #     mask is therefore re-installed *inside*, where `exec` then carries it into the real script.
+    #     `timeout … bash scripts/teardown-test-barn.sh` silently stops the mask above from covering
+    #     this call at all. The mask is therefore re-installed *inside*, where `exec` carries it into
+    #     the real script. (Measured too: dropping the re-install does **not** break the harness's
+    #     two second-signal cases, because `timeout` also puts its child in its own process group, so
+    #     the group signal those cases send no longer reaches the teardown either way. The exposure
+    #     is real but latent — which is why the harness grew a case that signals the teardown's *own*
+    #     group rather than the run's.)
     #   - and once it is re-installed, a default TERM from `timeout` really would be the no-op that
     #     reads as working. So `-s KILL` is not tidiness: it is the only signal that can end this
     #     call. (#1620's body gave the inheritance itself as the reason for `-s KILL`; that is not
@@ -300,7 +304,7 @@ cleanup() {
   # Positionally last on every path that reaches here, which is every path where the `EXIT` trap
   # runs at all. The limits — a SIGKILLed run has no terminator, and the drain-timeout path above
   # truncates — are stated where this line is consumed: `/testIssue` Step 4, `/overnightRefactor`,
-  # and docs/scripts.md's `run-checklist-suite` entry.
+  # and docs/scripts/suite.md.
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
   exit "$code"
 }
