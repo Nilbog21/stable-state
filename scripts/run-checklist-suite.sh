@@ -55,8 +55,10 @@ else
   # which is ~190 of a 191-test run's 209 and is re-paid as cache-read input on every later
   # turn of the invoking session. Everything else passes through — this script's own echoes
   # (so early bails are untouched), `Running N tests`, ✘ lines, the failure detail blocks,
-  # the pass/fail summary counts, teardown, and the exit terminator. A stream filter rather
-  # than a reporter swap because the log has to keep full `list` output either way.
+  # the pass/fail summary counts, and teardown. Not the exit terminator: #1607 routed that
+  # around this filter entirely, straight to the log file. A stream filter rather
+  # than a reporter swap because the log has to keep full `list` output either way. (The exit
+  # terminator is no longer in this list: `cleanup` writes it to the log file directly.)
   # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
   exec > >(trap '' TERM HUP; tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
 fi
