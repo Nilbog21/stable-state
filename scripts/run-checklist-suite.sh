@@ -91,8 +91,9 @@ wait_for_port_release() {
   [ -z "$(ss -lntH "sport = :$port")" ]
 }
 
-# Stops the server this run started, if it started one. Idempotent: it clears SERVER_PGID, so the
-# EXIT trap calling it after start_server's own retry has already called it is a no-op.
+# Stops the server this run started, if it started one. `cleanup` is its only caller: start_server's
+# retry path deliberately kills inline instead, because it must not wait on a port that by then is
+# held by whoever won the race. Clearing SERVER_PGID still leaves this idempotent.
 stop_server() {
   if [ -z "$SERVER_PGID" ]; then
     return 0
@@ -395,6 +396,14 @@ start_server() {
     # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
     SERVER_PGID="$(ps -o pgid= -p "$pid" | tr -d ' ')" || true
     if [ -z "$SERVER_PGID" ]; then
+      # The server died before `ps` could see it. If it lost the port race, that is the very
+      # condition the readiness loop below retries for, just reached a few milliseconds earlier —
+      # so retry here too. Without this branch the retry misses the exact case it was written for,
+      # failing fatally on the fast version of the race and recovering only from the slow one.
+      if [[ "$(cat "$SERVER_LOG" 2>/dev/null || true)" == *EADDRINUSE* ]]; then
+        echo "Port $SERVER_PORT was taken before next start could bind it — retrying on a fresh port."
+        continue
+      fi
       echo "Error: the production server exited immediately. Last 40 lines of $SERVER_LOG:" >&2
       tail -40 "$SERVER_LOG" >&2
       exit 1
@@ -433,7 +442,10 @@ start_server() {
     SERVER_PGID=""
   done
 
-  echo "Error: the production server never answered within 120s. Last 40 lines of $SERVER_LOG:" >&2
+  # Deliberately not "never answered within 120s": both attempts can end in seconds by losing the
+  # port race, and a message naming a timeout that never elapsed points at the wrong cause — the
+  # same mistake the EADDRINUSE branch above exists to avoid.
+  echo "Error: could not start a production server after 2 attempts. Last 40 lines of $SERVER_LOG:" >&2
   tail -40 "$SERVER_LOG" >&2
   exit 1
 }
