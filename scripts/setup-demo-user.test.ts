@@ -35,4 +35,19 @@ describe('resolveDemoPassword', () => {
   it('should_mint_a_password_when_the_configured_one_is_empty', () => {
     expect(resolveDemoPassword('')).not.toBe('')
   })
+
+  // .env.example ships this exact string. Reusing it would set the demo user's password to a
+  // value committed to the repo, and the printed line would match the developer's file, so
+  // nothing would look wrong.
+  it('should_mint_a_password_when_the_configured_one_is_the_env_example_placeholder', () => {
+    expect(resolveDemoPassword('<demo-user-password>')).not.toBe('<demo-user-password>')
+  })
+
+  it('should_mint_a_password_when_the_configured_one_is_too_short_to_be_a_secret', () => {
+    expect(resolveDemoPassword('changeme')).not.toBe('changeme')
+  })
+
+  it('should_mint_a_password_when_the_configured_one_contains_whitespace', () => {
+    expect(resolveDemoPassword('two words here')).not.toBe('two words here')
+  })
 })

@@ -62,6 +62,11 @@ else
   # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
   exec > >(trap '' TERM HUP; tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
 fi
+# The writer's pid, so `cleanup` can wait for it to drain before appending the terminator — which is
+# what keeps that line *last*, the property `/testIssue` Step 4 and `/overnightRefactor` both state
+# as their completion signal. `$!` names the process substitution here; without the wait, a direct
+# append races the writer still emitting teardown's output.
+LOG_WRITER_PID=$!
 
 echo "Logging to $LOG_PATH"
 
@@ -184,12 +189,22 @@ cleanup() {
     # --prefix, not --all: --all would delete a concurrent run's barns too.
     bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
   fi
-  # Written straight to the log file and to the saved console fd, deliberately **not** through the
-  # `tee` this script's stdout is redirected into. `/testIssue` Step 4 and #1602's merge gate both
-  # parse this line, and routing it through the writer made its delivery depend on that writer
-  # surviving the signal that killed the run — which is environment-dependent: a group INT leaves
-  # the writer alone on one host and kills it on GitHub Actions, and the terminator went missing on
-  # exactly the second kind. A direct append cannot be lost that way, whatever happened upstream.
+  # The terminator is written straight to the log file and to the saved console fd, deliberately
+  # **not** through the `tee` this script's stdout is redirected into. `/testIssue` Step 4 and
+  # #1602's merge gate both parse this line, and routing it through the writer made its delivery
+  # depend on that writer surviving the signal that killed the run — which is environment-dependent:
+  # a group INT leaves the writer alone on one host and kills it on GitHub Actions, and the
+  # terminator went missing on exactly the second kind.
+  #
+  # Both callers also require it to be the log's **last** line, so a direct append alone is not
+  # enough: it would race the writer still emitting teardown's output. Restoring stdout to the
+  # console closes the writer's input, `wait` lets it drain and exit, and only then is the line
+  # appended. A writer already killed by a signal makes the wait return immediately, which is the
+  # case this whole arrangement exists for.
+  exec 1>&3 2>&3
+  if [ -n "$LOG_WRITER_PID" ]; then
+    wait "$LOG_WRITER_PID" 2>/dev/null || true
+  fi
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >&3
   exit "$code"
@@ -453,7 +468,12 @@ start_server() {
     # never leave the readiness check or a Chromium request talking to nothing.
     # setsid so the server is its own process group and stop_server can kill it whole; the explicit
     # redirect keeps its output out of checklist-suite.log, which this script's stdout is a tee into.
-    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 < /dev/null &
+    # 3>&- because fd 3 is a dup of the *caller's* stdout, and this child is deliberately detached:
+    # setsid means it outlives a SIGKILL of this script, and every consumer reads that stdout to EOF
+    # in the background (/testIssue Step 4, /fableFleet Step 5). A descriptor left open here keeps
+    # their pipe open forever, so the one path the EXIT trap cannot cover would hang the reader
+    # rather than merely leaving a server behind. The explicit > redirect covers fds 1-2 only.
+    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 3>&- < /dev/null &
     pid=$!
     # `|| true`: a server that died before this ran is a branch handled just below, not a failure
     # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
@@ -530,7 +550,7 @@ else
   # Redirected to its own file rather than inherited into checklist-suite.log: the build's route
   # table is ~60 lines that every later turn of the invoking session re-pays as cache-read input,
   # which is the cost #1356 took out of this script's stdout. The failure path prints what matters.
-  if ! TZ=UTC npx next build > "$BUILD_LOG" 2>&1; then
+  if ! TZ=UTC npx next build > "$BUILD_LOG" 2>&1 3>&-; then
     echo "Error: 'next build' failed — the suite cannot serve a branch that does not build. Last 40 lines:" >&2
     tail -40 "$BUILD_LOG" >&2
     exit 1
@@ -584,7 +604,7 @@ E2E_BASE_URL="$E2E_BASE_URL" \
 E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
-  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
+  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" 3>&- || PW_EXIT=$?
 
 if [ "$HOLD_OPEN" = true ]; then
   echo
