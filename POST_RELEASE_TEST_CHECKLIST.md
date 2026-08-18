@@ -43,6 +43,23 @@ Paths below are relative — prepend the prod origin.
 - [ ] Open the `post-release-test` invite link in your own browser signed in as your real Google account → you land in that barn as a manager
 - [ ] Open the `post-release-test-2` invite link the same way → you land in that barn as a manager too
 
+### First-deploy prod config — one-time per project
+
+> Release-4 is the first deploy that needs any of this: `/demo` (#505) and its reaper cron (#506, moved to a daily sweep by #1438) both ship in it, so none of these variables exist yet on a project that has only ever run an earlier release. **Skip this whole block if the Vercel project's production environment already lists `DEMO_USER_EMAIL`, `DEMO_USER_PASSWORD` and `CRON_SECRET`** — `scripts/setup-demo-user.sh` mints a fresh password on every run and resets the existing demo user to it, so re-running it against an already-configured project rotates the credential and leaves prod signing in with a stale one until the new value is re-set and redeployed.
+
+- [ ] Prod Supabase dashboard → **Authentication → Providers → Email** is enabled — `/demo` signs the shared demo user in with `signInWithPassword`, so with the provider off every visit lands on `/login?error=demo_unavailable`
+- [ ] The prod demo auth user exists, with `.env.local` still pointed at prod per the prerequisite above — it prints a `DEMO_USER_EMAIL=` and a `DEMO_USER_PASSWORD=` line; keep both, the password is shown once and cannot be read back:
+
+  ```bash
+  bash scripts/setup-demo-user.sh
+  ```
+
+- [ ] `DEMO_USER_EMAIL` set to the printed value as a Vercel **production** environment variable — there, never in `.env.local`, which is dev-only, gitignored, and never read by prod (unset → `/demo` 404s outright, before any sign-in is attempted)
+- [ ] `DEMO_USER_PASSWORD` set to the printed value as a Vercel **production** environment variable (unset — or stale, after a re-run of the script above — → `/demo` redirects to `/login?error=demo_unavailable`)
+- [ ] `CRON_SECRET` set as a Vercel **production** environment variable, generated with `openssl rand -hex 32`. Vercel injects it as the scheduled request's `Authorization: Bearer <secret>` header, which is the only thing `/api/cron/reset-demo` accepts — unset, every scheduled run answers **401**. That failure is caught only by the deferred `200` check under Deferred checks below, *after* sign-off, which is why this line belongs here instead
+- [ ] `DEMO_BARN_CAP` is deliberately **left unset** — the route defaults to 20, which is the real bound now that #1438 dropped the sweep to daily and the reaper evicts oldest-first when over cap. Setting a variable to its own default is maintenance for nothing
+- [ ] Prod redeployed after the variables are set — a running deployment does not pick up environment-variable changes until it is rebuilt, so `/demo` and the cron keep failing as above until this step
+
 ## Cross-identity checks
 
 ### Invite and claim as a second real person
