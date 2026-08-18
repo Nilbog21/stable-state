@@ -198,6 +198,95 @@ fi
 
 E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 
+# Schema preflight (#1599). Every worktree shares one dev Supabase project, so a sibling
+# branch's `npx supabase db push` applies its schema for *all* of them, and keeps it applied
+# for as long as that branch's PR is open — whether or not the branch ever merges. A suite run
+# against a DB whose schema is ahead of what this branch declares fails in every spec's
+# beforeAll with nothing pointing at the cause: #1295's blocked mode=full run returned 76
+# failed / 840 did not run, identically across three runs (two on a freshly reset DB), 74 of
+# them one NOT NULL constraint the branch under test had never seen. Ten minutes per run to
+# produce a wall of failures attributable to nothing in the diff.
+#
+# All four existing guards miss it, because each closes a different window: the fleet's sync
+# slot serializes syncs against each other; `e2e-slot.sh --exclusive` stops a push overlapping
+# a *run*; `/testIssue`'s stale-branch check covers *base* moving under the branch, not a
+# sibling's unmerged branch; and `/testIssue` Step 0's applied-vs-local comparison — the right
+# computation — runs only for `patch-N` branches. None covers a push whose schema stays applied
+# afterwards, and the fix can't be merged down from base either, since base won't carry the
+# pushing branch's migration until that PR merges. So the check has to be about the state of
+# the DB, not about branch ancestry. Full rationale: docs/scripts.md.
+#
+# Placed here deliberately: after arg parsing (the --allow-prod skip below needs it) but before
+# the e2e slot is acquired and before any barn is seeded, so an abort consumes neither.
+if [ "$ALLOW_PROD" = true ]; then
+  # `migration list` compares local files against the CLI's *linked* project (the dev one, per
+  # supabase/.temp/project-ref), which an --allow-prod run is by definition not targeting — so
+  # this would be enforcing a check against the wrong database, and a dev DB that is legitimately
+  # ahead mid-development would falsely abort a deliberate prod run.
+  echo "Skipping the schema preflight: --allow-prod targets a project other than the linked (dev) one, which is the only project 'supabase migration list' can compare against."
+else
+  echo "Checking the dev database's schema against this branch's migrations..."
+  # Captured into a variable rather than piped, per scripts/CLAUDE.md's pipefail hazard.
+  # `< /dev/null` so an unauthenticated CLI errors instead of prompting for a login, and
+  # `timeout` so a dead network can't hang here: a preflight must never itself become the
+  # reason a suite cannot start, by hanging any more than by erroring.
+  MIGRATION_LIST=""
+  if ! MIGRATION_LIST="$(timeout 60 npx supabase migration list < /dev/null 2>/dev/null)"; then
+    echo "Note: schema preflight skipped — 'npx supabase migration list' did not answer (no linked project, no access token, or no network). Continuing."
+  else
+    # `migration list` prints ` <local> | <remote> | <time>`, and its Local column *is* this
+    # branch's supabase/migrations/ — the CLI has already done the comparison, so a row with a
+    # blank Local and a version-shaped Remote is exactly /sync-migrations' "remote-only" set,
+    # made executable on the run path. Header, rule, blank, and the CLI's update-notice lines
+    # all fall out of that filter. A here-string, not a pipe, so the array survives the loop.
+    REMOTE_ONLY=()
+    while IFS='|' read -r local_version remote_version _rest; do
+      local_version="${local_version//[[:space:]]/}"
+      remote_version="${remote_version//[[:space:]]/}"
+      if [ -z "$local_version" ] && [[ $remote_version =~ ^[0-9]+$ ]]; then
+        REMOTE_ONLY+=("$remote_version")
+      fi
+    done <<< "$MIGRATION_LIST"
+
+    if [ ${#REMOTE_ONLY[@]} -gt 0 ]; then
+      echo "Error: the dev database's schema is ahead of this branch — aborting before the suite starts." >&2
+      echo "Applied on the dev project, but not declared by this branch:" >&2
+      # Only on the path that is already aborting, so the passing case pays for neither: a fetch,
+      # without which `git log --all` can't see a sibling's just-pushed branch, and
+      # workflow-context.sh, which is the one place the label -> base-branch rule lives (#1118).
+      git fetch --quiet origin 2>/dev/null || true
+      PREFLIGHT_BASE="$(bash scripts/workflow-context.sh 2>/dev/null | sed -n 's/^base=//p')"
+      PREFLIGHT_BASE_FILES=""
+      if [ -n "$PREFLIGHT_BASE" ]; then
+        PREFLIGHT_BASE_FILES="$(git ls-tree --name-only "origin/$PREFLIGHT_BASE" supabase/migrations/ 2>/dev/null || true)"
+      fi
+      for version in "${REMOTE_ONLY[@]}"; do
+        # `%S` is the ref `--all` reached the commit through; oldest commit last, and that one
+        # is the branch that added the file.
+        owner="$(git log --all --source --format='%S' -- "supabase/migrations/${version}_*.sql" 2>/dev/null | tail -1)"
+        owner="${owner#refs/heads/}"
+        owner="${owner#refs/remotes/}"
+        if [ -n "$PREFLIGHT_BASE" ] && grep -q "/${version}_" <<< "$PREFLIGHT_BASE_FILES"; then
+          echo "  $version — carried by origin/$PREFLIGHT_BASE. Fix: git merge origin/$PREFLIGHT_BASE" >&2
+        elif [ -n "$owner" ]; then
+          echo "  $version — added by branch '$owner', which has not merged${PREFLIGHT_BASE:+ to $PREFLIGHT_BASE}. Fix: wait for that branch's PR to merge, then re-run." >&2
+        else
+          # /sync-migrations' third case: no branch anywhere owns the file, which is genuine
+          # drift rather than a sibling's unmerged work.
+          echo "  $version — no branch in this repo owns it, so this is drift rather than a sibling's unmerged work. See /sync-migrations." >&2
+        fi
+      done
+      if [ -z "$PREFLIGHT_BASE" ]; then
+        # No merge suggestion rather than a guessed one: /sync-migrations refuses to guess a base
+        # too, and unlike that skill this path has nobody to ask.
+        echo "(Could not determine this branch's base, so the versions above are unsplit — check by hand whether your base already carries them.)" >&2
+      fi
+      echo "All worktrees share one dev Supabase project, so a sibling branch's schema stays applied for as long as its PR is open. Running anyway would fail every spec's beforeAll with nothing pointing at the cause (#1295)." >&2
+      exit 1
+    fi
+  fi
+fi
+
 echo "Checking Playwright system dependencies..."
 if ! npx playwright install-deps chromium --dry-run; then
   echo "Error: missing Playwright system dependencies (see above). Run 'sudo npx playwright install-deps chromium' yourself, then re-run this script." >&2
