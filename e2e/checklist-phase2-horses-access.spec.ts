@@ -34,6 +34,13 @@
 // without it (20260725115546). Same seeding shape as checklist-phase4-horses-detail.spec.ts's
 // Clover grant.
 //
+// One consequence of that reseed, since #1549's /testIssue round: `set_horse_owner` now leaves the
+// **outgoing** owner a grant of `write`/`lesson_read` — the access ownership conferred them, kept
+// as an ordinary row the manager can downgrade rather than silently revoked. So the manager who
+// created Eclipse is row 2 of this table from the first landing, and every row-list and dropdown
+// expectation below counts her. She is not scenery: a table that dropped her would mean the
+// transfer had gone back to revoking the outgoing owner outright.
+//
 // ## The clearing half of this slice, and where it went (#1549)
 //
 // Until #1549 the chain below ended by *clearing* Eclipse's owner twice — once by re-tapping the
@@ -115,6 +122,10 @@ const ECLIPSE = 'Eclipse'
  */
 const DANA = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 const EMERY = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
+/** Eclipse's creator, and since #1549's /testIssue round a row in its own right: the seed's
+ *  `set_horse_owner` promotion of Dana leaves the outgoing owner the grant ownership conferred
+ *  them, so the manager is in this table from the first landing rather than only in the header. */
+const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.lastName}`
 
 /** `HorseAccessSection`'s Revoke confirmation, per member. Derived, for the same reason the two
  *  names above are. */
@@ -306,7 +317,11 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     await accessSection(page).getByRole('button', { name: 'Grant Access', exact: true }).click()
     // A wait, not the assertion: the table refreshes through the action's own `revalidatePath`
     // with no navigation to wait on (fact 8).
-    await expect(grantedMembers(page)).toHaveCount(2, { timeout: SETTLE_AFTER_WRITE })
+    // Three, not two: the manager already holds row 2 (see CREATING_MANAGER). A count of 2 here
+    // would be satisfied by the state *before* the grant landed and read Emery's row out of a
+    // table that had not yet grown one — which is exactly how this wait failed when the outgoing
+    // owner's grant first appeared.
+    await expect(grantedMembers(page)).toHaveCount(3, { timeout: SETTLE_AFTER_WRITE })
 
     expect({
       before,
@@ -316,16 +331,12 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
       },
     }).toEqual({
       before: {
-        grants: [DANA],
-        dropdown: dropdownOffering(
-          members.manager.membershipId,
-          members.trainer.membershipId,
-          members.rider2.membershipId
-        ),
+        grants: [DANA, CREATING_MANAGER],
+        dropdown: dropdownOffering(members.trainer.membershipId, members.rider2.membershipId),
       },
       after: {
-        grants: [DANA, EMERY],
-        dropdown: dropdownOffering(members.manager.membershipId, members.trainer.membershipId),
+        grants: [DANA, CREATING_MANAGER, EMERY],
+        dropdown: dropdownOffering(members.trainer.membershipId),
       },
     })
   })
@@ -444,9 +455,10 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     }).toEqual({
       emeryOwner: ['Owner'],
       danaOwner: ['Set as Owner'],
-      // `set_horse_owner` elevated her on the way in and never un-elevates on the way out, which
-      // is the documented asymmetry (`rpc/horses.md`) — so `Write` here is the *prior* owner's
-      // residue, not a fresh grant, and asserting it pins that behaviour rather than assuming it.
+      // Since #1549's /testIssue round this is written rather than left behind: `set_horse_owner`
+      // upserts the *outgoing* owner `'write'`/`true`, the access ownership conferred her. It read
+      // the same before, as residue from the elevation on the way in that was never undone — so
+      // the value is unchanged and the reason for it is not (`rpc/horses.md`).
       danaDocuments: ['Write'],
       danaRevokes: 1,
       header: [EMERY],
@@ -474,7 +486,7 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
 
     await openAccessHydrated(page)
     await grantRow(page, DANA).getByRole('button', { name: 'Revoke', exact: true }).click()
-    await expect(grantedMembers(page)).toHaveCount(1, { timeout: SETTLE_AFTER_WRITE })
+    await expect(grantedMembers(page)).toHaveCount(2, { timeout: SETTLE_AFTER_WRITE })
 
     // The message, not merely that *a* dialog appeared: it is what proves the confirm ran on
     // Dana's row rather than that something somewhere was dismissed. The row list is asserted
@@ -484,7 +496,11 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
       messages,
       rows: await settledInnerTexts(grantedMembers(page)),
       header: await settledInnerTexts(headerLines(page)),
-    }).toEqual({ messages: [revokeConfirm(DANA)], rows: [EMERY], header: [EMERY] })
+    }).toEqual({
+      messages: [revokeConfirm(DANA)],
+      rows: [EMERY, CREATING_MANAGER],
+      header: [EMERY],
+    })
   })
 
   /**
@@ -501,11 +517,7 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     const members = barn.data.members
 
     expect(await grantDropdownValues(page)).toEqual(
-      dropdownOffering(
-        members.manager.membershipId,
-        members.trainer.membershipId,
-        members.rider.membershipId
-      )
+      dropdownOffering(members.trainer.membershipId, members.rider.membershipId)
     )
   })
 })
