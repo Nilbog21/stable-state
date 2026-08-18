@@ -17,13 +17,29 @@ INTERVAL=15
 deadline=$(( SECONDS + TIMEOUT_MIN * 60 ))
 conflicting_streak=0
 
+# The anchor (#1622). `gh pr view`'s headRefOid is a field on GitHub's PR *record*, and that record
+# lags a push by seconds — during which the rollup and the head_sha runs query below both describe
+# the previous head, agree with each other, and produce a verdict for a commit nobody asked about.
+# Observed twice on PR #1615: an inherited `CI: fail` for a head that passed, and an inherited
+# `CI: pass` for a head that in fact failed — which /finishIssue would have merged on.
+#
+# So the verdict is anchored to a SHA that cannot itself be stale: the remote-tracking ref, which
+# `git push` updates as part of the very push that opens the window. Not HEAD — that includes
+# commits not yet pushed, which CI was never asked to evaluate and which would pend forever.
+#
+# Only when this worktree is on the PR's branch (both callers `cd` into it first, already required
+# for gh's repo resolution). Otherwise there is nothing trustworthy to compare against and the gate
+# behaves as it did before — a documented limitation, not silent coverage. See docs/scripts.md.
+anchor_sha=$(git rev-parse '@{u}' 2>/dev/null) || anchor_sha=""
+anchor_ref=$(git rev-parse --abbrev-ref '@{u}' 2>/dev/null) || anchor_ref=""
+
 # ponytail: every check counts as required. gh 2.46 has no `gh pr checks --json`,
 # and statusCheckRollup's isRequired comes back null (the GraphQL field needs a
 # pullRequestNumber: argument gh doesn't pass). Stricter than required-only, and
 # it keeps /reviewIssue's Vercel-failure branch reachable. If a future gh exposes
 # isRequired, filtering on it is the upgrade path.
 while :; do
-  pr_json=$(gh pr view "$PR" --json mergeable,headRefOid,statusCheckRollup) || exit 4
+  pr_json=$(gh pr view "$PR" --json mergeable,headRefOid,headRefName,statusCheckRollup) || exit 4
 
   # -e so a null/absent field or unparseable payload exits 4 rather than
   # sailing on: an empty $sha below makes gh return the *entire* repo's run
@@ -67,29 +83,42 @@ while :; do
   # every poll, not once — the rollup lags for a minute or two after a push and
   # can briefly show only an unrelated passing check.
   sha=$(jq -er .headRefOid <<<"$pr_json") || exit 4
-  runs_json=$(gh api "repos/{owner}/{repo}/actions/runs?head_sha=$sha") || exit 4
+  head_ref=$(jq -er .headRefName <<<"$pr_json") || exit 4
 
-  status=$(jq -rn --argjson pr "$pr_json" --argjson runs "$runs_json" '
-    # EXPECTED means "not reported yet" on the legacy commit-status API —
-    # unreachable while every check is CheckRun-typed, but pending, not failed.
-    def verdict($n; $s; $c):
-      if $s != "COMPLETED" or (["PENDING","EXPECTED"] | index($c)) then "PENDING\t\($n)"
-      elif ["SUCCESS","SKIPPED","NEUTRAL"] | index($c) then empty
-      else "FAIL\t\($n)" end;
-    ( $pr.statusCheckRollup[]?
-      | verdict(.name // .context;
-                (.status // "COMPLETED") | ascii_upcase;
-                ((.conclusion // .state) // "PENDING") | ascii_upcase) ),
-    ( if ($runs.workflow_runs | length) == 0 then "PENDING\tworkflow run not started"
-      else $runs.workflow_runs[]
-        | verdict(.name; .status | ascii_upcase; (.conclusion // "PENDING") | ascii_upcase)
-      end )
-  ') || exit 4
+  # Both sources below — the rollup already read, and the runs query keyed on the same SHA — speak
+  # for whatever head the PR record currently names. When that isn't the head we pushed, neither is
+  # evidence about anything, so the veto skips the entire verdict block rather than adding a pending
+  # marker to it: the fail branch exits *before* pending is assembled, and would fire regardless.
+  # A head newer than ours is vetoed too — someone else pushed, and those runs score a commit this
+  # worktree has never seen.
+  if [ -n "$anchor_sha" ] && [ "$anchor_ref" = "origin/$head_ref" ] && [ "$anchor_sha" != "$sha" ]; then
+    status=$(printf 'PENDING\thead %s not yet reported by GitHub (PR head %s)' \
+      "${anchor_sha:0:8}" "${sha:0:8}")
+  else
+    runs_json=$(gh api "repos/{owner}/{repo}/actions/runs?head_sha=$sha") || exit 4
 
-  fails=$(awk -F'\t' '$1=="FAIL"{print $2}' <<<"$status" | sort -u | paste -sd, -)
-  if [ -n "$fails" ]; then
-    echo "CI: fail — ${fails//,/, }"
-    exit 1
+    status=$(jq -rn --argjson pr "$pr_json" --argjson runs "$runs_json" '
+      # EXPECTED means "not reported yet" on the legacy commit-status API —
+      # unreachable while every check is CheckRun-typed, but pending, not failed.
+      def verdict($n; $s; $c):
+        if $s != "COMPLETED" or (["PENDING","EXPECTED"] | index($c)) then "PENDING\t\($n)"
+        elif ["SUCCESS","SKIPPED","NEUTRAL"] | index($c) then empty
+        else "FAIL\t\($n)" end;
+      ( $pr.statusCheckRollup[]?
+        | verdict(.name // .context;
+                  (.status // "COMPLETED") | ascii_upcase;
+                  ((.conclusion // .state) // "PENDING") | ascii_upcase) ),
+      ( if ($runs.workflow_runs | length) == 0 then "PENDING\tworkflow run not started"
+        else $runs.workflow_runs[]
+          | verdict(.name; .status | ascii_upcase; (.conclusion // "PENDING") | ascii_upcase)
+        end )
+    ') || exit 4
+
+    fails=$(awk -F'\t' '$1=="FAIL"{print $2}' <<<"$status" | sort -u | paste -sd, -)
+    if [ -n "$fails" ]; then
+      echo "CI: fail — ${fails//,/, }"
+      exit 1
+    fi
   fi
 
   [ -n "$unknown_mergeability" ] && status=$(printf '%s\nPENDING\t%s' "$status" "$unknown_mergeability")
