@@ -64,17 +64,33 @@ const SETTLE_AFTER_WRITE = 15_000
  * post-`selectOption` assertions, so reusing it would falsify the thing that makes it legible.
  *
  * Widened on **two measurements, two server architectures apart**, which is what makes this a bug
- * rather than a flake to re-roll. `specs/issue-1309.md` (2026-08-04) recorded this same helper's
- * same assertion timing out at `workers: 2` against the old `next dev` suite, and filed it as a
- * pre-existing timing flake. #1601's full run at `workers: 4` against the production server hit it
- * again: 14 polls, still reading the previous tab's `"Rider ▲"` where `"Trainer"` was expected.
- * That is the only assertion in the suite that has ever failed this way, and until #1606 it was
- * what capped `playwright.config.ts`'s worker count — see the comment at that setting.
+ * rather than a flake to re-roll. On 2026-08-04 this same helper's same assertion timed out at
+ * `workers: 2` against the old `next dev` suite — noticed in passing during #1309's work, which
+ * was about something else entirely, and written off there as a pre-existing timing flake. #1601's
+ * full run at `workers: 4` against the production server hit it again: 14 polls, still reading the
+ * previous tab's `"Rider ▲"` where `"Trainer"` was expected. #1606's issue body carries both
+ * sightings in full — that is the durable record, since the 2026-08-04 one lives only in a
+ * gitignored work log. It is the only assertion in the suite that has ever failed this way, and
+ * until #1606 it was what capped `playwright.config.ts`'s worker count.
+ *
+ * **This is the second fix on this assertion.** #1244 made the wait retrying — this `toContainText`
+ * on the differing header, replacing the five `goto`s the helper used to do — and that was taken as
+ * having fixed it. It hadn't: a retrying wait was never what was missing, and one inside a fixed
+ * 5 s ceiling still gives up at 5 s. If it ever fails a third time, that history says the ceiling is
+ * the thing to look at, not the locator.
  *
  * An explicit matcher timeout is the *only* lever that reaches it. A web-first `expect` runs on
  * expect's fixed 5000 ms, which is e2e-framework-facts.md fact 1's third tier — the one
  * `test.slow()` cannot raise — and fact 1 names an explicit timeout as the legitimate way to
- * loosen it. Costs ~0 on a green run, since a web-first assertion returns on first match.
+ * loosen it.
+ *
+ * **The cost is real and is accepted rather than overlooked.** #1238's non-goals say not to inflate
+ * budgets, because "every genuine hang takes twice as long to surface" — true, and the reason this
+ * is one named site rather than a global bump or a raised `SETTLE_AFTER_WRITE`. It costs ~0 on a
+ * green run (a web-first assertion returns on first match) and ~10 s extra only when this one
+ * assertion genuinely fails. #1606 declined to pre-emptively widen the ~14 other untimed assertions
+ * that sit near a link click for exactly the reason #1238 gives: a budget widened at a site never
+ * observed to need it spends that budget's ability to report "this got slow".
  */
 const SETTLE_AFTER_SOFT_NAV = 15_000
 

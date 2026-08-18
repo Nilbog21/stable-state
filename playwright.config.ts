@@ -57,20 +57,34 @@ export default defineConfig({
   // (`SETTLE_AFTER_SOFT_NAV`, 15 s, following that file's own `SETTLE_AFTER_WRITE` precedent).
   //
   // **That assertion was a bug independent of worker count, which is why fixing it was the right
-  // move rather than capping the number.** `specs/issue-1309.md` (2026-08-04) recorded the same
-  // helper, same assertion, same budget timing out at `workers: 2` on the old `next dev` path, and
-  // filed it as a pre-existing timing flake. Two independent sightings, two weeks and two server
-  // architectures apart, on one thin assertion — a fixed budget too tight for the work behind it,
-  // not a machine at capacity.
+  // move rather than capping the number.** It had been seen before: the same helper, same
+  // assertion, same budget timed out at `workers: 2` on the old `next dev` path on 2026-08-04,
+  // noticed in passing during #1309's work (an unrelated month-bucketing issue) and written off
+  // there as a pre-existing timing flake. #1606's issue body carries that provenance in full. Two
+  // independent sightings, two weeks and two server architectures apart, on one thin assertion — a
+  // fixed budget too tight for the work behind it, not a machine at capacity.
+  //
+  // **And this was the second fix on it, which is the part worth knowing.** #1244 already made this
+  // wait retrying (`toContainText` on the one header that differs between tabs, replacing five
+  // `goto`s) and that was recorded as fixing it. It didn't, because a retrying wait was never the
+  // missing piece — the missing piece was budget, and a retrying wait inside a 5 s ceiling still
+  // gives up at 5 s. Anyone tempted to fix a third occurrence by changing *what* is waited on
+  // should read that as the evidence it is the ceiling, not the locator.
   //
   // **The raise was then confirmed on n=2, deliberately.** #1601 rejected 4 on a single run; taking
   // it on a single run in the other direction would be the same mistake. So #1606 ran the full
   // suite at 4 twice — once with the fix applied, once as a pure confirming run with no diff after
-  // it. Figures for both are in #1606's PR body. Note one blind spot #1601's run carried and #1606
-  // did not fix: the failing test sits 4th of 6 in a `describe.serial` block, so 2 tests behind it
-  // never ran (fact 15). The block can't be de-serialised — it's a mutation sequence whose module
-  // -level baseline is written by test 2 and read by test 4 — so those 2 were simply unobserved
-  // until the fix let the block finish.
+  // it. Figures for both are in #1606's PR body.
+  //
+  // Note the blind spot #1601's run carried, which #1606 recorded rather than fixed: the failing
+  // test sits **second** of 6 in a `describe.serial` block, so the **4** tests after it never ran
+  // (fact 15) — that count is what identifies it, since 1 failed + 4 not-run is only consistent
+  // with the failure landing at test 2. (#1606's own issue body mis-stated this as 4th-of-6 with 2
+  // hidden; the arithmetic above is what settles it, and #1601 had it right first time.) The block
+  // can't be de-serialised — it's a mutation sequence whose module-level baseline is written by
+  // test 2 and read by test 4. The sharp consequence: **test 4 calls this same helper**, so that
+  // second call site was itself inside the hidden set and has never been exercised at 4 workers.
+  // The fix covers it anyway, being in the helper rather than at a call site.
   //
   // So the constraint on this number is not memory, not compile contention, and not the assertion
   // above. If a future raise is wanted, expect the same shape of work: find the assertion inside a
