@@ -534,4 +534,28 @@ describe('LessonForm', () => {
     expect(rendered).toEqual(['horse-daisy', 'horse-hazel'])
   })
 
+  // #1616, the other half of the same rule: name breaks a tie, it never overrides the exertion key
+  // above it. Nothing else pins that — the seed's Daisy/Hazel/Willow order comes out the same under
+  // either key order, so a name-first comparator would pass every other test in the repo.
+  it('should_sort_unavailable_horses_by_exertion_before_name', async () => {
+    const anise = createMockHorse({ id: 'horse-anise', name: 'Anise', is_available: false })
+    const basil = createMockHorse({ id: 'horse-basil', name: 'Basil', is_available: false })
+    const thresholds = { high: 11, moderate: 5 }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-anise': {
+        existingRows: [{ lessonAt: { at: '2026-06-01T18:00:00Z', tz: 'America/New_York' }, exertionLevel: 5 }],
+        thresholds,
+      },
+      'horse-basil': { existingRows: [], thresholds },
+    })
+    const { container } = render(
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[anise, basil]} getProjectedExhaustion={getProjectedExhaustion} />
+    )
+    await waitFor(() => {
+      const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+        .map((el) => (el as HTMLInputElement).value)
+      expect(rendered).toEqual(['horse-basil', 'horse-anise'])
+    })
+  })
+
 })
