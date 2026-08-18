@@ -46,16 +46,17 @@ echo "Logging to $LOG_PATH"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open] [--no-recycle] [--verbose]
+Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open] [--verbose]
+
+By default this script is self-contained: it runs `next build`, starts its own `next start` on a
+free ephemeral port, points Playwright at it, and stops it on exit. It never touches your `next dev`.
 
   --interactive     Headed run including @visual specs (default: headless, @visual excluded); implies --verbose
-  --base-url URL    Origin under test (default: http://localhost:3000)
+  --base-url URL    Target this existing server instead — skips the build and start entirely.
+                    For an already-running dev server, or a deployment with --allow-prod.
   --spec PATH       Playwright spec path or glob; repeatable (default: full suite)
   --allow-prod      Target a non-dev Supabase project; requires --base-url
   --hold-open       Prompt before teardown, so the seeded barns survive manual checklist steps
-  --no-recycle      Keep the dev server the suite just fattened, instead of restarting it. For
-                    iterating on a failing suite in a single worktree, where a warm server is
-                    worth the ~9 GB it holds. Never for a run you are walking away from.
   --verbose         Stream the reporter's per-test lines to stdout too (default: log only)
 EOF
 }
@@ -64,18 +65,62 @@ MODE=auto
 BASE_URL=""
 ALLOW_PROD=false
 HOLD_OPEN=false
-RECYCLE=true
 SPEC_ARGS=()
 PROD_FLAG=()
 # Flipped just before Playwright starts, so an early bail (bad flag, missing .env.local,
 # unreadable Supabase vars, the schema preflight's abort) doesn't call teardown before any
 # barn could exist.
 SEEDED=false
+# Set only once this run has started a server of its own. Empty on every path that hasn't —
+# an early bail, and every --base-url run, which by definition targets a server it did not
+# launch and must never kill.
+SERVER_PGID=""
+SERVER_PORT=""
+BUILD_LOG="$PWD/checklist-build.log"
+SERVER_LOG="$PWD/checklist-server.log"
+
+# Written as a loop over a captured value rather than `ss … | grep -q`, which is scripts/CLAUDE.md's
+# pipefail race. Non-zero if the port is still held when the budget runs out, so the caller can
+# escalate instead of assuming the port is free.
+wait_for_port_release() {
+  local port="$1" secs="$2" i
+  for ((i = 0; i < secs; i++)); do
+    [ -z "$(ss -lntH "sport = :$port")" ] && return 0
+    sleep 1
+  done
+  [ -z "$(ss -lntH "sport = :$port")" ]
+}
+
+# Stops the server this run started, if it started one. Idempotent: it clears SERVER_PGID, so the
+# EXIT trap calling it after start_server's own retry has already called it is a no-op.
+stop_server() {
+  if [ -z "$SERVER_PGID" ]; then
+    return 0
+  fi
+  echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID)."
+  # The whole process group: `next start` spawns a next-server child that is what actually holds
+  # the port, so killing the leader alone orphans it — the same lesson #1155/#1569 learned about
+  # the dev server. `|| true` because a server that has already died is a branch, not a failure.
+  kill -- "-$SERVER_PGID" 2>/dev/null || true
+  if ! wait_for_port_release "$SERVER_PORT" 10; then
+    echo "Port $SERVER_PORT still held 10s after SIGTERM — escalating to SIGKILL."
+    kill -9 -- "-$SERVER_PGID" 2>/dev/null || true
+    if ! wait_for_port_release "$SERVER_PORT" 5; then
+      # Loud rather than silent: this script's contract is that a run leaves no server behind,
+      # and this is the one path where it couldn't keep it.
+      echo "WARNING: port $SERVER_PORT is still held after SIGKILL. Holder: $(ss -lptnH "sport = :$SERVER_PORT")" >&2
+    fi
+  fi
+  SERVER_PGID=""
+}
 
 cleanup() {
   # Captured first: teardown-test-barn.sh's own status would otherwise replace the status
   # the script is actually exiting with.
   local code=$?
+  # Before the barn teardown, so the server's memory is released first, and unconditional so every
+  # exit path leaves no server behind — a bad flag, a failed build, a Ctrl-C, or a green run.
+  stop_server
   if [ "$SEEDED" = true ]; then
     # --prefix, not --all: --all would delete a concurrent run's barns too.
     bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
@@ -128,10 +173,6 @@ while [ $# -gt 0 ]; do
       ;;
     --hold-open)
       HOLD_OPEN=true
-      shift
-      ;;
-    --no-recycle)
-      RECYCLE=false
       shift
       ;;
     --verbose)
@@ -196,8 +237,6 @@ if [ "$ALLOW_PROD" = true ]; then
     echo "Note: --allow-prod is a no-op here — .env.local points at the dev project ($DEV_SUPABASE_URL)." >&2
   fi
 fi
-
-E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 
 # Schema preflight (#1599). Every worktree shares one dev Supabase project, so a sibling
 # branch's `npx supabase db push` applies its schema for *all* of them, and keeps it applied
@@ -312,6 +351,93 @@ fi
 echo "Ensuring Playwright Chromium browser is installed..."
 npx playwright install chromium
 
+# Picks a free port, starts `next start` on it, and leaves SERVER_PORT/SERVER_PGID set for the EXIT
+# trap. The port is ephemeral and deliberately *not* in workflow-context.sh's per-worktree map:
+# nothing outside this run needs to reach this server, and a fixed port would be one more thing two
+# concurrent runs could contend for.
+start_server() {
+  local attempt pid i up server_log_text
+  for attempt in 1 2; do
+    # The kernel picks the port — bind 0, read it back, close — rather than this script probing
+    # `ss` for a free one, which answers a question about the past. `node` rather than `python3`
+    # because node is the one interpreter this repo already requires.
+    SERVER_PORT="$(node -e 'const s=require("net").createServer();s.listen(0,"127.0.0.1",()=>{process.stdout.write(String(s.address().port));s.close()})')"
+    echo "Starting this run's own production server on port $SERVER_PORT (log: $SERVER_LOG)..."
+    # TZ=UTC for exactly the reason package.json's `dev` script pins it (#1221): the suite's
+    # barn-vs-host timezone axis (docs/e2e-framework-facts.md fact 12) is framed on the server
+    # being UTC, and a server on the developer's own zone would move it silently.
+    # setsid so the server is its own process group and stop_server can kill it whole; the explicit
+    # redirect keeps its output out of checklist-suite.log, which this script's stdout is a tee into.
+    TZ=UTC setsid npx next start -p "$SERVER_PORT" > "$SERVER_LOG" 2>&1 < /dev/null &
+    pid=$!
+    # `|| true`: a server that died before this ran is a branch handled just below, not a failure
+    # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
+    SERVER_PGID="$(ps -o pgid= -p "$pid" | tr -d ' ')" || true
+    if [ -z "$SERVER_PGID" ]; then
+      echo "Error: the production server exited immediately. Last 40 lines of $SERVER_LOG:" >&2
+      tail -40 "$SERVER_LOG" >&2
+      exit 1
+    fi
+
+    up=false
+    for ((i = 0; i < 60; i++)); do
+      if curl -sf -o /dev/null "http://localhost:$SERVER_PORT/"; then
+        up=true
+        break
+      fi
+      # A lost race for the port surfaces here and nowhere else: the explicit -p above disables
+      # Next's port-hunting fallback, so the server exits rather than moving, and without this
+      # branch the only symptom would be the 120s timeout below blaming the wrong thing. The
+      # window is between the kernel handing the port out and next start binding it — small, but
+      # the ephemeral range is also where outbound sockets come from. Captured into a variable
+      # rather than piped into `grep -q`, per scripts/CLAUDE.md's pipefail race.
+      server_log_text="$(cat "$SERVER_LOG" 2>/dev/null || true)"
+      if [[ $server_log_text == *EADDRINUSE* ]]; then
+        echo "Port $SERVER_PORT was taken before next start could bind it — retrying on a fresh port."
+        break
+      fi
+      sleep 2
+    done
+    if [ "$up" = true ]; then
+      echo "Production server up on port $SERVER_PORT."
+      return 0
+    fi
+    stop_server
+  done
+
+  echo "Error: the production server never answered within 120s. Last 40 lines of $SERVER_LOG:" >&2
+  tail -40 "$SERVER_LOG" >&2
+  exit 1
+}
+
+# The suite serves itself (#1601). A `next start` serves what it compiled at build time, so no route
+# is compiled inside a test's own timeout budget and nothing the run touches has to be thrown away
+# afterwards — which is what retired #1569's post-run recycle along with the ~10 GB it existed to
+# reclaim. The developer's `next dev` is not involved at any point: Next 16 puts development builds
+# under `.next/dev` and production output under `.next`, so a build here cannot disturb a dev server
+# running in this same worktree.
+#
+# Placed after the schema preflight, so an abort doesn't first pay for a build, and outside the
+# e2e slot acquired below, so a build never extends the slot every other worktree is queued on.
+if [ -n "$BASE_URL" ]; then
+  echo "Targeting the existing server at $BASE_URL — skipping the production build and start (--base-url)."
+else
+  echo "Building this branch for production (log: $BUILD_LOG)..."
+  BUILD_START=$SECONDS
+  # Redirected to its own file rather than inherited into checklist-suite.log: the build's route
+  # table is ~60 lines that every later turn of the invoking session re-pays as cache-read input,
+  # which is the cost #1356 took out of this script's stdout. The failure path prints what matters.
+  if ! TZ=UTC npx next build > "$BUILD_LOG" 2>&1; then
+    echo "Error: 'next build' failed — the suite cannot serve a branch that does not build. Last 40 lines:" >&2
+    tail -40 "$BUILD_LOG" >&2
+    exit 1
+  fi
+  echo "Build completed in $((SECONDS - BUILD_START))s."
+  start_server
+fi
+
+E2E_BASE_URL="${BASE_URL:-http://localhost:$SERVER_PORT}"
+
 PLAYWRIGHT_ARGS=()
 if [ "$MODE" = "auto" ]; then
   PLAYWRIGHT_ARGS+=(--grep-invert @visual)
@@ -322,16 +448,22 @@ PLAYWRIGHT_ARGS+=("${SPEC_ARGS[@]}")
 
 echo "Seeding one barn per spec file per Playwright project, prefixed $RUN_PREFIX..."
 echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} --prefix $RUN_PREFIX"
+# Named here rather than only in stop_server's own output, because a SIGKILL of this script is the
+# one thing its EXIT trap cannot survive, and setsid means the server would outlive it. Spelled as
+# an `if` rather than `[ … ] && echo …`, which under `set -e` exits the script on the empty case.
+if [ -n "$SERVER_PGID" ]; then
+  echo "  ...and kill this run's server with: fuser -k $SERVER_PORT/tcp"
+fi
 SEEDED=true
 
 # Captured rather than left to `set -e` so --hold-open still prompts on a failing run — which
 # is when holding the barns open to inspect them matters most.
 #
 # Playwright runs under `e2e-slot.sh` (#1295), which blocks until the one machine-wide slot is free
-# (#1598 dropped it from two) — the cross-worktree half of the memory fix whose per-run half is
-# `workers: 2`. Wrapping only this call is deliberate: the acquire covers exactly the span that
-# loads the dev server, so the --hold-open prompt below and the recycle before it hold no slot
-# while a human walks a checklist.
+# (#1598 dropped it from two). Wrapping only this call is deliberate, and the boundary is drawn in
+# two directions: the build above stays outside, so a two-minute build never extends the slot every
+# other worktree is queued on, and the --hold-open prompt below stays outside, so a human walking a
+# checklist in the seeded barns blocks nobody.
 # The wrapper `exec`s, so the env prefix here still reaches Playwright and $? is still Playwright's
 # own status. Unconditional, single-spec runs included — RAM is the constraint whether the run is
 # one spec or seventy-three, and the exemption single-spec runs held under /fableFleet's prose mutex
@@ -347,123 +479,6 @@ E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
   bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
-
-# Written as a loop over a captured value rather than `ss … | grep -q`, which is scripts/CLAUDE.md's
-# pipefail race. Non-zero if the port is still held when the budget runs out, so the caller can
-# escalate instead of relaunching into it.
-wait_for_port_release() {
-  local port="$1" secs="$2" i
-  for ((i = 0; i < secs; i++)); do
-    [ -z "$(ss -lntH "sport = :$port")" ] && return 0
-    sleep 1
-  done
-  [ -z "$(ss -lntH "sport = :$port")" ]
-}
-
-# A `next dev` server costs ~1.4 GB serving one route and ~10 GB once it has served this suite,
-# and never gives that back — it's route breadth, not uptime (#1569). Nothing else reclaims it:
-# `/testIssue` Step 3 reuses whatever answers the port and `/finishIssue` Step 6 is the only thing
-# that kills it, so the residue would sit there for the whole testIssue→finishIssue window; three
-# worktrees doing that at once exhausted 32 GB of RAM and 8 GB of swap on 2026-08-17. It lives here
-# rather than in each calling skill because per-skill prose is the shape that already drifted twice
-# and got centralized into workflow-context.sh (#1118) and select-specs.sh (#1213).
-recycle_dev_server() {
-  # Scheme and path stripped off, leaving host[:port]. Only a localhost origin is ours to restart,
-  # which is also what makes --allow-prod never recycle: it requires --base-url, and that origin is
-  # by definition not this machine's dev server. No bracketed-IPv6 case — `%%:*` can't parse one,
-  # and every caller in this repo passes http://localhost:{port}.
-  local hostport="${E2E_BASE_URL#*://}"
-  hostport="${hostport%%/*}"
-  local host="${hostport%%:*}" port="${hostport##*:}"
-  case "$host" in
-    localhost | 127.0.0.1) ;;
-    *)
-      echo "Skipping dev-server recycle: $E2E_BASE_URL is not localhost."
-      return 0
-      ;;
-  esac
-  # No colon, so the origin's port is the scheme default — not a `next dev` this repo started.
-  if [ "$port" = "$host" ]; then
-    echo "Skipping dev-server recycle: $E2E_BASE_URL names no port."
-    return 0
-  fi
-
-  # `ss`, not `lsof` (#1155): lsof returns empty for a live next-server that ss reports a pid for
-  # immediately, with or without -sTCP:LISTEN. `tail -1`, not `head -1`, because head stops reading
-  # and under `pipefail` the SIGPIPE'd producer then reports the whole pipeline as failed — the
-  # race scripts/check-pipefail-race.sh exists to catch. tail drains, and the extra lines it reads
-  # past are the same listener on another address family anyway.
-  # `|| true` because nothing listening is a *branch*, not a failure: grep exits 1, pipefail makes
-  # that the pipeline's status, and `set -e` would abort the script mid-assignment — leaving the
-  # "nothing to recycle" branch below unreachable and the skip silent.
-  local pid
-  pid="$(ss -lptnH "sport = :$port" | grep -oP 'pid=\K[0-9]+' | tail -1)" || true
-  if [ -z "$pid" ]; then
-    echo "No dev server listening on port $port — nothing to recycle."
-    return 0
-  fi
-
-  # npm → next → next-server share one PGID. Killing the pid alone orphans the children that
-  # actually hold the port, and the relaunch below then dies on EADDRINUSE — an explicit -p
-  # disables Next's port-hunting fallback.
-  # Same `|| true` reasoning as the pid lookup: `ps` exits 1 if the process is already gone.
-  local pgid
-  pgid="$(ps -o pgid= -p "$pid" | tr -d ' ')" || true
-  if [ -z "$pgid" ]; then
-    echo "Dev server pid $pid vanished before it could be recycled — nothing to do."
-    return 0
-  fi
-  echo "Recycling dev server on port $port (pid $pid, pgid $pgid) — it is holding this run's compiled routes."
-
-  # SIGINT is ignored from here until the relaunch is airborne. A Ctrl-C in between would leave the
-  # port with no server and no diagnosis — the one window in this script where an interrupt destroys
-  # state rather than just abandoning it. Restored before `setsid` so the child doesn't inherit the
-  # ignore, which would outlive this script along with it.
-  trap '' INT
-
-  # The relaunch loses the race to a port the kernel hasn't released yet, so wait for it — and
-  # escalate rather than launching into a port that's still held. The explicit -p below disables
-  # Next's port-hunting fallback, so a relaunch that loses this race dies on EADDRINUSE and the
-  # only symptom is the 90s timeout further down: a dead port behind a misleading message.
-  if ! wait_for_port_release "$port" 15; then
-    echo "Dev server on port $port still holds it 15s after SIGTERM — escalating to SIGKILL."
-    kill -9 -- "-$pgid" 2>/dev/null || true
-    if ! wait_for_port_release "$port" 5; then
-      trap 'exit 130' INT
-      echo "WARNING: port $port is still held after SIGKILL, so it is not this run's dev server — not relaunching, since an explicit -p would only fail with EADDRINUSE. Holder: $(ss -lptnH "sport = :$port")" >&2
-      return 0
-    fi
-  fi
-  trap 'exit 130' INT
-
-  # setsid: the fresh server has to outlive this script — the next /testIssue step reuses whatever
-  # answers the port — and needs its own session so it isn't in the process group of whatever kills
-  # this one. `/finishIssue` Step 6 still finds it, since that resolves the pid from the port.
-  # The explicit redirect is what keeps `next dev`'s output out of checklist-suite.log: this
-  # script's own stdout is a tee into that file, and the child would otherwise inherit it.
-  setsid npm run dev -- -p "$port" > "/tmp/devserver-$port.log" 2>&1 < /dev/null &
-
-  local up=false i
-  for ((i = 0; i < 45; i++)); do
-    if curl -sf -o /dev/null "http://localhost:$port/"; then
-      up=true
-      break
-    fi
-    sleep 2
-  done
-  if [ "$up" = true ]; then
-    echo "Dev server back up on port $port — log: /tmp/devserver-$port.log"
-  else
-    # Loud rather than silent: the port is now dead, and every later step assumes it isn't.
-    echo "WARNING: the recycled dev server on port $port never answered within 90s — nothing is serving that port now. See /tmp/devserver-$port.log" >&2
-  fi
-}
-
-# Before the --hold-open prompt, so held-open manual steps get the fresh server; after PW_EXIT is
-# captured, so it runs on a failing suite too and the script still exits with Playwright's status.
-if [ "$RECYCLE" = true ]; then
-  recycle_dev_server
-fi
 
 if [ "$HOLD_OPEN" = true ]; then
   echo
