@@ -69,6 +69,17 @@ sleep "${FAKE_TEARDOWN_SLEEP:-0}"
 # To stdout as well as to the marker, because the real script prints here too: that output goes
 # through the log writer, and it is what the terminator has to be ordered *after*.
 echo "fake teardown-test-barn.sh: $*"
+# FAKE_TEARDOWN_NOISE widens that output until it cannot fit in the pipes between this script and
+# the log file, which is what gives the ordering case its forcing function (#1621). Written as a
+# bash loop rather than `head -c … | tr | fold`, so nothing here depends on which coreutils the
+# host ships — this host runs uutils, GitHub Actions runs GNU, and the two differ in places that
+# already cost this script a review round.
+if [ "${FAKE_TEARDOWN_NOISE:-0}" -gt 0 ]; then
+  noise_line="$(printf 'x%.0s' {1..99})"
+  for ((noise_i = 0; noise_i < FAKE_TEARDOWN_NOISE / 100; noise_i++)); do
+    printf '%s\n' "$noise_line"
+  done
+fi
 printf '%s\n' "$*" >> "$PWD/teardown-called.log"
 EOF
 
@@ -120,6 +131,20 @@ case "$tool" in
         printf '%s\n' "$@" > "$FAKE_STATE/playwright-args"
         env | grep -E '^E2E_' | sort > "$FAKE_STATE/playwright-env"
         touch "$FAKE_STATE/playwright-started"
+        if [ "${FAKE_PW_LEAK_STDOUT:-0}" = 1 ]; then
+          # A leaked browser, reduced to its one load-bearing property: a descendant of Playwright
+          # that outlives it **holding the suite script's stdout open** (#1607 finding B). There is
+          # deliberately no redirect here — inheriting that descriptor is the whole fixture, and it
+          # is why the log writer never sees EOF and an unbounded drain would hang `cleanup`.
+          # Its own pid is recorded from inside so the harness kills exactly what this fixture
+          # created; `setsid --fork` puts it in its own session, so the suite's process-group
+          # signals cannot reach it and neither could a pattern match this file is not allowed.
+          setsid --fork bash -c 'echo $$ > "$1"; exec sleep 120' _ "$FAKE_STATE/leaked-pid" &
+          for _ in $(seq 1 50); do
+            [ -s "$FAKE_STATE/leaked-pid" ] && break
+            sleep 0.1
+          done
+        fi
         sleep "${FAKE_PW_SLEEP:-0}"
         exit "${FAKE_PW_EXIT:-0}"
         ;;
@@ -232,9 +257,21 @@ kill_repo_suite() {
   fi
 }
 
+# The FAKE_PW_LEAK_STDOUT holder, killed by the pid the fixture itself recorded. It is in its own
+# session precisely so the suite's group signals cannot reach it, which means nothing else in this
+# file's teardown reaches it either — without this it would sit for its full 120s holding a pipe.
+kill_repo_leak() {
+  local pid
+  pid="$(cat "$1/state/leaked-pid" 2>/dev/null || true)"
+  if [ -n "$pid" ] && [ "$pid" -gt 1 ] 2>/dev/null; then
+    kill -9 "$pid" 2>/dev/null || true
+  fi
+}
+
 cleanup_repo() {
   kill_repo_suite "$1"
   kill_repo_server "$1"
+  kill_repo_leak "$1"
   rm -rf "$1"
 }
 
@@ -264,6 +301,11 @@ run_suite() {
 # Same, but in its own session so a case can signal the script's whole process **group** — which is
 # the delivery that matters (see the signal section's comment). `exec` keeps the pid it records, so
 # the pid in the file is the script's own and the group id equals it.
+#
+# `SUITE_STDOUT` (default `/dev/null`) is where the run's stdout goes. Test 30 points it at a pipe
+# it deliberately never drains; every other caller wants it discarded. It is a variable rather than
+# an argument because the redirect has to sit on this function's own `setsid` call, and because a
+# case that forgets it gets the safe default.
 SUITE_PID=
 start_suite() {
   # Cleared first. A previous case's pid left in this global is a live pgid on this host, and the
@@ -279,7 +321,7 @@ start_suite() {
       echo $$ > "$1/state/suite-pid"
       shift
       exec bash scripts/run-checklist-suite.sh "$@"
-    ' _ "$REPO" "$@" >/dev/null 2>&1 < /dev/null
+    ' _ "$REPO" "$@" > "${SUITE_STDOUT:-/dev/null}" 2>&1 < /dev/null
   # Two mechanics here, and getting either wrong silently destroys what these cases assert.
   #
   # **No `&`.** Bash sets SIGINT and SIGQUIT to SIG_IGN in a command it runs asynchronously, and a
@@ -326,6 +368,17 @@ log_has() {
 terminator_code() {
   sed -n 's/.*run-checklist-suite\.sh exited \([0-9][0-9]*\) .*/\1/p' \
     "$REPO/checklist-suite.log" 2>/dev/null | tail -1
+}
+
+# The terminator's **position**, which is a strictly stronger claim than `log_has` (#1621). Presence
+# is what a bare `printf >> "$LOG_PATH"` buys on its own; position is what the bounded drain buys,
+# and it is what `/testIssue` Step 4 and `/overnightRefactor` have always described the log as
+# having. Only test 30 can make this fail on demand — see the comment there.
+terminator_is_last() {
+  case "$(tail -1 "$REPO/checklist-suite.log" 2>/dev/null)" in
+    "=== run-checklist-suite.sh exited "*) return 0 ;;
+  esac
+  return 1
 }
 
 # Signals the suite's process group, and refuses to do it to a pid that is empty or already dead.
@@ -596,17 +649,23 @@ cleanup_repo "$REPO"
 # other process's outbound sockets come from, so a sibling worktree's suite can bind it in the
 # window between this run exiting and this line running — failing the case for a correct script.
 # The pid comes from the fixture's own record, so it names exactly what this run started.
+#
+# The `terminator_is_last` clause rides along free (#1621). It is deliberately **not** the forcing
+# function for the ordering property — on this path the writer drains in milliseconds either way,
+# so it would pass with the drain removed. Test 30 owns that; this one only pins that the ordinary
+# path, which is every real run, actually exhibits what the two skills describe.
 REPO="$(make_repo)"
 run_suite && rc=0 || rc=$?
 port="$(head -1 "$REPO/state/server-ports" 2>/dev/null || true)"
 server_pid="$(cat "$REPO/state/server-pid" 2>/dev/null || true)"
 if [ "$rc" -eq 0 ] && [ -n "$port" ] && [ -n "$server_pid" ] &&
   ! kill -0 "$server_pid" 2>/dev/null &&
-  [ -e "$REPO/teardown-called.log" ]; then
-  assert_pass "default run: builds, serves, tears down, leaves no server behind"
+  [ -e "$REPO/teardown-called.log" ] &&
+  terminator_is_last; then
+  assert_pass "default run: builds, serves, tears down, leaves no server behind, terminator last"
 else
-  assert_fail "default run: builds, serves, tears down, leaves no server behind" \
-    "exit=$rc port=$port server_pid=$server_pid alive=$(kill -0 "${server_pid:-0}" 2>/dev/null && echo yes || echo no)"
+  assert_fail "default run: builds, serves, tears down, leaves no server behind, terminator last" \
+    "exit=$rc port=$port server_pid=$server_pid alive=$(kill -0 "${server_pid:-0}" 2>/dev/null && echo yes || echo no) last='$(tail -1 "$REPO/checklist-suite.log" 2>/dev/null)'"
 fi
 cleanup_repo "$REPO"
 
@@ -829,6 +888,125 @@ else
     "preconditions=$started27 reader exit=$reader_rc (124 = still open after 25s)"
 fi
 cleanup_repo "$REPO"
+
+# --- Bounded drain, bounded teardown, and the terminator's position (#1621) ----------------------
+
+# A variable assignment prefixed to a *function* call persists in the calling shell in bash's
+# default (non-POSIX) mode, so every knob these three cases introduce is unset again afterwards.
+# The pre-existing cases get away without it because the ones that follow them pin an exit code a
+# stale `FAKE_*` cannot forge; these knobs leak processes and multi-second waits instead.
+
+# Test 28: a leaked process holding this script's stdout must not hang `cleanup` (#1607 finding B).
+# The log writer sees EOF only when *every* holder of its pipe closes it, and this script's stdout
+# is inherited by `npx playwright test` — so a leaked browser keeps it open and an unbounded drain
+# blocks forever inside the one handler whose job is to guarantee teardown and the terminator,
+# turning a visible failure into an invisible hang.
+#
+# Which assertion forces what, because they are not interchangeable:
+#   - `log writer did not drain` is red on a script with no drain at all, and green once the drain
+#     exists and is bounded.
+#   - the elapsed-time bound is what a drain with the watchdog *removed* fails: it does not return.
+#   - `leak_alive` is the anti-vacuity guard. If the fixture's leak had already exited, no holder
+#     would remain, the writer would drain instantly, and this case would pass having tested nothing.
+REPO="$(make_repo)"
+start=$SECONDS
+FAKE_PW_LEAK_STDOUT=1 DRAIN_TIMEOUT_SECONDS=3 \
+  run_suite --base-url http://127.0.0.1:9999 && rc=0 || rc=$?
+elapsed=$((SECONDS - start))
+leak_pid="$(cat "$REPO/state/leaked-pid" 2>/dev/null || true)"
+leak_alive=no
+[ -n "$leak_pid" ] && kill -0 "$leak_pid" 2>/dev/null && leak_alive=yes
+if [ "$leak_alive" = yes ] && [ "$elapsed" -lt 40 ] &&
+  log_has "log writer did not drain" &&
+  terminator_is_last; then
+  assert_pass "a leaked stdout holder: drain is bounded, terminator still last"
+else
+  assert_fail "a leaked stdout holder: drain is bounded, terminator still last" \
+    "leak_alive=$leak_alive elapsed=${elapsed}s exit=$rc warned=$(log_has 'log writer did not drain' && echo yes || echo no) last='$(tail -1 "$REPO/checklist-suite.log" 2>/dev/null)'"
+fi
+cleanup_repo "$REPO"
+unset FAKE_PW_LEAK_STDOUT DRAIN_TIMEOUT_SECONDS
+
+# Test 29: a hung teardown is bounded, and the bound is escapable only by SIGKILL (#1620, absorbed).
+# `cleanup` masks INT/TERM/HUP for its whole length, which is what stops a signal abandoning the
+# teardown midway — and left unbounded that same mask means a hung Supabase can only be escaped
+# with SIGKILL, which is the one path that leaves the server behind.
+#
+# Two mutants die here, and the second is the reason `-s KILL` is not decoration. Dropping the
+# `timeout` makes the run take FAKE_TEARDOWN_SLEEP seconds. Dropping `-s KILL` does the same, but
+# only because the script re-installs `trap '' INT TERM HUP` inside the timeout's child: `timeout`
+# catches those signals before it forks, and a *caught* disposition resets to SIG_DFL across
+# `exec`, so without that re-install the bound would silently un-mask the whole teardown call and
+# tests 24 and 25 would be the ones to go red.
+REPO="$(make_repo)"
+start=$SECONDS
+FAKE_TEARDOWN_SLEEP=30 TEARDOWN_TIMEOUT_SECONDS=2 \
+  run_suite --base-url http://127.0.0.1:9999 && rc=0 || rc=$?
+elapsed=$((SECONDS - start))
+if [ "$elapsed" -lt 20 ] &&
+  [ -e "$REPO/teardown-started" ] && [ ! -e "$REPO/teardown-called.log" ] &&
+  log_has "teardown did not finish within" &&
+  log_has "teardown-test-barn.sh" &&
+  log_has "--prefix e2e-" &&
+  terminator_is_last; then
+  assert_pass "a hung teardown is killed at the bound, recovery command re-emitted, terminator last"
+else
+  assert_fail "a hung teardown is killed at the bound, recovery command re-emitted, terminator last" \
+    "elapsed=${elapsed}s exit=$rc started=$([ -e "$REPO/teardown-started" ] && echo yes || echo no) completed=$([ -e "$REPO/teardown-called.log" ] && echo yes || echo no) warned=$(log_has 'teardown did not finish within' && echo yes || echo no)"
+fi
+cleanup_repo "$REPO"
+unset FAKE_TEARDOWN_SLEEP TEARDOWN_TIMEOUT_SECONDS
+
+# Test 30: **the ordering property, with a forcing function.** #1607's test 26 asserted the same
+# thing and could not be made to fail — nothing synchronised the append, so on a fast host it
+# passed with or without the fix. This one removes the timing question entirely.
+#
+# The console side of the writer is a fifo this file holds open and never reads, so `grep` fills
+# its pipe and blocks, `tee` fills its pipe to `grep` and blocks, and the teardown stub's 1 MB
+# fills the fifo feeding the writer. At the moment `cleanup` would append the terminator there is
+# therefore a **guaranteed** backlog sitting unread — not a probable one. Then:
+#   - with the drain: the writer was killed at the bound, so unblocking the console changes
+#     nothing and the terminator is still the last line (of a log that is honestly truncated,
+#     which the WARNING above it says).
+#   - without it: the writer is merely blocked, so the terminator looks last *until* the console
+#     is drained, at which point the backlog lands after it. That is why this case asserts after
+#     unblocking rather than before, and why it fails deterministically rather than usually.
+# Measured while designing #1621: 40 956-byte log ending in the terminator, versus a 101 050-byte
+# log with the terminator ~40 KB from the end.
+# Launched through `start_suite` rather than in the foreground, for the same reason every signal
+# case is: a run whose console is blocked and whose script is broken never returns, and a
+# foreground launch would hang this gate instead of failing the case. The recorded pgid also lets
+# `cleanup_repo` kill the whole run — verified necessary the hard way, when an interrupted round of
+# this case left the script, its `tee`, its `grep` and the teardown stub all blocked on the fifo.
+REPO="$(make_repo)"
+mkfifo "$REPO/console"
+# Read-write so opening never blocks and the pipe always has a holder; deliberately never read from
+# until the assertions below say so.
+exec 9<> "$REPO/console"
+SIGNAL_OK=true
+started30=true
+SUITE_STDOUT="$REPO/console" FAKE_TEARDOWN_NOISE=1000000 \
+TEARDOWN_TIMEOUT_SECONDS=3 DRAIN_TIMEOUT_SECONDS=3 \
+  start_suite --base-url http://127.0.0.1:9999 || started30=false
+if [ "$started30" = true ]; then
+  await_log "run-checklist-suite.sh exited" 600 || started30=false
+fi
+last_while_blocked=$(terminator_is_last && echo yes || echo no)
+# Unblock the console and give whatever the writer still held every chance to land.
+timeout 5 cat <&9 > /dev/null
+sleep 1
+last_after_unblock=$(terminator_is_last && echo yes || echo no)
+exec 9>&-
+if [ "$started30" = true ] &&
+  log_has "log writer did not drain" &&
+  [ "$last_after_unblock" = yes ]; then
+  assert_pass "a backlogged writer cannot land output after the terminator"
+else
+  assert_fail "a backlogged writer cannot land output after the terminator" \
+    "reached_terminator=$started30 blocked=$last_while_blocked after=$last_after_unblock size=$(wc -c < "$REPO/checklist-suite.log" 2>/dev/null) last='$(tail -c 60 "$REPO/checklist-suite.log" 2>/dev/null | tail -1)'"
+fi
+cleanup_repo "$REPO"
+unset SUITE_STDOUT FAKE_TEARDOWN_NOISE TEARDOWN_TIMEOUT_SECONDS DRAIN_TIMEOUT_SECONDS
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
