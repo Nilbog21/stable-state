@@ -558,4 +558,18 @@ describe('LessonForm', () => {
     })
   })
 
+  // #1616 review round. `horses.name` is `TEXT NOT NULL` with no per-barn uniqueness constraint, so
+  // two horses in one barn really can share a name — and then all three keys above tie and the order
+  // falls back to input order again, the same defect one level down. The id key makes the comparator
+  // total, following the idiom already at six sites (`db/expenses.ts`, `db/lesson-participants.ts`,
+  // `db/lessons.ts`, `horses/[id]/page.tsx`), all of which read `name || id`.
+  it('should_sort_same_name_horses_by_id', () => {
+    const second = createMockHorse({ id: 'horse-b', name: 'Bella', is_available: false })
+    const first = createMockHorse({ id: 'horse-a', name: 'Bella', is_available: false })
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[second, first]} />)
+    const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+      .map((el) => (el as HTMLInputElement).value)
+    expect(rendered).toEqual(['horse-a', 'horse-b'])
+  })
+
 })
