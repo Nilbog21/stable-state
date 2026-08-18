@@ -476,6 +476,37 @@ else
 fi
 cleanup_repo "$REPO"
 
+# Test 11a: a var left at its `.env.example` placeholder is rejected the same way an unset one is
+# (#1619). Numbered 11a rather than 12 to avoid renumbering every case below it — this sits with
+# the bail it extends, and the tests it would otherwise have pushed down are being appended to
+# concurrently.
+#
+# `<random-secret>` is the exact string `.env.example` shipped on line 11 until this issue, and
+# `CRON_SECRET` is the variable where copy-through actually cost something: `/api/cron/reset-demo`
+# compares it to the request's `Authorization` header, so a copied-through value left the
+# demo-reaper endpoint guarded by a published string. Empty was already the correct sentinel here
+# — the loop rejects it, and the route 401s on it — and the placeholder was the one value that
+# defeated both.
+#
+# Three assertions, and the third is the one that means "before the run starts" rather than merely
+# "exits non-zero eventually": `state/playwright-args` is written by the `npx` shim the moment
+# Playwright is invoked, so its **absence** is what proves the bail is upstream of the run. The
+# terminator assertion is the other half — the `EXIT` trap is installed above these checks
+# precisely so early bails still write it, and #1602's merge gate parses that line.
+REPO="$(make_repo)"
+sed -i 's/^CRON_SECRET=.*/CRON_SECRET=<random-secret>/' "$REPO/.env.local"
+run_suite && rc=0 || rc=$?
+if [ "$rc" -ne 0 ] &&
+  log_has "CRON_SECRET is still the .env.example placeholder" &&
+  log_has "run-checklist-suite.sh exited" &&
+  [ ! -e "$REPO/state/playwright-args" ]; then
+  assert_pass "placeholder CRON_SECRET: aborts before the run starts, naming the var, with a terminator"
+else
+  assert_fail "placeholder CRON_SECRET: aborts before the run starts, naming the var, with a terminator" \
+    "exit=$rc playwright_invoked=$([ -e "$REPO/state/playwright-args" ] && echo yes || echo no)"
+fi
+cleanup_repo "$REPO"
+
 # --- Schema preflight (#1599) --------------------------------------------------------------------
 
 # Test 12: a DB ahead of the branch aborts before the build, naming the version.
