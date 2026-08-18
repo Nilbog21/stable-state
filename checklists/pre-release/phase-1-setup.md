@@ -33,7 +33,7 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e: the_nav_demo_barn_name_renders_amber) That nav name renders amber
 - [ ] (e2e: the_user_menu_hides_the_profile_link_for_the_demo_user) The user menu does not show a **Profile** link while signed in as the demo user
 - [ ] (e2e: visiting_profile_as_the_demo_user_redirects_away) Visiting `/profile` directly while signed in as the demo user redirects to `/`
-- [ ] (manual, before-suite — a spec cannot drive it, and neither can anything else run alongside it: `reset-db.sh` wipes every barn in the dev project, so it destroys the suite's fixtures as readily as its own. It also deletes every auth user, the demo one included, so `scripts/setup-demo-user.sh` has to be re-run — see the Prerequisites — before the suite launches) Reset and reseed the dev database:
+- [ ] (manual, before-suite — a spec cannot drive it, and neither can anything else run alongside it: `reset-db.sh` wipes every barn in the dev project, so it destroys the suite's fixtures as readily as its own. It also deletes every auth user, the demo one included, but since #1607 it re-runs `scripts/setup-demo-user.sh` itself and that script keeps the `DEMO_USER_PASSWORD` already in `.env.local`, so `/demo` survives a reset with no manual step) Reset and reseed the dev database:
 
   ```bash
   bash scripts/reset-db.sh

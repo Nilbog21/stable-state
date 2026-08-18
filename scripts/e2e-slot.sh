@@ -35,7 +35,8 @@ SLOTS=1
 # need no ownership check. It is also tmpfs, which is correct: a stale slot file across a reboot
 # would be meaningless anyway, since the locks live on open fds rather than on the files. The
 # fallback covers a context with no session bus (a cron shell, a container); `E2E_SLOT_DIR` is the
-# override, and `scripts/e2e-slot.test.sh` is its only user.
+# override, used by `scripts/e2e-slot.test.sh` and by `scripts/run-checklist-suite.test.sh` (#1607),
+# which runs the real wrapper against a per-case temp dir so its fixtures never touch this cap.
 SLOT_DIR="${E2E_SLOT_DIR:-${XDG_RUNTIME_DIR:-/tmp/stable-state-run-$(id -u)}/stable-state-e2e-slots}"
 
 # How long to wait between sweeps when nothing is free. A suite run is minutes, so a tighter poll

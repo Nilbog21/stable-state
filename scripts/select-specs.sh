@@ -37,10 +37,25 @@ cd "$root" || exit 1
 # lost coverage through the gap — calendar/**, documents/**, ExhaustionBar.tsx,
 # useOutsideDismiss.ts. A module reached through a *shared helper* is exactly the one an
 # author forgets their spec drives, so it can't be left to per-spec declaration.
+#
+# scripts/run-checklist-suite.sh is here for the same reason playwright.config.ts is (#1607). It
+# cannot reach a browser, and #1550's principle — a file that cannot reach a browser cannot be the
+# reason to open one — therefore does not separate the two; what settles it is that the runner
+# governs strictly more than the config does: the origin every spec is pointed at, the env every
+# spec reads, and since #1601 whether a production server exists at all. Before this entry a diff
+# that rewrote that file returned mode=none, because no spec's covers: globs declare scripts/
+# either — so the one file whose blast radius is the whole suite was the one file a change to which
+# ran nothing.
+#
+# scripts/e2e-slot.sh is deliberately **not** here, and the omission is load-bearing rather than an
+# oversight: it decides whether runs serialise, never what any spec asserts, and it already carries
+# e2e-slot.test.sh in ci.sh. select-specs.test.sh asserts both directions (tests 20 and 21), so
+# neither the inclusion nor the exclusion is left to this comment.
 ALWAYS_FULL=(
   'e2e/support/**'
   'e2e/global-setup.ts'
   'playwright.config.ts'
+  'scripts/run-checklist-suite.sh'
   'src/proxy.ts'
   'src/app/layout.tsx'
   'src/app/barn/[slug]/(protected)/layout.tsx'
@@ -143,7 +158,8 @@ for path in "${changed[@]+"${changed[@]}"}"; do
   for glob in "${ALWAYS_FULL[@]}"; do
     if path_matches "$path" "$glob"; then
       # On stderr, and stdout stays `mode=full` alone: three skills parse this output as
-      # key=value lines, so a fourth line there is a contract change (asserted by test 20).
+      # key=value lines, so a fourth line there is a contract change (asserted by test 4, which
+      # reads stdout in isolation).
       # #1550 — `mode=full` used to print with no indication of *which* path escalated, so
       # confirming a 73-spec run was warranted meant reading ALWAYS_FULL against the diff by
       # hand. Nobody did, and a markdown file bought a full suite more than once.

@@ -54,7 +54,7 @@ The 4 nightly cron scripts don't follow the `.sh`-validates/`.ts`-trusts split a
 
 Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
 
-`.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). **Do not add a `.test.sh` file** for a shell wrapper's own branching/arg-parsing logic, even when it's non-trivial (`change-user.sh`'s `--allow-prod`/slug parsing, `teardown-test-barn.sh`'s `--all` flag) — #667 removed six of these (`change-user`, `ci`, `reset-db`, `run-smoke-tests`, `seed-test-barn`, `teardown-test-barn`) because a `.test.sh` nobody wires into `ci.sh` is never actually run by anyone and just rots; #986 recreated two of them before this line was tightened to say so explicitly. The only `.test.sh` files that survive are ones actually invoked by `ci.sh` (`check-coverage.test.sh`, `check-doc-size.test.sh`, `select-specs.test.sh`, `check-pipefail-race.test.sh`, `check-e2e-tags.test.sh`, `check-function-grants.test.sh`, `check-ceremony-tags.test.sh`, `workflow-context.test.sh`, `e2e-slot.test.sh`) — if a `.test.sh` isn't wired in, delete it rather than leave it "for manual use." The last two are not exceptions: `base_for_labels()` is pure logic, not arg parsing (#1542), and `e2e-slot.sh` asserts concurrency behaviour — that a `SIGKILL`ed holder frees its slot, that the N+1th acquire blocks — which no `.test.ts` can reach (#1295).
+`.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). **Do not add a `.test.sh` file** for a shell wrapper's own branching/arg-parsing logic, even when it's non-trivial (`change-user.sh`'s `--allow-prod`/slug parsing, `teardown-test-barn.sh`'s `--all` flag) — #667 removed six of these (`change-user`, `ci`, `reset-db`, `run-smoke-tests`, `seed-test-barn`, `teardown-test-barn`) because a `.test.sh` nobody wires into `ci.sh` is never actually run by anyone and just rots; #986 recreated two of them before this line was tightened to say so explicitly. The only `.test.sh` files that survive are ones actually invoked by `ci.sh` (`check-coverage.test.sh`, `check-doc-size.test.sh`, `select-specs.test.sh`, `check-pipefail-race.test.sh`, `check-e2e-tags.test.sh`, `check-function-grants.test.sh`, `check-ceremony-tags.test.sh`, `workflow-context.test.sh`, `e2e-slot.test.sh`, `run-checklist-suite.test.sh`) — if a `.test.sh` isn't wired in, delete it rather than leave it "for manual use." The last three are not exceptions: `base_for_labels()` is pure logic, not arg parsing (#1542); `e2e-slot.sh` asserts concurrency behaviour — that a `SIGKILL`ed holder frees its slot, that the N+1th acquire blocks — which no `.test.ts` can reach (#1295); and `run-checklist-suite.sh` asserts signal and process-group behaviour plus the exit-code terminator two skills parse as contract, likewise out of a `.test.ts`'s reach (#1607, which found a third defect — the log-writing `tee` dying with the process group — that only a live-process harness could surface).
 
 `reset-db`/`seed-barn` is the canonical example of the full pattern, split across two files (#502): `reset-db.ts` holds the `.sh`-validated bootstrapping, `seed-barn.ts` holds the pure logic and its `.test.ts`.
 
@@ -62,7 +62,7 @@ Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage
 
 One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](../docs/scripts.md).
 
-- `reset-db` — wipe the dev project and reseed `dev-barn` via `seedBarn()`; recreates the three e2e logins after teardown
+- `reset-db` — wipe the dev project and reseed `dev-barn` via `seedBarn()`; recreates the e2e logins and the demo user after teardown
 - `seed-barn` — shared seeding module: `seedBarn()` plus fixture constants and pure date/variation helpers
 - `change-user` — swap your membership onto another member/role within a named barn
 - `seed-account` — create a managed-manager stub and print the invite path (also the prod bootstrap)
@@ -70,7 +70,7 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `seed-test-barn` — seed a throwaway walkthrough barn from `e2e/support/fixtures.ts`'s builders
 - `teardown-test-barn` — delete test barns; refuses `is_test_barn=false` rows (`--all`, `--prefix`)
 - `script-utils` — shared TS utilities: `createServiceClient`, `assertDevProject`, teardown helpers, `runCronJob`
-- `setup-demo-user` — one-time bootstrap of the shared demo auth user (deliberately no dev-project gate)
+- `setup-demo-user` — create/refresh the shared demo auth user; reuses a configured password (deliberately no dev-project gate)
 - `run-cron` — shared shell wrapper for the 4 nightly cron scripts
 - `generate-outstanding-notifications`, `generate-agreement-charges`, `generate-recurring-lessons`, `prune-old-notifications` — the 4 nightly GHA cron jobs (`run(supabase)` → `{ summary, hadErrors }`)
 - `e2e-slot` — kernel-held 1-slot semaphore the suite runs under (`--exclusive` for `db push`); `flock` on an `exec`'d fd, so death frees the slot

@@ -29,17 +29,35 @@ done
 # Playwright writes a line. Either branch costs the `list` reporter its live in-place progress
 # (stdout is no longer a TTY); the log keeps one static line per test, which is the better
 # trade for a file read afterwards. What reaches *stdout* differs — see the branches.
+#
+# Both branches fence the writer against TERM and HUP (#1607), so an interrupted run keeps the tail
+# of its log rather than losing everything from the signal onward. A process substitution's children
+# run in this script's own process group — measured, `tee` comes back carrying the script's pgid —
+# so without this a group-delivered TERM or HUP kills the writer mid-run.
+#
+# INT is deliberately absent, and the asymmetry is measured rather than tidy: with INT also ignored
+# the writer stops draining on that path and the tail is lost anyway, so adding it costs the thing
+# the fence is for. An ignored disposition is inherited across `exec`, so what is here covers `tee`
+# and the filter alike.
+#
+# **None of this is load-bearing for the exit-code terminator**, and it must not become so. Whether
+# a writer survives a given signal turns out to be environment-dependent — a group INT leaves it
+# alone on one host and kills it on GitHub Actions — so `cleanup` writes that line straight to
+# $LOG_PATH and to the saved fd 3 instead, and this fence only affects how much of the *rest* of
+# the log survives.
 if [ "$VERBOSE" = true ]; then
-  exec > >(tee -a "$LOG_PATH") 2>&1
+  exec > >(trap '' TERM HUP; tee -a "$LOG_PATH") 2>&1
 else
   # The log still gets the whole run; stdout drops only the reporter's per-test ✓/- lines,
   # which is ~190 of a 191-test run's 209 and is re-paid as cache-read input on every later
   # turn of the invoking session. Everything else passes through — this script's own echoes
   # (so early bails are untouched), `Running N tests`, ✘ lines, the failure detail blocks,
-  # the pass/fail summary counts, teardown, and the exit terminator. A stream filter rather
-  # than a reporter swap because the log has to keep full `list` output either way.
+  # the pass/fail summary counts, and teardown. Not the exit terminator: #1607 routed that
+  # around this filter entirely, straight to the log file. A stream filter rather
+  # than a reporter swap because the log has to keep full `list` output either way. (The exit
+  # terminator is no longer in this list: `cleanup` writes it to the log file directly.)
   # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
-  exec > >(tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
+  exec > >(trap '' TERM HUP; tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
 fi
 
 echo "Logging to $LOG_PATH"
@@ -99,16 +117,12 @@ stop_server() {
     return 0
   fi
   echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID)."
-  # SIGINT is ignored across the whole kill-and-escalate window below, and restored after it.
-  # #1569 added this same fence to `recycle_dev_server`'s structurally identical
-  # SIGTERM -> wait -> SIGKILL sequence, and added it in a *post-review fixup* (445c150a, "fence
-  # the interrupt") precisely because it had been missed once already: a Ctrl-C landing
-  # mid-escalation abandons the sequence before the "still held" diagnostic can print, which is
-  # the one place in this function where an interrupt destroys state rather than merely
-  # abandoning it. Bash's own signal deferral is not a substitute — it covers only the case where
-  # cleanup was entered from the INT trap's own `exit 130`, leaving every other path in (a failed
-  # build, a server that never answered, an ordinary pass or fail) exposed.
-  trap '' INT
+  # The interrupt fence this sequence needs lives in `cleanup`, which is this function's only
+  # caller — see the comment there for why it is installed one level up rather than here. #1569
+  # added the original `trap '' INT` at *this* level, in a post-review fixup (445c150a, "fence the
+  # interrupt"), because a signal landing mid-escalation abandons the sequence before the "still
+  # held" diagnostic can print; #1607 kept that intent and widened both the signal set and the
+  # region it covers.
   # The whole process group: `next start` spawns a next-server child that is what actually holds
   # the port, so killing the leader alone orphans it — the same lesson #1155/#1569 learned about
   # the dev server. `|| true` because a server that has already died is a branch, not a failure.
@@ -125,7 +139,6 @@ stop_server() {
       echo "WARNING: port $SERVER_PORT is still held after SIGKILL. Holder: $(ss -lptnH "sport = :$SERVER_PORT")" >&2
     fi
   fi
-  trap 'exit 130' INT
   SERVER_PGID=""
 }
 
@@ -133,6 +146,34 @@ cleanup() {
   # Captured first: teardown-test-barn.sh's own status would otherwise replace the status
   # the script is actually exiting with.
   local code=$?
+  # The whole handler is uninterruptible, and the extent is the point (#1607). A group-delivered
+  # INT/TERM/HUP abandons a running trap where it stands — it kills the `sleep` or the child the
+  # handler is sitting in — and every one of this handler's three jobs is a place where that
+  # destroys state rather than merely abandoning it: the server group survives, the barns leak, and
+  # the exit-code terminator #1602's merge gate waits on is never written. Group delivery is the
+  # shape that actually occurs (a terminal's Ctrl-C, a `kill -- -PGID`, a CI wrapper's own timeout
+  # escalation), and a *second* Ctrl-C from an impatient developer is the most ordinary trigger
+  # there is.
+  #
+  # It sits here rather than inside `stop_server`, where #1569 put the narrower `trap '' INT`, for
+  # two measured reasons. The escalation was never the only vulnerable region — `teardown-test-barn.sh`
+  # is a multi-second network call and the terminator write follows it, both outside any fence
+  # `stop_server` could install. And `stop_server` returns at its `[ -z "$SERVER_PGID" ]` guard
+  # before installing anything at all, which is *every* `--base-url` run and every path where
+  # `start_server` gave up — so a fence living there is absent from exactly the runs `--allow-prod`
+  # requires and `/testIssue` uses, where one signal then suffices.
+  #
+  # An *ignored* disposition is what makes this work: it is inherited across `exec`, so it covers
+  # `teardown-test-barn.sh` and the `sleep`s as well as this shell. A `trap 'handler'` would not —
+  # a caught disposition resets to default in the child. Nothing restores the previous traps
+  # afterwards, because there is no afterwards: this handler ends in `exit`.
+  trap '' INT TERM HUP PIPE
+  # PIPE is in that list, and `set +e` is here, for the same reason: if the log writer has already
+  # died, every diagnostic write below is a write to a broken pipe. Under the script's `set -e` a
+  # SIGPIPE or an EPIPE from a plain `echo` would abort this handler before the barns are torn down
+  # — which is the failure this whole fence exists to prevent, arriving through the one door the
+  # signal mask does not cover. A cleanup handler must not die of a failed diagnostic write.
+  set +e
   # Before the barn teardown, so the server's memory is released first, and unconditional so every
   # exit path leaves no server behind — a bad flag, a failed build, a Ctrl-C, or a green run.
   stop_server
@@ -140,7 +181,23 @@ cleanup() {
     # --prefix, not --all: --all would delete a concurrent run's barns too.
     bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
   fi
-  echo "=== run-checklist-suite.sh exited $code — full log: $LOG_PATH ==="
+  # The terminator is appended straight to $LOG_PATH rather than echoed through the `tee` this
+  # script's stdout feeds. That is the whole of the mechanism — there is no console copy, no drain
+  # and no watchdog — and it buys exactly one property: the line is **present** on every exit path,
+  # which is what `/testIssue` Step 4 and #1602's merge gate consume. It is written this way because
+  # routing it through the writer made its delivery depend on that writer surviving the signal that
+  # killed the run, and whether it does is environment-dependent: a group INT leaves the writer alone
+  # on this project's dev hosts and kills it on GitHub Actions, where the terminator then went
+  # missing on exactly the INT paths.
+  #
+  # **What this does NOT guarantee is position.** The append races the writer still emitting
+  # `stop_server`'s output and all of teardown's, so the terminator is usually but not always the
+  # log's last line. `/testIssue` Step 4 and `/overnightRefactor` both describe it as the line the
+  # log "ends with"; treat that as a description of the common case, not a guarantee, and grep for
+  # presence rather than reading the tail. Making it an actual guarantee needs the drain this
+  # deliberately does not do, and doing that correctly is its own design problem — see the follow-up
+  # issue, which also owns the teardown timeout in this same handler.
+  printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
   exit "$code"
 }
 # Installed before the .env.local/env-var checks below so those early bails get the same
@@ -151,6 +208,18 @@ trap cleanup EXIT
 # default signal handling, and to pin the exit status at 130 — the seeded barn outliving a
 # Ctrl-C is exactly the leak this script exists to prevent.
 trap 'exit 130' INT
+# TERM and HUP get the same treatment (#1607), and for the same reason the INT trap above gives:
+# to pin the exit status rather than leave it to bash. What the note above leaves implicit is the
+# consequence, which for these two was live. Bash runs the EXIT trap for a default-disposition
+# signal too, so teardown was not skipped — but it runs it with `$?` still **0**, and the trap
+# then writes `=== … exited 0 ===` for a run that was killed. `/testIssue` Step 4 and #1602's
+# merge gate both parse that line, so the missing traps did not merely lose a terminator, they
+# forged a passing one. INT never had that failure only because it already had its trap.
+#
+# These pin the status; `cleanup`'s own mask is what keeps the handler alive long enough to write
+# it. See the comment there.
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 while [ $# -gt 0 ]; do
   case "$1" in

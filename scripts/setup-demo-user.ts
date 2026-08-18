@@ -11,6 +11,16 @@ export function formatDemoCredentialsOutput(email: string, password: string): st
   return `DEMO_USER_EMAIL=${email}\nDEMO_USER_PASSWORD=${password}`
 }
 
+/**
+ * The credential this run should use: whatever is already configured, or a fresh one when nothing
+ * is (#1607). Extracted so the choice is assertable — it is the whole of what makes this script
+ * safe to re-run, and before #1607 the unconditional mint made every re-run rotate the password
+ * out from under `.env.local` and any deployment reading it.
+ */
+export function resolveDemoPassword(configured: string | undefined): string {
+  return configured && configured.length > 0 ? configured : randomUUID()
+}
+
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -19,11 +29,21 @@ async function run() {
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-  const password = randomUUID()
+  // Reuses the configured password when there is one, and mints a fresh one only when there
+  // isn't (#1607). Minting unconditionally made this script *idempotent about the user row and
+  // not about the credential*: every run rotated the password and left whatever had been pasted
+  // into `.env.local` — or set on Vercel — signing in with a stale one. That is why `reset-db.sh`
+  // can now call this at all; re-creating the demo user with a password nothing else knows would
+  // have left `/demo` redirecting to `?error=demo_unavailable` exactly as it did when the user
+  // was missing, which is the failure that call exists to prevent. It also closes the prod
+  // foot-gun `POST_RELEASE_TEST_CHECKLIST.md` warns about, where re-running this against an
+  // already-configured project rotated the credential out from under the deployment.
+  const password = resolveDemoPassword(process.env.DEMO_USER_PASSWORD)
 
-  // ponytail: findAuthUserIdsByEmails paginates auth.admin.listUsers 50-at-a-time —
-  // fine for a one-time bootstrap script, revisit with a direct email filter if prod's
-  // user count ever makes this scan noticeably slow.
+  // ponytail: findAuthUserIdsByEmails paginates auth.admin.listUsers 50-at-a-time — fine for a
+  // dev project's user count, revisit with a direct email filter if prod's ever makes this scan
+  // noticeably slow. (The ceiling is the user count, not how often this runs: since #1607 it runs
+  // on every `reset-db.sh`, not only at bootstrap.)
   const [existingUserId] = await findAuthUserIdsByEmails([DEMO_EMAIL], supabase)
 
   let userId: string

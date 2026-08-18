@@ -171,7 +171,7 @@ The script prints an invite path (`/barn/<slug>/register?token=<token>`). Send t
 
 ### 3. Set up the demo user
 
-Create the shared demo account used by the public demo flow. Safe to re-run any time (it resets the demo password rather than erroring), and works the same way locally — no `--allow-prod` flag needed. Requires the Email provider enabled in the Supabase dashboard (**Authentication → Providers → Email**) — a one-time step per project, since the app's normal sign-in flow is Google OAuth only:
+Create the shared demo account used by the public demo flow. Safe to re-run any time — it reuses the `DEMO_USER_PASSWORD` already in `.env.local` and mints one only when none is set, so a re-run does not invalidate the value you pasted (#1607), and works the same way locally — no `--allow-prod` flag needed. Requires the Email provider enabled in the Supabase dashboard (**Authentication → Providers → Email**) — a one-time step per project, since the app's normal sign-in flow is Google OAuth only:
 
 ```bash
 bash scripts/setup-demo-user.sh

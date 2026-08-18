@@ -100,13 +100,7 @@ Prompt each line the `before-suite` grep found, in file order, with Step 2's voc
 
 On a **fail** or **skip**, stop and ask whether to continue the run at all rather than pressing on: today's one such step is the database reset every later phase's data assumes, so a run that skips it is walking a checklist against unknown state.
 
-After the reset passes, re-run the demo-user setup before launching anything:
-
-```
-cd {worktree_path} && bash scripts/setup-demo-user.sh
-```
-
-and paste its two lines into `.env.local`. `reset-db.sh` deletes every auth user, the demo one included (the Prerequisites line says so); skip this and every `/demo` spec in the suite fails on a `?error=demo_unavailable` redirect, which names nothing about the cause.
+No demo-user step is needed after the reset any more (#1607): `reset-db.sh` still deletes every auth user, the demo one included, but it now re-runs `scripts/setup-demo-user.sh` itself, and that script reuses the `DEMO_USER_PASSWORD` already in `.env.local` rather than minting a new one. So `/demo` survives a reset with nothing to paste. If a `/demo` spec does fail on a `?error=demo_unavailable` redirect, that pairing is the thing to check first — an empty `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` in `.env.local`, or a password there that no longer matches the user.
 
 **Write these answers into the run file as they're given**, under a `## Before-suite checks` block of their own, before Step 0.5 launches anything. Don't cache them the way Step 2 caches a section's: Step 0.5's `Suite: RUNNING` line makes them unrepeatable the moment it lands, and the section they'd otherwise flush with is Phase 1's opening run, which doesn't flush until 45 checkboxes later. A session that dies in between would take the database-reset verdict every later phase assumes with it, and the resume branch above would not know to ask again.
 
