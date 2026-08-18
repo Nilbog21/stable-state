@@ -203,7 +203,19 @@ cleanup() {
   # case this whole arrangement exists for.
   exec 1>&3 2>&3
   if [ -n "$LOG_WRITER_PID" ]; then
+    # Bounded, and the bound is not belt-and-braces. The writer sees EOF only once *every* holder of
+    # its pipe closes it, and this script's stdout is inherited by `npx playwright test` — so a
+    # leaked browser process keeps that pipe open after the run is over and an unbounded `wait`
+    # blocks here forever, inside the one handler whose entire job is to guarantee teardown and the
+    # terminator. That would convert a visible failure into an invisible hang, which is the failure
+    # class this whole issue exists to close. The watchdog SIGKILLs the writer if it has not drained
+    # in 10s; the terminator is written directly afterwards either way, so the worst case degrades to
+    # "the log's tail may be truncated", never to "cleanup never finishes".
+    ( sleep 10; kill -9 "$LOG_WRITER_PID" 2>/dev/null ) &
+    log_writer_watchdog=$!
     wait "$LOG_WRITER_PID" 2>/dev/null || true
+    kill -9 "$log_writer_watchdog" 2>/dev/null || true
+    wait "$log_writer_watchdog" 2>/dev/null || true
   fi
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >&3

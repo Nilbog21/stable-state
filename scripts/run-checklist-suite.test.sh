@@ -124,6 +124,12 @@ case "$tool" in
         ;;
       test)
         shift
+        # A child that outlives the run and inherits stdout — i.e. the pipe to the log writer.
+        # Playwright leaking a browser process is the real-world shape; what matters is that
+        # something other than this script holds that pipe open after the run is over.
+        if [ "${FAKE_PW_LEAK_CHILD:-0}" = 1 ]; then
+          setsid --fork sleep 120 &
+        fi
         printf '%s\n' "$@" > "$FAKE_STATE/playwright-args"
         env | grep -E '^E2E_' | sort > "$FAKE_STATE/playwright-env"
         touch "$FAKE_STATE/playwright-started"
@@ -809,6 +815,29 @@ if [ "$reader_rc" = "0" ]; then
 else
   assert_fail "a SIGKILLed run closes its caller's stdout instead of hanging it" \
     "reader exit=$reader_rc (124 = still open after 25s)"
+fi
+cleanup_repo "$REPO"
+
+# Test 28: a leaked child holding the log writer's pipe must not hang `cleanup`.
+# `cleanup` waits for the writer to drain so the terminator lands last. The writer only sees EOF
+# once *every* holder of that pipe closes it, and Playwright's stdout is that pipe — so a leaked
+# browser process makes an unbounded wait block forever, inside the one handler whose whole job is
+# to guarantee teardown and the terminator. That converts a visible failure into an invisible hang,
+# which is the failure class this issue exists to close; the wait is therefore bounded.
+REPO="$(make_repo)"
+start=$SECONDS
+FAKE_PW_LEAK_CHILD=1 timeout 90 bash -c '
+  cd "$1" || exit 1
+  PATH="$1/shim:$PATH" FAKE_STATE="$1/state" FAKE_BIN="$1/shim" E2E_SLOT_DIR="$1/slots" \
+  FAKE_PW_LEAK_CHILD=1 bash scripts/run-checklist-suite.sh >/dev/null 2>&1 </dev/null
+' _ "$REPO" && rc=0 || rc=$?
+elapsed=$((SECONDS - start))
+await_log "run-checklist-suite.sh exited" 100
+if [ "$rc" -ne 124 ] && [ "$(terminator_code)" = "0" ]; then
+  assert_pass "a leaked child holding the log pipe does not hang cleanup (${elapsed}s)"
+else
+  assert_fail "a leaked child holding the log pipe does not hang cleanup" \
+    "exit=$rc (124 = hung) elapsed=${elapsed}s code=$(terminator_code)"
 fi
 cleanup_repo "$REPO"
 
