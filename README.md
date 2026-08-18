@@ -26,7 +26,7 @@ Running the app needs only the above. The dev scripts in `scripts/` and the work
 ## Development setup
 
 1. `npm install`
-2. Copy `.env.example` to `.env.local` and fill in your Supabase URL and anon key
+2. Copy `.env.example` to `.env.local` and replace every `<…>` placeholder with a real value — the Supabase URL, anon key and service-role key come from your project's API settings, and `DEV_SUPABASE_URL` must match `NEXT_PUBLIC_SUPABASE_URL` exactly. **Two lines ship empty and are meant to stay empty until you have a real value**: `DEMO_USER_PASSWORD`, which `setup-demo-user.sh` mints and prints for you to paste back, and `CRON_SECRET`, which you generate yourself with `openssl rand -hex 32`. Both are secrets that a copied-through placeholder would silently *become* rather than fail on — the demo user's real password, and the token guarding `/api/cron/reset-demo` — so a leftover `<…>` in either is now rejected: `setup-demo-user` treats it as unset and mints over it, and `run-checklist-suite.sh` refuses to start (#1619). The full per-variable table is [below](#envlocal-variables)
 3. Start Supabase locally (`npx supabase start`) or point `.env.local` at a remote project
 4. `npm run dev`
 
@@ -42,6 +42,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
+| `DEMO_USER_PASSWORD` | `/demo` + demo setup script | Password for the shared demo auth user. **Ships empty in `.env.example` and is meant to stay empty until you have a real one**: `setup-demo-user.sh` mints one and prints it for you to paste back, and treats an `.env.example` `<…>` placeholder as unset so it mints over that too (#1619) — before which a copied-through placeholder silently *became* the demo user's real password, a string published in this repo |
 | `CRON_SECRET` | `/api/cron/reset-demo` + e2e checklist suite | Bearer token the demo-reaper cron route authenticates against; generate with `openssl rand -hex 32`. Production's value lives in Vercel (`vercel.json` runs the route daily at 08:00 UTC — the Hobby plan allows a cron at most one run per day, #1438), but a local one is **required** — `run-checklist-suite.sh` refuses to start without it and exports it into the Playwright process, because the reaper spec has no other way to authenticate its POST. The check is that it is *set here*, not that it matches the origin under test: the route reads the variable from the server answering the request, so a dev server booted before you added it, or a `--base-url` naming a deployment, authenticates against a different value and the reap check gets a `401` |
 | `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, e2e-auth-users, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, `e2e-auth-users`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project). `run-checklist-suite` accepts the same flag with the same meaning, applying it to its own in-process seeding and forwarding it to the `teardown-test-barn` call it makes |
 
@@ -171,7 +172,7 @@ The script prints an invite path (`/barn/<slug>/register?token=<token>`). Send t
 
 ### 3. Set up the demo user
 
-Create the shared demo account used by the public demo flow. Safe to re-run any time — it reuses the `DEMO_USER_PASSWORD` already in `.env.local` and mints one only when none is set, so a re-run does not invalidate the value you pasted (#1607), and works the same way locally — no `--allow-prod` flag needed. Requires the Email provider enabled in the Supabase dashboard (**Authentication → Providers → Email**) — a one-time step per project, since the app's normal sign-in flow is Google OAuth only:
+Create the shared demo account used by the public demo flow. Safe to re-run any time — it reuses the `DEMO_USER_PASSWORD` already in `.env.local` and mints one only when none is set, or when what is set is still an `.env.example` `<…>` placeholder (#1619), so a re-run does not invalidate the value you pasted (#1607), and works the same way locally — no `--allow-prod` flag needed. Requires the Email provider enabled in the Supabase dashboard (**Authentication → Providers → Email**) — a one-time step per project, since the app's normal sign-in flow is Google OAuth only:
 
 ```bash
 bash scripts/setup-demo-user.sh
