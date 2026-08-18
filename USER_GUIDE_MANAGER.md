@@ -138,7 +138,7 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 **Barn Events** — Add calendar entries that aren't a lesson or an expense, like a costume party or a barn closure. Tap **Add Event** in the section header to create one: give it a title, a date and hour, and optional notes. The **Visible to** checkboxes control who sees the event — Manager, Trainer, Rider — and default to everyone checked, so you only need to narrow it down for something that shouldn't be barn-wide. Tap **Edit** next to an event to change any of that or delete it.
 
-**Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, trainer, and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet. Tap **Download Data** to get a single spreadsheet covering your horses, lessons, agreements, expenses, transactions, and members — one sheet per record type, always available.
+**Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, staff (trainer or manager), and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet. Tap **Download Data** to get a single spreadsheet covering your horses, lessons, agreements, agreement charges, expenses, transactions, members, and documents — one sheet per record type, newest first, always available.
 
 ## Profile & Guide
 
