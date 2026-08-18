@@ -64,7 +64,7 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (e2e: raising_the_fee_above_zero_restores_the_payment_type_field) Raise the fee back above `0` — the Payment Type field reappears
 - [ ] (e2e: an_unavailable_horse_renders_disabled_in_the_horse_picker) Daisy (Unavailable) appears **disabled** in the horse picker
 - [ ] (e2e: checking_a_horse_moves_it_above_the_unchecked_available_horses) Check one horse — it jumps to the top of the list ahead of unchecked available horses (ordered least-to-most worked)
-- [ ] (e2e: an_unavailable_horse_sorts_below_every_available_horse) Daisy sorts below every available horse, in the unavailable group at the bottom (the seed's Hazel shares that group and both carry no lessons, so which of the two is literally last is a tie-break rather than a rule)
+- [ ] (e2e: an_unavailable_horse_sorts_below_every_available_horse) Daisy sorts below every available horse, in the unavailable group at the bottom (the seed's Hazel shares that group and both carry no lessons, so the two tie on exertion and break by name — Daisy above Hazel)
 - [ ] (e2e: a_past_start_instant_renders_no_exhaustion_bars) Set the date/start time to the past — no bars render
 - [ ] (e2e: returning_the_start_instant_to_the_future_restores_the_exhaustion_bars) Set the date/start time back to the future — the bars reappear
 - [ ] (e2e: checking_recurring_relabels_the_date_field_to_starting_date) Check **Recurring (weekly)** — the Date field label changes to "Starting Date"
