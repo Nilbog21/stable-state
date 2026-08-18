@@ -68,7 +68,8 @@ RECYCLE=true
 SPEC_ARGS=()
 PROD_FLAG=()
 # Flipped just before Playwright starts, so an early bail (bad flag, missing .env.local,
-# unreadable Supabase vars) doesn't call teardown before any barn could exist.
+# unreadable Supabase vars, the schema preflight's abort) doesn't call teardown before any
+# barn could exist.
 SEEDED=false
 
 cleanup() {
@@ -207,23 +208,23 @@ E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 # them one NOT NULL constraint the branch under test had never seen. Ten minutes per run to
 # produce a wall of failures attributable to nothing in the diff.
 #
-# All four existing guards miss it, because each closes a different window: the fleet's sync
-# slot serializes syncs against each other; `e2e-slot.sh --exclusive` stops a push overlapping
-# a *run*; `/testIssue`'s stale-branch check covers *base* moving under the branch, not a
-# sibling's unmerged branch; and `/testIssue` Step 0's applied-vs-local comparison — the right
-# computation — runs only for `patch-N` branches. None covers a push whose schema stays applied
-# afterwards, and the fix can't be merged down from base either, since base won't carry the
-# pushing branch's migration until that PR merges. So the check has to be about the state of
-# the DB, not about branch ancestry. Full rationale: docs/scripts.md.
+# The pre-existing guards all miss it for one shared reason: each closes a window around a
+# *push*, and none covers a push whose schema stays applied afterwards. The fix can't be merged
+# down from base either, since base won't carry the pushing branch's migration until that PR
+# merges. So the check has to be about the state of the DB, not about branch ancestry. Which
+# guard covers which window is inventoried once, in docs/scripts.md — not duplicated here,
+# because a list kept in two places is the drift #1542 had to go back and fix.
 #
 # Placed here deliberately: after arg parsing (the --allow-prod skip below needs it) but before
 # the e2e slot is acquired and before any barn is seeded, so an abort consumes neither.
 if [ "$ALLOW_PROD" = true ]; then
-  # `migration list` compares local files against the CLI's *linked* project (the dev one, per
-  # supabase/.temp/project-ref), which an --allow-prod run is by definition not targeting — so
-  # this would be enforcing a check against the wrong database, and a dev DB that is legitimately
-  # ahead mid-development would falsely abort a deliberate prod run.
-  echo "Skipping the schema preflight: --allow-prod targets a project other than the linked (dev) one, which is the only project 'supabase migration list' can compare against."
+  # `migration list` compares local files against the project the CLI is *linked* to
+  # (supabase/.temp/project-ref), which is a different selection from the .env.local one every
+  # other script here reads — that divergence is the whole reason assert-dev-project.sh checks
+  # both, so this cannot claim to be checking the project an --allow-prod run actually drives.
+  # Enforcing it anyway would abort a deliberate prod run over a dev DB that is legitimately
+  # ahead mid-development.
+  echo "Skipping the schema preflight: 'supabase migration list' can only compare against the project the CLI is linked to, which is not the project an --allow-prod run targets."
 else
   echo "Checking the dev database's schema against this branch's migrations..."
   # Captured into a variable rather than piped, per scripts/CLAUDE.md's pipefail hazard.
@@ -232,7 +233,7 @@ else
   # reason a suite cannot start, by hanging any more than by erroring.
   MIGRATION_LIST=""
   if ! MIGRATION_LIST="$(timeout 60 npx supabase migration list < /dev/null 2>/dev/null)"; then
-    echo "Note: schema preflight skipped — 'npx supabase migration list' did not answer (no linked project, no access token, or no network). Continuing."
+    echo "Note: schema preflight skipped — 'npx supabase migration list' did not answer (no linked project, no access token, or no network). Continuing." >&2
   else
     # `migration list` prints ` <local> | <remote> | <time>`, and its Local column *is* this
     # branch's supabase/migrations/ — the CLI has already done the comparison, so a row with a
@@ -254,16 +255,31 @@ else
       # Only on the path that is already aborting, so the passing case pays for neither: a fetch,
       # without which `git log --all` can't see a sibling's just-pushed branch, and
       # workflow-context.sh, which is the one place the label -> base-branch rule lives (#1118).
-      git fetch --quiet origin 2>/dev/null || true
-      PREFLIGHT_BASE="$(bash scripts/workflow-context.sh 2>/dev/null | sed -n 's/^base=//p')"
+      #
+      # Both carry the same no-hang guard as the CLI call above, and for the same reason — the
+      # path that has already decided to abort is the one that most needs to fail fast. `timeout`
+      # bounds them; GIT_TERMINAL_PROMPT=0 turns a credential prompt into an error, which a
+      # stdin redirect can't do on its own since git opens /dev/tty directly; and
+      # workflow-context.sh's "never fails" contract is about its exit status, not about the
+      # `gh` round trips inside it blocking. Each falls back to empty, which the branches below
+      # already handle as "base not resolvable".
+      GIT_TERMINAL_PROMPT=0 timeout 30 git fetch --quiet origin < /dev/null 2>/dev/null || true
+      PREFLIGHT_BASE="$(timeout 30 bash scripts/workflow-context.sh < /dev/null 2>/dev/null | sed -n 's/^base=//p')" || true
       PREFLIGHT_BASE_FILES=""
       if [ -n "$PREFLIGHT_BASE" ]; then
         PREFLIGHT_BASE_FILES="$(git ls-tree --name-only "origin/$PREFLIGHT_BASE" supabase/migrations/ 2>/dev/null || true)"
       fi
       for version in "${REMOTE_ONLY[@]}"; do
-        # `%S` is the ref `--all` reached the commit through; oldest commit last, and that one
-        # is the branch that added the file.
-        owner="$(git log --all --source --format='%S' -- "supabase/migrations/${version}_*.sql" 2>/dev/null | tail -1)"
+        # `%S` is the ref `--all` reached the commit through, oldest commit last — so the last
+        # *branch* ref is the branch that added the file. Branch refs only: `--all` walks tags
+        # too, and a version whose sole trace is an old release tag (a since-renamed migration,
+        # say) is the drift case below, not a sibling waiting to merge — reporting it as
+        # "added by branch 'refs/tags/v2.0.3'" would hand out the wrong fix. awk rather than a
+        # `grep -m1`, which would stop reading early (scripts/CLAUDE.md's pipefail hazard);
+        # `|| true` so a non-zero `git log` can't `set -e` the script out mid-loop and truncate
+        # the very diagnostic this block exists to print.
+        owner="$(git log --all --source --format='%S' -- "supabase/migrations/${version}_*.sql" 2>/dev/null |
+          awk '/^refs\/(heads|remotes)\//{ b = $0 } END { if (b != "") print b }')" || true
         owner="${owner#refs/heads/}"
         owner="${owner#refs/remotes/}"
         if [ -n "$PREFLIGHT_BASE" ] && grep -q "/${version}_" <<< "$PREFLIGHT_BASE_FILES"; then
