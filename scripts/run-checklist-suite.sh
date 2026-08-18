@@ -41,7 +41,7 @@ exec 3>&1
 # this replaces, and that is #1621's central move.** `cleanup` has to drain the writer before it
 # appends the terminator, or the append races output still in flight (#1607 shipped that race
 # knowingly). A drain needs the writer's pid, and `$!` names a process substitution only from bash
-# 5.0 — on 4.x, which is all this repo's scripts assume, `LOG_WRITER_PID=$!` is fatal under `set -u`
+# 5.0 — and on 4.x `LOG_WRITER_PID=$!` is fatal under `set -u`
 # *before* `trap cleanup EXIT` is installed, so no terminator is written at all. That was #1607's
 # finding C, and a plain background job dissolves it: `$!` is set on every bash in scope, so the
 # stated floor does not have to move to buy the guarantee.

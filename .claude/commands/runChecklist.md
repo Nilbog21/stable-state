@@ -224,6 +224,8 @@ Repeat Steps 1–2 for each remaining section, in file order, through the end of
   grep '✘' {worktree_path}/checklist-suite.log | awk -F'›' '{print $NF}' | awk '{print $1}' | sort -u
   ```
   Each is the exact string inside some `(e2e: <name>)` tag. Those checkboxes failed; every other `(e2e:)` checkbox passed. `grep -rn '(e2e: <name>)' checklists/pre-release/` gives each one its phase.
+
+  **Unless the log is truncated.** Since #1621 a `WARNING: the log writer did not drain …` line immediately above the terminator means the run finished but the log is missing its tail — and that tail is exactly the `✘` lines and summary counts this branch records into the run file. Do not write a partial failing-test list into a permanent block: relaunch the suite instead, and say why in the run file.
 - **Terminator present but Playwright never ran** (early bail) — there is **no** e2e result. Report what the log's last lines say, record `Suite: DID NOT RUN — {reason}`, and ask whether to finish the run without it or stop and fix the harness first. Never treat this as green.
 
 Replace the `Suite: RUNNING` line with the verdict, and append one block at the end of the run file:
