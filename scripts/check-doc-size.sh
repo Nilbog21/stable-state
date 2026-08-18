@@ -75,10 +75,22 @@ BUDGETS=(
   # characters of headroom, so no trim was available. The raise funded those two only: a first cut
   # also widened the workflow-ci-wait index line to mention the anchor, and that was reverted
   # before review, per the paragraph above. The gate's mechanism, its two deliberate limits and its
-  # harness's seam are all in docs/scripts.md. The margin left is in line with #1295's 51 and
-  # #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
+  # harness's seam are all in docs/scripts/workflow.md. The margin left is in line with #1295's 51
+  # and #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
   # this gate on the merged tree after its own rebase, which is where a combined total is checked.
-  "scripts/CLAUDE.md:10950"
+  #
+  # Raised from 10950 by #1618: 10892 -> 10958. That last clause of #1622's is this raise: #1618
+  # was the concurrent edit, and the combined total is what needs the 8 characters. #1618 armed a
+  # third pairwise anchor (scripts/CLAUDE.md + docs/scripts/), and the check-doc-size index line
+  # enumerates the anchors by name — so arming the row falsified that line. Correcting it is the
+  # correction case the paragraph above carves out, not the elaboration it forbids; the precedent
+  # is #1433's 766e471d, a review fixup that had to repair this same line after #1420 added a PAIRS
+  # row without touching it. Nothing here validates its own index entry, so CI cannot see that
+  # staleness and only a raise-or-trim decision keeps the line true. The split itself is NOT what
+  # is funded: re-pointing three links from the pre-split file to the sub-docs cost +28 and stayed
+  # inside the budget it landed on, and took no raise, because path-lengthening is neither a new
+  # entry nor a correction. Only the +38 index-line fix crosses, and only by 8.
+  "scripts/CLAUDE.md:11000"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each

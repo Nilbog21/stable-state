@@ -81,7 +81,7 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts/`](../
 - `assert-dev-project` — dev-project guard `/sync-migrations` runs before `npx supabase db push`
 - `ci` — the CI entry point
 - `check-coverage` — the 100% branch-coverage gate
-- `check-doc-size` — doc size budgets (pairwise anchor+sub-doc caps on `ARCHITECTURE.md`+`docs/architecture/` and `e2e/CLAUDE.md`+`docs/e2e-framework-facts.md`/`docs/e2e-spec-maintenance.md`, per-file caps on the auto-loaded set)
+- `check-doc-size` — doc size budgets (pairwise anchor+sub-doc caps on `ARCHITECTURE.md`+`docs/architecture/`, `scripts/CLAUDE.md`+`docs/scripts/`, and `e2e/CLAUDE.md`+`docs/e2e-framework-facts.md`/`docs/e2e-spec-maintenance.md`, per-file caps on the auto-loaded set)
 - `check-pipefail-race` — CI gate for the `pipefail` + early-exit-consumer race (see Shell hazards above)
 - `check-function-grants` — CI gate: every non-trigger migration function is revoked from `PUBLIC` after its last create/drop
 - `check-ceremony-tags` — CI gate: every `RELEASE_CEREMONY.md` checkbox carries exactly one `(auto)`/`(prompt)`/`(manual)` tag — what `/releaseCeremony` reads to decide what it may run unattended

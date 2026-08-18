@@ -90,7 +90,7 @@ while :; do
   # called `origin`: a fork remote under any other name would otherwise silently disable the anchor,
   # which is the one failure this must not have. Where the anchor genuinely can't be resolved — a
   # worktree not on the PR's branch at all — the gate behaves as it did before, a documented
-  # limitation rather than silent coverage. See docs/scripts.md.
+  # limitation rather than silent coverage. See docs/scripts/workflow.md.
   anchor_sha=$(git rev-parse '@{u}' 2>/dev/null) || anchor_sha=""
   anchor_branch=$(git config "branch.$(git symbolic-ref --short HEAD 2>/dev/null).merge" 2>/dev/null) || anchor_branch=""
 

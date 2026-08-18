@@ -223,7 +223,7 @@ rm -rf "$DIR"
 # The gate's callers all `cd` into the PR's worktree first, so the anchor is normally available.
 # When it isn't (detached HEAD, no upstream, a caller polling another worktree's PR), the veto has
 # nothing to compare against and the gate behaves exactly as it did before #1622 — a documented
-# limitation in docs/scripts.md, pinned here so it stays a decision rather than becoming a hang.
+# limitation in docs/scripts/workflow.md, pinned here so it stays a decision rather than becoming a hang.
 DIR="$(make_repo)"
 pr_fixture "$DIR" "$NEW_SHA" "SUCCESS"
 runs_fixture "$DIR" "$NEW_SHA" "completed" '"success"'
