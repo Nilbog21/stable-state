@@ -69,7 +69,11 @@ touch "$PWD/teardown-started"
 # run's pgid, which every other signal case uses, does not reach here. A case that wants to signal
 # the teardown itself has to address this group, and it must come from the fixture rather than from
 # a name match.
-ps -o pgid= -p $$ 2>/dev/null | tr -d ' ' > "$PWD/teardown-pgid"
+# Written to a temp name and `mv`d into place, because a plain `>` redirect creates the file
+# before `ps` has produced a byte — and `await_file` waits on existence. That race is not
+# theoretical: it flaked exactly once, as an empty pgid the case then refused to signal.
+ps -o pgid= -p $$ 2>/dev/null | tr -d ' ' > "$PWD/teardown-pgid.tmp"
+mv "$PWD/teardown-pgid.tmp" "$PWD/teardown-pgid"
 sleep "${FAKE_TEARDOWN_SLEEP:-0}"
 # To stdout as well as to the marker, because the real script prints here too: that output goes
 # through the log writer, and it is what the terminator has to be ordered *after*.
