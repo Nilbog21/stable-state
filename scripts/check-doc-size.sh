@@ -52,7 +52,14 @@ BUDGETS=(
   # isn't named there reads as one to delete. New index entry, not elaboration of an existing
   # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
   # available; the script's whole contract and its two ponytail ceilings are in docs/scripts.md.
-  "scripts/CLAUDE.md:10300"
+  # Raised from 10300 by #1607: 10294 -> 10649. One genuinely new `.test.sh` entering the
+  # no-.test.sh-for-shell policy's surviving list, plus the clause that list obliges it to carry
+  # (why it isn't an exception), plus three words on the index line. That list is normative — "if
+  # a .test.sh isn't wired in, delete it" — so a wired-in gate missing from it reads as one to
+  # delete, which is the same argument #1295's raise made for e2e-slot and the legitimate-raise
+  # case this file describes. The file was at 6 characters of headroom, so no trim was available;
+  # the harness's whole contract, its seam and its fidelity choices are in docs/scripts.md.
+  "scripts/CLAUDE.md:10700"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each

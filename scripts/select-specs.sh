@@ -37,10 +37,25 @@ cd "$root" || exit 1
 # lost coverage through the gap — calendar/**, documents/**, ExhaustionBar.tsx,
 # useOutsideDismiss.ts. A module reached through a *shared helper* is exactly the one an
 # author forgets their spec drives, so it can't be left to per-spec declaration.
+#
+# scripts/run-checklist-suite.sh is here for the same reason playwright.config.ts is (#1607). It
+# cannot reach a browser, and #1550's principle — a file that cannot reach a browser cannot be the
+# reason to open one — therefore does not separate the two; what settles it is that the runner
+# governs strictly more than the config does: the origin every spec is pointed at, the env every
+# spec reads, and since #1601 whether a production server exists at all. Before this entry a diff
+# that rewrote that file returned mode=none, because no spec's covers: globs declare scripts/
+# either — so the one file whose blast radius is the whole suite was the one file a change to which
+# ran nothing.
+#
+# scripts/e2e-slot.sh is deliberately **not** here, and the omission is load-bearing rather than an
+# oversight: it decides whether runs serialise, never what any spec asserts, and it already carries
+# e2e-slot.test.sh in ci.sh. #1598's own de-escalation off mode=full rests on exactly that
+# distinction. select-specs.test.sh asserts both directions, so neither is left to this comment.
 ALWAYS_FULL=(
   'e2e/support/**'
   'e2e/global-setup.ts'
   'playwright.config.ts'
+  'scripts/run-checklist-suite.sh'
   'src/proxy.ts'
   'src/app/layout.tsx'
   'src/app/barn/[slug]/(protected)/layout.tsx'
