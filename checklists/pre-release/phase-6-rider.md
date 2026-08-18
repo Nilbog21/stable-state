@@ -27,10 +27,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_owned_horse_notes_render_as_editable_textareas) (#1006/#1390) Clover's detail page shows **Feed Notes** and **Medication Notes** as editable textareas, inside a **Feed & Medication** section that is open when the page loads
 - [ ] (e2e: rider_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e: rider_unowned_horse_notes_render_as_read_only_text) (#1006) On **Butter**, whom Dana does *not* own, the same section's Feed Notes/Medication Notes are read-only text
-- [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
+- [ ] (e2e: rider_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Owned Horses** section at the top containing **Clover**
 - [ ] (e2e: rider_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: rider_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
-- [ ] (e2e: rider_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Horses** shows an exhaustion bar — the only exhaustion a rider sees on this page, and since #1547 it appears because she owns Clover — the `lesson_read_privileges` grant the Set-as-Owner setup above also left her is no longer what earns it
+- [ ] (e2e: rider_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Owned Horses** shows an exhaustion bar — the only exhaustion a rider sees on this page, and since #1547 it appears because she owns Clover — the `lesson_read_privileges` grant the Set-as-Owner setup above also left her is no longer what earns it
 - [ ] (e2e: rider_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page shows a **Set Photo**/**Replace Photo** control in its header — owning a horse grants photo write even to a rider
 - [ ] (e2e: rider_setting_the_photo_on_their_own_horse_through_the_upload_screen_succeeds) (#1003) Using it to set `scripts/data/clover-photo.png` as Dana succeeds
 - [ ] (e2e: rider_the_photo_they_uploaded_displays_on_their_horses_detail_page) (#1003) That photo then displays on Clover's detail page
@@ -122,7 +122,7 @@ The no-hover-state rubric bullet is the line that used to sit under Active Agree
 
 - [ ] (manual) **Dashboard** — Day, Week and Month views and the Reminders section, as the rider sees them (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, an enrolled lesson's detail page, and the cancel page (`/barn/dev-barn/lessons` and below)
-- [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable cards and a detail page's header, Feed & Medication, Documents and Upcoming Lessons sections (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Horses** — the list's My Owned Horses/Available/Unavailable cards and a detail page's header, Feed & Medication, Documents and Upcoming Lessons sections (`/barn/dev-barn/horses`, `/horses/[id]`)
 - [ ] (manual) **Members** — the roster, your own member page's Documents and Active Agreements cards, and another member's detail page (`/barn/dev-barn/members`, `/members/[membership_id]`)
 - [ ] (manual) **Outstanding** — the rider-scoped outstanding page reached from the Reminders cards (`/barn/dev-barn/finances/outstanding`)
 - [ ] (manual) **Profile and nav** — the 4-link rider nav bar, the avatar menu, and `/profile?barn=dev-barn` with its Calendar Feed section

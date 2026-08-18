@@ -189,13 +189,15 @@ describe('MemberDetailPage', () => {
       expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
     })
 
+    // #1549: the action is a `useActionState` reducer now, so the previous state rides in front of
+    // the FormData. The two bound leading arguments are unchanged.
     it('should_call_removeMemberAction_when_remove_confirmed', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
-      vi.mocked(removeMemberAction).mockResolvedValue(undefined)
+      vi.mocked(removeMemberAction).mockResolvedValue({ error: null })
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       fireEvent.click(screen.getByRole('button', { name: /^remove$/i }))
-      expect(removeMemberAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
+      expect(removeMemberAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', { error: null }, expect.any(FormData))
     })
 
     it('should_not_call_removeMemberAction_when_remove_cancelled', async () => {

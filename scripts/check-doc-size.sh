@@ -74,7 +74,11 @@ BUDGETS=(
   # either side of the merge — `<Switch>` (#1390) and `sectionDescriptionClass` (#1550) — each one
   # index entry, not elaboration of an existing one. Both sides were already inside 20 characters
   # of the cap, so neither could absorb the other. Ceiling: never above 8000, the pre-#1468 value.
-  "src/components/ui/CLAUDE.md:5700"
+  # Raised from 5700 by #1549, which added the `<Radio>` primitive: 5689 -> 5918. A genuinely new
+  # component entering the catalog, not elaboration of an existing entry — the legitimate-raise
+  # case above. Paid for in part by trimming the Button bullet's state-idiom list, which #1549
+  # collapsed when the Documents column's segmented group became a radio group.
+  "src/components/ui/CLAUDE.md:6000"
 )
 
 fail=0

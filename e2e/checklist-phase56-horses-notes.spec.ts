@@ -51,8 +51,8 @@ import { mustSucceed } from '@/lib/db/service-role'
 // member names.
 const CLOVER = 'Clover' // the trainer's owned horse
 const WILLOW = 'Willow' // the rider's owned horse
-const BUTTER = 'Butter' // unowned, both notes fields set — the read-only subject for both roles
-const PEPPER = 'Pepper' // unowned, feed notes only — the dropped-row subject
+const BUTTER = 'Butter' // manager-owned, both notes fields set — the read-only subject for both roles
+const PEPPER = 'Pepper' // manager-owned, feed notes only — the dropped-row subject
 
 // Butter's notes are the read-only text both roles assert on. Pepper carries the feed half only,
 // which is what the "clear one of that horse's two notes fields" Setup seeds instead.

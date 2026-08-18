@@ -83,7 +83,9 @@ export default async function HorseDetailPage({
   const canSeeSchedule = role === 'manager' || role === 'trainer' || myLessonReadPrivilege
   const isManager = role === 'manager'
   const isOwner = horse.owning_member_id === membership.id
-  const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
+  // #1549: no `owning_member_id !== null` half any more -- the column is NOT NULL, so the lock is
+  // purely "did the current owner upload the current photo".
+  const isPhotoLockedToOwner = horse.photo_uploaded_by === horse.owning_member_id
   const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
   const canWriteNotes = isManager || isOwner
   // #1547: ownership, not role. canWriteDocuments above admits a manager-granted 'write' rider too,
@@ -95,9 +97,10 @@ export default async function HorseDetailPage({
   const upcomingLessons = canSeeSchedule ? await getUpcomingLessonsForHorse(horse.id, barn.id, barn.timezone) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
 
-  const ownerName = horse.owning_member_id
-    ? (await resolveMemberNames([horse.owning_member_id], barn.id)).get(horse.owning_member_id) ?? null
-    : null
+  // Always looked up (#1549): every horse has an owner. The `?? null` is not the old unset case --
+  // a membership always points at a profile, but that profile row can be missing or unreadable, and
+  // the header would rather say nothing than render a blank link.
+  const ownerName = (await resolveMemberNames([horse.owning_member_id], barn.id)).get(horse.owning_member_id) ?? null
 
   const allMembers = isManager
     ? [
@@ -123,8 +126,14 @@ export default async function HorseDetailPage({
       lessonReadPrivileges: p.lesson_read_privileges,
     }))
     .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+  // The owner is excluded alongside the already-granted (#1549): their row is synthesised from
+  // `horses.owning_member_id` and shows effective access, so a grant made to them would be
+  // invisible in the table and unrevokable from it.
   const grantedMemberIds = new Set(privileges.map((p) => p.member_id))
-  const availableMembers = allMembers.filter((m) => !grantedMemberIds.has(m.membershipId))
+  const accessRowCount = grants.filter((g) => g.memberId !== horse.owning_member_id).length + 1
+  const availableMembers = allMembers.filter(
+    (m) => !grantedMemberIds.has(m.membershipId) && m.membershipId !== horse.owning_member_id
+  )
 
   const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
@@ -172,18 +181,16 @@ export default async function HorseDetailPage({
             <p className="text-sm text-zinc-600 dark:text-zinc-400">{horse.unavailability_reason}</p>
           )}
 
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {ownerName ? (
+          {ownerName !== null && (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
               <a
                 href={`/barn/${slug}/members/${horse.owning_member_id}`}
                 className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
               >
                 {ownerName}
               </a>
-            ) : (
-              'No owner set'
-            )}
-          </p>
+            </p>
+          )}
 
           {canWritePhoto && (
             <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -326,12 +333,12 @@ export default async function HorseDetailPage({
       {isManager && (
         <AccordionSection
           title="Access"
-          hint={`${grants.length} member${grants.length === 1 ? '' : 's'}`}
+          hint={`${accessRowCount} member${accessRowCount === 1 ? '' : 's'}`}
         >
           <HorseAccessSection
             grants={grants}
             availableMembers={availableMembers}
-            ownerMemberId={horse.owning_member_id}
+            owner={{ memberId: horse.owning_member_id, name: ownerName ?? 'Unknown member' }}
             onGrant={boundGrantAccessAction}
             onUpdateDocument={boundUpdateAccessDocumentAction}
             onUpdateLesson={boundUpdateAccessLessonAction}

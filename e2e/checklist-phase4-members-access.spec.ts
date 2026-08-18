@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/members/**
 // covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/lib/db/horses.ts
 import { test, expect, withBarn, type Page } from './support/test'
 import { E2E_USERS, addHorse, addManagedMember, addTier } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
@@ -68,6 +69,8 @@ let riderStubId = ''
 let removableId = ''
 let removableProfileId = ''
 let secondManagerId = ''
+/** The horse #1549's refusal test hands to the removable stub, so removing them can be refused. */
+let ownedByRemovableId = ''
 
 const barn = withBarn('phase4-members-access', async ({ supabase, barn, members }) => {
   // addMemberships gives every non-rider can_instruct = true, but the "reading **Grant Instructor
@@ -112,6 +115,13 @@ const barn = withBarn('phase4-members-access', async ({ supabase, barn, members 
   // the instructor select being read in a form that is otherwise in a realistic state.
   await addTier(supabase, barn.id, { name: 'Standard', price: 60, isDefault: true })
   await addHorse(supabase, barn.id, 'Kestrel')
+
+  // #1549: `horses.owning_member_id` is NOT NULL with an `ON DELETE RESTRICT` FK, so a member who
+  // still owns a horse cannot be removed. Owned by the removable stub rather than reassigned in
+  // the test, because the refusal has to be the page's *initial* state for the removal chain
+  // below to walk it in order.
+  const owned = await addHorse(supabase, barn.id, 'Marlow', { owningMemberId: removable.membershipId })
+  ownedByRemovableId = owned.id
 })
 
 // ---------------------------------------------------------------------------
@@ -373,6 +383,49 @@ test.describe.serial('removing a member', () => {
   test('a_removable_members_header_carries_a_remove_button_beside_their_name @manager', async ({ page }) => {
     await page.goto(memberPage(removableId))
     await expect(memberHeader(page)).toHaveText(`${REMOVABLE_NAME}Remove`)
+  })
+
+  /**
+   * #1549. The pre-check in `removeMemberAction` is what turns an `ON DELETE RESTRICT` violation
+   * into a sentence, and naming the horses is the operative half — "reassign their horses first"
+   * without saying which ones sends the manager hunting the whole list.
+   *
+   * The dialog message is collected as well as the refusal, because the two failure modes are
+   * different: a confirm that never fired means the click was lost pre-hydration (fact 10), while
+   * a fired confirm with no message on screen means the action swallowed the refusal. The URL is
+   * read too — a refusal that redirected anyway would satisfy a text assertion made afterwards on
+   * the Members list only by accident.
+   *
+   * The reassignment at the end is fixture repair, not part of the claim: the next two tests
+   * remove this member, and they cannot while she owns anything. Written straight to `horses`
+   * rather than through `set_horse_owner`, which would need the manager to hold a
+   * `member_horse_privileges` row on Marlow first — a grant this file has no other use for.
+   */
+  test('removing_a_member_who_still_owns_horses_is_refused_naming_them @manager', async ({ page }) => {
+    const messages = collectDialogs(page, 'accept')
+    await page.goto(memberPage(removableId))
+    await memberHeader(page).getByRole('button', { name: 'Remove', exact: true }).click()
+
+    await expect(memberHeader(page).getByText(/still owns/i)).toBeVisible()
+    expect({
+      messages: messages.length,
+      names: await memberHeader(page).getByText(/still owns/i).innerText(),
+      url: new URL(page.url()).pathname,
+    }).toEqual({
+      messages: 1,
+      names: expect.stringContaining('Marlow'),
+      url: memberPage(removableId),
+    })
+
+    mustAffect(
+      await barn.data.supabase
+        .from('horses')
+        .update({ owning_member_id: barn.data.members.manager.membershipId })
+        .eq('id', ownedByRemovableId)
+        .select('id'),
+      'hand Marlow back to the manager so the removal below can proceed',
+      1
+    )
   })
 
   // waitForURL pins which page, the h1 pins that it rendered: 'commit' resolves before the new

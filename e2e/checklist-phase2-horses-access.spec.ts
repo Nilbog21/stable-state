@@ -34,23 +34,28 @@
 // without it (20260725115546). Same seeding shape as checklist-phase4-horses-detail.spec.ts's
 // Clover grant.
 //
-// ## Two narrowed checklist lines, and why
+// One consequence of that reseed, since #1549's /testIssue round: `set_horse_owner` now leaves the
+// **outgoing** owner a grant of `write`/`lesson_read` — the access ownership conferred them, kept
+// as an ordinary row the manager can downgrade rather than silently revoked. So the manager who
+// created Eclipse is row 2 of this table from the first landing, and every row-list and dropdown
+// expectation below counts her. She is not scenery: a table that dropped her would mean the
+// transfer had gone back to revoking the outgoing owner outright.
 //
-// Both are the issue's "narrowed, not dropped" ruling, and both are the *same* narrowing #1453
-// made against this header — not `(manual)` downgrades.
+// ## The clearing half of this slice, and where it went (#1549)
 //
-// "Refresh the page → the 'Owner:' line above the photo is gone", and its twin after the revoke.
-// There is no literal `Owner:` prefix anywhere in `src/`, the line sits beside the photo (below
-// it at mobile widths) rather than above it, and it never goes anywhere: `page.tsx` renders the
-// owner's name as a link *or* the string "No owner set", so the line is present either way. Both
-// lines are rewritten to assert what actually distinguishes the two states — the line reads
-// "No owner set" and carries no link.
+// Until #1549 the chain below ended by *clearing* Eclipse's owner twice — once by re-tapping the
+// Owner button, once by revoking the owner's grant — and asserting the identity header collapsed
+// to "No owner set". `horses.owning_member_id` is `NOT NULL` now: ownership only ever transfers,
+// `set_horse_owner`'s null branch is gone, and `revoke_horse_privilege` no longer touches the
+// column at all. So both clears are states the app cannot be in, and the assertions that named
+// them are not narrowed — they are deleted, and replaced by the transfers that took their place:
+// re-tapping the selected owner leaves it selected, and handing ownership on is what moves the
+// header line.
 //
-// That is **strictly stronger** than what it replaces, not weaker. "The line is gone" is
-// unverifiable against a line that always renders: any check phrased that way passes vacuously
-// forever, whichever state the page is in. Pinning both the substitute text and the link's
-// disappearance is falsifiable — a page that kept the owner fails on the text, and a page that
-// rendered the name as plain text without clearing ownership fails on the link count.
+// The Access section's empty state went with them. Every horse has an owner, and the owner always
+// has a row — synthesised from `horses.owning_member_id` when no grant backs it — so the table can
+// never be empty and the "No additional members have been granted access" state has no page to
+// render on.
 //
 // ## Why nothing here uses `mustAffect` (#1435)
 //
@@ -91,7 +96,6 @@ import { waitForBarnPageHydrated } from './support/hydration'
 import { openSection } from './support/accordion'
 import {
   headerLines,
-  ownerLink,
   accessSection,
   accessColumns,
   grantRow,
@@ -118,14 +122,10 @@ const ECLIPSE = 'Eclipse'
  */
 const DANA = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
 const EMERY = `${E2E_STUB_RIDER.firstName} ${E2E_STUB_RIDER.lastName}`
-
-/** What the identity header renders in place of the owner link when the horse has no owner.
- *  Eclipse carries neither a registered name nor an unavailability reason, so the owner line is
- *  the only one there is. */
-const NO_OWNER = 'No owner set'
-
-/** The empty state the Access section renders instead of the table at zero grants. */
-const NO_GRANTS = 'No additional members have been granted access'
+/** Eclipse's creator, and since #1549's /testIssue round a row in its own right: the seed's
+ *  `set_horse_owner` promotion of Dana leaves the outgoing owner the grant ownership conferred
+ *  them, so the manager is in this table from the first landing rather than only in the header. */
+const CREATING_MANAGER = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.lastName}`
 
 /** `HorseAccessSection`'s Revoke confirmation, per member. Derived, for the same reason the two
  *  names above are. */
@@ -230,11 +230,12 @@ async function openAccessHydrated(page: Page) {
   await openSection(page, 'Access')
 }
 
-/** Whichever of a row's three Documents buttons is pressed. All three labels render in that cell
- *  at all times, so only `aria-pressed` tells them apart — the same reason `HorseAccessSection`
- *  emits it rather than relying on the fill colour. */
-function pressedDocumentState(row: Locator): Locator {
-  return row.locator('td').nth(DOCUMENTS_COLUMN).locator('button[aria-pressed="true"]')
+/** Whichever of a row's three Documents radios is selected. All three labels render in that cell
+ *  at all times, so only `aria-checked` tells them apart — the same reason `HorseAccessSection`
+ *  emits it rather than relying on the dot alone. `button[aria-pressed]` until #1549 replaced the
+ *  segmented strip with `Radio`s; still one `<form>` and one submit per option either way. */
+function selectedDocumentState(row: Locator): Locator {
+  return row.locator('td').nth(DOCUMENTS_COLUMN).locator('[role="radio"][aria-checked="true"]')
 }
 
 function ownerCell(row: Locator): Locator {
@@ -316,7 +317,11 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     await accessSection(page).getByRole('button', { name: 'Grant Access', exact: true }).click()
     // A wait, not the assertion: the table refreshes through the action's own `revalidatePath`
     // with no navigation to wait on (fact 8).
-    await expect(grantedMembers(page)).toHaveCount(2, { timeout: SETTLE_AFTER_WRITE })
+    // Three, not two: the manager already holds row 2 (see CREATING_MANAGER). A count of 2 here
+    // would be satisfied by the state *before* the grant landed and read Emery's row out of a
+    // table that had not yet grown one — which is exactly how this wait failed when the outgoing
+    // owner's grant first appeared.
+    await expect(grantedMembers(page)).toHaveCount(3, { timeout: SETTLE_AFTER_WRITE })
 
     expect({
       before,
@@ -326,16 +331,12 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
       },
     }).toEqual({
       before: {
-        grants: [DANA],
-        dropdown: dropdownOffering(
-          members.manager.membershipId,
-          members.trainer.membershipId,
-          members.rider2.membershipId
-        ),
+        grants: [DANA, CREATING_MANAGER],
+        dropdown: dropdownOffering(members.trainer.membershipId, members.rider2.membershipId),
       },
       after: {
-        grants: [DANA, EMERY],
-        dropdown: dropdownOffering(members.manager.membershipId, members.trainer.membershipId),
+        grants: [DANA, CREATING_MANAGER, EMERY],
+        dropdown: dropdownOffering(members.trainer.membershipId),
       },
     })
   })
@@ -348,7 +349,7 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     // would read "MEMBER" where the source says "Member".
     expect({
       columns: await settledTextContents(accessColumns(page)),
-      documents: await settledInnerTexts(pressedDocumentState(grantRow(page, EMERY))),
+      documents: await settledInnerTexts(selectedDocumentState(grantRow(page, EMERY))),
     }).toEqual({ columns: ACCESS_COLUMNS, documents: ['None'] })
   })
 
@@ -386,43 +387,92 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     expect(await settledLessonState(grantRow(page, EMERY))).toBe('true')
   })
 
-  test('an_owner_button_taps_back_to_set_as_owner @manager', async ({ page }) => {
+  /**
+   * #1549: ownership transfers, never clears. The Owner control binds the *row's own* member id,
+   * so re-tapping the selected one is the no-op a native radio's re-tap is — where the button this
+   * replaced bound `null` and left the horse unowned.
+   *
+   * The header is read alongside the cell because the cell alone cannot tell "the write was a
+   * no-op" from "the write never happened": both leave `Owner` on screen. A header still naming
+   * Dana after a round trip through `setHorseOwnerAction` is the half that says the request
+   * completed rather than erroring the page.
+   *
+   * Awaited on the POST, and that is forced: the tap changes nothing on screen, so fact 8 has no
+   * attribute to offer. This wait *was* `selectedDocumentState(row)` reaching `Write`, which can
+   * never resolve — since #1547 the owner's Documents cell is static text with no `[role="radio"]`
+   * in it at all, so the locator matched nothing and the test timed out rather than settling.
+   * Matched on method and pathname per fact 14, which the page itself does not make safe: Grant
+   * Access, the three document radios, the lesson switch and Revoke are all bound forms POSTing to
+   * this same pathname. Nothing else on the page is driven here, so the only POST after the click
+   * is the owner submission.
+   */
+  test('tapping_the_selected_owner_radio_leaves_it_selected @manager', async ({ page }) => {
     await openAccess(page)
     const row = grantRow(page, DANA)
-    // Also the seed's own check: Dana reads `Owner` here only because `set_horse_owner` ran in
-    // `withBarn`. A seed that silently did nothing fails on this line, naming the state that was
-    // missing — see the header's `mustAffect` block.
     const before = await settledInnerTexts(ownerCell(row))
+    const { pathname } = new URL(page.url())
 
-    await row.getByRole('button', { name: 'Owner', exact: true }).click()
-    await expect(row.getByRole('button', { name: 'Set as Owner', exact: true })).toBeVisible({
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname === pathname
+    )
+    await row.getByRole('radio', { name: 'Owner', exact: true }).click()
+    await submitted
+
+    expect({
+      before,
+      after: await settledInnerTexts(ownerCell(row)),
+      header: await settledInnerTexts(headerLines(page)),
+    }).toEqual({ before: ['Owner'], after: ['Owner'], header: [DANA] })
+  })
+
+  /**
+   * The move that replaced clearing: ownership goes to Emery, and Dana becomes an ordinary grant
+   * row again. Both halves are asserted, because the interesting failure is asymmetric — a
+   * `set_horse_owner` that wrote the new owner without the page re-deriving the old one's row
+   * would leave two rows claiming ownership, which reading only Emery's cell cannot see.
+   *
+   * Dana's controls coming *back* is the same claim from the other side: #1547 strips the
+   * Documents radios, the Lesson Schedule switch and Revoke from whoever is the owner, so their
+   * return is what says the page re-derived her row rather than caching it.
+   */
+  test('handing_ownership_on_deselects_the_previous_owner @manager', async ({ page }) => {
+    await openAccess(page)
+    const dana = grantRow(page, DANA)
+    const emery = grantRow(page, EMERY)
+
+    await emery.getByRole('radio', { name: 'Set as Owner', exact: true }).click()
+    await expect(emery.getByRole('radio', { name: 'Owner', exact: true })).toBeVisible({
       timeout: SETTLE_AFTER_WRITE,
     })
 
-    expect({ before, after: await settledInnerTexts(ownerCell(row)) }).toEqual({
-      before: ['Owner'],
-      after: ['Set as Owner'],
+    expect({
+      emeryOwner: await settledInnerTexts(ownerCell(emery)),
+      danaOwner: await settledInnerTexts(ownerCell(dana)),
+      danaDocuments: await settledInnerTexts(selectedDocumentState(dana)),
+      danaRevokes: await dana.getByRole('button', { name: 'Revoke', exact: true }).count(),
+      header: await settledInnerTexts(headerLines(page)),
+    }).toEqual({
+      emeryOwner: ['Owner'],
+      danaOwner: ['Set as Owner'],
+      // Since #1549's /testIssue round this is written rather than left behind: `set_horse_owner`
+      // upserts the *outgoing* owner `'write'`/`true`, the access ownership conferred her. It read
+      // the same before, as residue from the elevation on the way in that was never undone — so
+      // the value is unchanged and the reason for it is not (`rpc/horses.md`).
+      danaDocuments: ['Write'],
+      danaRevokes: 1,
+      header: [EMERY],
     })
   })
 
-  // Narrowed — see the header. The claim is the owner line's *contents*, because the line itself
-  // never goes anywhere.
-  test('clearing_the_owner_leaves_the_identity_header_reading_no_owner_set @manager', async ({
-    page,
-  }) => {
-    await page.goto(horsePath())
-
-    // The settled read is the positive anchor (#1434): it waits for the header to be visible and
-    // throws if it never renders, so the count below cannot be taken against an undrawn page.
-    // Both halves are asserted together, on the one page state.
-    const lines = await settledInnerTexts(headerLines(page))
-    expect({ lines, ownerLinks: await ownerLink(page).count() }).toEqual({
-      lines: [NO_OWNER],
-      ownerLinks: 0,
-    })
-  })
-
-  test('revoking_the_owners_grant_removes_them_from_the_grants_list @manager', async ({ page }) => {
+  /**
+   * #1549 rewrote what this proves. It used to be `revoke_horse_privilege`'s second write —
+   * revoking the owner's grant cleared `owning_member_id` — and that write is gone. What is left
+   * is the plain claim: revoking a grant removes its row, and it does not disturb ownership held
+   * by somebody else. Dana is a former owner rather than the current one, which is why the test
+   * above has to run first.
+   */
+  test('revoking_a_former_owners_grant_removes_them_from_the_grants_list @manager', async ({ page }) => {
     // Installed before the click, never after: `window.confirm` blocks the page until it is
     // answered, so a `waitForEvent('dialog')` awaited after the click deadlocks — the click waits
     // on the dialog and the dialog waits on the click. checklist-phase4-lessons-delete.spec.ts
@@ -435,77 +485,39 @@ test.describe.serial('Eclipse — a second grant, its columns, and the revokes',
     })
 
     await openAccessHydrated(page)
-    const row = grantRow(page, DANA)
-
-    // Dana is made owner again first, exactly as the item says — which is what gives the next
-    // test something to prove: without it, "the owner line is still gone" would be a restatement
-    // of the tap two tests up rather than a claim about what revoking an owner does.
-    await row.getByRole('button', { name: 'Set as Owner', exact: true }).click()
-    await expect(row.getByRole('button', { name: 'Owner', exact: true })).toBeVisible({
-      timeout: SETTLE_AFTER_WRITE,
-    })
-
-    await row.getByRole('button', { name: 'Revoke', exact: true }).click()
-    await expect(grantedMembers(page)).toHaveCount(1, { timeout: SETTLE_AFTER_WRITE })
+    await grantRow(page, DANA).getByRole('button', { name: 'Revoke', exact: true }).click()
+    await expect(grantedMembers(page)).toHaveCount(2, { timeout: SETTLE_AFTER_WRITE })
 
     // The message, not merely that *a* dialog appeared: it is what proves the confirm ran on
-    // Dana's row rather than that something somewhere was dismissed. The list is asserted whole,
-    // so "Dana no longer appears" is carried by an equality an empty table would fail.
-    expect({ messages, grants: await settledInnerTexts(grantedMembers(page)) }).toEqual({
+    // Dana's row rather than that something somewhere was dismissed. The row list is asserted
+    // whole, so "Dana no longer appears" is carried by an equality an empty table would fail —
+    // and the header says the revoke left Emery's ownership alone.
+    expect({
+      messages,
+      rows: await settledInnerTexts(grantedMembers(page)),
+      header: await settledInnerTexts(headerLines(page)),
+    }).toEqual({
       messages: [revokeConfirm(DANA)],
-      grants: [EMERY],
+      rows: [EMERY, CREATING_MANAGER],
+      header: [EMERY],
     })
   })
 
-  // Narrowed, same as its twin above — and not a duplicate of it: the tap in the previous test
-  // restored Dana as owner, so what this asserts is `revoke_horse_privilege`'s own second write,
-  // which clears `horses.owning_member_id` when the revoked grant belonged to the owner.
-  test('revoking_the_owners_grant_leaves_the_horse_with_no_owner @manager', async ({ page }) => {
-    await page.goto(horsePath())
-
-    const lines = await settledInnerTexts(headerLines(page))
-    expect({ lines, ownerLinks: await ownerLink(page).count() }).toEqual({
-      lines: [NO_OWNER],
-      ownerLinks: 0,
-    })
-  })
-
-  test('revoking_a_grant_empties_the_grants_list @manager', async ({ page }) => {
-    const messages: string[] = []
-    page.on('dialog', async (dialog) => {
-      messages.push(dialog.message())
-      await dialog.accept()
-    })
-
-    await openAccessHydrated(page)
-    await grantRow(page, EMERY).getByRole('button', { name: 'Revoke', exact: true }).click()
-
-    // The positive anchor, and the wait: this empty state renders only at zero grants, so it
-    // cannot appear until the revoke has landed and the section has re-rendered without a table.
-    // A `waitFor`, not an assertion, so the test keeps one expect.
-    await accessSection(page).getByText(NO_GRANTS, { exact: true }).waitFor()
-
-    expect({ messages, rows: await accessSection(page).locator('tbody tr').count() }).toEqual({
-      messages: [revokeConfirm(EMERY)],
-      rows: 0,
-    })
-  })
-
+  /**
+   * The dropdown half, and #1549 added a second claim to it. Dana is offered again, which is what
+   * says revoke *released* the grant rather than hiding its row; Emery is **not**, because he owns
+   * Eclipse and his row is synthesised from `horses.owning_member_id` — a grant made to him would
+   * be invisible in the table and unrevokable from it.
+   *
+   * Asserted as the whole offering rather than as Dana's presence in it, so a dropdown that
+   * started listing granted or owning members would fail here as well.
+   */
   test('a_revoked_member_is_offered_in_the_grant_dropdown_again @manager', async ({ page }) => {
     await openAccess(page)
     const members = barn.data.members
 
-    // Every seeded member, because every grant is now revoked — asserted as the whole offering
-    // rather than as Emery's presence in it, so a dropdown that started listing granted members
-    // too would fail here as well. Paired with the first test's before/after, this is what says
-    // revoke *released* the grant rather than hiding its row.
     expect(await grantDropdownValues(page)).toEqual(
-      dropdownOffering(
-        members.manager.membershipId,
-        members.trainer.membershipId,
-        members.rider.membershipId,
-        members.rider2.membershipId
-      )
+      dropdownOffering(members.trainer.membershipId, members.rider.membershipId)
     )
   })
 })

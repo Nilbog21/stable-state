@@ -69,10 +69,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_owned_horse_notes_form_shows_a_save_button) (#1006) That page shows a **Save** button for those fields
 - [ ] (e2e: trainer_owned_horse_note_edits_persist_across_a_reload) (#1006) Editing and saving both fields as this trainer persists the new text across a reload
 - [ ] (e2e: trainer_available_horse_cards_show_an_exhaustion_bar) The Horses list's **Available** cards each show an exhaustion bar
-- [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Horses** section at the top containing **Clover**
+- [ ] (e2e: trainer_my_horses_section_at_the_top_lists_the_owned_horse) (#1000) The Horses list shows a **My Owned Horses** section at the top containing **Clover**
 - [ ] (e2e: trainer_owned_horse_card_carries_a_status_badge) (#1000) Clover's card in that section carries a status badge
 - [ ] (e2e: trainer_owned_horse_is_absent_from_available_and_unavailable) (#1000) Clover no longer appears under Available/Unavailable
-- [ ] (e2e: trainer_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Horses** also shows an exhaustion bar — owned horses used to be skipped by the exhaustion fetch entirely
+- [ ] (e2e: trainer_owned_horse_card_shows_an_exhaustion_bar) (#1391) Clover's card in **My Owned Horses** also shows an exhaustion bar — owned horses used to be skipped by the exhaustion fetch entirely
 - [ ] (e2e: trainer_sees_the_seeded_photo_on_a_horse_they_do_not_own) Butter's detail page (a horse this trainer does **not** own) displays her seeded photo in the page header, beside her name
 - [ ] (e2e: trainer_sees_no_photo_controls_on_a_horse_they_do_not_own) Butter's detail page shows **no Set Photo / Replace Photo / Remove Photo control** in its header
 - [ ] (e2e: trainer_sees_a_photo_control_on_the_horse_they_own) (#1003) Clover's detail page (the horse this trainer now owns) does show a **Set Photo**/**Replace Photo** control in its header — owning a horse grants photo write even to a non-manager
@@ -122,7 +122,7 @@ This phase is a flat list rather than sectioned, so the areas below are the page
 - [ ] (manual) **Dashboard** — Day, Week and Month views and the Reminders section, as the trainer sees them (`/barn/dev-barn`)
 - [ ] (manual) **Lessons** — the list and its filter pills, a detail page, the New Lesson form with its month calendar, and the cancel pages (`/barn/dev-barn/lessons` and below)
 - [ ] (manual) **Appointments** — the read-only appointment detail page reached from the dashboard card (`/barn/dev-barn/expenses/[id]`)
-- [ ] (manual) **Horses** — the list's My Horses/Available/Unavailable sections and a detail page's header and sections, in both the owned and unowned forms (`/barn/dev-barn/horses`, `/horses/[id]`)
+- [ ] (manual) **Horses** — the list's My Owned Horses/Available/Unavailable sections and a detail page's header and sections, on a horse you own and one you don't (`/barn/dev-barn/horses`, `/horses/[id]`)
 - [ ] (manual) **Members** — the roster and a member detail page's read-only Contact Info and Documents sections (`/barn/dev-barn/members`, `/members/[membership_id]`)
 - [ ] (manual) **Outstanding** — the trainer-scoped outstanding page reached from the Reminders card (`/barn/dev-barn/finances/outstanding`)
 - [ ] (manual) **Profile and nav** — the 4-link trainer nav bar, the avatar menu, and `/profile?barn=dev-barn` with its Calendar Feed section

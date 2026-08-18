@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockMembership, createMockProfile } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
@@ -11,6 +11,9 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 }))
 vi.mock('@/lib/db/member-invites', () => ({
   revokeInviteToken: vi.fn(),
+}))
+vi.mock('@/lib/db/horses', () => ({
+  getOwnedHorses: vi.fn(),
 }))
 vi.mock('@/lib/db/documents', () => ({
   deleteDocument: vi.fn(),
@@ -47,6 +50,7 @@ vi.mock('next/navigation', () => ({
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
 import { revokeInviteToken } from '@/lib/db/member-invites'
+import { getOwnedHorses } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById, replaceProfilePhoto, removeProfilePhoto } from '@/lib/db/profiles'
 import { removeFile } from '@/lib/db/document-storage'
@@ -612,8 +616,11 @@ describe('removeMemberAction', () => {
     mockRedirect.mockClear()
     mockNotFound.mockClear()
 
+    vi.mocked(getOwnedHorses).mockReset()
+
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(deleteMembership).mockResolvedValue(undefined)
+    vi.mocked(getOwnedHorses).mockResolvedValue([])
   })
 
   it('should_call_requireMembership_with_manager_role_only', async () => {
@@ -676,6 +683,80 @@ describe('removeMemberAction', () => {
 
     await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members')
+  })
+
+  /**
+   * #1549: `horses.owning_member_id` is NOT NULL and its FK is `ON DELETE RESTRICT`, so deleting a
+   * membership that still owns a horse can only fail at the database. The pre-check turns that into
+   * a sentence the manager can act on -- and it names the horses, because "reassign their horses
+   * first" without saying which ones sends them hunting through the whole list.
+   *
+   * Returned rather than thrown, the same reason `revokeInviteTokenAction` above returns: a throw
+   * here is rethrown during render and `error.tsx` swaps out the whole member page, so the manager
+   * loses the page instead of seeing why the removal was refused.
+   */
+  describe('when the member still owns horses', () => {
+    const ownedHorses = [
+      createMockHorse({ id: 'horse-1', name: 'Apple' }),
+      createMockHorse({ id: 'horse-2', name: 'Clover' }),
+    ]
+
+    it('should_look_up_the_targets_owned_horses_in_the_barn', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue([])
+
+      await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
+      expect(getOwnedHorses).toHaveBeenCalledWith('barn-1', 'mem-target-trn')
+    })
+
+    it('should_refuse_the_removal', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).not.toBeNull()
+    })
+
+    it('should_name_every_owned_horse_in_the_message', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).toContain('Apple')
+      expect(result.error).toContain('Clover')
+    })
+
+    it('should_speak_of_one_horse_in_the_singular', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue([ownedHorses[0]])
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).toContain('that horse')
+    })
+
+    it('should_speak_of_several_horses_in_the_plural', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      const result = await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(result.error).toContain('those horses')
+    })
+
+    it('should_not_delete_the_membership', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(deleteMembership).not.toHaveBeenCalled()
+    })
+
+    it('should_not_redirect', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+      vi.mocked(getOwnedHorses).mockResolvedValue(ownedHorses)
+
+      await removeMemberAction('green-acres', 'mem-target-trn')
+      expect(mockRedirect).not.toHaveBeenCalled()
+    })
   })
 })
 

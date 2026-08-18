@@ -9,7 +9,8 @@
  * the profile is claimed and `is_managed` flips false), the Instructor Access toggle
  * (`setCanInstructAction` — manager/trainer targets only), member removal
  * (`removeMemberAction` — a manager can never remove themselves or another manager,
- * mirroring the #969 RLS rule), invite-token rotation (`revokeInviteTokenAction` —
+ * mirroring the #969 RLS rule, and since #1549 returns `{ error }` naming the horses
+ * when the target still owns any), invite-token rotation (`revokeInviteTokenAction` —
  * returns `{ error }` rather than throwing, #1116), and profile-photo upload/delete
  * (`uploadProfilePhotoAction`/`deleteProfilePhotoAction` — the shared
  * `resolvePhotoTarget` allows self always, a manager only while the profile is still
@@ -19,6 +20,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
+import { getOwnedHorses } from '@/lib/db/horses'
 import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById, replaceProfilePhoto, removeProfilePhoto } from '@/lib/db/profiles'
@@ -141,14 +143,32 @@ export async function setCanInstructAction(
 
 export async function removeMemberAction(
   barnSlug: string,
-  membershipId: string
-): Promise<void> {
+  membershipId: string,
+  // The `useActionState` calling convention, both ignored — same reason as deleteDocumentAction
+  // above: `page.tsx` binds the leading two and hands the Server Function straight to the hook,
+  // which is what keeps Remove progressively enhanced.
+  _prevState?: { error: string | null } | null,
+  _formData?: FormData
+): Promise<{ error: string | null }> {
   const { user, barn } = await requireMembership(barnSlug, ['manager'])
 
   const target = await getMembershipById(membershipId)
   if (!target || target.barn_id !== barn.id) notFound()
   if (target.user_id === user.id) notFound()
   if (target.role === 'manager') notFound()
+
+  // #1549: `horses.owning_member_id` is NOT NULL with an `ON DELETE RESTRICT` FK, so this delete
+  // can only fail at the database once the member owns anything. Refuse first, and name the horses
+  // — "reassign their horses" without saying which ones sends the manager hunting the whole list.
+  // Returned rather than thrown, for revokeInviteTokenAction's reason below: a throw is rethrown
+  // during render and error.tsx swaps out the whole member page.
+  const ownedHorses = await getOwnedHorses(barn.id, membershipId)
+  if (ownedHorses.length > 0) {
+    const names = ownedHorses.map((horse) => horse.name).join(', ')
+    return {
+      error: `This member still owns ${names}. Set a different owner on ${ownedHorses.length === 1 ? 'that horse' : 'those horses'} before removing them.`,
+    }
+  }
 
   await deleteMembership(membershipId)
 

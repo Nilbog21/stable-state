@@ -181,16 +181,18 @@ describe('setHorseOwner', () => {
     })
   })
 
-  it('should_call_the_rpc_with_null_member_id_when_clearing_ownership', async () => {
+  // #1549: ownership transfers, never clears -- `horses.owning_member_id` is NOT NULL and the
+  // RPC's null branch is gone, so the only thing this function can send is a member.
+  it('should_send_the_new_owner_on_a_transfer', async () => {
     const rpc = vi.fn().mockResolvedValue({ error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
-    await setHorseOwner('horse-1', 'barn-1', null)
+    await setHorseOwner('horse-1', 'barn-1', 'mem-7')
 
     expect(rpc).toHaveBeenCalledWith('set_horse_owner', {
       p_horse_id: 'horse-1',
       p_barn_id: 'barn-1',
-      p_member_id: null,
+      p_member_id: 'mem-7',
     })
   })
 

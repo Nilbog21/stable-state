@@ -1,14 +1,14 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/components/ExhaustionBar.tsx
 //
-// The Horses list through a non-manager's eye: #1000's My Horses section (its position, its
+// The Horses list through a non-manager's eye: #1000's My Owned Horses section (its position, its
 // status badge, the owned horse's disappearance from Available/Unavailable, and — since #1391 —
-// its exhaustion bar), plus the rider-only claims that the *unowned* Available/Unavailable cards
+// its exhaustion bar), plus the rider-only claims that the Available/Unavailable cards they do *not* own
 // carry the name and unavailability reason and nothing else, show no exhaustion bar, render no
 // Inactive section, and are tappable through to the horse detail page (#1002).
 // checklists/pre-release/phase-5-trainer.md's "**Available** cards each show an exhaustion bar"
-// line and its "**My Horses** section at the top" block, and phase-6-rider.md's card-sections
-// and "**My Horses** section at the top" blocks.
+// line and its "**My Owned Horses** section at the top" block, and phase-6-rider.md's card-sections
+// and "**My Owned Horses** section at the top" blocks.
 //
 // A paired slice: the same file is greped by @trainer and @rider, so Playwright dispatches it
 // twice and each run seeds its own barn (support/test.ts). withBarn's callback cannot see the
@@ -19,16 +19,16 @@
 //
 // ## Why the rider's subject horse is not called Clover
 //
-// The rider's three **My Horses** lines name Clover, and this file's rider tests assert against
+// The rider's three **My Owned Horses** lines name Clover, and this file's rider tests assert against
 // Willow instead. That is deliberate, and it is forced by the paired-slice seeding above. Both
-// subjects live in one barn, so the trainer's Clover is an ordinary unowned horse from the rider's
+// subjects live in one barn, so the trainer's Clover is an ordinary someone-else's horse from the rider's
 // side and sits in the rider's *Available* section — which is exactly the region the "no longer
 // appears under Available/Unavailable" absence assertion scopes to. A second horse called Clover
 // would make that assertion unfalsifiable.
 //
 // The checklist lines keep their wording: their Clover is the manual dev-barn walkthrough's horse,
 // planted by the "grant Dana a horse-privileges row on **Clover**" Setup line above them, which
-// this slice must not touch. Rewording the rider's **My Horses** lines alone would contradict it.
+// this slice must not touch. Rewording the rider's **My Owned Horses** lines alone would contradict it.
 // The claim each test makes is the line's claim; only the fixture's name differs, which is how
 // the whole #1187-#1208 batch worked.
 //
@@ -43,9 +43,9 @@ import { addHorse } from './support/fixtures'
 // member names.
 const CLOVER = 'Clover' // the trainer's subject
 const WILLOW = 'Willow' // the rider's subject
-const APPLE = 'Apple' // available, unowned
-const BUTTER = 'Butter' // unavailable, unowned
-const DOMINO = 'Domino' // inactive, unowned
+const APPLE = 'Apple' // available, manager-owned
+const BUTTER = 'Butter' // unavailable, manager-owned
+const DOMINO = 'Domino' // inactive, manager-owned
 
 const UNAVAILABILITY_REASON = 'Out with a stone bruise'
 
@@ -57,7 +57,7 @@ const ACTIVE_BADGE = 'Active'
 // The page is h2-partitioned, and for a non-manager these are all of them: the Inactive section
 // is isManager-gated, which is what "No Inactive section appears on that page" asserts. h1
 // first, then the sections in DOM order.
-const NON_MANAGER_HEADINGS = ['Horses', 'My Horses', 'Available', 'Unavailable']
+const NON_MANAGER_HEADINGS = ['Horses', 'My Owned Horses', 'Available', 'Unavailable']
 
 const SOLID_BAR = '[data-testid="exhaustion-bar-solid"]'
 
@@ -66,7 +66,7 @@ let willowId: string
 let appleId: string
 let butterId: string
 
-// Both roles end up with a symmetric page: My Horses holds their own subject, Available holds
+// Both roles end up with a symmetric page: My Owned Horses holds their own subject, Available holds
 // Apple plus the *other* role's subject, Unavailable holds Butter, and Domino is absent —
 // getHorsesByBarn filters is_active for the rider, and the Inactive section is manager-only for
 // the trainer.
@@ -126,10 +126,10 @@ function sectionByHeading(page: Page, heading: string) {
 }
 
 /**
- * The My Horses section, pinned to main's *first* section rather than found by its heading.
+ * The My Owned Horses section, pinned to main's *first* section rather than found by its heading.
  *
- * That is the "at the top" half of the trainer's and rider's **My Horses** lines, expressed
- * structurally: if My Horses renders
+ * That is the "at the top" half of the trainer's and rider's **My Owned Horses** lines, expressed
+ * structurally: if My Owned Horses renders
  * anywhere but first, the filter matches nothing and the assertion fails rather than quietly
  * covering only half the line.
  */
@@ -137,7 +137,7 @@ function myHorsesSection(page: Page) {
   return page
     .locator('main > section')
     .first()
-    .filter({ has: page.getByRole('heading', { name: 'My Horses', exact: true }) })
+    .filter({ has: page.getByRole('heading', { name: 'My Owned Horses', exact: true }) })
 }
 
 /**
@@ -175,7 +175,7 @@ async function availableAndUnavailableHrefs(page: Page): Promise<string[]> {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5 — the trainer's own horse: "The Horses list shows a **My Horses** section at the top"
+// Phase 5 — the trainer's own horse: "The Horses list shows a **My Owned Horses** section at the top"
 // through "Clover no longer appears under Available/Unavailable"
 // ---------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ test('trainer_owned_horse_card_carries_a_status_badge @trainer', async ({ page }
 })
 
 // Absence, scoped to the two sections the line names — and stated as who *is* there rather than
-// as who isn't. A page-wide "Clover is not visible" would pass trivially off the My Horses card
+// as who isn't. A page-wide "Clover is not visible" would pass trivially off the My Owned Horses card
 // above, and a bare toHaveCount(0) inside these sections would pass on a page that rendered
 // neither. Naming the three other horses' hrefs asserts the exclusion and the sections'
 // contents in one comparison, so nothing here can pass vacuously.
@@ -258,6 +258,7 @@ test('rider_available_and_unavailable_cards_carry_only_name_and_reason @rider', 
 // owned test drives this very locator to a visible bar in the same run.
 test('rider_horse_cards_show_no_exhaustion_bar @rider', async ({ page }) => {
   await page.goto(horsesPath())
+  // "Unowned" from the rider's side — since #1549 these three are the barn manager's.
   const unownedCards = page.locator(
     [appleId, butterId, cloverId].map((id) => `div:has(> a[href="${horseHref(id)}"])`).join(', ')
   )
@@ -291,7 +292,7 @@ test('rider_tapping_an_available_card_opens_the_horse_detail_page @rider', async
 })
 
 // ---------------------------------------------------------------------------
-// Phase 6 — the rider's own horse: "The Horses list shows a **My Horses** section at the top"
+// Phase 6 — the rider's own horse: "The Horses list shows a **My Owned Horses** section at the top"
 // through "Clover no longer appears under Available/Unavailable"
 // ---------------------------------------------------------------------------
 
