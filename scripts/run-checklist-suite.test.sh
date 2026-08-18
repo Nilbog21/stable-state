@@ -67,14 +67,7 @@ make_repo() {
 touch "$PWD/teardown-started"
 sleep "${FAKE_TEARDOWN_SLEEP:-0}"
 # To stdout as well as to the marker, because the real script prints here too: that output goes
-# through the log writer, and it is what the terminator has to be ordered *after*. FAKE_TEARDOWN_NOISE
-# makes that ordering deterministic rather than a coin flip — a handful of lines usually drain before
-# the handler gets to the terminator, and "usually" is exactly the property a test must not rest on.
-i=0
-while [ "$i" -lt "${FAKE_TEARDOWN_NOISE:-0}" ]; do
-  echo "fake teardown-test-barn.sh: draining line $i"
-  i=$((i + 1))
-done
+# through the log writer, and it is what the terminator has to be ordered *after*.
 echo "fake teardown-test-barn.sh: $*"
 printf '%s\n' "$*" >> "$PWD/teardown-called.log"
 EOF
@@ -124,12 +117,6 @@ case "$tool" in
         ;;
       test)
         shift
-        # A child that outlives the run and inherits stdout — i.e. the pipe to the log writer.
-        # Playwright leaking a browser process is the real-world shape; what matters is that
-        # something other than this script holds that pipe open after the run is over.
-        if [ "${FAKE_PW_LEAK_CHILD:-0}" = 1 ]; then
-          setsid --fork sleep 120 &
-        fi
         printf '%s\n' "$@" > "$FAKE_STATE/playwright-args"
         env | grep -E '^E2E_' | sort > "$FAKE_STATE/playwright-env"
         touch "$FAKE_STATE/playwright-started"
@@ -767,22 +754,6 @@ else
 fi
 cleanup_repo "$REPO"
 
-# Test 26: the exit-code terminator is the LAST line of the log.
-# Two skills state this as the completion signal in those words — `/testIssue` Step 4 ("the run is
-# done when the log **ends with** the … terminator") and `/overnightRefactor`. Writing the line
-# straight to the file made it immune to a signal killing the writer, but a direct append races the
-# writer still draining `stop_server`'s output and all of teardown's, so the guarantee two gates
-# read has to be restored rather than traded away.
-REPO="$(make_repo)"
-FAKE_TEARDOWN_NOISE=4000 run_suite && rc=0 || rc=$?
-last="$(tail -1 "$REPO/checklist-suite.log" 2>/dev/null || true)"
-if [ "$rc" -eq 0 ] && [[ $last == *"run-checklist-suite.sh exited 0"* ]]; then
-  assert_pass "the terminator is the last line of the log"
-else
-  assert_fail "the terminator is the last line of the log" "exit=$rc last=$last"
-fi
-cleanup_repo "$REPO"
-
 # Test 27: a SIGKILLed run still closes its caller's stdout.
 # Every consumer of this script reads its stdout to EOF in the background (`/testIssue` Step 4,
 # `/fableFleet` Step 5). The script's own comment names SIGKILL as the one thing its EXIT trap
@@ -803,41 +774,28 @@ E2E_SLOT_DIR="$REPO/slots" \
     echo $$ > "$1/state/suite-pid"
     exec bash scripts/run-checklist-suite.sh
   ' _ "$REPO" > "$REPO/caller-pipe" 2>/dev/null < /dev/null
-await_file "$REPO/state/suite-pid" 100
+# Every precondition is checked, because each one failing would otherwise make this case pass for
+# the wrong reason: if the run never started a server there is nothing holding the caller's pipe,
+# every writer is already gone, `cat` returns 0, and the assertion below is satisfied by a run that
+# never tested anything. This is the same vacuity `signal_group` guards against elsewhere.
+started27=true
+await_file "$REPO/state/suite-pid" 100 || started27=false
 SUITE_PID="$(cat "$REPO/state/suite-pid" 2>/dev/null || true)"
-await_file "$REPO/state/playwright-started" 600
-# SIGKILL, by the pgid this fixture minted — the one signal the EXIT trap cannot handle.
-[ -n "$SUITE_PID" ] && kill -9 -"$SUITE_PID" 2>/dev/null
+await_file "$REPO/state/playwright-started" 600 || started27=false
+await_file "$REPO/state/server-pid" 100 || started27=false
+if [ -z "$SUITE_PID" ] || ! kill -0 "$SUITE_PID" 2>/dev/null; then
+  started27=false
+else
+  # SIGKILL, by the pgid this fixture minted — the one signal the EXIT trap cannot handle.
+  kill -9 -"$SUITE_PID" 2>/dev/null
+fi
 wait "$reader_job" 2>/dev/null
 reader_rc="$(cat "$REPO/state/reader-rc" 2>/dev/null || echo missing)"
-if [ "$reader_rc" = "0" ]; then
+if [ "$started27" = true ] && [ "$reader_rc" = "0" ]; then
   assert_pass "a SIGKILLed run closes its caller's stdout instead of hanging it"
 else
   assert_fail "a SIGKILLed run closes its caller's stdout instead of hanging it" \
-    "reader exit=$reader_rc (124 = still open after 25s)"
-fi
-cleanup_repo "$REPO"
-
-# Test 28: a leaked child holding the log writer's pipe must not hang `cleanup`.
-# `cleanup` waits for the writer to drain so the terminator lands last. The writer only sees EOF
-# once *every* holder of that pipe closes it, and Playwright's stdout is that pipe — so a leaked
-# browser process makes an unbounded wait block forever, inside the one handler whose whole job is
-# to guarantee teardown and the terminator. That converts a visible failure into an invisible hang,
-# which is the failure class this issue exists to close; the wait is therefore bounded.
-REPO="$(make_repo)"
-start=$SECONDS
-FAKE_PW_LEAK_CHILD=1 timeout 90 bash -c '
-  cd "$1" || exit 1
-  PATH="$1/shim:$PATH" FAKE_STATE="$1/state" FAKE_BIN="$1/shim" E2E_SLOT_DIR="$1/slots" \
-  FAKE_PW_LEAK_CHILD=1 bash scripts/run-checklist-suite.sh >/dev/null 2>&1 </dev/null
-' _ "$REPO" && rc=0 || rc=$?
-elapsed=$((SECONDS - start))
-await_log "run-checklist-suite.sh exited" 100
-if [ "$rc" -ne 124 ] && [ "$(terminator_code)" = "0" ]; then
-  assert_pass "a leaked child holding the log pipe does not hang cleanup (${elapsed}s)"
-else
-  assert_fail "a leaked child holding the log pipe does not hang cleanup" \
-    "exit=$rc (124 = hung) elapsed=${elapsed}s code=$(terminator_code)"
+    "preconditions=$started27 reader exit=$reader_rc (124 = still open after 25s)"
 fi
 cleanup_repo "$REPO"
 

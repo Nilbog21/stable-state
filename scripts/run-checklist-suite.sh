@@ -45,9 +45,6 @@ done
 # alone on one host and kills it on GitHub Actions — so `cleanup` writes that line straight to
 # $LOG_PATH and to the saved fd 3 instead, and this fence only affects how much of the *rest* of
 # the log survives.
-# fd 3 is the real console, saved before the redirect below claims stdout. `cleanup` writes the
-# exit-code terminator through it and straight to $LOG_PATH, never through the `tee` — see there.
-exec 3>&1
 if [ "$VERBOSE" = true ]; then
   exec > >(trap '' TERM HUP; tee -a "$LOG_PATH") 2>&1
 else
@@ -62,11 +59,6 @@ else
   # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
   exec > >(trap '' TERM HUP; tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
 fi
-# The writer's pid, so `cleanup` can wait for it to drain before appending the terminator — which is
-# what keeps that line *last*, the property `/testIssue` Step 4 and `/overnightRefactor` both state
-# as their completion signal. `$!` names the process substitution here; without the wait, a direct
-# append races the writer still emitting teardown's output.
-LOG_WRITER_PID=$!
 
 echo "Logging to $LOG_PATH"
 
@@ -189,37 +181,23 @@ cleanup() {
     # --prefix, not --all: --all would delete a concurrent run's barns too.
     bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
   fi
-  # The terminator is written straight to the log file and to the saved console fd, deliberately
-  # **not** through the `tee` this script's stdout is redirected into. `/testIssue` Step 4 and
-  # #1602's merge gate both parse this line, and routing it through the writer made its delivery
-  # depend on that writer surviving the signal that killed the run — which is environment-dependent:
-  # a group INT leaves the writer alone on one host and kills it on GitHub Actions, and the
-  # terminator went missing on exactly the second kind.
+  # The terminator is appended straight to $LOG_PATH rather than echoed through the `tee` this
+  # script's stdout feeds. That is the whole of the mechanism — there is no console copy, no drain
+  # and no watchdog — and it buys exactly one property: the line is **present** on every exit path,
+  # which is what `/testIssue` Step 4 and #1602's merge gate consume. It is written this way because
+  # routing it through the writer made its delivery depend on that writer surviving the signal that
+  # killed the run, and whether it does is environment-dependent: a group INT leaves the writer alone
+  # on this project's dev hosts and kills it on GitHub Actions, where the terminator then went
+  # missing on exactly the INT paths.
   #
-  # `/testIssue` Step 4 and `/overnightRefactor` additionally require it to be the log's **last**
-  # line — in those words — so a direct append alone is not enough (#1602's merge gate greps for
-  # presence and is order-insensitive; it is the other two that constrain position): it would race the writer still emitting teardown's output. Restoring stdout to the
-  # console closes the writer's input, `wait` lets it drain and exit, and only then is the line
-  # appended. A writer already killed by a signal makes the wait return immediately, which is the
-  # case this whole arrangement exists for.
-  exec 1>&3 2>&3
-  if [ -n "$LOG_WRITER_PID" ]; then
-    # Bounded, and the bound is not belt-and-braces. The writer sees EOF only once *every* holder of
-    # its pipe closes it, and this script's stdout is inherited by `npx playwright test` — so a
-    # leaked browser process keeps that pipe open after the run is over and an unbounded `wait`
-    # blocks here forever, inside the one handler whose entire job is to guarantee teardown and the
-    # terminator. That would convert a visible failure into an invisible hang, which is the failure
-    # class this whole issue exists to close. The watchdog SIGKILLs the writer if it has not drained
-    # in 10s; the terminator is written directly afterwards either way, so the worst case degrades to
-    # "the log's tail may be truncated", never to "cleanup never finishes".
-    ( sleep 10; kill -9 "$LOG_WRITER_PID" 2>/dev/null ) &
-    log_writer_watchdog=$!
-    wait "$LOG_WRITER_PID" 2>/dev/null || true
-    kill -9 "$log_writer_watchdog" 2>/dev/null || true
-    wait "$log_writer_watchdog" 2>/dev/null || true
-  fi
+  # **What this does NOT guarantee is position.** The append races the writer still emitting
+  # `stop_server`'s output and all of teardown's, so the terminator is usually but not always the
+  # log's last line. `/testIssue` Step 4 and `/overnightRefactor` both describe it as the line the
+  # log "ends with"; treat that as a description of the common case, not a guarantee, and grep for
+  # presence rather than reading the tail. Making it an actual guarantee needs the drain this
+  # deliberately does not do, and doing that correctly is its own design problem — see the follow-up
+  # issue, which also owns the teardown timeout in this same handler.
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
-  printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >&3
   exit "$code"
 }
 # Installed before the .env.local/env-var checks below so those early bails get the same
@@ -481,12 +459,7 @@ start_server() {
     # never leave the readiness check or a Chromium request talking to nothing.
     # setsid so the server is its own process group and stop_server can kill it whole; the explicit
     # redirect keeps its output out of checklist-suite.log, which this script's stdout is a tee into.
-    # 3>&- because fd 3 is a dup of the *caller's* stdout, and this child is deliberately detached:
-    # setsid means it outlives a SIGKILL of this script, and every consumer reads that stdout to EOF
-    # in the background (/testIssue Step 4, /fableFleet Step 5). A descriptor left open here keeps
-    # their pipe open forever, so the one path the EXIT trap cannot cover would hang the reader
-    # rather than merely leaving a server behind. The explicit > redirect covers fds 1-2 only.
-    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 3>&- < /dev/null &
+    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 < /dev/null &
     pid=$!
     # `|| true`: a server that died before this ran is a branch handled just below, not a failure
     # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
@@ -563,7 +536,7 @@ else
   # Redirected to its own file rather than inherited into checklist-suite.log: the build's route
   # table is ~60 lines that every later turn of the invoking session re-pays as cache-read input,
   # which is the cost #1356 took out of this script's stdout. The failure path prints what matters.
-  if ! TZ=UTC npx next build > "$BUILD_LOG" 2>&1 3>&-; then
+  if ! TZ=UTC npx next build > "$BUILD_LOG" 2>&1; then
     echo "Error: 'next build' failed — the suite cannot serve a branch that does not build. Last 40 lines:" >&2
     tail -40 "$BUILD_LOG" >&2
     exit 1
@@ -617,7 +590,7 @@ E2E_BASE_URL="$E2E_BASE_URL" \
 E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
-  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" 3>&- || PW_EXIT=$?
+  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
 
 if [ "$HOLD_OPEN" = true ]; then
   echo
