@@ -291,36 +291,28 @@ git diff --name-only {last_good_sha}..HEAD | bash scripts/select-specs.sh
 - **`mode=scoped`** — one `--spec` per reported spec.
 - **`mode=full`** — no `--spec` flags.
 
-Launch this with the Bash tool's `run_in_background`, as one command, substituting `{worktree_path}`
-and `{port}` from Step 0's preflight:
+Launch this with the Bash tool's `run_in_background`, as one command, substituting
+`{worktree_path}` from Step 0's preflight:
 
 ```bash
-cd {worktree_path} && fuser -k {port}/tcp 2>/dev/null; sleep 1
-npm run dev -- --port {port} > /tmp/devserver-{port}.log 2>&1 &
-for _ in $(seq 60); do curl -sf -o /dev/null "http://localhost:{port}/" && break; sleep 2; done
-curl -sf -o /dev/null "http://localhost:{port}/" || { echo "dev server never came up"; exit 1; }
-bash scripts/run-checklist-suite.sh --no-recycle --base-url "http://localhost:{port}" {--spec flags}
-fuser -k {port}/tcp 2>/dev/null
+cd {worktree_path} && bash scripts/run-checklist-suite.sh {--spec flags}
 ```
 
-`--no-recycle` because the very next line kills the port: `run-checklist-suite.sh` otherwise spends
-up to 90s booting a fresh server (#1569's fix for the ~10 GB a suite run leaves behind) that this
-loop shoots immediately. Every other caller wants the default. `/tmp/devserver-{port}.log` is that
-same change's one dev-server log path, keyed by port rather than by date.
+**That is the whole command.** Until #1601 this step also started a `next dev` on `{port}`, waited
+for it, pointed the suite at it with `--base-url`, passed `--no-recycle` so the suite wouldn't spend
+90s booting a replacement this loop was about to shoot, and `fuser -k`'d the port afterwards. The
+suite now builds the branch and serves it from its own server on a port it picks itself, and stops
+it on every exit path — so all of that is gone, and none of it should be reintroduced. Do **not**
+pass `--base-url`: it now means *skip the build and drive that origin instead*, which would hand
+this loop back the hot-reloaded dev server the deleted block existed to avoid.
 
-The server is started here and killed here. This loop holds no long-lived one:
-`playwright.config.ts` has no `webServer` block so the suite cannot start its own, and a server that
-has hot-reloaded through a night of file moves is its own flake source — a flaky failure at 3am
-reads as a real regression and burns half the circuit breaker.
-
-**Kill by port, never by `$!`.** `npm run dev` is a wrapper: `$!` is the npm PID, and `kill`ing it
-orphans the `next dev` → `next-server` children that actually hold the port. The next iteration's
-`npm run dev` then dies on `EADDRINUSE` — an explicit `--port` disables Next's port-hunting
-fallback — while the readiness `curl` succeeds *instantly* against the survivor, so the suite greens
-a verdict about the **previous** commit. Killing the port owner is also why the pre-run `fuser` is
-there: it makes the gate self-healing if any earlier iteration leaked one anyway. The explicit
-readiness bail matters for the same reason — without it, a server that never started sends the suite
-at a dead port and the resulting red reads as a real regression against the circuit breaker.
+The properties that block was protecting still hold, and now hold by construction rather than by
+five lines of shell getting them right. Each iteration is served by a server built from that
+iteration's own commit, so a verdict can never be about the previous one — which was the failure
+mode behind the old "kill by port, never by `$!`" rule, where an orphaned survivor answered the
+readiness `curl` instantly and greened the wrong commit. And nothing hot-reloads through a night of
+file moves, which was its own flake source: a flaky failure at 3am reads as a real regression and
+burns half the circuit breaker.
 
 Read the verdict from `{worktree_path}/checklist-suite.log`, not from the tool result — a full run
 outruns the Bash tool's 600s foreground ceiling. Two things to check, both per `/testIssue` Step 4:

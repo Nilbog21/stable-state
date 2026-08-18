@@ -27,9 +27,9 @@ The loop verified each commit in isolation via `scripts/ci.sh`, which **does not
    ```
    for p in $(pgrep -f "next dev"); do echo "$p $(readlink /proc/$p/cwd)"; done
    ```
-   Match the cwd to `{worktree_path}`. If nothing is serving it, ask the user to start it — don't start it yourself, the port may be deliberately free.
-2. `npm run test:checklist:auto -- --base-url http://localhost:{port}` — run it in the background and keep working.
-3. `npm run build`.
+   Match the cwd to `{worktree_path}`. If nothing is serving it, ask the user to start it — don't start it yourself, the port may be deliberately free. This server is for **Step 2's manual smoke test**, not for the suite below: since #1601 the suite builds and serves its own.
+2. `npm run test:checklist:auto` — run it in the background and keep working. No `--base-url`; passing one would tell the suite to skip its build and drive the dev server instead.
+3. `npm run build` — still worth running separately even though step 2 builds too, because step 2's build failure aborts the suite before any spec runs and this one tells you that's what happened.
 
 **On an e2e failure, establish pre-existing versus caused before reporting it as a regression.** Re-run the failing spec alone; check open issues for a matching flake (`gh issue list --state open --search e2e`); and check whether the same failure reproduces on `origin/release/{release}`. Timezone- and time-of-day-dependent specs are the usual suspects.
 

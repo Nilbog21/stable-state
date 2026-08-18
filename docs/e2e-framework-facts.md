@@ -32,6 +32,17 @@ where `next dev` compiles the routes it visits inside that same budget — measu
 pure compile on one such test. Under full-suite worker contention the two costs compound and it
 times out — declare `test.slow()`. *(#1482)*
 
+> **Superseded in part by #1601, for suite runs.** The compile cost above was real and is the
+> reason the suite stopped running against `next dev` at all: `run-checklist-suite.sh` now builds
+> the branch and serves it with `next start`, which serves what it compiled at build time, so no
+> route is compiled inside any test's budget. The tier rule — a number tightens the first two
+> tiers and loosens the third — is untouched and still the fact this entry exists for. What
+> changed is the *headroom argument*: budgets are no longer being eaten by cold-server compiles
+> on a suite run, so a `test.slow()` added purely for that reason is now buying nothing. Do not
+> strip them wholesale — a `test.slow()` also covers worker contention and genuinely slow work,
+> and a `--base-url` run against your own dev server still pays the compile. Strip one only with
+> a measurement of that test.
+
 ## Fact 2
 
 **`support/read.ts`'s settled reads only reach what can become *visible*.** On an
@@ -162,10 +173,15 @@ header, not a shared Gross/Expenses/Net one) with an auto-retrying matcher. *(#1
 
 ## Fact 12
 
-**The barn-vs-host zone axis is open, and cannot be closed from inside a spec.** The dev
-server runs under `TZ=UTC` — measured by #1252's probe, which rendered a 4:00 PM Eastern lesson
+**The barn-vs-host zone axis is open, and cannot be closed from inside a spec.** The server
+under test runs under `TZ=UTC` — measured by #1252's probe, which rendered a 4:00 PM Eastern lesson
 as 8:00 PM from a Server Component with the barn zone dropped, and only then confirmed against
-`package.json`'s `dev` script (pinned by #1221) — and the barn-day
+`package.json`'s `dev` script (pinned by #1221). Since #1601 that is two servers, not one, and
+both are pinned deliberately: the developer's `next dev`, and the `next start` that
+`run-checklist-suite.sh` builds and serves the suite from, which the script starts under `TZ=UTC`
+naming this fact as the reason. A suite server on the host's own zone would move this axis
+silently, which is the one way this fact could stop being true without anything failing. The
+barn-day
 checklist items fix the barn to Eastern, so a regression that reads the host's clock instead of
 `barns.timezone` fails only in the ~4–5 hour window where the barn's day and the server's UTC day
 differ — and passes unnoticed outside it. That window cannot be arranged: `page.clock.setFixedTime`
