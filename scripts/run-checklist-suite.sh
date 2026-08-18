@@ -268,8 +268,14 @@ cleanup() {
       # write (hence PIPE in the mask and `set +e`); this is the same lesson with the other verb.
       # A regular-file append can do neither, and emitting it after the drain also keeps it in
       # order with the rest of the log rather than racing output still in flight.
-      teardown_warning="$(printf 'WARNING: barn teardown did not finish within %ss and was killed.\n  These barns may still exist. Tear them down with: bash scripts/teardown-test-barn.sh %s --prefix %s\n' \
-        "${TEARDOWN_TIMEOUT_SECONDS:-600}" "${PROD_FLAG[*]}" "$RUN_PREFIX")"
+      # A plain multi-line assignment, deliberately not `$(printf …)`: command substitution strips
+      # trailing newlines, so the held text arrived here without the one it was written with, and
+      # the terminator below then appended straight onto the end of this line. It passed locally
+      # only because the drain warning happened to fire in between and supplied the newline; on CI,
+      # where the drain succeeded, the terminator was no longer a line of its own — which is
+      # precisely what the position assertion exists to catch, and did.
+      teardown_warning="WARNING: barn teardown did not finish within ${TEARDOWN_TIMEOUT_SECONDS:-600}s and was killed.
+  These barns may still exist. Tear them down with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} --prefix $RUN_PREFIX"
     fi
     # Unchanged from #1607: teardown's status replaces the run's own. That the run's exit code can be
     # overwritten this way is pre-existing and deliberately out of scope here (#1620's own note).
@@ -322,7 +328,7 @@ cleanup() {
   # writer is gone, and a console write is the one thing left that could block or fail (see the
   # teardown warning above). The log is this handler's contract; the console is not.
   if [ -n "$teardown_warning" ]; then
-    printf '%s' "$teardown_warning" >> "$LOG_PATH"
+    printf '%s\n' "$teardown_warning" >> "$LOG_PATH"
   fi
   if [ "$drain_status" -eq 137 ]; then
     # The watchdog fired: something still holds the pipe, so the log is missing whatever the writer

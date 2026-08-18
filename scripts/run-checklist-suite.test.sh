@@ -968,7 +968,12 @@ if [ "$elapsed" -lt 20 ] &&
   [ -e "$REPO/teardown-started" ] && [ ! -e "$REPO/teardown-called.log" ] &&
   log_has "teardown did not finish within" &&
   log_has "teardown-test-barn.sh" &&
-  log_has "--prefix e2e-" &&
+  # Anchored to end-of-line on purpose. `terminator_is_last` already catches the terminator being
+  # appended onto the end of this warning rather than onto a line of its own, but only on a host
+  # where nothing else happens to emit a newline in between — the drain warning did exactly that
+  # locally, which masked the defect until CI failed on it. This asserts the warning is a complete
+  # line on every host.
+  log_has "--prefix e2e-[0-9]*-[0-9]*$" &&
   terminator_is_last; then
   assert_pass "a hung teardown is killed at the bound, recovery command re-emitted, terminator last"
 else
