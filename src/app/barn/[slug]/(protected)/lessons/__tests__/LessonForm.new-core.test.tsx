@@ -520,4 +520,18 @@ describe('LessonForm', () => {
     expect(screen.getByRole('alert').textContent).toContain('a rider is required')
   })
 
+  // #1616. Both horses land in bucket 2 and both total zero exertion — `baseProps` passes no
+  // `getProjectedExhaustion`, which is not a contrived fixture but the picker's own opening state:
+  // `exhaustionByHorseId` is undefined until the fetch resolves, so *every* horse ties at zero and
+  // the whole within-bucket order rests on the last key. Before the name tie-break that key didn't
+  // exist and the order was `Array.sort`'s stability over input order.
+  it('should_sort_tied_unavailable_horses_by_name', () => {
+    const hazel = createMockHorse({ id: 'horse-hazel', name: 'Hazel', is_available: false })
+    const daisy = createMockHorse({ id: 'horse-daisy', name: 'Daisy', is_available: false })
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[hazel, daisy]} />)
+    const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+      .map((el) => (el as HTMLInputElement).value)
+    expect(rendered).toEqual(['horse-daisy', 'horse-hazel'])
+  })
+
 })
