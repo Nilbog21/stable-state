@@ -366,9 +366,14 @@ start_server() {
     # TZ=UTC for exactly the reason package.json's `dev` script pins it (#1221): the suite's
     # barn-vs-host timezone axis (docs/e2e-framework-facts.md fact 12) is framed on the server
     # being UTC, and a server on the developer's own zone would move it silently.
+    # -H 127.0.0.1 because Next's default hostname is 0.0.0.0, which would put the app — pointed at
+    # a real Supabase project — on the LAN for the length of every run. Nothing outside this run
+    # needs to reach it, which is the same premise the ephemeral port rests on. Addressed by IP
+    # rather than by name everywhere below, so `localhost` resolving to ::1 before 127.0.0.1 can
+    # never leave the readiness check or a Chromium request talking to nothing.
     # setsid so the server is its own process group and stop_server can kill it whole; the explicit
     # redirect keeps its output out of checklist-suite.log, which this script's stdout is a tee into.
-    TZ=UTC setsid npx next start -p "$SERVER_PORT" > "$SERVER_LOG" 2>&1 < /dev/null &
+    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 < /dev/null &
     pid=$!
     # `|| true`: a server that died before this ran is a branch handled just below, not a failure
     # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
@@ -381,7 +386,7 @@ start_server() {
 
     up=false
     for ((i = 0; i < 60; i++)); do
-      if curl -sf -o /dev/null "http://localhost:$SERVER_PORT/"; then
+      if curl -sf -o /dev/null "http://127.0.0.1:$SERVER_PORT/"; then
         up=true
         break
       fi
@@ -402,7 +407,14 @@ start_server() {
       echo "Production server up on port $SERVER_PORT."
       return 0
     fi
-    stop_server
+    # Kill what we started, but deliberately *not* through stop_server: that waits for the port to
+    # be released, and on the retry path the port is held by whoever won the race rather than by us,
+    # so the wait could only run out its budget and then print a SIGKILL warning naming our own
+    # recovery as a failure. Our server never bound the port, so there is nothing of ours to wait
+    # for. Clearing SERVER_PGID also leaves the EXIT trap's stop_server correctly a no-op on the
+    # give-up path below.
+    kill -- "-$SERVER_PGID" 2>/dev/null || true
+    SERVER_PGID=""
   done
 
   echo "Error: the production server never answered within 120s. Last 40 lines of $SERVER_LOG:" >&2

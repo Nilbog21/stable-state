@@ -177,7 +177,7 @@ header, not a shared Gross/Expenses/Net one) with an auto-retrying matcher. *(#1
 under test runs under `TZ=UTC` — measured by #1252's probe, which rendered a 4:00 PM Eastern lesson
 as 8:00 PM from a Server Component with the barn zone dropped, and only then confirmed against
 `package.json`'s `dev` script (pinned by #1221). Since #1601 that is two servers, not one, and
-both are pinned deliberately: the developer's `next dev`, and the `next start` that
+both are pinned deliberately: the developer's `next dev`, and the `next start` (bound to 127.0.0.1) that
 `run-checklist-suite.sh` builds and serves the suite from, which the script starts under `TZ=UTC`
 naming this fact as the reason. A suite server on the host's own zone would move this axis
 silently, which is the one way this fact could stop being true without anything failing. The
