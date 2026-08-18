@@ -40,7 +40,7 @@
 //    alone, minted by the same `authStorageState` global-setup.ts uses for the shared three. That
 //    login exists because the shared three cannot be it — `scripts/e2e-auth-users.ts` fills their
 //    contact fields and `profiles` is one global row per `user_id`, so blanking one to reach
-//    `/profile/complete` would race every other spec across the suite's four workers. The full
+//    `/profile/complete` would race every other spec across the suite's workers. The full
 //    statement, including why per-barn auth users still do not exist, is on
 //    `createThrowawayAuthUser` in support/fixtures.ts.
 //

@@ -221,6 +221,15 @@ SEEDED=true
 
 # Captured rather than left to `set -e` so --hold-open still prompts on a failing run — which
 # is when holding the barns open to inspect them matters most.
+#
+# Playwright runs under `e2e-slot.sh` (#1295), which blocks until one of two machine-wide slots is
+# free — the cross-worktree half of the memory fix whose per-run half is `workers: 2`. Wrapping only
+# this call is deliberate: the acquire covers exactly the span that loads the dev server, so the
+# --hold-open prompt below and the recycle before it hold no slot while a human walks a checklist.
+# The wrapper `exec`s, so the env prefix here still reaches Playwright and $? is still Playwright's
+# own status. Unconditional, single-spec runs included — RAM is the constraint whether the run is
+# one spec or seventy-three, and the exemption single-spec runs held under /fableFleet's prose mutex
+# existed only because a human had to grant that lock.
 PW_EXIT=0
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
@@ -231,7 +240,7 @@ E2E_BASE_URL="$E2E_BASE_URL" \
 E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
-  npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
+  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
 
 # Written as a loop over a captured value rather than `ss … | grep -q`, which is scripts/CLAUDE.md's
 # pipefail race. Non-zero if the port is still held when the budget runs out, so the caller can

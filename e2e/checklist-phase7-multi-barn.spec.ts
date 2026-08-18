@@ -38,7 +38,7 @@
 //
 //      a. THE SIGN-OUT WOULD REVOKE THE SUITE'S OWN CREDENTIALS. `signOut()` in
 //         src/app/actions/auth.ts takes auth-js's default, which is `scope: 'global'` — every
-//         session for that user, not this one. All four workers and the `@mobile` project read
+//         session for that user, not this one. Every worker and the `@mobile` project read
 //         the same `e2e/.auth/manager.json`, so the "Sign out, then visit `/login`" block run as
 //         `manager@e2e.test` would pull the token out from under whatever else is running. This
 //         file is the suite's first sign-out; nothing had established that hazard before it.
@@ -49,7 +49,7 @@
 //         the Join confirmation. The whole claim block would have nothing to assert against.
 //
 //      c. `/barns` COULD ONLY BE ASSERTED AS A SUBSET. `getBarnMembershipsForUser` is
-//         project-wide, and at `workers: 4` the shared manager holds a membership in every barn
+//         project-wide, and under `workers: 2` the shared manager holds a membership in every barn
 //         being seeded concurrently. A login this file owns holds exactly the two memberships
 //         this file created, which is what lets the card count below be an exhaustive claim
 //         rather than a floor.
@@ -639,7 +639,7 @@ test.describe('at a mobile viewport', () => {
 /**
  * An exhaustive count rather than a floor, and note 1c is what buys that: this login holds the two
  * memberships this file claimed and no others, where the shared manager would be accumulating one
- * per concurrently-seeded barn across four workers.
+ * per concurrently-seeded barn across the suite's workers.
  */
 test('the_barns_page_shows_one_card_per_membership @manager', async () => {
   const page = member()
