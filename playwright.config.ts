@@ -16,8 +16,8 @@ export default defineConfig({
   // already changed, so the second attempt asserts against a barn that no longer matches the
   // fixture — a false pass or a misleading failure either way.
   retries: 0,
-  // **Set from #1601's measurement.** History first, because this number moved twice on rationales
-  // that no longer hold.
+  // **Set from #1606's measurement.** History first, because this number moved three times on
+  // rationales that no longer hold.
   //
   // Until #1601 every worker pointed at that worktree's own `next dev` server, which compiled
   // routes on demand, so worker count was really "concurrent load on a single largely-serial
@@ -37,31 +37,68 @@ export default defineConfig({
   // to peak at 10.18 GB is now the smallest real class in the run, and the run entire is 4.2x
   // smaller than that old server alone.
   //
-  // **4 was re-tested against that, and rejected — this is a measured ceiling, not a leftover.**
-  // The dev-server contention #1295 rejected 4 for is genuinely gone, so the value was worth
-  // re-earning: at 2 the workers were only ~83% saturated (28.0 min of summed test time across 2
-  // workers = 14.0 min of execution against 16.8 min wall), which says wall time tracks worker
-  // count. Run at 4 it does, dramatically — **8.8 min, nearly half of 16.8** — and memory never
-  // came close to mattering (3.8 GB peak concurrent against ~19 GB free; Chromium doubled as
-  // expected, the server grew only 437 -> 607 MB). But it was **not green: 1 failed, 4 did not
-  // run**.
+  // **#1601 re-tested 4 against that and rejected it, calling it a measured ceiling. #1606
+  // overturned that by fixing what the ceiling actually was — one assertion.** The dev-server
+  // contention #1295 rejected 4 for is genuinely gone, so the value was worth re-earning: at 2 the
+  // workers were only ~83% saturated (28.0 min of summed test time across 2 workers = 14.0 min of
+  // execution against 16.8 min wall), which says wall time tracks worker count. Run at 4 it does,
+  // dramatically — **8.8 min, nearly half of 16.8** — and memory never came close to mattering
+  // (3.8 GB peak concurrent against ~19 GB free; Chromium doubled as expected, the server grew only
+  // 437 -> 607 MB). #1601's run at 4 was **not green: 1 failed, 4 did not run**, and that single
+  // failure was read as the ceiling.
   //
-  // The failure names its own cause, which is why it is a ceiling rather than a flake to re-roll.
-  // `checklist-phase4-finances-outstanding.spec.ts`'s `readTabExpenseTotals` switches tabs by
-  // clicking a `Pill` — a soft nav (framework fact 11) — and waits on the one header that differs
-  // between tabs, exactly as that fact prescribes. At 4 workers the soft nav didn't land inside
-  // **expect's fixed 5000 ms**: 14 polls, still reading the previous tab's `"Rider ▲"` where
-  // `"Trainer"` was expected. That budget is fact 1's *third* tier — the one `test.slow()` cannot
-  // raise — so no amount of per-test slowness declaration reaches it. And the test sits second in a
-  // `describe.serial` block, so its failure silenced the 4 tests after it (fact 15): the blast
-  // radius is wider than the failure count suggests.
+  // It was one assertion, and it named itself. `checklist-phase4-finances-outstanding.spec.ts`'s
+  // `readTabExpenseTotals` switches tabs by clicking a `Pill` — a soft nav (framework fact 11) —
+  // and waits on the one header that differs between tabs, exactly as that fact prescribes. At 4
+  // workers the soft nav didn't land inside **expect's fixed 5000 ms**: 14 polls, still reading the
+  // previous tab's `"Rider ▲"` where `"Trainer"` was expected. That budget is fact 1's *third*
+  // tier — the one `test.slow()` cannot raise — so no per-test slowness declaration reaches it, and
+  // an explicit matcher timeout is the one lever fact 1 sanctions. #1606 gave it one
+  // (`SETTLE_AFTER_SOFT_NAV`, 15 s, following that file's own `SETTLE_AFTER_WRITE` precedent).
   //
-  // So the constraint on this number is no longer memory and no longer compile contention — it is
-  // that a handful of assertions live inside a fixed 5 s budget that 4 workers can exhaust. Raising
-  // this again means fixing those assertions first, not re-running and hoping. The prize is real
-  // and measured (~8 min a run), so that is worth doing deliberately; it is filed rather than done
-  // here because #1601's job was to measure this number, and tuning the specs that cap it is a
-  // different change with its own verification.
+  // **That assertion was a bug independent of worker count, which is why fixing it was the right
+  // move rather than capping the number.** It had been seen before: the same helper, same
+  // assertion, same budget timed out at `workers: 2` on the old `next dev` path on 2026-08-04,
+  // noticed in passing during #1309's work (an unrelated month-bucketing issue) and written off
+  // there as a pre-existing timing flake. #1606's issue body carries that provenance in full. Two
+  // independent sightings, two weeks and two server architectures apart, on one thin assertion — a
+  // fixed budget too tight for the work behind it, not a machine at capacity.
+  //
+  // **And this was the second fix on it, which is the part worth knowing.** #1244 already made this
+  // wait retrying (`toContainText` on the one header that differs between tabs, replacing five
+  // `goto`s) and that was recorded as fixing it. It didn't, because a retrying wait was never the
+  // missing piece — the missing piece was budget, and a retrying wait inside a 5 s ceiling still
+  // gives up at 5 s. Anyone tempted to fix a third occurrence by changing *what* is waited on
+  // should read that as the evidence it is the ceiling, not the locator.
+  //
+  // **The raise was then confirmed on n=2, deliberately.** #1601 rejected 4 on a single run; taking
+  // it on a single run in the other direction would be the same mistake. So #1606 ran the full
+  // suite at 4 twice — once with the fix applied, once as a pure confirming run with no diff after
+  // it. The first: **1038 passed, 0 failed, 10.0 min**. That 1038 is the same count #1601 got at 2,
+  // which is the check that matters — a raise that silenced tests would show up here as a *lower*
+  // pass count, not as a failure. Both runs' figures are in #1606's PR body.
+  //
+  // On the wall-clock, expect a spread rather than a number: #1601 measured 8.8 min at this setting
+  // and #1606 measured 10.0 on a box with a busy sibling worktree. Both are honest; the durable
+  // claim is ~6-7 min saved against `workers: 2`, not any particular figure. Anyone re-measuring
+  // should record what else was running.
+  //
+  // Note the blind spot #1601's run carried, which #1606 recorded rather than fixed: the failing
+  // test sits **second** of 6 in a `describe.serial` block, so the **4** tests after it never ran
+  // (fact 15) — that count is what identifies it, since 1 failed + 4 not-run is only consistent
+  // with the failure landing at test 2. (#1606's own issue body mis-stated this as 4th-of-6 with 2
+  // hidden; the arithmetic above is what settles it, and #1601 had it right first time.) The block
+  // can't be de-serialised — it's a mutation sequence whose module-level baseline is written by
+  // test 2 and read by test 4. The sharp consequence: **test 4 calls this same helper**, so that
+  // second call site was itself inside the hidden set and has never been exercised at 4 workers.
+  // The fix covers it anyway, being in the helper rather than at a call site.
+  //
+  // So the constraint on this number is not memory, not compile contention, and not the assertion
+  // above. If a future raise is wanted, expect the same shape of work: find the assertion inside a
+  // fixed 5 s budget that the new worker count exhausts, and give it a measured explicit timeout —
+  // don't re-run and hope, and don't widen budgets pre-emptively at sites never observed to need
+  // one (#1606 declined to widen the other ~14 candidates for exactly that reason: a widened budget
+  // spends the budget's ability to report "this got slow").
   //
   // Two things the measurement did *not* overturn. #1295's "workers is not a memory lever" still
   // holds, sharpened in both directions: the lever was never workers, it was the dev server — and
@@ -71,7 +108,7 @@ export default defineConfig({
   //
   // Fixed rather than a percentage, unchanged from #1238's reasoning: a fraction of core count
   // misreads the bottleneck ('25%' on a 64-core box is 16 workers).
-  workers: 2,
+  workers: 4,
   use: {
     baseURL: process.env.E2E_BASE_URL,
     // The browser context's zone, pinned for the same reason vitest.config.mts pins TZ — see

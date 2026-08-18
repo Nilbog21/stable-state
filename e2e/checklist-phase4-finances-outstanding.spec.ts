@@ -46,7 +46,8 @@ const TABS = [
 ] as const
 
 /**
- * A custom timeout (the suite's other is members-access.spec.ts's), and only for the two
+ * The first of this file's two custom timeouts (the other is SETTLE_AFTER_SOFT_NAV below; the
+ * suite's other is members-access.spec.ts's), and only for the two
  * assertions that follow a payment-type `selectOption`. The 5s default is sized for a page
  * assertion; those two wait on a server
  * action *plus* the revalidate and RSC round trip it triggers, which has been observed
@@ -55,6 +56,43 @@ const TABS = [
  * genuine failure in the suite down.
  */
 const SETTLE_AFTER_WRITE = 15_000
+
+/**
+ * The second custom timeout, for `readTabExpenseTotals`'s one header assertion — the soft nav a
+ * tab switch performs, rather than a write. Same 15s value as SETTLE_AFTER_WRITE above, and
+ * deliberately a separate constant: that one's comment scopes itself in terms to the two
+ * post-`selectOption` assertions, so reusing it would falsify the thing that makes it legible.
+ *
+ * Widened on **two measurements, two server architectures apart**, which is what makes this a bug
+ * rather than a flake to re-roll. On 2026-08-04 this same helper's same assertion timed out at
+ * `workers: 2` against the old `next dev` suite — noticed in passing during #1309's work, which
+ * was about something else entirely, and written off there as a pre-existing timing flake. #1601's
+ * full run at `workers: 4` against the production server hit it again: 14 polls, still reading the
+ * previous tab's `"Rider ▲"` where `"Trainer"` was expected. #1606's issue body carries both
+ * sightings in full — that is the durable record, since the 2026-08-04 one lives only in a
+ * gitignored work log. It is the only assertion in the suite that has ever failed this way, and
+ * until #1606 it was what capped `playwright.config.ts`'s worker count.
+ *
+ * **This is the second fix on this assertion.** #1244 made the wait retrying — this `toContainText`
+ * on the differing header, replacing the five `goto`s the helper used to do — and that was taken as
+ * having fixed it. It hadn't: a retrying wait was never what was missing, and one inside a fixed
+ * 5 s ceiling still gives up at 5 s. If it ever fails a third time, that history says the ceiling is
+ * the thing to look at, not the locator.
+ *
+ * An explicit matcher timeout is the *only* lever that reaches it. A web-first `expect` runs on
+ * expect's fixed 5000 ms, which is e2e-framework-facts.md fact 1's third tier — the one
+ * `test.slow()` cannot raise — and fact 1 names an explicit timeout as the legitimate way to
+ * loosen it.
+ *
+ * **The cost is real and is accepted rather than overlooked.** #1238's non-goals say not to inflate
+ * budgets, because "every genuine hang takes twice as long to surface" — true, and the reason this
+ * is one named site rather than a global bump or a raised `SETTLE_AFTER_WRITE`. It costs ~0 on a
+ * green run (a web-first assertion returns on first match) and ~10 s extra only when this one
+ * assertion genuinely fails. #1606 declined to pre-emptively widen the ~14 other untimed assertions
+ * that sit near a link click for exactly the reason #1238 gives: a budget widened at a site never
+ * observed to need it spends that budget's ability to report "this got slow".
+ */
+const SETTLE_AFTER_SOFT_NAV = 15_000
 
 type Seeded = {
   apollo: Horse
@@ -299,7 +337,8 @@ function breakdownTable(page: Page) {
  * without it the re-render races the read and returns the *previous* tab's figure — the hazard
  * checklist-phase4-finances-by-tier.spec.ts's by_tier_tab_lists_every_barn_tier documents.
  * `toContainText`, because every breakdown table sorts by its first column by default, so that
- * header also carries a sort glyph.
+ * header also carries a sort glyph. It carries SETTLE_AFTER_SOFT_NAV because it is the assertion
+ * whose fixed 5s budget capped the suite's worker count until #1606 — see that constant.
  *
  * No hydration barrier is needed, which is the property that makes this substitution safe
  * everywhere: a pill is an anchor, so a click landing before React is listening navigates the
@@ -311,7 +350,9 @@ async function readTabExpenseTotals(page: Page): Promise<number[]> {
   const totals: number[] = []
   for (const [i, tab] of TABS.entries()) {
     if (i > 0) await page.getByRole('link', { name: tab.pill, exact: true }).click()
-    await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column)
+    await expect(breakdownTable(page).locator('th').first()).toContainText(tab.column, {
+      timeout: SETTLE_AFTER_SOFT_NAV,
+    })
     // Column *order* is uniform across every tab — label, Gross, Expenses, Net — so Expenses is
     // always the third cell, even though the label header itself is what differs (see TABS).
     totals.push(parseMoney(await footerTotalRow(page).locator('td').nth(2).innerText()))

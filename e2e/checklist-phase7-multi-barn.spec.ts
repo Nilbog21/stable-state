@@ -49,8 +49,9 @@
 //         the Join confirmation. The whole claim block would have nothing to assert against.
 //
 //      c. `/barns` COULD ONLY BE ASSERTED AS A SUBSET. `getBarnMembershipsForUser` is
-//         project-wide, and under `workers: 2` the shared manager holds a membership in every barn
-//         being seeded concurrently. A login this file owns holds exactly the two memberships
+//         project-wide, and at any parallel worker count the shared manager holds a membership in
+//         every barn being seeded concurrently (the more workers, the more of them — #1606 took the
+//         setting to 4, which only sharpens this). A login this file owns holds exactly the two memberships
 //         this file created, which is what lets the card count below be an exhaustive claim
 //         rather than a floor.
 //
