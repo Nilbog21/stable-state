@@ -66,7 +66,17 @@ BUDGETS=(
   # of this raise widening the run-checklist-suite line and that was reverted. The two index lines
   # that did change (reset-db, setup-demo-user) are corrections of claims the same PR falsified,
   # not elaborations, and are close to size-neutral.
-  "scripts/CLAUDE.md:10700"
+  #
+  # Raised from 10700 by #1622: 10666 -> 10892. The same forced-bookkeeping case #1607 and #1295
+  # made, one turn of the same crank — a new `.test.sh` (workflow-ci-wait) entering the normative
+  # surviving list, plus the one clause that list obliges it to carry. The file was at 34
+  # characters of headroom, so no trim was available. The raise funded those two only: a first cut
+  # also widened the workflow-ci-wait index line to mention the anchor, and that was reverted
+  # before review, per the paragraph above. The gate's mechanism, its two deliberate limits and its
+  # harness's seam are all in docs/scripts.md. The margin left is in line with #1295's 51 and
+  # #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
+  # this gate on the merged tree after its own rebase, which is where a combined total is checked.
+  "scripts/CLAUDE.md:10950"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each
