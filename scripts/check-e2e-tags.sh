@@ -21,7 +21,7 @@ cd "$(git rev-parse --show-toplevel)"
 #
 # The reverse direction is deliberately not linted: a test claimed by no checklist line is
 # legitimate (5 today), so flagging it would buy busywork. The fifth check is not that lint — it
-# reads file text, never test titles. See docs/scripts.md.
+# reads file text, never test titles. See docs/scripts/checks.md.
 
 # The files whose (e2e:) tags are data rather than prose. PRE_RELEASE_TEST_CHECKLIST.md is
 # excluded: all 4 of its `(e2e:` hits are convention prose (`<test name>`, `…`).
@@ -105,7 +105,7 @@ asserts_as_declared_role() {
 # `test('…')` — the 5 `test(`…`)` template-literal sites can't be resolved statically, and 4 of
 # them would be permanent false positives on the never-executes check, their project tag being
 # `@${role}`. A checklist tag naming a *generated* title would therefore read as an orphan;
-# none does today, and the generated names aren't checklist-shaped (see docs/scripts.md).
+# none does today, and the generated names aren't checklist-shaped (see docs/scripts/checks.md).
 declare -A title_of
 while IFS= read -r title; do
   stripped="$title"

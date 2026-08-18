@@ -22,11 +22,11 @@ Restructure instead — capture into a variable first (`out="$(cmd)"; grep -q �
 
 `scripts/check-pipefail-race.sh` (wired into `ci.sh`) enforces this across `scripts/*.sh`, so a new instance fails CI rather than waiting to be noticed. It skips `*.test.sh`, which embed hazardous pipelines as fixture *text* that no scanner can tell from a real one.
 
-The 2026-08-04 sweep (#1285) came back clean; the four look-alike non-instances it cleared are recorded in [`docs/scripts.md`](../docs/scripts.md)'s sweep history.
+The 2026-08-04 sweep (#1285) came back clean; the four look-alike non-instances it cleared are recorded in [`docs/scripts/checks.md`](../docs/scripts/checks.md)'s sweep history.
 
 ## Test assets
 
-`scripts/data/` is a normal, tracked directory (#1135) — one shared fixture set (photos, sized PDFs) that `seed-barn.ts`, `seed-test-barn.ts`, the e2e suite, and a human walking `checklists/pre-release/` all draw from. Add new fixtures here rather than force-adding them elsewhere; every checklist step that uploads a file names its specific asset, so keep the two in sync. `scripts/data.test.ts` asserts the manifest in CI. The per-file manifest, the reasons the PDFs are structurally valid and the images are word-marked, and the regeneration recipes are in [`docs/scripts.md`](../docs/scripts.md).
+`scripts/data/` is a normal, tracked directory (#1135) — one shared fixture set (photos, sized PDFs) that `seed-barn.ts`, `seed-test-barn.ts`, the e2e suite, and a human walking `checklists/pre-release/` all draw from. Add new fixtures here rather than force-adding them elsewhere; every checklist step that uploads a file names its specific asset, so keep the two in sync. `scripts/data.test.ts` asserts the manifest in CI. The per-file manifest, the reasons the PDFs are structurally valid and the images are word-marked, and the regeneration recipes are in [`docs/scripts/dev-data.md`](../docs/scripts/dev-data.md).
 
 ## DB layer usage
 
@@ -60,7 +60,7 @@ Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage
 
 ### Script index
 
-One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](../docs/scripts.md).
+One line each; full contracts, flags, quirks, and history: [`docs/scripts/`](../docs/scripts/).
 
 - `reset-db` — wipe the dev project and reseed `dev-barn` via `seedBarn()`; recreates the e2e logins and the demo user after teardown
 - `seed-barn` — shared seeding module: `seedBarn()` plus fixture constants and pure date/variation helpers
@@ -81,7 +81,7 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `assert-dev-project` — dev-project guard `/sync-migrations` runs before `npx supabase db push`
 - `ci` — the CI entry point
 - `check-coverage` — the 100% branch-coverage gate
-- `check-doc-size` — doc size budgets (pairwise anchor+sub-doc caps on `ARCHITECTURE.md`+`docs/architecture/` and `e2e/CLAUDE.md`+`docs/e2e-framework-facts.md`/`docs/e2e-spec-maintenance.md`, per-file caps on the auto-loaded set)
+- `check-doc-size` — doc size budgets (pairwise anchor+sub-doc caps on `ARCHITECTURE.md`+`docs/architecture/`, `scripts/CLAUDE.md`+`docs/scripts/`, and `e2e/CLAUDE.md`+`docs/e2e-framework-facts.md`/`docs/e2e-spec-maintenance.md`, per-file caps on the auto-loaded set)
 - `check-pipefail-race` — CI gate for the `pipefail` + early-exit-consumer race (see Shell hazards above)
 - `check-function-grants` — CI gate: every non-trigger migration function is revoked from `PUBLIC` after its last create/drop
 - `check-ceremony-tags` — CI gate: every `RELEASE_CEREMONY.md` checkbox carries exactly one `(auto)`/`(prompt)`/`(manual)` tag — what `/releaseCeremony` reads to decide what it may run unattended

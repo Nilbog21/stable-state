@@ -14,6 +14,7 @@ PAIRS=(
   "ARCHITECTURE.md:docs/architecture"
   "e2e/CLAUDE.md:docs/e2e-framework-facts.md"
   "e2e/CLAUDE.md:docs/e2e-spec-maintenance.md"
+  "scripts/CLAUDE.md:docs/scripts"
 )
 
 # Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
@@ -45,20 +46,21 @@ BUDGETS=(
   # stated just above it. New index entries, not elaboration of existing ones — the
   # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13
   # characters of headroom, so no trim was available; all three scripts' rationale lives in
-  # docs/scripts.md, and the index entries stay one line each per #1468's cap.
+  # docs/scripts/checks.md and docs/scripts/workflow.md, and the index entries stay one line
+  # each per #1468's cap.
   # Raised from 9950 by #1295: 9899 -> 10232. One genuinely new script entering the index
   # (e2e-slot, the kernel-held suite semaphore), plus the sentence its .test.sh owes the
   # no-.test.sh-for-shell policy right above — that list is normative, so a wired-in test that
   # isn't named there reads as one to delete. New index entry, not elaboration of an existing
   # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
-  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts.md.
+  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts/suite.md.
   # Raised from 10300 by #1607: 10294 -> 10666. One genuinely new `.test.sh` entering the
   # no-.test.sh-for-shell policy's surviving list, plus the clause that list obliges it to carry
   # (why it isn't an exception). That list is normative — "if a .test.sh isn't wired in, delete
   # it" — so a wired-in gate missing from it reads as one to delete, which is the same argument
   # #1295's raise made for e2e-slot and the legitimate-raise case this file describes. The file
   # was at 6 characters of headroom, so no trim was available; the harness's whole contract, its
-  # seam and its fidelity choices are in docs/scripts.md.
+  # seam and its fidelity choices are in docs/scripts/suite.md.
   #
   # The raise deliberately does NOT fund index-line elaboration. #1601's own review fixup
   # (e08fd641) settled that: "the index line is shortened rather than its budget raised — the
@@ -73,10 +75,22 @@ BUDGETS=(
   # characters of headroom, so no trim was available. The raise funded those two only: a first cut
   # also widened the workflow-ci-wait index line to mention the anchor, and that was reverted
   # before review, per the paragraph above. The gate's mechanism, its two deliberate limits and its
-  # harness's seam are all in docs/scripts.md. The margin left is in line with #1295's 51 and
-  # #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
+  # harness's seam are all in docs/scripts/workflow.md. The margin left is in line with #1295's 51
+  # and #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
   # this gate on the merged tree after its own rebase, which is where a combined total is checked.
-  "scripts/CLAUDE.md:10950"
+  #
+  # Raised from 10950 by #1618: 10892 -> 10958. That last clause of #1622's is this raise: #1618
+  # was the concurrent edit, and the combined total is what needs the 8 characters. #1618 armed a
+  # third pairwise anchor (scripts/CLAUDE.md + docs/scripts/), and the check-doc-size index line
+  # enumerates the anchors by name — so arming the row falsified that line. Correcting it is the
+  # correction case the paragraph above carves out, not the elaboration it forbids; the precedent
+  # is #1433's 766e471d, a review fixup that had to repair this same line after #1420 added a PAIRS
+  # row without touching it. Nothing here validates its own index entry, so CI cannot see that
+  # staleness and only a raise-or-trim decision keeps the line true. The split itself is NOT what
+  # is funded: re-pointing three links from the pre-split file to the sub-docs cost +28 and stayed
+  # inside the budget it landed on, and took no raise, because path-lengthening is neither a new
+  # entry nor a correction. Only the +38 index-line fix crosses, and only by 8.
+  "scripts/CLAUDE.md:11000"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each

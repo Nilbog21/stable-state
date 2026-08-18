@@ -8,7 +8,7 @@
 // The last two are not decoration. Every nav click here goes through `NavigationBlocker`'s
 // `BlockingLink`, and `AgreementForm` arms `useUnsavedChangesGuard` from the same module. And
 // `horses/**` is the launchpad: every test in this file starts at `/barn/<slug>/horses` and clicks
-// out of it, so a regression that made that route throw would fail all ten. `docs/scripts.md`'s
+// out of it, so a regression that made that route throw would fail all ten. `docs/scripts/suite.md`'s
 // discriminating question is "could an assertion in this file fail if that module changed?", and
 // for the launchpad the answer is plainly yes — declaring it costs this PR nothing, since a
 // selection is computed from a diff's changed paths rather than from a spec's own declarations.

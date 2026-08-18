@@ -15,7 +15,7 @@ import type { Locator, Page } from '@playwright/test'
 import { accordionSection } from './accordion'
 import { assetPath } from './fixtures'
 
-// Every asset the checklist lines name, verbatim. docs/scripts.md's asset table assigns
+// Every asset the checklist lines name, verbatim. docs/scripts/dev-data.md's asset table assigns
 // harper-photo.png and emery-photo.jpg to *member* photo flows, but two lines name both files
 // explicitly for Apple the horse — "As manager, set `scripts/data/harper-photo.png` on Apple" and
 // "Replace Apple's photo with `scripts/data/emery-photo.jpg`". The line text wins, on the precedent

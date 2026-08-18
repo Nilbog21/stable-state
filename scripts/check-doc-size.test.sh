@@ -17,19 +17,21 @@ assert_fail() {
 }
 
 # Creates a temp git repo with ARCHITECTURE.md, docs/architecture/*.md, a nested
-# docs/architecture/dal/lessons.md, the per-file-budgeted CLAUDE.md set, and both of
+# docs/architecture/dal/lessons.md, the per-file-budgeted CLAUDE.md set, both of
 # e2e/CLAUDE.md's pairwise sub-docs — docs/e2e-framework-facts.md and
-# docs/e2e-spec-maintenance.md — at given byte sizes. Every path in the script's PAIRS has to
+# docs/e2e-spec-maintenance.md — and scripts/CLAUDE.md's docs/scripts/ sub-docs (#1618), at given
+# byte sizes. Every path in the script's PAIRS has to
 # exist here: a missing one makes `find` print to stderr and the pair check run zero times, so
 # that entry would be silently unexercised by every test below rather than failing one.
 make_repo() {
   local main_size="$1" sub_size="$2" budget_file_size="${3:-1000}" nested_size="${4:-100}"
   local facts_size="${5:-100}" spec_maint_size="${6:-100}"
+  local scripts_suite_size="${7:-100}" scripts_checks_size="${8:-100}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
-  mkdir -p "$dir/docs/architecture/dal" "$dir/scripts" "$dir/e2e" "$dir/src/components/ui" \
-    "$dir/supabase" "$dir/.claude/commands"
+  mkdir -p "$dir/docs/architecture/dal" "$dir/docs/scripts" "$dir/scripts" "$dir/e2e" \
+    "$dir/src/components/ui" "$dir/supabase" "$dir/.claude/commands"
   head -c "$main_size" /dev/zero | tr '\0' 'a' > "$dir/ARCHITECTURE.md"
   for f in schema dal routes rpc rls; do
     head -c "$sub_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/$f.md"
@@ -37,6 +39,8 @@ make_repo() {
   head -c "$nested_size" /dev/zero | tr '\0' 'a' > "$dir/docs/architecture/dal/lessons.md"
   head -c "$facts_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-framework-facts.md"
   head -c "$spec_maint_size" /dev/zero | tr '\0' 'a' > "$dir/docs/e2e-spec-maintenance.md"
+  head -c "$scripts_suite_size" /dev/zero | tr '\0' 'a' > "$dir/docs/scripts/suite.md"
+  head -c "$scripts_checks_size" /dev/zero | tr '\0' 'a' > "$dir/docs/scripts/checks.md"
   for f in CLAUDE.md scripts/CLAUDE.md e2e/CLAUDE.md src/components/ui/CLAUDE.md \
     supabase/CLAUDE.md .claude/commands/CLAUDE.md; do
     head -c "$budget_file_size" /dev/zero | tr '\0' 'a' > "$dir/$f"
@@ -172,6 +176,37 @@ if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: e2e/CLAUDE.m
   assert_pass "e2e spec-maintenance pair over limit: exits non-zero, names the sub-doc"
 else
   assert_fail "e2e spec-maintenance pair over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 12: the scripts pairwise anchor (#1618) — scripts/CLAUDE.md + a docs/scripts/*.md sub-doc
+# over the same 150,000 backstop exits non-zero and names the sub-doc. This is the first PAIRS row
+# whose sub_path is a *directory* rather than a single file, so the fixture creates two files
+# beneath it: one oversized and one at the default 100. That pins the directory row's actual
+# contract — `find` enumerates every *.md beneath the path and pairs each separately — which a
+# single-file fixture could not distinguish from "the row matched whichever file it reached first".
+# Same reason test 11 exists for test 10's anchor: without a fixture under docs/scripts/, `find`
+# prints to stderr, the row runs zero pair checks, and it reads as covered by the tests above.
+REPO="$(make_repo 15000 5000 1000 100 100 100 149000)"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: scripts/CLAUDE.md .* docs/scripts/suite.md"; then
+  assert_pass "scripts pairwise anchor over limit: exits non-zero, names the sub-doc"
+else
+  assert_fail "scripts pairwise anchor over limit: exits non-zero, names the sub-doc" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 13: the same directory row's *other* file is a pair in its own right, not a free rider on
+# test 12's. Only docs/scripts/checks.md is oversized here — suite.md stays at its default and
+# cannot be what produces the failure — so this is what proves `find` pairs every *.md beneath the
+# directory rather than stopping at the first. A single-file directory fixture would pass test 12
+# while a row that checked only one file went undetected.
+REPO="$(make_repo 15000 5000 1000 100 100 100 100 149000)"
+err_output="$(cd "$REPO" && bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -q "^FAIL: scripts/CLAUDE.md .* docs/scripts/checks.md"; then
+  assert_pass "scripts directory row pairs every sub-doc, not just the first"
+else
+  assert_fail "scripts directory row pairs every sub-doc, not just the first" "exit=$script_exit output=$err_output"
 fi
 rm -rf "$REPO"
 

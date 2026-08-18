@@ -8,7 +8,7 @@
 // component's own `aria-label` (`ExhaustionBar.tsx:57`). #1281 put the whole of
 // `src/components/**` into select-specs.sh's ALWAYS_FULL, so this line now documents what the
 // spec drives rather than selecting it — it stays because the accuracy rule binds regardless
-// (docs/scripts.md), not because that membership is provisional, which #1357 measured and it is
+// (docs/scripts/suite.md), not because that membership is provisional, which #1357 measured and it is
 // not. Before #1281 only `src/components/ui/**`
 // was always-full, so a PR rewording that label selected nothing and both tests broke with no
 // signal at review time: exactly the hole `--lint` cannot see, since it catches a malformed glob

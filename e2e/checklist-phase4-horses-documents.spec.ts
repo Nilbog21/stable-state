@@ -47,7 +47,7 @@ const MARIGOLD = 'Marigold'
 
 // Every asset the checklist lines name, verbatim. The two large ones exist for exactly this
 // slice: 4,600,000 bytes is over DocumentUploadForm's 4,500,000 limit and 4,400,000 is the
-// largest accepted size (docs/scripts.md's asset table).
+// largest accepted size (docs/scripts/dev-data.md's asset table).
 const TEST_PDF = 'test_1_kb.pdf'
 const LARGEST_ACCEPTED_PDF = 'test_4_4_mb.pdf'
 const OVER_LIMIT_PDF = 'test_4_6_mb.pdf'

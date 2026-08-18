@@ -183,7 +183,7 @@ cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --spec {spe
 
 **Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and a full run holds the machine's only e2e slot for the whole of it. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished — is stated once in `/testIssue` Step 4. There is no port to pass: since #1601 the suite builds the branch and serves it itself. Follow it there; it isn't restated here. Nothing to request and nobody to ask: `run-checklist-suite.sh` acquires its own slot from `scripts/e2e-slot.sh` (#1295) and simply waits if it is taken.
 
-A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`) — `scripts/ci.sh` fails without them.
+A new spec also needs its `// covers:` declaration lines (see `docs/scripts/suite.md`) — `scripts/ci.sh` fails without them.
 
 If this issue will **add** a `checklists/pre-release/phase-*.md` line (step 4's doc check states the rule), settle that line's tag *now*, before step 1. `(e2e: <test name>)` makes the covering spec a deliverable of this issue, and it goes through the red-green loop below like any other test — or, if the issue is test-only, through the mutation pass the next paragraph substitutes for that loop. Deciding the tag at step 4 instead strands the spec after the loop it was supposed to drive.
 
