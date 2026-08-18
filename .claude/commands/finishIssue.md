@@ -174,6 +174,37 @@ Stop. Do not continue.
 
 ---
 
+## Step 2.5 — Pending suite-run gate
+
+`/testIssue` Step 4 launches a `mode=full` checklist-suite run and carries on without waiting for it, so the developer stops paying ~17 blocking minutes for a verdict nothing about that step needs in hand. This is where that verdict is collected. It is a merge gate: no merge until the run has finished and passed.
+
+Read `{worktree-path}/specs/issue-{N}.md` for a `<!-- pending_suite_run: launched {epoch} ({time}) — sha {short-sha} -->` marker. **No work log, or no marker → nothing is pending → go straight to Step 3**, silently. That is the already-done guard, taken at the one point this step fetches any status; a `mode=none` or `mode=scoped` PR reaches here with no marker and is not gated, because a scoped run was already settled where it ran.
+
+The marker and the log live in the same worktree that launched the run — `specs/` is gitignored, `checklist-suite.log` sits at that worktree's root — and the gate is only sound because of that pairing. Neither is committed, and neither should be "fixed" into a tracked file.
+
+**With a marker:**
+
+1. **Wait for the terminator in one bounded blocking call.** Never poll it yourself, and never end your turn purely to wait (under `/fableFleet` that wakeup does not arrive — its Step 3 measured three-for-three):
+   ```
+   cd {worktree-path} && timeout 590 bash -c 'until grep -q "run-checklist-suite.sh exited " checklist-suite.log 2>/dev/null; do sleep 15; done'
+   ```
+   Re-run it if it times out — a full run is ~17 minutes, so expect up to two calls from a standing start, and usually zero because `/testIssue` and CI already ate most of it.
+2. **Confirm the log is *that* run's.** The header names the run: `=== run-checklist-suite.sh — barn prefix e2e-{epoch}-{RANDOM} — started {date} ===`. Require that epoch to be **at or after** the marker's `launched` value. Lower means a later run in this worktree truncated the file and the evidence is gone — relaunch (per `/testIssue` Step 4's protocol, and now in the foreground: there is nothing left to do concurrently) and gate on the new run.
+3. **Green is `exited 0` in the terminator**, which `/testIssue` Step 4 states is the whole verdict on a passing run — don't read the per-test lines back to "confirm" it, that's the token cost #1356 removed. Anything else is red; go to the failure path below.
+4. **Confirm the verdict still covers HEAD.** Launch-and-continue means the branch can have moved since the run started (an inline minor fix at `/testIssue` Step 4, a `/reviewIssue` fix commit). Ask the selector what those commits alone can break:
+   ```
+   cd {worktree-path} && git diff --name-only {marker-sha}..HEAD | bash scripts/select-specs.sh
+   ```
+   `mode=none` → the pending verdict still describes this head; continue. Anything else → the run certified a tree that no longer exists; relaunch and gate on the new one. A green gate over a stale sha is worse than no gate, which is why this check is not optional.
+5. **Pass:** delete the marker line from the work log, append `- {date} {time} — /finishIssue: pending suite run green ({epoch}), gate cleared.` to `## Log`, and continue to Step 3.
+
+**Failure path — do not merge.** Route it back through the loop the workflow already has rather than inventing one here. `grep`/`tail` the log for the `✘` lines and their error blocks, and classify each failure exactly as `/testIssue` Step 4 does — minor vs. substantial, in-scope vs. out-of-scope:
+
+- **Minor** (one assertion, a copy string, an off-by-one): fix it here, run `bash scripts/check-coverage.sh`, commit and push, then re-run `bash scripts/workflow-ci-wait.sh {pr}` for a fresh `CI: pass` (Step 2's verdict is stale for the new head). Relaunch the suite, rewrite the marker with the new epoch and sha, and re-enter this step at 1.
+- **Substantial** (new behaviour, schema/RPC, spans files, or reads as a design gap): change nothing. Write it to `## Open items` in `/testIssue` Step 4's format, refresh that section's `<!-- since_sha: -->` comment to the current HEAD, set the status marker back to `testing`, and **stop**, printing: "Suite run failed on {N} test(s) — deferred to `## Open items`. Run `/beginIssue {N}` to fix them via revise mode, then `/reviewIssue` and `/testIssue`." Do not continue to Step 3.
+
+---
+
 ## Step 3 — Set assignee
 
 ```
