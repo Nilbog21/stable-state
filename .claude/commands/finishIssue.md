@@ -25,7 +25,7 @@ Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, `base` as the expe
 
 Check whether `{worktree-path}/specs/issue-{N}.md` exists. If it doesn't, skip this step entirely (legacy branch predating this convention).
 
-Read the file's `## Open items` section for unresolved (`- [ ]`) entries.
+Read the file's `## Open items` section for unresolved (`- [ ]`) entries. **While you have it open, also note whether it carries a `<!-- pending_suite_run: prefix … — sha … -->` marker** — this is the one read of the work log the skill makes before Step 2.5 needs it, and taking the marker from here rather than re-reading the file later is what keeps that step's guard a reuse instead of a dedicated lookup (`.claude/commands/CLAUDE.md`). The marker does not gate anything *here*; carry it to Step 2.5.
 
 **If unresolved entries exist:**
 
@@ -144,7 +144,7 @@ cd {worktree-path} && bash scripts/workflow-ci-wait.sh {pr}
 ```
 Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict check, the head-SHA cross-check against the real workflow runs, and the 5-minute cap internally, and prints exactly one verdict line (except on exit 4, which prints nothing — last branch below). Branch on that line:
 
-**`CI: pass`** — continue to Step 3.
+**`CI: pass`** — continue to Step 2.5.
 
 **`CI: conflict — rebase needed`** — no new workflow run will ever appear for the current head SHA while the PR is `CONFLICTING`, so this is not a stuck runner. Resolve the conflict inline rather than stopping and deferring to `/reviewIssue`:
 
@@ -178,7 +178,7 @@ Stop. Do not continue.
 
 `/testIssue` Step 4 launches a `mode=full` checklist-suite run and carries on without waiting for it, so the developer stops paying ~17 blocking minutes for a verdict nothing about that step needs in hand. This is where that verdict is collected. It is a merge gate: no merge until the run has finished and passed.
 
-Read `{worktree-path}/specs/issue-{N}.md` for a `<!-- pending_suite_run: launched {epoch} ({time}) — sha {short-sha} -->` marker. **No work log, or no marker → nothing is pending → go straight to Step 3**, silently. That is the already-done guard, taken at the one point this step fetches any status; a `mode=none` or `mode=scoped` PR reaches here with no marker and is not gated, because a scoped run was already settled where it ran.
+Use the `<!-- pending_suite_run: prefix e2e-{epoch}-{random} — sha {short-sha} -->` marker Step 0.5 already read out of `{worktree-path}/specs/issue-{N}.md`. **No work log, or no marker → nothing is pending → go straight to Step 3**, silently. That is the already-done guard, and it branches on a signal an earlier step fetched for its own purpose rather than on a lookup of its own. A `mode=none` or `mode=scoped` PR arrives here with no marker and is not gated, because a scoped run was settled where it ran.
 
 The marker and the log live in the same worktree that launched the run — `specs/` is gitignored, `checklist-suite.log` sits at that worktree's root — and the gate is only sound because of that pairing. Neither is committed, and neither should be "fixed" into a tracked file.
 
@@ -188,22 +188,26 @@ The marker and the log live in the same worktree that launched the run — `spec
    ```
    cd {worktree-path} && timeout 590 bash -c 'until grep -q "run-checklist-suite.sh exited " checklist-suite.log 2>/dev/null; do sleep 15; done'
    ```
-   Re-run it if it times out — a full run is ~17 minutes, so expect up to two calls from a standing start, and usually zero because `/testIssue` and CI already ate most of it.
-2. **Confirm the log is *that* run's.** The header names the run: `=== run-checklist-suite.sh — barn prefix e2e-{epoch}-{RANDOM} — started {date} ===`. Require that epoch to be **at or after** the marker's `launched` value. Lower means a later run in this worktree truncated the file and the evidence is gone — relaunch.
-3. **Confirm the run still describes HEAD, before asking whether it passed.** Launch-and-continue means the branch can have moved since the run started (an inline minor fix at `/testIssue` Step 4, a `/reviewIssue` fix commit, a revise round). Ask the selector what those commits alone can break:
+   Re-run it if it times out. A run is ~17 minutes of *work* but an unbounded amount of *waiting*: `e2e-slot.sh` admits one run machine-wide and blocks with no timeout, so under `/fableFleet` a queue of siblings adds ~17 minutes each ahead of yours. **Cap it at four calls (~40 minutes) and then stop and ask**, rather than looping on. Two causes are worth distinguishing before you retry again: a slot queue, which `checklist-suite.log` shows as the waiter line the script prints once on stderr and which resolves on its own; and a terminator that will never arrive, because the `EXIT` trap is installed some way into the script and a failure above it (an unwritable log, a `git rev-parse` outside a worktree) exits having truncated the log but written nothing else. A log that has a header, no terminator, and no growth across two full calls is that second case — relaunch rather than keep waiting.
+2. **Confirm the log is still *that* run's.** `/testIssue` Step 4's freshness paragraph describes the header this reads; take the barn prefix from it and require an **exact match** against the marker's. Any other prefix means a later run in this worktree truncated the log and replaced the evidence — from outside this issue's chain (`/runChecklist`, `/overnightRefactor`, a human), since nothing inside it launches one here. Relaunch. Matching on the prefix rather than on a timestamp is the point: a replacement run is always *newer*, so any "at or after" comparison would wave it straight through.
+3. **Confirm the run still describes HEAD, before asking whether it passed.** Launch-and-continue means the branch can have moved since the run started — an inline minor fix at `/testIssue` Step 4, a `/reviewIssue` fix commit, a revise round, or **Step 2's own rebase**, which rewrites every commit from the marker's sha forward and orphans it. Ask the selector what the intervening commits alone can break:
    ```
    cd {worktree-path} && git diff --name-only {marker-sha}..HEAD | bash scripts/select-specs.sh
    ```
-   `mode=none` → the run still describes this head (an unmoved HEAD gives an empty diff and the same answer); continue to 4. Anything else → it certified a tree that no longer exists; relaunch. **This ordering is deliberate**: a green verdict over a stale sha is worse than no gate, and a *red* one over a stale sha would otherwise send an already-fixed failure back through the defer loop forever, since the fix that resolved it is exactly what moved HEAD.
+   `mode=none` → the run still describes this head (an unmoved HEAD gives an empty diff and the same answer); continue to 4. Anything else → it certified a tree that no longer exists; relaunch. If the marker's sha is no longer reachable at all — Step 2 rebased — don't try to interpret the diff: relaunch. **This ordering is deliberate**: a green verdict over a stale sha is worse than no gate (#1594's "the green becomes the evidence"), and a *red* one over a stale sha would otherwise send an already-fixed failure back through the defer loop forever, since the fix that resolved it is exactly what moved HEAD.
 4. **Green is `exited 0` in the terminator**, which `/testIssue` Step 4 states is the whole verdict on a passing run — don't read the per-test lines back to "confirm" it, that's the token cost #1356 removed. Anything else is red; go to the failure path below.
-5. **Pass:** delete the marker line from the work log, append `- {date} {time} — /finishIssue: pending suite run green ({epoch}), gate cleared.` to `## Log`, and continue to Step 3.
+5. **Pass:** delete the marker line from the work log, append `- {date} {time} — /finishIssue: pending suite run {prefix} green, gate cleared.` to `## Log`, and continue to Step 3.
 
-**Relaunching, wherever the steps above send you there:** launch it per `/testIssue` Step 4's protocol but in the **foreground** — there is nothing left to do concurrently here, which is the whole reason that step could defer it and this one can't — then **rewrite the marker with the new epoch and sha** before re-entering this step at 1. A relaunch that leaves the old marker standing re-checks the new run against the old launch time and reaches a verdict about neither.
+**Relaunching, wherever the steps above send you there:** launch it exactly as `/testIssue` Step 4 prescribes — still `run_in_background`, because a full run outruns the Bash tool's 600s ceiling and a foreground call would lose the output the terminator lives in. What differs from that step is only what you do next: nothing, except loop straight back into 1's wait. **Re-record the marker with the new run's prefix and the current sha** before doing so; a relaunch that leaves the old marker standing checks the new run against the old run's identity and reaches a verdict about neither.
 
-**Failure path — do not merge.** Route it back through the loop the workflow already has rather than inventing one here. `grep`/`tail` the log for the `✘` lines and their error blocks, and classify each failure exactly as `/testIssue` Step 4 does — minor vs. substantial, in-scope vs. out-of-scope:
+**Failure path — do not merge.** Route it back through the loop the workflow already has rather than inventing one here. `grep`/`tail` the log for the `✘` lines and their error blocks.
+
+**First, separate a failed run from a failed suite.** `cleanup()` overwrites the run's exit code with `teardown-test-barn.sh`'s if the barn teardown fails, so a non-zero terminator with **zero `✘` lines and a passing count line** is a teardown hiccup — a network-dependent Supabase delete — not a test failure. That is environmental: say so, don't classify it as a finding, and don't defer it. Confirm the barns are gone (`--prefix` teardown is idempotent; re-run it if not) and relaunch or, if the Playwright counts in the log are unambiguously green, treat the gate as satisfied and say on what evidence.
+
+Otherwise classify each failure exactly as `/testIssue` Step 4 does — minor vs. substantial, in-scope vs. out-of-scope:
 
 - **Minor** (one assertion, a copy string, an off-by-one): fix it here, run `bash scripts/check-coverage.sh`, commit and push, then re-run `bash scripts/workflow-ci-wait.sh {pr}` for a fresh `CI: pass` (Step 2's verdict is stale for the new head). Then relaunch per the paragraph above and re-enter this step at 1.
-- **Substantial** (new behaviour, schema/RPC, spans files, or reads as a design gap): change nothing. Write it to `## Open items` in `/testIssue` Step 4's format, refresh that section's `<!-- since_sha: -->` comment to the current HEAD, set the status marker back to `testing`, and **stop**, printing: "Suite run failed on {N} test(s) — deferred to `## Open items`. Run `/beginIssue {N}` to fix them via revise mode, then `/reviewIssue` and `/testIssue`." Do not continue to Step 3.
+- **Substantial** (new behaviour, schema/RPC, spans files, or reads as a design gap): change nothing. Write it to `## Open items` in `/testIssue` Step 4's format, refresh that section's `<!-- since_sha: -->` comment to the current HEAD, set the status marker back to `testing`, and **stop**, printing: "Suite run failed on {N} test(s) — deferred to `## Open items`. Run `/beginIssue {N}` to fix them via revise mode, then `/reviewIssue` and `/testIssue`." Do not continue to Step 3. **Leave the marker standing** — deliberately, not by omission: the red verdict still stands until something moves HEAD, so it must survive to gate the next `/finishIssue`, where step 3 above is what retires it once the fix commits land. `/testIssue` Step 4 replaces it rather than adding a second one on the next round.
 
 ---
 
@@ -224,6 +228,8 @@ gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f "assignees[]=$(gh a
 **Before merging:** a `CI: pass` taken before a push is stale for the new head — after any push, re-verify by re-running `bash scripts/workflow-ci-wait.sh {pr}` and require a fresh `CI: pass`. Branch on that verdict exactly as Step 2 does; do not merge on anything but a pass.
 
 Re-run it unconditionally here rather than only when this session pushed. Step 2's conflict branch already re-verifies at its own step 7, so that isn't the case this guards — the head can have moved for reasons this skill never saw, such as a `/reviewIssue` fix commit pushed moments before `/finishIssue` started, and there's no cheap local signal for that. On an already-green PR the script reaches a verdict on its first poll, so the unconditional re-run costs seconds and removes the judgment call about whether it was needed.
+
+**If the head moved, Step 2.5's verdict went stale with it** — the same argument, applied to the other gate. Compare HEAD against the sha Step 2.5 cleared on; if it differs, re-enter Step 2.5 rather than merging on a suite verdict about a tree this merge no longer contains. Cheap in the ordinary case, where nothing moved and there is nothing to re-enter.
 
 Merge via the GitHub API to avoid worktree conflicts (the base branch may be checked out in another worktree, which blocks `gh pr merge`):
 
