@@ -52,13 +52,20 @@ BUDGETS=(
   # isn't named there reads as one to delete. New index entry, not elaboration of an existing
   # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
   # available; the script's whole contract and its two ponytail ceilings are in docs/scripts.md.
-  # Raised from 10300 by #1607: 10294 -> 10649. One genuinely new `.test.sh` entering the
+  # Raised from 10300 by #1607: 10294 -> 10666. One genuinely new `.test.sh` entering the
   # no-.test.sh-for-shell policy's surviving list, plus the clause that list obliges it to carry
-  # (why it isn't an exception), plus three words on the index line. That list is normative — "if
-  # a .test.sh isn't wired in, delete it" — so a wired-in gate missing from it reads as one to
-  # delete, which is the same argument #1295's raise made for e2e-slot and the legitimate-raise
-  # case this file describes. The file was at 6 characters of headroom, so no trim was available;
-  # the harness's whole contract, its seam and its fidelity choices are in docs/scripts.md.
+  # (why it isn't an exception). That list is normative — "if a .test.sh isn't wired in, delete
+  # it" — so a wired-in gate missing from it reads as one to delete, which is the same argument
+  # #1295's raise made for e2e-slot and the legitimate-raise case this file describes. The file
+  # was at 6 characters of headroom, so no trim was available; the harness's whole contract, its
+  # seam and its fidelity choices are in docs/scripts.md.
+  #
+  # The raise deliberately does NOT fund index-line elaboration. #1601's own review fixup
+  # (e08fd641) settled that: "the index line is shortened rather than its budget raised — the
+  # rules allow a raise for a new entry, not for elaborating one." A first cut of #1607 spent part
+  # of this raise widening the run-checklist-suite line and that was reverted. The two index lines
+  # that did change (reset-db, setup-demo-user) are corrections of claims the same PR falsified,
+  # not elaborations, and are close to size-neutral.
   "scripts/CLAUDE.md:10700"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance

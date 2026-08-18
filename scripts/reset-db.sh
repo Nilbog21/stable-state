@@ -30,17 +30,21 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   npx tsx scripts/reset-db.ts
 
-bash scripts/seed-account.sh
-
 # reset-db.ts's teardownAllData loops auth.admin.listUsers and deletes *every* auth user, the
-# shared demo user included, and nothing above re-creates it — so before #1607 a reset left /demo
+# shared demo user included, and nothing re-created it — so before #1607 a reset left /demo
 # redirecting to /login?error=demo_unavailable, which reads to a checklist walker as "the demo
 # feature is broken" and to a spec as a 30s navigation timeout. Phase 1's own reset-db step
-# therefore disarmed Phase 1's /demo checks for the next run. Prevention rather than detection:
-# setup-demo-user.ts is already idempotent (updateUserById if the user exists, createUser if not)
-# and setup-demo-user.sh does its own .env.local parse, so this needs no plumbing and is safe to
-# run on every reset.
+# therefore disarmed Phase 1's /demo checks for the next run.
+#
+# Prevention rather than detection, but only because #1607 also made it true: setup-demo-user.ts
+# used to mint a fresh password on *every* run, so re-creating the user here would have left
+# `.env.local` holding a stale credential and /demo failing in exactly the same way. It now reuses
+# DEMO_USER_PASSWORD when one is configured, which is what makes this call safe to make
+# unconditionally. Run before seed-account.sh so that script's invite path stays the last thing
+# printed — the closing line below says "printed above" and means it.
 bash scripts/setup-demo-user.sh
+
+bash scripts/seed-account.sh
 
 echo ""
 echo "Open the invite path printed above on your Vercel preview to claim the manager account."

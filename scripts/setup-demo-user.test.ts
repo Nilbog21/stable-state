@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatDemoCredentialsOutput } from './setup-demo-user'
+import { formatDemoCredentialsOutput, resolveDemoPassword } from './setup-demo-user'
 
 describe('formatDemoCredentialsOutput', () => {
   it('should_format_email_and_password_as_env_lines', () => {
@@ -18,5 +18,21 @@ describe('formatDemoCredentialsOutput', () => {
     expect(formatDemoCredentialsOutput('demo@stable-state.app', 'f00d-cafe')).toContain(
       'DEMO_USER_PASSWORD=f00d-cafe'
     )
+  })
+})
+
+describe('resolveDemoPassword', () => {
+  it('should_reuse_the_configured_password_when_one_is_set', () => {
+    expect(resolveDemoPassword('already-in-env-local')).toBe('already-in-env-local')
+  })
+
+  it('should_mint_a_password_when_none_is_configured', () => {
+    expect(resolveDemoPassword(undefined)).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    )
+  })
+
+  it('should_mint_a_password_when_the_configured_one_is_empty', () => {
+    expect(resolveDemoPassword('')).not.toBe('')
   })
 })

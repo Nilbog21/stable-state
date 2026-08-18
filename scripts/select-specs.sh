@@ -49,8 +49,8 @@ cd "$root" || exit 1
 #
 # scripts/e2e-slot.sh is deliberately **not** here, and the omission is load-bearing rather than an
 # oversight: it decides whether runs serialise, never what any spec asserts, and it already carries
-# e2e-slot.test.sh in ci.sh. #1598's own de-escalation off mode=full rests on exactly that
-# distinction. select-specs.test.sh asserts both directions, so neither is left to this comment.
+# e2e-slot.test.sh in ci.sh. select-specs.test.sh asserts both directions (tests 20 and 21), so
+# neither the inclusion nor the exclusion is left to this comment.
 ALWAYS_FULL=(
   'e2e/support/**'
   'e2e/global-setup.ts'
@@ -158,7 +158,8 @@ for path in "${changed[@]+"${changed[@]}"}"; do
   for glob in "${ALWAYS_FULL[@]}"; do
     if path_matches "$path" "$glob"; then
       # On stderr, and stdout stays `mode=full` alone: three skills parse this output as
-      # key=value lines, so a fourth line there is a contract change (asserted by test 20).
+      # key=value lines, so a fourth line there is a contract change (asserted by test 4, which
+      # reads stdout in isolation).
       # #1550 — `mode=full` used to print with no indication of *which* path escalated, so
       # confirming a 73-spec run was warranted meant reading ALWAYS_FULL against the diff by
       # hand. Nobody did, and a markdown file bought a full suite more than once.

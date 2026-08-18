@@ -309,8 +309,8 @@ rm -rf "$REPO"
 # Test 21: the slot semaphore is deliberately NOT always-full
 # The guard on Test 20, and the executable form of #1607's recorded exclusion. e2e-slot.sh governs
 # whether runs serialise, never what any spec asserts, and it already has e2e-slot.test.sh in
-# ci.sh — #1598's own mode=full de-escalation rests on exactly that distinction. Without this case
-# "add scripts/ to ALWAYS_FULL" would look like a passing generalisation of Test 20.
+# ci.sh. Without this case "add scripts/ to ALWAYS_FULL" would look like a passing generalisation
+# of Test 20.
 REPO="$(make_repo)"
 out="$(select_specs 'scripts/e2e-slot.sh')"
 if [ "$out" = "mode=none" ]; then

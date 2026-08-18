@@ -13,8 +13,8 @@
 #     under test plus stub siblings covers those with no indirection at all.
 #
 # Overridable command variables — the acceptance criteria's other option — were rejected: they
-# would put ~8 test-only variables into a 535-line script every e2e run goes through, each one a
-# fresh way to run it wrong, and they still could not intercept `curl` or `ss`.
+# would put ~8 test-only variables into the 500-plus-line script every e2e run goes through,
+# each one a fresh way to run it wrong, and they still could not intercept `curl` or `ss`.
 #
 # `curl`, `ss`, `node`, `git` and `timeout` are deliberately **not** stubbed, and the fake
 # `next start` is a real `node` HTTP server on the real kernel-chosen port. So the readiness poll,
@@ -56,10 +56,16 @@ make_repo() {
   cp "$SCRIPT" "$dir/scripts/run-checklist-suite.sh"
   cp "$REAL_SLOT" "$dir/scripts/e2e-slot.sh"
 
-  # Records its argv rather than doing anything. The marker's *existence* is what "teardown ran"
-  # means in the signal cases below, which is the property #1601's review reproduced by hand.
+  # Two markers, and the split is the whole point. `teardown-started` appears the moment teardown
+  # is entered; `teardown-called.log` appears only once it has run to *completion*. A stub that
+  # wrote one marker immediately could not tell "teardown ran" from "teardown was entered and then
+  # abandoned mid-call", which is exactly the failure the signal cases below exist to catch — and
+  # is what the first cut of this harness missed. FAKE_TEARDOWN_SLEEP widens the real thing's
+  # multi-second network call into an observable window a test can aim a signal into.
   cat > "$dir/scripts/teardown-test-barn.sh" <<'EOF'
 #!/usr/bin/env bash
+touch "$PWD/teardown-started"
+sleep "${FAKE_TEARDOWN_SLEEP:-0}"
 printf '%s\n' "$*" >> "$PWD/teardown-called.log"
 EOF
 
@@ -194,7 +200,8 @@ EOF
 }
 
 # Kills only what this fixture started, by the pid the fixture itself recorded. Never a pattern
-# match on a process name: every worktree on this host runs scripts with these names.
+# match on a process name: every worktree on this host runs scripts with these names, so a pattern
+# match here could kill a colleague's live suite.
 kill_repo_server() {
   local pid
   pid="$(cat "$1/state/server-pid" 2>/dev/null || true)"
@@ -203,7 +210,22 @@ kill_repo_server() {
   fi
 }
 
+# The suite script itself, killed by the *process group* the fixture put it in — `start_suite`
+# writes its own `$$` after `setsid`, so this pgid is one this file minted and nothing else can be
+# in it. Needed because every `await_*` here is bounded and therefore can time out: without this a
+# failing signal case would `rm -rf` the repo out from under a still-running detached script, whose
+# own `setsid` server would then outlive the whole test file and hold an ephemeral port. On a CI
+# host that accumulates one per failed run.
+kill_repo_suite() {
+  local pid
+  pid="$(cat "$1/state/suite-pid" 2>/dev/null || true)"
+  if [ -n "$pid" ] && [ "$pid" -gt 1 ] 2>/dev/null; then
+    kill -9 -"$pid" 2>/dev/null || true
+  fi
+}
+
 cleanup_repo() {
+  kill_repo_suite "$1"
   kill_repo_server "$1"
   rm -rf "$1"
 }
@@ -236,16 +258,33 @@ run_suite() {
 # the pid in the file is the script's own and the group id equals it.
 SUITE_PID=
 start_suite() {
+  # Cleared first. A previous case's pid left in this global is a live pgid on this host, and the
+  # `kill -SIG -$SUITE_PID` below would then signal it — or, if the pid has been recycled, whatever
+  # inherited it. Every caller checks the return value.
+  SUITE_PID=
   PATH="$REPO/shim:$PATH" \
   FAKE_STATE="$REPO/state" \
   FAKE_BIN="$REPO/shim" \
   E2E_SLOT_DIR="$REPO/slots" \
-    setsid bash -c '
+    setsid --fork bash -c '
       cd "$1" || exit 1
       echo $$ > "$1/state/suite-pid"
       shift
       exec bash scripts/run-checklist-suite.sh "$@"
-    ' _ "$REPO" "$@" >/dev/null 2>&1 < /dev/null &
+    ' _ "$REPO" "$@" >/dev/null 2>&1 < /dev/null
+  # Two mechanics here, and getting either wrong silently destroys what these cases assert.
+  #
+  # **No `&`.** Bash sets SIGINT and SIGQUIT to SIG_IGN in a command it runs asynchronously, and a
+  # signal that is SIG_IGN on entry to a shell **cannot be trapped** — so under `&` the script's own
+  # `trap 'exit 130' INT` was a silent no-op, the run sailed past the Ctrl-C to `exit "$PW_EXIT"`,
+  # and the terminator read `exited 0`. That is indistinguishable from the forged-green defect these
+  # tests exist to catch, in a script where it does not occur: the pre-#1607 script was instrumented
+  # and fails identically under `&`, so the tell was a harness artifact, not a finding.
+  #
+  # **`--fork`, not bare `setsid`.** Bare `setsid` only forks when its caller is already a process
+  # group leader, and otherwise `exec`s — so whether this call blocks until the whole run finishes
+  # depends on how the harness itself was invoked. `--fork` makes it unconditional, and the forked
+  # child still inherits this shell's default dispositions rather than an async shell's SIG_IGN.
   await_file "$REPO/state/suite-pid" 100 || return 1
   SUITE_PID="$(cat "$REPO/state/suite-pid")"
 }
@@ -270,6 +309,28 @@ await_log() {
 
 log_has() {
   grep -q -- "$1" "$REPO/checklist-suite.log" 2>/dev/null
+}
+
+# The exit code the terminator actually reports, so a signal case can assert *which* status was
+# written rather than merely that some terminator exists. Without this, `exited 0` — the forged
+# green a missing TERM trap produces, and the single worst outcome here since #1602's merge gate
+# parses this line — satisfies an assertion written to catch it.
+terminator_code() {
+  sed -n 's/.*run-checklist-suite\.sh exited \([0-9][0-9]*\) .*/\1/p' \
+    "$REPO/checklist-suite.log" 2>/dev/null | tail -1
+}
+
+# Signals the suite's process group, and refuses to do it to a pid that is empty or already dead.
+# Both refusals are failures of the *test*, not of the script: a signal case whose signal landed on
+# nothing asserts only what the preceding signal already established, and passes whether or not the
+# behaviour under test exists. SIGNAL_OK is what each case checks to tell those apart.
+SIGNAL_OK=true
+signal_group() {
+  if [ -z "$SUITE_PID" ] || ! kill -0 "$SUITE_PID" 2>/dev/null; then
+    SIGNAL_OK=false
+    return 1
+  fi
+  kill -"$1" -"$SUITE_PID" 2>/dev/null
 }
 
 pw_args() {
@@ -488,16 +549,25 @@ else
 fi
 cleanup_repo "$REPO"
 
-# Test 18: the default path builds, starts, runs, and leaves no server behind. The port check is
-# the script's own contract ("a run leaves no server behind") asserted from outside it.
+# Test 18: the default path builds, starts, runs, and leaves no server behind — the script's own
+# contract ("a run leaves no server behind") asserted from outside it.
+#
+# The assertion is that *our* server process is gone, not that its port is free. Those are not the
+# same claim on a shared machine: the port is ephemeral, and the ephemeral range is also where every
+# other process's outbound sockets come from, so a sibling worktree's suite can bind it in the
+# window between this run exiting and this line running — failing the case for a correct script.
+# The pid comes from the fixture's own record, so it names exactly what this run started.
 REPO="$(make_repo)"
 run_suite && rc=0 || rc=$?
 port="$(head -1 "$REPO/state/server-ports" 2>/dev/null || true)"
-held="$(ss -lntH "sport = :${port:-0}" 2>/dev/null)"
-if [ "$rc" -eq 0 ] && [ -n "$port" ] && [ -z "$held" ] && [ -e "$REPO/teardown-called.log" ]; then
-  assert_pass "default run: builds, serves, tears down, releases the port"
+server_pid="$(cat "$REPO/state/server-pid" 2>/dev/null || true)"
+if [ "$rc" -eq 0 ] && [ -n "$port" ] && [ -n "$server_pid" ] &&
+  ! kill -0 "$server_pid" 2>/dev/null &&
+  [ -e "$REPO/teardown-called.log" ]; then
+  assert_pass "default run: builds, serves, tears down, leaves no server behind"
 else
-  assert_fail "default run: builds, serves, tears down, releases the port" "exit=$rc port=$port held=$held"
+  assert_fail "default run: builds, serves, tears down, leaves no server behind" \
+    "exit=$rc port=$port server_pid=$server_pid alive=$(kill -0 "${server_pid:-0}" 2>/dev/null && echo yes || echo no)"
 fi
 cleanup_repo "$REPO"
 
@@ -527,75 +597,149 @@ cleanup_repo "$REPO"
 
 # --- Signal contract -----------------------------------------------------------------------------
 
-# Measured on bash 5.3.9 while writing these, and the reason they are written as **group** signals:
+# Measured on bash 5.3.9 while writing these, and the reason every case below signals a **process
+# group** rather than a pid:
 #
 #   - `kill -TERM <script-pid>` delivered while the EXIT trap is running does NOT abandon the
 #     handler. The trap completes and bash re-raises afterwards.
-#   - `kill -TERM -<pgid>` DOES abandon it, because it also kills the `sleep` the trap is sitting
-#     in. That is what a terminal Ctrl-C's own process group, a `kill -- -PGID`, and a CI wrapper's
-#     escalation all deliver — so it is the shape that occurs, and the shape #1601's review hit.
+#   - `kill -TERM -<pgid>` DOES abandon it, because it also kills the `sleep` the handler is
+#     sitting in. That is what a terminal Ctrl-C's own process group, a `kill -- -PGID`, and a CI
+#     wrapper's own timeout escalation all deliver — so it is the shape that actually occurs.
 #   - The fix works because an *ignored* disposition is inherited across `exec`: `trap '' TERM`
-#     protects the trap's own `sleep` child as well as the shell.
+#     protects the handler's own children as well as the shell, which a caught disposition would
+#     not (it resets to default in the child).
 #
-# Each case waits for the log line that says the escalation has begun, rather than sleeping a fixed
-# amount — a slow machine then delays the test instead of turning it into a coin flip.
+# Five shapes, no two alike, and each pins the exit code the terminator reports rather than merely
+# its presence. The vulnerable region is the **whole** `EXIT` handler — stop the server, tear the
+# barns down, write the terminator — not just the kill-and-escalate window, so cases 24 and 25 aim
+# their signal at the teardown half. That is the half the first cut of this file left uncovered,
+# and both gaps it hid were real.
+#
+# Each waits on a log line or a marker rather than sleeping a fixed amount, so a slow machine
+# delays the test instead of turning it into a coin flip, and each asserts SIGNAL_OK so a signal
+# that landed on an already-dead process is reported as a broken test rather than a pass.
 
-# Test 21: INT, then TERM mid-escalation. Three assertions, all three of them the reproduction:
-# the server process group is gone, teardown RAN, and the terminator reached the log.
+# Test 21: INT, then TERM **mid-escalation**, on a run that started its own server.
+# The reproduction #1601's review did by hand: server process group gone, teardown RAN TO
+# COMPLETION, and the terminator reports the INT's own 130 rather than being lost or forged.
 REPO="$(make_repo)"
-FAKE_PW_SLEEP=30 FAKE_SERVER_TERM_GRACE=4 start_suite
-await_file "$REPO/state/playwright-started" 600
-kill -INT -"$SUITE_PID" 2>/dev/null
-await_log "Stopping this run's production server" 300
-sleep 1
-kill -TERM -"$SUITE_PID" 2>/dev/null
-await_log "run-checklist-suite.sh exited" 400
+SIGNAL_OK=true
+FAKE_PW_SLEEP=30 FAKE_SERVER_TERM_GRACE=4 start_suite && started=true || started=false
+if [ "$started" = true ]; then
+  await_file "$REPO/state/playwright-started" 600
+  signal_group INT
+  await_log "Stopping this run's production server" 300
+  sleep 1
+  signal_group TERM
+  await_log "run-checklist-suite.sh exited" 400
+fi
 server_pid="$(cat "$REPO/state/server-pid" 2>/dev/null || true)"
-if ! kill -0 "${server_pid:-0}" 2>/dev/null &&
+if [ "$started" = true ] && [ "$SIGNAL_OK" = true ] &&
+  ! kill -0 "${server_pid:-0}" 2>/dev/null &&
   [ -e "$REPO/teardown-called.log" ] &&
-  log_has "run-checklist-suite.sh exited"; then
-  assert_pass "INT then TERM mid-escalation: server gone, teardown ran, terminator written"
+  [ "$(terminator_code)" = "130" ]; then
+  assert_pass "INT then TERM mid-escalation: server gone, teardown completed, terminator 130"
 else
-  assert_fail "INT then TERM mid-escalation: server gone, teardown ran, terminator written" \
-    "server_pid=$server_pid teardown=$([ -e "$REPO/teardown-called.log" ] && echo yes || echo no)"
+  assert_fail "INT then TERM mid-escalation: server gone, teardown completed, terminator 130" \
+    "started=$started signalled=$SIGNAL_OK server_pid=$server_pid teardown=$([ -e "$REPO/teardown-called.log" ] && echo done || echo no) code=$(terminator_code)"
 fi
 cleanup_repo "$REPO"
 
-# Test 22: the same for HUP. Not decoration — HUP is what a closed terminal or a dropped ssh
-# session delivers, and it has the identical default disposition.
+# Test 22: a bare HUP, no INT first. HUP is what a closed terminal or a dropped ssh session
+# delivers, and it reaches the top-level trap by a different route than test 21's masked
+# mid-escalation signal — so this is the case that pins `trap 'exit 129' HUP` specifically.
 REPO="$(make_repo)"
-FAKE_PW_SLEEP=30 FAKE_SERVER_TERM_GRACE=4 start_suite
-await_file "$REPO/state/playwright-started" 600
-kill -INT -"$SUITE_PID" 2>/dev/null
-await_log "Stopping this run's production server" 300
-sleep 1
-kill -HUP -"$SUITE_PID" 2>/dev/null
-await_log "run-checklist-suite.sh exited" 400
-server_pid="$(cat "$REPO/state/server-pid" 2>/dev/null || true)"
-if ! kill -0 "${server_pid:-0}" 2>/dev/null &&
+SIGNAL_OK=true
+FAKE_PW_SLEEP=30 start_suite && started=true || started=false
+if [ "$started" = true ]; then
+  await_file "$REPO/state/playwright-started" 600
+  signal_group HUP
+  await_log "run-checklist-suite.sh exited" 400
+fi
+if [ "$started" = true ] && [ "$SIGNAL_OK" = true ] &&
   [ -e "$REPO/teardown-called.log" ] &&
-  log_has "run-checklist-suite.sh exited"; then
-  assert_pass "INT then HUP mid-escalation: server gone, teardown ran, terminator written"
+  [ "$(terminator_code)" = "129" ]; then
+  assert_pass "bare HUP: teardown completed, terminator reports 129"
 else
-  assert_fail "INT then HUP mid-escalation: server gone, teardown ran, terminator written" \
-    "server_pid=$server_pid teardown=$([ -e "$REPO/teardown-called.log" ] && echo yes || echo no)"
+  assert_fail "bare HUP: teardown completed, terminator reports 129" \
+    "started=$started signalled=$SIGNAL_OK teardown=$([ -e "$REPO/teardown-called.log" ] && echo done || echo no) code=$(terminator_code)"
 fi
 cleanup_repo "$REPO"
 
-# Test 23: a bare TERM with no INT first — the *false green* half, and the more dangerous one.
-# With no TERM trap the EXIT handler runs with `$?` still 0, so the terminator says `exited 0` for
-# a run that was killed, and #1602's merge gate reads that as a passing suite. `trap 'exit 143'` is
-# what makes the status honest.
+# Test 23: a bare TERM — the *false green* half, and the most dangerous of the five.
+# With no TERM trap the EXIT handler still runs, but with `$?` still 0, so the terminator says
+# `exited 0` for a run that was killed and #1602's merge gate reads it as a passing suite.
+# Asserting the code rather than the line's presence is the entire point of this case.
 REPO="$(make_repo)"
-FAKE_PW_SLEEP=30 start_suite
-await_file "$REPO/state/playwright-started" 600
-kill -TERM -"$SUITE_PID" 2>/dev/null
-await_log "run-checklist-suite.sh exited" 400
-if log_has "run-checklist-suite.sh exited 143" && [ -e "$REPO/teardown-called.log" ]; then
-  assert_pass "bare TERM: the terminator reports 143 rather than a false 0"
+SIGNAL_OK=true
+FAKE_PW_SLEEP=30 start_suite && started=true || started=false
+if [ "$started" = true ]; then
+  await_file "$REPO/state/playwright-started" 600
+  signal_group TERM
+  await_log "run-checklist-suite.sh exited" 400
+fi
+if [ "$started" = true ] && [ "$SIGNAL_OK" = true ] &&
+  [ -e "$REPO/teardown-called.log" ] &&
+  [ "$(terminator_code)" = "143" ]; then
+  assert_pass "bare TERM: teardown completed, terminator reports 143 rather than a false 0"
 else
-  assert_fail "bare TERM: the terminator reports 143 rather than a false 0" \
-    "terminator=$(grep -o 'run-checklist-suite.sh exited [0-9]*' "$REPO/checklist-suite.log" 2>/dev/null | tail -1)"
+  assert_fail "bare TERM: teardown completed, terminator reports 143 rather than a false 0" \
+    "started=$started signalled=$SIGNAL_OK teardown=$([ -e "$REPO/teardown-called.log" ] && echo done || echo no) code=$(terminator_code)"
+fi
+cleanup_repo "$REPO"
+
+# Test 24: INT, then a **second** signal during the barn teardown.
+# `stop_server` is not the only vulnerable region: `cleanup` goes on to run teardown-test-barn.sh —
+# a multi-second network call — and only then writes the terminator. A fence that covers the
+# escalation and is dropped before teardown leaves both of this issue's failure modes open on a
+# plain double Ctrl-C, or a CI wrapper's TERM-then-TERM. HUP as the second signal so this case and
+# test 21 differ in both the region signalled and the signal used.
+REPO="$(make_repo)"
+SIGNAL_OK=true
+FAKE_PW_SLEEP=30 FAKE_TEARDOWN_SLEEP=4 start_suite && started=true || started=false
+if [ "$started" = true ]; then
+  await_file "$REPO/state/playwright-started" 600
+  signal_group INT
+  await_file "$REPO/teardown-started" 600
+  sleep 0.5
+  signal_group HUP
+  await_log "run-checklist-suite.sh exited" 400
+fi
+if [ "$started" = true ] && [ "$SIGNAL_OK" = true ] &&
+  [ -e "$REPO/teardown-called.log" ] &&
+  [ "$(terminator_code)" = "130" ]; then
+  assert_pass "a second signal during teardown: teardown still completed, terminator 130"
+else
+  assert_fail "a second signal during teardown: teardown still completed, terminator 130" \
+    "started=$started signalled=$SIGNAL_OK teardown=$([ -e "$REPO/teardown-called.log" ] && echo done || echo no) code=$(terminator_code)"
+fi
+cleanup_repo "$REPO"
+
+# Test 25: the same, on a --base-url run — where a *single* signal is enough.
+# `stop_server` returns at its `[ -z "$SERVER_PGID" ]` guard, and #1601 made SERVER_PGID empty on
+# exactly the paths that never start a server: every --base-url run (the shape `--allow-prod`
+# requires, and the one a developer targeting their own dev server spells) and every path where
+# start_server gave up. Any fence living inside stop_server is therefore never installed at all on
+# those runs, and one group TERM mid-teardown leaks the barns and loses the terminator.
+REPO="$(make_repo)"
+SIGNAL_OK=true
+FAKE_PW_SLEEP=30 FAKE_TEARDOWN_SLEEP=4 start_suite --base-url http://127.0.0.1:9999 && started=true || started=false
+if [ "$started" = true ]; then
+  await_file "$REPO/state/playwright-started" 600
+  signal_group INT
+  await_file "$REPO/teardown-started" 600
+  sleep 0.5
+  signal_group TERM
+  await_log "run-checklist-suite.sh exited" 400
+fi
+if [ "$started" = true ] && [ "$SIGNAL_OK" = true ] &&
+  [ ! -e "$REPO/state/server-ports" ] &&
+  [ -e "$REPO/teardown-called.log" ] &&
+  [ "$(terminator_code)" = "130" ]; then
+  assert_pass "--base-url run signalled during teardown: teardown still completed, terminator 130"
+else
+  assert_fail "--base-url run signalled during teardown: teardown still completed, terminator 130" \
+    "started=$started signalled=$SIGNAL_OK teardown=$([ -e "$REPO/teardown-called.log" ] && echo done || echo no) code=$(terminator_code)"
 fi
 cleanup_repo "$REPO"
 
