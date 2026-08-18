@@ -26,9 +26,10 @@
 // ## What ONE horse picker is, in two sort orders
 //
 // `LessonForm`'s picker sorts on `horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a)
-// - horseTotalExertion(b) || a.name.localeCompare(b.name)`, where the bucket is `checked -> 0`,
-// `unavailable or inactive -> 2`, everything else `1`, and the third key (#1616) makes an
-// equal-exertion tie a rule rather than input order. That single comparator is what makes the
+// - horseTotalExertion(b) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)`, where the
+// bucket is `checked -> 0`, `unavailable or inactive -> 2`, everything else `1`, and the last two
+// keys (#1616) make an equal-exertion tie a rule rather than input order — by name, then by id for
+// the two-horses-one-name case no constraint prevents. That single comparator is what makes the
 // checklist's two headline claims look contradictory and be the same rule: an *unavailable* horse
 // sorts to the bottom (bucket 2), while an *inactive* horse that is already on the lesson being
 // edited sorts to the top — because being checked wins the bucket before its inactivity is ever

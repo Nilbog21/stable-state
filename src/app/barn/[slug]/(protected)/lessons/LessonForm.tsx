@@ -503,14 +503,18 @@ export function LessonForm({
             'Horse'
           )}
         </legend>
-        {/* Three keys, and the third is load-bearing (#1616): two horses in one bucket on equal
+        {/* Four keys, and the last two are load-bearing (#1616): two horses in one bucket on equal
             exertion used to fall through to `Array.sort`'s stability over input order. For the
             create form that was accidentally alphabetical — `getHorsesByBarn` reads `.order('name')`
             — and the edit route broke even that, appending `inactiveAssigned` after the ordered
             list. The tie is also far more common than it looks: `exhaustionByHorseId` is undefined
             until the projection fetch resolves, so on every first paint *every* horse totals zero
-            and this key alone decides the order. */}
-        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b) || a.name.localeCompare(b.name)).map((h) => {
+            and the name key alone decides the order. The id key behind it is what makes the
+            comparator total: `horses.name` carries no per-barn uniqueness constraint, so two horses
+            can share a name and tie on all three keys above. Same `name || id` shape as the six
+            other sorts over named barn rows (`db/expenses.ts`, `db/lesson-participants.ts`,
+            `db/lessons.ts`, `horses/[id]/page.tsx`). */}
+        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map((h) => {
           const isUnavailable = h.is_available === false
           const exhaustion = exhaustionByHorseId?.[h.id]
           return (
