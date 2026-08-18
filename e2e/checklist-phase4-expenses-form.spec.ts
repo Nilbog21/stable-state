@@ -827,6 +827,16 @@ test('entering_a_recipient_seen_before_autofills_the_expense_type @manager', asy
  * The barrier is the same precondition the test above states, and it goes ahead of the observer
  * too: the ring is applied by `setTypeFlashing`, so an unhydrated fill produces no transitions at
  * all and the log reads `[false]` — a failure that names the observer rather than the hydration.
+ *
+ * The read is `toPass` rather than `expect.poll` because the tier is what failed, not the claim
+ * (#1595): the poll runs on expect's 5s default, which the 600ms ring plus its two React commits
+ * only comfortably clears on an idle machine — under full-suite contention those commits queue
+ * behind compile work and the third transition lands outside the window. `toPass` is unbounded
+ * (fact 1), so the wait draws on the test's own budget and there is no number here to re-size on
+ * a slower box. Don't tighten it back. `waitForFunction` on `__ringLog.length === 3` would be
+ * unbounded too and is the wrong shape: that predicate is satisfiable only by the success path
+ * (fact 17), so a ring that latched on would time out naming the predicate, where this names the
+ * observed `[false, true]`.
  */
 test('the_autofilled_expense_type_field_flashes @manager', async ({ page }) => {
   await page.goto(newExpensePath())
@@ -845,9 +855,11 @@ test('the_autofilled_expense_type_field_flashes @manager', async ({ page }) => {
   await recipientField.fill(HISTORY_RECIPIENT)
   await recipientField.blur()
 
-  await expect
-    .poll(() => typeField.evaluate(() => (window as unknown as { __ringLog: boolean[] }).__ringLog))
-    .toEqual([false, true, false])
+  await expect(async () => {
+    expect(
+      await typeField.evaluate(() => (window as unknown as { __ringLog: boolean[] }).__ringLog)
+    ).toEqual([false, true, false])
+  }).toPass()
 })
 
 // ---------------------------------------------------------------------------
