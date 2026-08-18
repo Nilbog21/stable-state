@@ -476,6 +476,32 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     })
   })
 
+  /**
+   * #1549 /testIssue round: the promotion above leaves the *outgoing* owner a grant matching the
+   * access ownership conferred them.
+   *
+   * Until now it was a silent revocation, and for exactly the grantless owner: the creating
+   * manager held no `member_horse_privileges` row — the ordinary state of a horse made through
+   * the Add Horse form — so her row was synthesised from `owning_member_id` alone and vanished
+   * the instant ownership moved to Dana. She lost the document write and lesson read #1547
+   * confers through ownership, with nothing on screen saying so. `set_horse_owner` now writes her
+   * a real grant of `write`/`true`, which the manager can downgrade the usual way.
+   *
+   * Read through the **controls** form, and that is the assertion rather than an implementation
+   * detail: since #1547 an owner's cells are static text with no `[role="radio"]` in them at all,
+   * so reaching a checked radio and a switch here is what says this is an ordinary grant row now
+   * and not another synthesised one.
+   */
+  test('promoting_a_rider_leaves_the_outgoing_owner_a_matching_grant @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+
+    expect(await rowState(grantRow(page, CREATING_MANAGER))).toEqual({
+      owner: ['Set as Owner'],
+      documents: ['Write'],
+      lesson: 'true',
+    })
+  })
+
   // #1547: the two cells above lost their controls, and this is the sentence that says why. It
   // renders only when a row in the table is the owner — which is the state the promotion above just
   // produced, so this test's position in the chain is what gives it something to find. Scoped
@@ -503,18 +529,24 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
    * owner's row would delete a grant nothing displays and leave the row exactly as it was. The
    * button is gone.
    *
-   * The row list and the Owner radio are the positive anchors the absence needs (rule 4): by this
-   * point in the chain Dana is Eclipse's only row — the creating manager left the table when
-   * ownership moved off her, since she never held a grant of her own — so a section that failed to
-   * render answers `[]` here and fails before the `revokes: 0` is ever reached.
+   * Scoped to the owner's row, which #1549's /testIssue round forced: the creating manager is no
+   * longer gone from the table — she keeps the grant the promotion left her — so a section-wide
+   * Revoke count is now 1 and says nothing about whose row carries it.
+   *
+   * Her row is also the positive anchor the absence needs (rule 4), and a stronger one than the
+   * row list alone: `grantRevokes: 1` proves Revoke renders on this page at all, so `ownerRevokes:
+   * 0` cannot pass on a table that failed to draw its Actions column.
    */
   test('the_owner_row_offers_no_revoke @manager', async ({ page }) => {
     await openAccess(page, ECLIPSE)
     expect({
       rows: await settledInnerTexts(grantedMembers(page)),
       ownerRadio: await grantRow(page, DANA).getByRole('radio', { name: 'Owner', exact: true }).count(),
-      revokes: await accessSection(page).getByRole('button', { name: 'Revoke', exact: true }).count(),
-    }).toEqual({ rows: [DANA], ownerRadio: 1, revokes: 0 })
+      ownerRevokes: await grantRow(page, DANA).getByRole('button', { name: 'Revoke', exact: true }).count(),
+      grantRevokes: await grantRow(page, CREATING_MANAGER)
+        .getByRole('button', { name: 'Revoke', exact: true })
+        .count(),
+    }).toEqual({ rows: [DANA, CREATING_MANAGER], ownerRadio: 1, ownerRevokes: 0, grantRevokes: 1 })
   })
 
   // Narrowed — see divergence 2 in the header. The assertion is the *change*, which is what
