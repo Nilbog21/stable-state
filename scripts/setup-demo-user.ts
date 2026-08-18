@@ -16,9 +16,10 @@ export function formatDemoCredentialsOutput(email: string, password: string): st
  * credential (#1619). Anchored, unlike the substring match `run-checklist-suite.sh`'s required-var
  * loop uses on the same convention, and the asymmetry is the consumer's rather than arbitrary: a
  * demo password is user-chosen and may legitimately contain an angle bracket mid-string, while
- * that loop's values (a project URL, two JWTs, a hex string) cannot — and its placeholders are
- * embedded in a larger value (`https://<your-project-ref>.supabase.co`) rather than whole-value,
- * which is what a substring match is needed to see.
+ * that loop's values (a project URL, two JWTs, a hex string) cannot — and one of them,
+ * `NEXT_PUBLIC_SUPABASE_URL`, carries its placeholder embedded in a larger value
+ * (`https://<your-project-ref>.supabase.co`) rather than whole-value, which only a substring
+ * match can see.
  */
 const ENV_EXAMPLE_PLACEHOLDER = /^<.*>$/
 

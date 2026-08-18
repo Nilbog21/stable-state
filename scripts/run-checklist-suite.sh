@@ -307,11 +307,12 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_
   # Vercel dashboard carries that to prod.
   #
   # A **substring** match, not the anchored /^<.*>$/ that setup-demo-user.ts's resolver uses on
-  # the same convention. Three of these four placeholders are embedded in a larger value
-  # (`https://<your-project-ref>.supabase.co`), so anchoring would cover CRON_SECRET alone and
-  # silently miss the Supabase ones. Safe here because none of these four can legitimately
-  # contain an angle bracket — a project URL, two JWTs, and a hex string — which is exactly what
-  # is not true of a user-chosen password, hence the anchoring over there.
+  # the same convention. Three of these four placeholders are whole-value and an anchored match
+  # would catch them, but NEXT_PUBLIC_SUPABASE_URL's is embedded in a larger value
+  # (`https://<your-project-ref>.supabase.co`), and that one is only reachable by a substring
+  # match. Safe here because none of these four can legitimately contain an angle bracket — a
+  # project URL, two JWTs, and a hex string — which is exactly what is not true of a user-chosen
+  # password, hence the anchoring over there.
   #
   # This **halts**, where the resolver mints. Same convention, opposite response, and the
   # difference is that there is nothing here to mint: no value this script could invent would
@@ -320,7 +321,7 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_
   #
   # The offending value is deliberately not echoed. These four are all secrets, and a false
   # positive would print a live one into a log the fleet reads.
-  elif case "${!var_name}" in *"<"*">"*) true ;; *) false ;; esac; then
+  elif [[ "${!var_name}" == *"<"*">"* ]]; then
     echo "Error: $var_name is still the .env.example placeholder — replace it with a real value in .env.local" >&2
     exit 1
   fi
