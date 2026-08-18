@@ -196,8 +196,9 @@ cleanup() {
   # a group INT leaves the writer alone on one host and kills it on GitHub Actions, and the
   # terminator went missing on exactly the second kind.
   #
-  # Both callers also require it to be the log's **last** line, so a direct append alone is not
-  # enough: it would race the writer still emitting teardown's output. Restoring stdout to the
+  # `/testIssue` Step 4 and `/overnightRefactor` additionally require it to be the log's **last**
+  # line — in those words — so a direct append alone is not enough (#1602's merge gate greps for
+  # presence and is order-insensitive; it is the other two that constrain position): it would race the writer still emitting teardown's output. Restoring stdout to the
   # console closes the writer's input, `wait` lets it drain and exit, and only then is the line
   # appended. A writer already killed by a signal makes the wait return immediately, which is the
   # case this whole arrangement exists for.

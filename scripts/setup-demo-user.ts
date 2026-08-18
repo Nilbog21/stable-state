@@ -18,26 +18,7 @@ export function formatDemoCredentialsOutput(email: string, password: string): st
  * out from under `.env.local` and any deployment reading it.
  */
 export function resolveDemoPassword(configured: string | undefined): string {
-  return isUsableDemoPassword(configured) ? (configured as string) : randomUUID()
-}
-
-/**
- * Whether a configured value is a real secret rather than a leftover placeholder.
- *
- * `.env.example` ships `DEMO_USER_PASSWORD=<demo-user-password>`, so a developer who copies it and
- * fills in the rest would otherwise have this script set the demo user's password to a literal
- * string committed to the repo — and, because the printed line would match what is already in their
- * file, nothing would look wrong. Reusing the configured value is what made that reachable, so the
- * guard belongs with the reuse. A rejected value is treated exactly as an unset one: mint a fresh
- * secret and print it, which is the path that already tells the developer to paste it.
- */
-function isUsableDemoPassword(value: string | undefined): value is string {
-  if (!value) return false
-  // Angle brackets are the placeholder convention in .env.example; whitespace means the parse
-  // picked up something that was never a single value. Both are mistakes, not short passwords.
-  if (/[<>\s]/.test(value)) return false
-  // Long enough not to be a stub. `randomUUID()` is 36, and nothing this script mints is shorter.
-  return value.length >= 12
+  return configured && configured.length > 0 ? configured : randomUUID()
 }
 
 async function run() {
