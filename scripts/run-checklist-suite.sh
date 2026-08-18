@@ -116,6 +116,10 @@ PROD_FLAG=()
 # unreadable Supabase vars, the schema preflight's abort) doesn't call teardown before any
 # barn could exist.
 SEEDED=false
+# This script's own process group, captured once so `stop_server` can refuse to signal it (#1621).
+# `|| true` and a possibly-empty value, because a `ps` that cannot answer must not be the reason a
+# run cannot start; the guard that reads it treats empty as "cannot compare" and proceeds as before.
+SCRIPT_PGID="$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')" || true
 # Set only once this run has started a server of its own. Empty on every path that hasn't —
 # an early bail, and every --base-url run, which by definition targets a server it did not
 # launch and must never kill.
@@ -143,7 +147,22 @@ stop_server() {
   if [ -z "$SERVER_PGID" ]; then
     return 0
   fi
-  echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID)."
+  # Refuse to signal our **own** process group, whatever else happens. `SERVER_PGID` is read back
+  # with `ps -o pgid=` from the pid of a `setsid`'d child, and every way that read can go wrong
+  # returns this script's own group instead of the server's — `setsid` forking rather than
+  # `exec`ing (it does that when its caller is already a group leader) leaves `$!` naming the
+  # short-lived parent, which is still in our group. `kill -- -<our own pgid>` then does not stop a
+  # server, it SIGTERMs this script, its harness, and on CI the whole `ci.sh` job: the failure
+  # reads as `Process completed with exit code 143` with nothing pointing at the cause, which is
+  # exactly how it was found. Leaking a server is the lesser harm and is loud; killing the job that
+  # is running you is neither recoverable nor attributable.
+  if [ -n "$SCRIPT_PGID" ] && [ "$SERVER_PGID" = "$SCRIPT_PGID" ]; then
+    echo "WARNING: refusing to stop the server — its pgid ($SERVER_PGID) is this script's own process group." >&2
+    echo "  That means the pgid lookup did not see a detached server. Kill it by port instead: fuser -k $SERVER_PORT/tcp" >&2
+    SERVER_PGID=""
+    return 0
+  fi
+  echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID, this script's pgid $SCRIPT_PGID)."
   # The interrupt fence this sequence needs lives in `cleanup`, which is this function's only
   # caller — see the comment there for why it is installed one level up rather than here. #1569
   # added the original `trap '' INT` at *this* level, in a post-review fixup (445c150a, "fence the
@@ -648,7 +667,7 @@ start_server() {
       sleep 2
     done
     if [ "$up" = true ]; then
-      echo "Production server up on port $SERVER_PORT."
+      echo "Production server up on port $SERVER_PORT (pgid $SERVER_PGID, this script's pgid $SCRIPT_PGID)."
       return 0
     fi
     # Kill what we started, but deliberately *not* through stop_server: that waits for the port to
@@ -656,8 +675,14 @@ start_server() {
     # so the wait could only run out its budget and then print a SIGKILL warning naming our own
     # recovery as a failure. Our server never bound the port, so there is nothing of ours to wait
     # for. Clearing SERVER_PGID also leaves the EXIT trap's stop_server correctly a no-op on the
-    # give-up path below.
-    kill -- "-$SERVER_PGID" 2>/dev/null || true
+    # give-up path below. Same own-process-group refusal as `stop_server`'s, and for the same
+    # reason — this call site is reached before that one on the retry path, so a guard on only one
+    # of them would still let a bad pgid lookup SIGTERM the run that is doing the looking.
+    if [ -n "$SCRIPT_PGID" ] && [ "$SERVER_PGID" = "$SCRIPT_PGID" ]; then
+      echo "WARNING: not killing pgid $SERVER_PGID on the retry path — it is this script's own process group." >&2
+    else
+      kill -- "-$SERVER_PGID" 2>/dev/null || true
+    fi
     SERVER_PGID=""
   done
 
