@@ -40,11 +40,12 @@ export default defineConfig({
   // number expecting memory to be the thing that stops you, and don't lower it expecting relief —
   // the lever for memory is elsewhere.
   //
-  // Elsewhere is `scripts/e2e-slot.sh`, the kernel-held 2-slot semaphore `run-checklist-suite.sh`
-  // runs Playwright under: it bounds how many ~10 GB servers can be hot at once, which is the
-  // actual failure that OOM-killed the machine twice (several worktrees' servers summing, most
-  // recently at test 909/1027 with swap exhausted). Given the measurement above, the semaphore is
-  // carrying the memory fix essentially alone and this setting is carrying the timeout fix.
+  // Elsewhere is `scripts/e2e-slot.sh`, the kernel-held semaphore `run-checklist-suite.sh` runs
+  // Playwright under — one slot since #1598: it bounds how many ~10 GB servers can be hot at once,
+  // which is the actual failure that OOM-killed the machine twice (several worktrees' servers
+  // summing, most recently at test 909/1027 with swap exhausted). Given the measurement above, the
+  // semaphore is carrying the memory fix essentially alone and this setting is carrying the
+  // timeout fix.
   //
   // Fixed rather than a percentage, same reason as the paragraph above: a fraction of core count
   // misreads the bottleneck.
