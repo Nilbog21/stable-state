@@ -15,7 +15,7 @@ SCRIPT="$SCRIPT_DIR/e2e-slot.sh"
 
 # Must match SLOTS in e2e-slot.sh. Not read out of it: a test that derives its expectation from the
 # code under test cannot fail when that code changes, and the N+1 case below is the whole point.
-SLOTS=2
+SLOTS=1
 
 assert_pass() {
   echo "PASS: $1"
@@ -92,6 +92,10 @@ fi
 rm -rf "$DIR"
 
 # --- Test 3: N concurrent acquires all succeed ---------------------------------------------------
+# At SLOTS=1 (#1598) this is test 1 reached through the backgrounded-holder harness rather than a
+# distinct property — which is worth keeping, because tests 4 and 5 build their verdicts on that
+# harness and this is the case that fails first if it breaks. Left parameterised on SLOTS so it
+# regains its own meaning if the constant ever moves back up.
 DIR="$(mktemp -d)"
 pids=()
 ok=true
@@ -157,6 +161,11 @@ rm -rf "$DIR"
 # --- Test 7: --exclusive blocks while a single slot is held --------------------------------------
 # One slot, not all of them: this is the direction that bites, since a `db push` landing mid-suite
 # leaves the run reading half-applied schema and failing in ways no spec author can diagnose.
+#
+# At SLOTS=1 (#1598) `--exclusive` wants the same single lock a plain acquire does, so this case and
+# test 8 exercise the same mechanism as test 4. Both are kept for the same reason the flag is: they
+# assert the *intent* `/sync-migrations`' call site expresses, and they are the cases that would
+# catch a regression the moment SLOTS moves back up.
 DIR="$(mktemp -d)"
 start_holder "$DIR" "$DIR/holder-1"
 holder="$HOLDER_PID"

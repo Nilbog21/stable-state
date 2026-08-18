@@ -92,7 +92,7 @@ describe('updateHorseAction', () => {
       barn: mockBarn,
       membership: mockManagerMembership,
     })
-    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', owning_member_id: null }))
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1' }))
     vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
   })
 
@@ -112,7 +112,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -130,7 +130,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -148,7 +148,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -165,7 +165,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -181,7 +181,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -197,7 +197,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -214,7 +214,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
-      owning_member_id: null,
+      owning_member_id: 'mem-owner',
     })
   })
 
@@ -225,7 +225,6 @@ describe('updateHorseAction', () => {
   it('should_pass_the_horses_stored_notes_through_to_updateHorseDetails', async () => {
     vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
       id: 'horse-1',
-      owning_member_id: null,
       feed_notes: '2 flakes hay AM/PM',
       medication_notes: 'Bute 1g daily',
     }))
@@ -239,7 +238,6 @@ describe('updateHorseAction', () => {
   it('should_ignore_notes_submitted_in_the_form_data', async () => {
     vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
       id: 'horse-1',
-      owning_member_id: null,
       feed_notes: 'stored feed',
       medication_notes: 'stored meds',
     }))
@@ -910,7 +908,9 @@ describe('revokeHorseAccessAction', () => {
 })
 
 describe('setHorseOwnerAction', () => {
-  const existingHorse = createMockHorse({ id: 'horse-1', owning_member_id: null })
+  // `createMockHorse` defaults `owning_member_id` to 'mem-owner', so every test below that passes
+  // 'mem-rider-1' is a genuine transfer -- the re-tap case has to name the owner explicitly.
+  const existingHorse = createMockHorse({ id: 'horse-1' })
 
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
@@ -938,11 +938,8 @@ describe('setHorseOwnerAction', () => {
     expect(setHorseOwner).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-rider-1')
   })
 
-  it('should_call_setHorseOwner_with_null_when_clearing_ownership', async () => {
-    await setHorseOwnerAction('green-acres', 'horse-1', null)
-    expect(setHorseOwner).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, null)
-  })
-
+  // #1549: ownership transfers, never clears -- there is no null to pass, so the only shape left
+  // is the one above.
   it('should_revalidate_horse_detail_path', async () => {
     await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
@@ -952,5 +949,16 @@ describe('setHorseOwnerAction', () => {
     vi.mocked(getHorseById).mockResolvedValue(null)
     await expect(setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')).rejects.toThrow('NEXT_NOT_FOUND')
     expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  /**
+   * Re-tapping the selected Owner radio submits the owner's own id -- `HorseAccessSection` binds
+   * the row's member id, which on the owner's row is the owner. There is nothing to write, and
+   * `set_horse_owner` raises `privilege_grant_not_found` on an owner holding no
+   * `member_horse_privileges` row, which is the ordinary state of a `createHorse`-created horse.
+   */
+  it('should_not_call_setHorseOwner_when_the_member_is_already_the_owner', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', existingHorse.owning_member_id)
+    expect(setHorseOwner).not.toHaveBeenCalled()
   })
 })

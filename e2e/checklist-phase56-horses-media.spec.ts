@@ -20,7 +20,7 @@
 // ## Three places the fixtures deliberately diverge from the checklist's wording
 //
 // 1. **The rider's owned horse is Willow, not Clover.** Both subjects live in one barn, so the
-//    trainer's Clover is an ordinary unowned horse from the rider's side. A second horse called
+//    trainer's Clover is an ordinary someone-else's horse from the rider's side. A second horse called
 //    Clover would make every id-addressed locator here ambiguous by name. Same substitution, and
 //    the same reason, as checklist-phase56-horses-list.spec.ts's.
 //
@@ -43,28 +43,31 @@
 // In all three cases the checklist keeps its wording and only its tag changes, which is how the
 // whole #1187-#1208 batch handled a fixture whose name differs from the dev-barn walkthrough's.
 import { test, expect, withBarn, type Page } from './support/test'
-import { addHorse, setHorsePhoto, assetPath } from './support/fixtures'
+import { addHorse, setHorsePhoto, assetPath, E2E_USERS } from './support/fixtures'
 import { BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, CLOVER_PHOTO, displayedPhotoAsset, headerLines, photoControls, photoImage, photoSection } from './support/horse-pages'
 import { settledTextContents } from './support/read'
 
 // Seed inputs, not builder outputs — these are what the spec puts in. No name contains another
 // (every Playwright text matcher is substring-based), and none collides with the four seeded
 // member names.
-const BUTTER = 'Butter' // unowned, photographed — the "a horse you do not own" subject
-const APPLE = 'Apple' // unowned, carries a registered name
-const DOMINO = 'Domino' // unowned, carries none
+const BUTTER = 'Butter' // manager-owned, photographed — the "a horse you do not own" subject
+const APPLE = 'Apple' // manager-owned, carries a registered name
+const DOMINO = 'Domino' // manager-owned, carries none
 const CLOVER = 'Clover' // the trainer's subject
 const WILLOW = 'Willow' // the rider's subject
 
 // Deliberately not the checklist's "Four-Leaf Clover" — see divergence 3 in the header.
 const REGISTERED_NAME = 'Emerald Fortune'
 
-// The one header line that always renders, whatever else does. Both horses this file reads the
-// header of are unowned, so it is what a registered-name assertion is read *against*: an
-// expectation of exactly [registered name, this] fails if the row moved, if it vanished, or if
-// the header stopped rendering at all — which is what the labelled `<dl>` used to buy before
-// #1390 moved these lines into the identity header and dropped their labels.
-const NO_OWNER_LINE = 'No owner set'
+// The one header line that always renders, whatever else does. #1549 made every horse owned, so
+// this is the owner's name rather than the "No owner set" placeholder it replaced — and the two
+// horses this file reads the header of are owned by the barn's manager, which is what `addHorse`
+// assigns when a spec doesn't say otherwise (and what the Add Horse form assigns in the app).
+// It is what a registered-name assertion is read *against*: an expectation of exactly
+// [registered name, this] fails if the row moved, if it vanished, or if the header stopped
+// rendering at all — which is what the labelled `<dl>` used to buy before #1390 moved these lines
+// into the identity header and dropped their labels.
+const OWNER_LINE = `${E2E_USERS.manager.firstName} ${E2E_USERS.manager.lastName}`
 
 let butterId: string
 let appleId: string
@@ -75,7 +78,7 @@ let willowId: string
 let seededRegisteredName: string
 
 /**
- * Both roles end up with a symmetric page: Butter is unowned and photographed, Apple and Domino
+ * Both roles end up with a symmetric page: Butter is manager-owned and photographed, Apple and Domino
  * are the registered-name pair, and each role owns exactly one photographed horse.
  *
  * The two owned horses are seeded *with* photos on purpose. Their Photo sections are what the
@@ -229,7 +232,7 @@ test('trainer_sees_a_photo_control_on_the_horse_they_own @trainer', async ({ pag
 // header answers [] (e2e/CLAUDE.md's read.ts rule).
 test('trainer_horse_detail_shows_the_registered_name_row_below_status @trainer', async ({ page }) => {
   await page.goto(horseUrl(appleId))
-  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, NO_OWNER_LINE])
+  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, OWNER_LINE])
 })
 
 // Asserted as the list's *whole* contents rather than as "the registered name is not visible",
@@ -239,7 +242,7 @@ test('trainer_horse_detail_shows_the_registered_name_row_below_status @trainer',
 // which drives the same locator to a two-line answer in the same file.
 test('trainer_horse_detail_omits_the_registered_name_row_when_it_is_unset @trainer', async ({ page }) => {
   await page.goto(horseUrl(dominoId))
-  expect(await settledTextContents(headerLines(page))).toEqual([NO_OWNER_LINE])
+  expect(await settledTextContents(headerLines(page))).toEqual([OWNER_LINE])
 })
 
 // ---------------------------------------------------------------------------
@@ -270,12 +273,12 @@ test('rider_sees_no_photo_controls_on_a_horse_they_do_not_own @rider', async ({ 
 
 test('rider_horse_detail_shows_the_registered_name_row_below_status @rider', async ({ page }) => {
   await page.goto(horseUrl(appleId))
-  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, NO_OWNER_LINE])
+  expect(await settledTextContents(headerLines(page))).toEqual([seededRegisteredName, OWNER_LINE])
 })
 
 test('rider_horse_detail_omits_the_registered_name_row_when_it_is_unset @rider', async ({ page }) => {
   await page.goto(horseUrl(dominoId))
-  expect(await settledTextContents(headerLines(page))).toEqual([NO_OWNER_LINE])
+  expect(await settledTextContents(headerLines(page))).toEqual([OWNER_LINE])
 })
 
 // ---------------------------------------------------------------------------

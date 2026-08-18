@@ -90,20 +90,6 @@ describe('getBarnBackupData', () => {
     expect(result.horses[0].owningMember).toBe('Jane Owner')
   })
 
-  it('should_leave_owning_member_null_when_horse_has_no_owner', async () => {
-    setupFrom({
-      horses: { data: [createMockHorse({ owning_member_id: null, created_at: '2026-01-01T00:00:00Z' })] },
-      lessons: { data: [] },
-      agreement_charges: { data: [] },
-      barn_memberships: { data: [] },
-      profiles: { data: [] },
-    })
-
-    const result = await getBarnBackupData('barn-1', TIMEZONE)
-
-    expect(result.horses[0].owningMember).toBeNull()
-  })
-
   it('should_fall_back_to_unknown_member_for_an_unresolved_owning_member', async () => {
     setupFrom({
       horses: { data: [createMockHorse({ owning_member_id: 'mem-gone', created_at: '2026-01-01T00:00:00Z' })] },

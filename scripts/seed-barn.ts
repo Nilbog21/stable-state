@@ -488,9 +488,15 @@ export async function seedBarn(
     return m.membershipId
   })
 
+  // #1549: every horse has an owner (`horses.owning_member_id` is NOT NULL), and the seed spreads
+  // them across all three roles so a manual walk can read each case without editing anything first
+  // — Apple is rider-owned (the #998 fixture, now set at creation rather than by a later UPDATE),
+  // Butter and Clover are manager-owned like anything a manager adds through the form, and the
+  // calendar-band horse below is trainer-owned.
+  const horseOwners = [riderRowIds[0], m2Membership.id, m2Membership.id]
   const horseIds: string[] = []
-  for (const name of DEV_HORSES) {
-    const horse = await createHorse(barnId, name, undefined, supabase)
+  for (const [index, name] of DEV_HORSES.entries()) {
+    const horse = await createHorse(barnId, name, horseOwners[index], supabase)
     horseIds.push(horse.id)
   }
 
@@ -504,9 +510,9 @@ export async function seedBarn(
     await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
   }
 
-  const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, undefined, supabase)
+  const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, m2Membership.id, supabase)
 
-  const unavailableHorse = await createHorse(barnId, DEV_UNAVAILABLE_HORSE, undefined, supabase)
+  const unavailableHorse = await createHorse(barnId, DEV_UNAVAILABLE_HORSE, m2Membership.id, supabase)
   mustSucceed(
     await supabase.from('horses').update({
       is_available: false,
@@ -519,7 +525,7 @@ export async function seedBarn(
   // #1413 — see the DEV_CALENDAR_BAND_* constants above. Available and active, unlike the two
   // horses either side of it: the manual line selects it on the New Lesson form, which offers
   // neither an unavailable nor a retired horse.
-  const calendarBandHorse = await createHorse(barnId, DEV_CALENDAR_BAND_HORSE, undefined, supabase)
+  const calendarBandHorse = await createHorse(barnId, DEV_CALENDAR_BAND_HORSE, trainerRowIds[0], supabase)
   mustSucceed(
     await supabase.from('horses').update({
       exhaustion_threshold_moderate: DEV_CALENDAR_BAND_THRESHOLDS.moderate,
@@ -538,12 +544,9 @@ export async function seedBarn(
     'seed horse registered name and notes'
   )
 
-  // #998 manual-testability seed data: one horse owned by a rider (Owner line),
-  // one privileged grant on a different horse/rider (Access section).
-  mustSucceed(
-    await supabase.from('horses').update({ owning_member_id: riderRowIds[0] }).eq('id', horseIds[0]),
-    'set seed horse owner'
-  )
+  // #998 manual-testability seed data: a privileged grant on a horse the granted rider does not
+  // own (Access section). The owner half moved into the createHorse calls above when #1549 made
+  // the column NOT NULL.
   mustSucceed(
     await supabase.from('member_horse_privileges').insert({
       barn_id: barnId,

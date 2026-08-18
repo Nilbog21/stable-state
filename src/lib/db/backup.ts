@@ -91,7 +91,7 @@ export interface HorseBackupRow {
   unavailabilityReason: string | null
   feedNotes: string | null
   medicationNotes: string | null
-  owningMember: string | null
+  owningMember: string
 }
 
 export interface LessonBackupRow {
@@ -200,7 +200,9 @@ async function getHorsesSheet(barnId: string, timezone: string, supabase: Supaba
   const horses = (data ?? []) as Horse[]
   if (!horses.length) return []
 
-  const memberIds = [...new Set(horses.map((h) => h.owning_member_id).filter((id): id is string => id !== null))]
+  // #1549: owning_member_id is NOT NULL, so every horse contributes an id and the sheet's
+  // Owning Member cell is only ever a name or UNKNOWN_MEMBER (an unresolvable profile row).
+  const memberIds = [...new Set(horses.map((h) => h.owning_member_id))]
   const memberNames = await resolveMemberNames(memberIds, barnId, supabase)
 
   return horses.map((h) => ({
@@ -212,7 +214,7 @@ async function getHorsesSheet(barnId: string, timezone: string, supabase: Supaba
     unavailabilityReason: h.unavailability_reason,
     feedNotes: h.feed_notes,
     medicationNotes: h.medication_notes,
-    owningMember: h.owning_member_id ? memberNames.get(h.owning_member_id) ?? UNKNOWN_MEMBER : null,
+    owningMember: memberNames.get(h.owning_member_id) ?? UNKNOWN_MEMBER,
   }))
 }
 

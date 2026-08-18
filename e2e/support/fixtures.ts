@@ -15,6 +15,7 @@ import { type SupabaseClient } from '@supabase/supabase-js'
 import { mustSucceed, teardownBarnData } from '@/lib/db/service-role'
 import { mustAffect } from './must-affect'
 import { createTier } from '@/lib/db/lesson-tiers'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createHorse, replaceHorsePhoto } from '@/lib/db/horses'
 import { replaceProfilePhoto } from '@/lib/db/profiles'
 import { upsertNotification } from '@/lib/db/notifications'
@@ -513,6 +514,13 @@ export async function addTier(
   return createTier(barnId, opts.name, opts.price, opts.isDefault ?? false, null, null, opts.instructorCut ?? 25, supabase)
 }
 
+/** The barn's manager membership — every seeded barn has exactly one, created before any horse. */
+async function barnManagerMembershipId(supabase: SupabaseClient, barnId: string): Promise<string> {
+  const managers = await getActiveMembersWithProfiles(barnId, 'manager', supabase)
+  if (managers.length === 0) throw new Error(`barn ${barnId} has no manager to own a horse`)
+  return managers[0].membershipId
+}
+
 export type HorseOptions = {
   registeredName?: string
   /** false plants the inactive-horse "Needs Attention" path; pair it with a reason. */
@@ -530,6 +538,11 @@ export type HorseOptions = {
  * `opts` is applied as a second write rather than folded into the insert — createHorse owns
  * the insert (and #997's owner handling), so this stays a thin layer over it rather than a
  * parallel implementation that drifts.
+ *
+ * `owningMemberId` defaults to the barn's manager (#1549 made `horses.owning_member_id` NOT NULL).
+ * That is the owner the app itself would assign — `addHorseAction` passes the acting membership,
+ * and only a manager reaches that form — so a spec that doesn't care about ownership gets the
+ * state the UI would have produced, and the specs that do care keep overriding it.
  */
 export async function addHorse(
   supabase: SupabaseClient,
@@ -537,7 +550,8 @@ export async function addHorse(
   name: string,
   opts: HorseOptions = {}
 ): Promise<Horse> {
-  const horse = await createHorse(barnId, name, opts.owningMemberId, supabase)
+  const owningMemberId = opts.owningMemberId ?? (await barnManagerMembershipId(supabase, barnId))
+  const horse = await createHorse(barnId, name, owningMemberId, supabase)
 
   const updates: Record<string, unknown> = {}
   if (opts.registeredName !== undefined) updates.registered_name = opts.registeredName

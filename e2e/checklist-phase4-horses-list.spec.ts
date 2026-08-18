@@ -95,12 +95,16 @@ const barn = withBarn('phase4-horses-list', async ({ supabase, barn, members }) 
     exhaustionThresholdHigh: HIGH_THRESHOLD,
   })
 
-  // Butter, then Clover, then Apple: see EXPECTED_NAME_ORDER. Neither horse gets an owner or a
-  // custom availability, so createHorse's defaults put all three in Available with no My Horses
-  // section above them.
-  butterId = (await addHorse(supabase, barn.id, BUTTER)).id
-  cloverId = (await addHorse(supabase, barn.id, CLOVER)).id
-  appleId = (await addHorse(supabase, barn.id, APPLE)).id
+  // Butter, then Clover, then Apple: see EXPECTED_NAME_ORDER. No custom availability, so
+  // createHorse's defaults put all three in Available.
+  //
+  // Trainer-owned, the same move #1549 made in checklist-phase4-horses-detail.spec.ts: every test
+  // here views the page as the manager, and an owned horse leaves Available for My Owned Horses.
+  // `addHorse` defaults the owner to the barn's manager now that `owning_member_id` is NOT NULL,
+  // which would empty the one section this file is about.
+  butterId = (await addHorse(supabase, barn.id, BUTTER, { owningMemberId: members.trainer.membershipId })).id
+  cloverId = (await addHorse(supabase, barn.id, CLOVER, { owningMemberId: members.trainer.membershipId })).id
+  appleId = (await addHorse(supabase, barn.id, APPLE, { owningMemberId: members.trainer.membershipId })).id
 
   const lessons = [
     ...LESSON_PLAN.apple.map((l) => ({ ...l, horseId: appleId })),

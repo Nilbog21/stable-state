@@ -15,15 +15,21 @@ set -euo pipefail
 # `--exclusive` takes all of them, which is how `/sync-migrations` keeps `npx supabase db push` and
 # a suite run off each other in both directions: a push landing mid-run leaves the suite reading
 # half-applied schema and failing in ways no spec author can diagnose from inside their own issue.
+# At one slot that is functionally a plain acquire (#1598) — kept because it states the intent its
+# call site means, and because it keeps the script correct if SLOTS ever moves back up.
 #
-# At 2 slots this is simultaneously a **cap** for human-driven runs across the five worktrees — the
-# thing that was missing when two OOM kills took the machine — and a **raise** for `/fableFleet`,
-# whose prose mutex allowed exactly one multi-spec run fleet-wide.
+# This is a **cap**, machine-wide: on `/fableFleet`'s workers, on a human in a Greek-letter
+# worktree, and on a `db push` the user fires themselves. It is the thing that was missing when two
+# OOM kills took the machine.
 
-# Sized to the machine, not to the fleet: two full suites at `workers: 2` is the load one 32 GB host
-# absorbs without swapping. Raising it re-opens the failure this script closed. Deliberately a
-# constant and not a flag — a second value would only ever be a way to opt out of the cap.
-SLOTS=2
+# Sized from #1295's measurement, not from intuition: peak RSS is 10.18 GB per suite (the worktree's
+# own `next dev` server) on a 29 GB host, and the cost is route breadth rather than worker count —
+# `workers: 4` measured the same, so it does not shrink by tuning workers. Add ~1.4–2 GB per *idle*
+# sibling `next dev` across the five worktrees and two concurrent suites land near 25 GB with no
+# headroom, which is the OOM condition this script exists to close. Raising it re-opens that
+# failure. Deliberately a constant and not a flag — a second value would only ever be a way to opt
+# out of the cap.
+SLOTS=1
 
 # `/run/user/$UID` is already per-user and mode 0700, so slot files carry no /tmp symlink surface and
 # need no ownership check. It is also tmpfs, which is correct: a stale slot file across a reboot
@@ -44,6 +50,7 @@ Usage: e2e-slot.sh [--exclusive] <command> [args...]
 
   --exclusive   Hold every slot for the duration, so nothing else runs alongside.
                 Used by /sync-migrations to keep `supabase db push` off a live suite run.
+                At SLOTS=1 this is the same acquire as no flag at all; see the note above.
 
   E2E_SLOT_DIR  Override the slot directory (tests only).
 EOF
@@ -115,9 +122,9 @@ until try_acquire; do
     # Said once, on stderr, because the caller is usually reading a log file and an unexplained
     # multi-minute gap before Playwright's first line reads as a hang.
     if [ "$EXCLUSIVE" = true ]; then
-      echo "e2e-slot: waiting for all $SLOTS e2e slots (another suite run is in flight)..." >&2
+      echo "e2e-slot: waiting for every e2e slot (another suite run is in flight)..." >&2
     else
-      echo "e2e-slot: all $SLOTS e2e slots are busy — waiting for one to free up..." >&2
+      echo "e2e-slot: the e2e slots are all busy — waiting for one to free up..." >&2
     fi
   fi
   sleep "$RETRY_SECS"
@@ -126,10 +133,11 @@ done
 [ "$waited" = true ] && echo "e2e-slot: acquired." >&2
 
 # ponytail: `flock` gives a waiter no queue position, so a steady stream of single-slot acquires can
-# in principle starve `--exclusive` indefinitely. Left alone because both are minutes-long and
-# human- or orchestrator-paced at 2 slots. If it ever bites: add a gate file that acquires take a
-# *shared* lock on for the run's duration and `--exclusive` takes exclusively, which turns the
-# starvation into ordinary reader/writer contention.
+# in principle starve `--exclusive` indefinitely. Dormant at SLOTS=1, where the two are symmetric
+# contenders for the same lock rather than one needing strictly more than the other, and left alone
+# anyway because both are minutes-long and human- or orchestrator-paced. If it ever bites: add a
+# gate file that acquires take a *shared* lock on for the run's duration and `--exclusive` takes
+# exclusively, which turns the starvation into ordinary reader/writer contention.
 #
 # ponytail: no preflight free-RAM guard here. Recycle-on-exit (#1569), the dev server's
 # `--max-old-space-size` backstop and this semaphore are three independent guards on the same

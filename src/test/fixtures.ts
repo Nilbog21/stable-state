@@ -112,7 +112,9 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     exhaustion_threshold_moderate: null,
     feed_notes: null,
     medication_notes: null,
-    owning_member_id: null,
+    // #1549: NOT NULL — a horse with no owner is no longer a state the app can be in, so the
+    // fixture can't default to one. Tests that care about *who* owns it override this.
+    owning_member_id: 'mem-owner',
     photo_path: null,
     photo_uploaded_by: null,
     created_at: '',

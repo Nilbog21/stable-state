@@ -23,12 +23,15 @@ export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   return data
 }
 
-export async function createHorse(barnId: string, name: string, owningMemberId?: string | null, client?: SupabaseClient): Promise<Horse> {
+// owningMemberId is required (#1549): horses.owning_member_id is NOT NULL, and making the
+// argument mandatory is what stops a new call site from quietly creating an ownerless horse --
+// the type error is the enforcement, since there is no sensible default a DAL function could pick.
+export async function createHorse(barnId: string, name: string, owningMemberId: string, client?: SupabaseClient): Promise<Horse> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('horses')
-    .insert({ barn_id: barnId, name, owning_member_id: owningMemberId ?? null })
+    .insert({ barn_id: barnId, name, owning_member_id: owningMemberId })
     .select()
     .single()
 
@@ -62,7 +65,7 @@ export async function getHorseExertionSummary(
 }
 
 // #1000: no is_active filter, unlike getHorsesByBarn — an owner's deactivated horse must still
-// surface in the Horses-list page's My Horses section, badged Inactive, even for a rider/trainer
+// surface in the Horses-list page's My Owned Horses section, badged Inactive, even for a rider/trainer
 // who otherwise never sees the manager-only Inactive section.
 export async function getOwnedHorses(barnId: string, membershipId: string): Promise<Horse[]> {
   const supabase = await createClient()
@@ -134,7 +137,9 @@ export async function updateHorseDetails(
     feed_notes: string | null
     medication_notes: string | null
     registered_name: string | null
-    owning_member_id: string | null
+    // Not `string | null` since #1549: `owning_member_id` is NOT NULL, so a null here would raise
+    // on the RPC's unconditional write rather than clear the owner the way it used to.
+    owning_member_id: string
   }
 ): Promise<void> {
   const supabase = await createClient()

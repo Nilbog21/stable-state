@@ -115,8 +115,9 @@ export function headerLines(page: Page): Locator {
   return page.locator('main header p')
 }
 
-/** The owner line's link. Absent entirely when the horse has no owner, which is what makes this a
- *  real locator rather than a text match on a line that always exists. */
+/** The owner line's link. Since #1549 every horse has an owner, so this is absent only when the
+ *  owner's profile row can't be resolved to a name — the header renders nothing rather than a
+ *  blank link. Still a real locator rather than a text match, since the href is the claim. */
 export function ownerLink(page: Page): Locator {
   return headerLines(page).getByRole('link')
 }
@@ -139,7 +140,13 @@ export function grantRow(page: Page, name: string): Locator {
     .filter({ has: page.getByRole('cell', { name, exact: true }) })
 }
 
-/** The member names the grants list currently holds. */
+/**
+ * The member names the Access table currently holds, in row order.
+ *
+ * Since #1549 that is the owner first — synthesised from `horses.owning_member_id` whether or not
+ * they hold a grant — then every other grant alphabetically. So this is no longer "the grants
+ * list": a horse with no grants at all still answers with one name.
+ */
 export function grantedMembers(page: Page): Locator {
   return accessSection(page).locator('tbody tr td:first-child')
 }
@@ -149,7 +156,8 @@ const LESSON_COLUMN = 3
 
 /** A row's Lesson Schedule switch. Since #1548 this control carries no text at all — the `Can
  *  View`/`Cannot View` label pair was the state, which left nothing naming the control — so its
- *  state is read off `aria-checked` by `settledLessonState` rather than out of the cell. */
+ *  state is read off `aria-checked` by `settledLessonState` rather than out of the cell. Absent on
+ *  the owner's row, where the cell is static text (#1547). */
 export function lessonSwitch(row: Locator): Locator {
   return row.locator('td').nth(LESSON_COLUMN).getByRole('switch')
 }
@@ -159,11 +167,26 @@ export function lessonSwitch(row: Locator): Locator {
  * of `read.ts` (rule 3) applied to an attribute, because a one-shot read of a row that hasn't
  * rendered returns `null` and an assertion comparing two of those passes on nothing.
  *
- * Safe to read at all — despite fact 7 — for the same reason `aria-pressed` is: the server and the
- * client compute it from the same prop, so there is no hydration mismatch to survive.
+ * Safe to read at all — despite fact 7 — for the same reason the document radios' `aria-checked`
+ * is: the server and the client compute it from the same prop, so there is no hydration mismatch
+ * to survive.
  */
 export async function settledLessonState(row: Locator): Promise<string | null> {
   const control = lessonSwitch(row)
   await control.waitFor()
   return control.getAttribute('aria-checked')
+}
+
+/** A row's document-access radio carrying `label` (`None`/`Read`/`Write`). #1549 replaced #1548's
+ *  segmented button strip with `Radio`s — still one `<form>` and one submit each, so the
+ *  pre-hydration guarantee is unchanged; only the role and the state attribute moved, from
+ *  `button`/`aria-pressed` to `radio`/`aria-checked`. */
+export function documentRadio(row: Locator, label: string): Locator {
+  return row.getByRole('radio', { name: label, exact: true })
+}
+
+/** The document radio currently selected in a row, as a locator — the `aria-checked` analogue of
+ *  the `aria-pressed` filter the segmented strip needed. */
+export function selectedDocumentRadio(row: Locator): Locator {
+  return row.locator('td').nth(2).locator('[role="radio"][aria-checked="true"]')
 }

@@ -26,7 +26,7 @@
 // Owner — `setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list` — so the
 // distinction is not that this file promotes an owner and that one doesn't. It is who, from
 // what, and what is asserted: there, the manager promotes *himself* off a directly-seeded
-// `member_horse_privileges` row, and the claim is that My Horses sorts to the top of the horses
+// `member_horse_privileges` row, and the claim is that My Owned Horses sorts to the top of the horses
 // list. Here, a *rider* is granted through the Access table's own form first, and the claim is
 // #1069's auto-elevation of the columns nobody tapped. Nothing there creates a horse through the
 // UI at all. The one mechanical overlap is that both files open accordions, which is why each
@@ -38,17 +38,19 @@
 // false against deliberate, documented behaviour — not `(manual)` downgrades.
 //
 // 1. "Horses page now shows Daisy under **Unavailable**" — she is not under Unavailable, she is
-//    under **My Horses**. `addHorseAction` calls `createHorse(barn.id, name, membership.id)`
+//    under **My Owned Horses**. `addHorseAction` calls `createHorse(barn.id, name, membership.id)`
 //    (#998), so the manager who adds a horse through the inline form becomes its owner, and
 //    `horses/page.tsx` filters every owned horse out of Available/Unavailable and renders it
-//    under My Horses instead. `20260725115546_set_horse_owner_requires_privilege_row.sql` states
-//    the auto-assignment in as many words. `HorseCard`'s `owned` variant still renders the amber
+//    under My Owned Horses instead. `20260725115546_set_horse_owner_requires_privilege_row.sql` states
+//    the auto-assignment in as many words, and #1549 made it universal by making the column
+//    `NOT NULL`. `HorseCard`'s `owned` variant still renders the amber
 //    **Unavailable** badge and the reason, so the item's point survives intact — only the
 //    section name was wrong.
 //
 // 2. "an 'Owner: Dana Rider' line appears above the photo" — there is no literal `Owner:` prefix
-//    anywhere in `src/`; #1390's identity header renders the owner's name alone as a link, or
-//    the string "No owner set". The line also sits beside the photo (below it at mobile widths),
+//    anywhere in `src/`; #1390's identity header renders the owner's name alone as a link (and
+//    since #1549 there is always one to render). The line also sits beside the photo (below it at
+//    mobile widths),
 //    not above it. And because the creating manager already owns Eclipse, the line does not
 //    *appear* — it **changes**, from the manager's name to Dana's. The rewritten line asserts
 //    that change, which is **strictly stronger** than the appearance it replaces: an assertion
@@ -253,8 +255,8 @@ async function openAccess(page: Page, horseName: string) {
  * described a different row.
  *
  * Both access columns read two ways, because #1547 made the row *render* two ways. On a non-owner
- * row the Documents cell shows all three labels at once and only `aria-pressed` tells them apart,
- * so the state is "which segment is pressed"; the Lesson Schedule cell holds a switch that since
+ * row the Documents cell shows all three labels at once and only `aria-checked` tells them apart,
+ * so the state is "which radio is selected"; the Lesson Schedule cell holds a switch that since
  * #1548 carries no text at all — the `Can View`/`Cannot View` label pair having been the state
  * rather than the control's name — so its state is `aria-checked`. On the **owner's** row there is
  * no control in either cell: ownership confers write and lesson read through `auth_is_horse_owner`
@@ -275,7 +277,7 @@ async function rowState(row: Locator, form: 'controls' | 'static' = 'controls') 
   return {
     owner: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
     documents: await settledInnerTexts(
-      form === 'controls' ? documents.locator('button[aria-pressed="true"]') : documents
+      form === 'controls' ? documents.locator('[role="radio"][aria-checked="true"]') : documents
     ),
     lesson:
       form === 'controls'
@@ -336,7 +338,7 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     }).toEqual({ status: ['Unavailable'], reason: THROWN_SHOE })
   })
 
-  // Narrowed — see divergence 1 in the header. The section is **My Horses**, not Unavailable,
+  // Narrowed — see divergence 1 in the header. The section is **My Owned Horses**, not Unavailable,
   // because the manager who added her through the form owns her; the badge and the reason are
   // what the item is actually about, and both render on the owned card.
   test('the_horses_list_shows_an_unavailable_horse_with_its_reason @manager', async ({ page }) => {
@@ -347,11 +349,11 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     // string comparison.
     //
     // The other two thirds of the item are carried by the locator rather than by a key here: it
-    // is section-scoped, which is how "under My Horses" is asserted rather than merely narrated,
+    // is section-scoped, which is how "under My Owned Horses" is asserted rather than merely narrated,
     // and it filters on the horse's name, which is why there is no `name:` key — a card that
     // came back from a `hasText: DAISY` filter contains DAISY by construction, so asserting it
     // would restate the locator and no mutant could ever kill it.
-    const card = (await settledInnerTexts(horseCardIn(page, 'My Horses', DAISY)))[0]
+    const card = (await settledInnerTexts(horseCardIn(page, 'My Owned Horses', DAISY)))[0]
     expect({
       badge: card.includes('Unavailable'),
       reason: card.includes(THROWN_SHOE),
@@ -371,9 +373,13 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
       .selectOption(barn.data.members.rider.membershipId)
     await accessSection(page).getByRole('button', { name: 'Grant Access', exact: true }).click()
 
-    // The whole grants list, not just Dana's presence: before this tap the table did not exist
-    // (the section renders an EmptyState at zero grants), so exactly-one-row is the claim.
-    await expect(grantedMembers(page)).toHaveText([DANA], { timeout: SETTLE_AFTER_WRITE })
+    // The whole member list, not just Dana's presence: before this tap the table held exactly one
+    // row — the creating manager's, synthesised from `horses.owning_member_id` since #1549 even
+    // though she holds no grant — so exactly-these-two-rows-in-this-order is the claim, and the
+    // owner leading is part of it.
+    await expect(grantedMembers(page)).toHaveText([CREATING_MANAGER, DANA], {
+      timeout: SETTLE_AFTER_WRITE,
+    })
   })
 
   test('a_granted_riders_row_offers_set_as_owner @manager', async ({ page }) => {
@@ -389,6 +395,51 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
       columns: await settledTextContents(accessColumns(page)),
       ownerCell: await settledInnerTexts(grantRow(page, DANA).locator('td').nth(OWNER_COLUMN)),
     }).toEqual({ columns: ACCESS_COLUMNS, ownerCell: ['Set as Owner'] })
+  })
+
+  /**
+   * The re-tap on a **grantless** owner (#1549 review round). `HorseAccessSection` binds each row's
+   * own member id, so re-tapping the selected Owner radio submits the owner to themselves — and the
+   * owner here is the manager who created Eclipse through the inline form, holding no
+   * `member_horse_privileges` row at all. `set_horse_owner`'s elevation `UPDATE … RETURNING id`
+   * matched nothing and raised `privilege_grant_not_found`, which `setHorseOwnerAction` neither
+   * caught nor could recover from: a tap that should do nothing errored the page instead.
+   *
+   * Dana carries the same re-tap in checklist-phase2-horses-access.spec.ts and cannot catch this —
+   * she is promoted *from* a grant, so her row is the one case with something to elevate. The
+   * grantless owner is reachable only here, before the promotion below moves ownership off the
+   * manager, which is why this sits mid-chain rather than at the end with its sibling.
+   *
+   * Awaited on the POST rather than on a redraw, and that is forced: a successful no-op moves not
+   * one pixel, so fact 8 has no attribute to offer and an immediate read would pass *before* the
+   * failure it exists to catch had arrived. Matched on method and pathname per fact 14, which the
+   * page itself does not make safe: Grant Access, the document radios, the lesson switch and Revoke
+   * are all bound forms POSTing to this same pathname. Nothing else on the page is driven here, so
+   * the only POST after the click is the owner submission.
+   */
+  test('re_tapping_a_grantless_owners_radio_leaves_it_selected @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    const row = grantRow(page, CREATING_MANAGER)
+    const before = await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN))
+    const { pathname } = new URL(page.url())
+
+    const submitted = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' && new URL(response.url()).pathname === pathname
+    )
+    await row.getByRole('radio', { name: 'Owner', exact: true }).click()
+    await submitted
+
+    // The header travels with the cell because the cell alone cannot say the round trip
+    // *completed*, and that is measured rather than assumed: on the unguarded action this test was
+    // written against, the Owner cell read went on passing off the DOM the failed submission left
+    // behind, and only the identity header went. So the cell is the claim and the header is what
+    // makes it non-vacuous.
+    expect({
+      before,
+      after: await settledInnerTexts(row.locator('td').nth(OWNER_COLUMN)),
+      header: await settledInnerTexts(headerLines(page)),
+    }).toEqual({ before: ['Owner'], after: ['Owner'], header: [CREATING_MANAGER] })
   })
 
   /**
@@ -408,11 +459,11 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     const row = grantRow(page, DANA)
     const before = await rowState(row)
 
-    await row.getByRole('button', { name: 'Set as Owner', exact: true }).click()
+    await row.getByRole('radio', { name: 'Set as Owner', exact: true }).click()
     // A wait, not the assertion: the table refreshes through the action's own `revalidatePath`
     // with no navigation to wait on, and all three columns re-render together, so the Owner
-    // button settling is the signal that the other two are readable (fact 8).
-    await expect(row.getByRole('button', { name: 'Owner', exact: true })).toBeVisible({
+    // radio settling is the signal that the other two are readable (fact 8).
+    await expect(row.getByRole('radio', { name: 'Owner', exact: true })).toBeVisible({
       timeout: SETTLE_AFTER_WRITE,
     })
 
@@ -425,13 +476,77 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
     })
   })
 
+  /**
+   * #1549 /testIssue round: the promotion above leaves the *outgoing* owner a grant matching the
+   * access ownership conferred them.
+   *
+   * Until now it was a silent revocation, and for exactly the grantless owner: the creating
+   * manager held no `member_horse_privileges` row — the ordinary state of a horse made through
+   * the Add Horse form — so her row was synthesised from `owning_member_id` alone and vanished
+   * the instant ownership moved to Dana. She lost the document write and lesson read #1547
+   * confers through ownership, with nothing on screen saying so. `set_horse_owner` now writes her
+   * a real grant of `write`/`true`, which the manager can downgrade the usual way.
+   *
+   * Read through the **controls** form, and that is the assertion rather than an implementation
+   * detail: since #1547 an owner's cells are static text with no `[role="radio"]` in them at all,
+   * so reaching a checked radio and a switch here is what says this is an ordinary grant row now
+   * and not another synthesised one.
+   */
+  test('promoting_a_rider_leaves_the_outgoing_owner_a_matching_grant @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+
+    expect(await rowState(grantRow(page, CREATING_MANAGER))).toEqual({
+      owner: ['Set as Owner'],
+      documents: ['Write'],
+      lesson: 'true',
+    })
+  })
+
   // #1547: the two cells above lost their controls, and this is the sentence that says why. It
   // renders only when a row in the table is the owner — which is the state the promotion above just
   // produced, so this test's position in the chain is what gives it something to find. Scoped
   // through the section, so a copy of the line elsewhere on the page couldn't satisfy it.
   test('the_owner_row_explains_where_its_access_comes_from @manager', async ({ page }) => {
     await openAccess(page, ECLIPSE)
-    await expect(accessSection(page).getByText(/unset the owner/i)).toBeVisible()
+    await expect(accessSection(page).getByText(/comes from owning the horse/i)).toBeVisible()
+  })
+
+  /**
+   * #1549's other half of the same sentence: the line used to end "Unset the owner to edit their
+   * access as an ordinary grant", and unsetting is no longer a move the app has — the column is
+   * `NOT NULL` and ownership only ever transfers. Asserted as an absence, so it is anchored on the
+   * positive read above rather than standing alone (rule 4): the two run against the same section
+   * on the same page, and the sentence they read is one paragraph.
+   */
+  test('the_owner_row_does_not_offer_to_unset_the_owner @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    await expect(accessSection(page).getByText(/comes from owning the horse/i)).toBeVisible()
+    await expect(accessSection(page).getByText(/unset the owner/i)).toHaveCount(0)
+  })
+
+  /**
+   * #1549: `revoke_horse_privilege` no longer clears `owning_member_id`, so a Revoke on the
+   * owner's row would delete a grant nothing displays and leave the row exactly as it was. The
+   * button is gone.
+   *
+   * Scoped to the owner's row, which #1549's /testIssue round forced: the creating manager is no
+   * longer gone from the table — she keeps the grant the promotion left her — so a section-wide
+   * Revoke count is now 1 and says nothing about whose row carries it.
+   *
+   * Her row is also the positive anchor the absence needs (rule 4), and a stronger one than the
+   * row list alone: `grantRevokes: 1` proves Revoke renders on this page at all, so `ownerRevokes:
+   * 0` cannot pass on a table that failed to draw its Actions column.
+   */
+  test('the_owner_row_offers_no_revoke @manager', async ({ page }) => {
+    await openAccess(page, ECLIPSE)
+    expect({
+      rows: await settledInnerTexts(grantedMembers(page)),
+      ownerRadio: await grantRow(page, DANA).getByRole('radio', { name: 'Owner', exact: true }).count(),
+      ownerRevokes: await grantRow(page, DANA).getByRole('button', { name: 'Revoke', exact: true }).count(),
+      grantRevokes: await grantRow(page, CREATING_MANAGER)
+        .getByRole('button', { name: 'Revoke', exact: true })
+        .count(),
+    }).toEqual({ rows: [DANA, CREATING_MANAGER], ownerRadio: 1, ownerRevokes: 0, grantRevokes: 1 })
   })
 
   // Narrowed — see divergence 2 in the header. The assertion is the *change*, which is what
@@ -442,7 +557,7 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
   // named Dana on every horse in the barn.
   //
   // Each side is the header's whole line list, so a second line arriving, or the owner line
-  // collapsing to "No owner set", fails rather than passing on a substring.
+  // vanishing, fails rather than passing on a substring.
   test('the_identity_header_owner_line_names_the_new_owner @manager', async ({ page }) => {
     await openHorse(page, ECLIPSE)
     const promoted = await settledInnerTexts(headerLines(page))
@@ -474,7 +589,7 @@ test.describe.serial('Horses — creation, unavailability, and the Access table'
 
     // Durability, not redraw: this is a fresh navigation from the horses list in a fresh test,
     // so the value comes off a new server render rather than off the DOM the promotion left
-    // behind. `Owner` and `Set as Owner` are the two states of one button, so reading the cell
+    // behind. `Owner` and `Set as Owner` are the two states of one radio, so reading the cell
     // whole — rather than asserting the presence of one label — is what distinguishes them.
     expect(await settledInnerTexts(grantRow(page, DANA).locator('td').nth(OWNER_COLUMN))).toEqual([
       'Owner',

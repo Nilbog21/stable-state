@@ -209,18 +209,22 @@ describe('HorseDetailPage', () => {
       expect(screen.getByText('Inactive')).toBeDefined()
     })
 
-    // The owner line used to be hidden entirely when unset, which left a manager no signal that
-    // ownership was the thing missing.
-    it('should_render_no_owner_set_when_the_horse_has_no_owner', async () => {
-      render(await HorseDetailPage({ params: pageParams }))
-      expect(screen.getByText('No owner set')).toBeDefined()
-    })
-
-    it('should_render_no_owner_set_when_the_owner_name_fails_to_resolve', async () => {
+    /**
+     * #1549 removed the "No owner set" fallback with the state it described: `owning_member_id` is
+     * NOT NULL, so there is no unset owner for the line to report. What survives is the *resolution*
+     * failure — a membership always points at a profile, but that profile row can be missing or
+     * unreadable — and there the header renders nothing rather than a blank link.
+     */
+    it('should_not_render_an_owner_line_when_the_owner_name_fails_to_resolve', async () => {
       vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       render(await HorseDetailPage({ params: pageParams }))
-      expect(screen.getByText('No owner set')).toBeDefined()
+      expect(screen.queryByRole('link', { name: /emery rider/i })).toBeNull()
+    })
+
+    it('should_never_render_no_owner_set', async () => {
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.queryByText('No owner set')).toBeNull()
     })
 
     it('should_render_the_photo_at_header_height', async () => {
@@ -307,23 +311,42 @@ describe('HorseDetailPage', () => {
       expect(hintFor('Upcoming Lessons')).toBe('1')
     })
 
-    it('should_show_the_singular_grant_count_on_the_collapsed_access_row', async () => {
+    // #1549: the hint counts the table's *rows*, which is the owner's synthesised row plus every
+    // grant that isn't the owner's — not `grants.length`, which would undercount by one on the
+    // majority of horses and disagree with what opening the section shows.
+    it('should_show_the_singular_row_count_on_the_collapsed_access_row', async () => {
+      vi.mocked(getHorsePrivileges).mockResolvedValue([])
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Access')).toBe('1 member')
+    })
+
+    it('should_count_the_owner_alongside_the_grants_on_the_collapsed_access_row', async () => {
       vi.mocked(getHorsePrivileges).mockResolvedValue([
         { id: 'privilege-1', member_id: 'mem-1', document_privileges: 'read', lesson_read_privileges: false } as any,
       ])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Dana Rider']]))
       render(await HorseDetailPage({ params: pageParams }))
+      expect(hintFor('Access')).toBe('2 members')
+    })
+
+    // The owner holding a grant of their own is one member and one row, not two.
+    it('should_not_double_count_an_owner_who_also_holds_a_grant', async () => {
+      vi.mocked(getHorsePrivileges).mockResolvedValue([
+        { id: 'privilege-1', member_id: 'mem-owner', document_privileges: 'read', lesson_read_privileges: false } as any,
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-owner', 'Emery Rider']]))
+      render(await HorseDetailPage({ params: pageParams }))
       expect(hintFor('Access')).toBe('1 member')
     })
 
-    it('should_pluralise_the_grant_count_on_the_collapsed_access_row', async () => {
+    it('should_pluralise_the_row_count_on_the_collapsed_access_row', async () => {
       vi.mocked(getHorsePrivileges).mockResolvedValue([
         { id: 'privilege-1', member_id: 'mem-1', document_privileges: 'read', lesson_read_privileges: false } as any,
         { id: 'privilege-2', member_id: 'mem-2', document_privileges: 'read', lesson_read_privileges: false } as any,
       ])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Dana Rider'], ['mem-2', 'Emery Rider']]))
       render(await HorseDetailPage({ params: pageParams }))
-      expect(hintFor('Access')).toBe('2 members')
+      expect(hintFor('Access')).toBe('3 members')
     })
 
     it('should_say_barn_defaults_on_the_collapsed_horse_settings_row', async () => {
