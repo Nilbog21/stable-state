@@ -139,10 +139,12 @@ done
 # gate file that acquires take a *shared* lock on for the run's duration and `--exclusive` takes
 # exclusively, which turns the starvation into ordinary reader/writer contention.
 #
-# ponytail: no preflight free-RAM guard here. Recycle-on-exit (#1569), the dev server's
-# `--max-old-space-size` backstop and this semaphore are three independent guards on the same
-# failure; a fourth earns its place only if an OOM survives all three, and then it belongs right
-# above this line.
+# ponytail: no preflight free-RAM guard here. This used to be one of three independent guards on the
+# same failure, alongside recycle-on-exit (#1569) and the dev server's `--max-old-space-size`
+# backstop. #1601 removed the first by removing what it guarded: the suite serves its own production
+# server now, so it fattens nothing and there is nothing to shed afterwards. Two guards remain, over a
+# failure #1601 also made much smaller; a third earns its place only if an OOM survives both, and
+# then it belongs right above this line.
 
 # `exec`, so the held fds pass to the command and the lock's lifetime is the command's own. Nothing
 # supervises it, nothing has to translate its exit status, and a `SIGKILL` anywhere frees the slot.

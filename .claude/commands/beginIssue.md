@@ -178,10 +178,10 @@ After plan approval, do the following in order:
 **Which runner the red-green loop uses:** `npx vitest run {test-file}` for a unit/integration test, but when the deliverable *is* an e2e spec (as it is for every issue in the #1187–#1208 checklist-automation batch), the loop runs Playwright instead:
 
 ```
-cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {spec-file}
+cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --spec {spec-file}
 ```
 
-**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and a full run holds the machine's only e2e slot for the whole of it. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here. Nothing to request and nobody to ask: `run-checklist-suite.sh` acquires its own slot from `scripts/e2e-slot.sh` (#1295) and simply waits if it is taken.
+**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and a full run holds the machine's only e2e slot for the whole of it. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished — is stated once in `/testIssue` Step 4. There is no port to pass: since #1601 the suite builds the branch and serves it itself. Follow it there; it isn't restated here. Nothing to request and nobody to ask: `run-checklist-suite.sh` acquires its own slot from `scripts/e2e-slot.sh` (#1295) and simply waits if it is taken.
 
 A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`) — `scripts/ci.sh` fails without them.
 

@@ -274,6 +274,12 @@ its own barns rather than a concurrent run's.
 
 ### Running the checklist e2e suite against a target project
 
+A plain `bash scripts/run-checklist-suite.sh` is self-contained (#1601): it runs `next build`,
+starts its own `next start` on a free ephemeral port, drives the suite against that, and stops
+the server on exit. It never touches whatever `next dev` you have running. `--base-url` is how
+you opt out — it means *target this existing origin, skip the build and start* — which is what
+the `--allow-prod` flow below is built on.
+
 `run-checklist-suite.sh` seeds a throwaway barn **per spec file, per Playwright project**
 under a shared run prefix (`e2e-{epoch}-{RANDOM}`), runs the Playwright checklist suite
 against them, and tears every barn carrying that prefix back down. Seeding is the reset —
@@ -291,8 +297,8 @@ bash scripts/run-checklist-suite.sh --base-url https://<your-domain> --allow-pro
 `--allow-prod` means the same thing here as in the scripts above — it bypasses the
 `DEV_SUPABASE_URL` check. Without it the suite's own seeding and the teardown call stay
 fail-closed, so a run can only ever touch a non-dev project deliberately. It does require
-`--base-url`, since otherwise the run would seed the target project and then drive
-`localhost:3000`, which reads that same target-pointed `.env.local`.
+`--base-url`, since otherwise the run would seed the target project and then drive a
+server it builds and starts itself — which reads that same target-pointed `.env.local`.
 
 Note that `.env.local` is what selects the Supabase project — `--base-url` only says which
 origin to drive. Point `.env.local` at the target project before running, or the seeded
