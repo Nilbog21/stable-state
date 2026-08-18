@@ -189,6 +189,11 @@ if (grace > 0) {
   process.on("SIGTERM", () => {
     if (leaving) return;
     leaving = true;
+    // The escalation window opened. Recorded as a file rather than left for a test to infer from
+    // the suite log: the log travels through a `tee` that a group signal can kill, so on a host
+    // where it does, a case synchronising on a log line waits out its timeout and delivers its
+    // second signal to an already-finished run. That is a test that silently stops testing.
+    require("fs").writeFileSync(process.env.FAKE_STATE + "/server-got-term", "");
     setTimeout(() => process.exit(0), grace * 1000);
   });
 }
@@ -628,8 +633,11 @@ FAKE_PW_SLEEP=30 FAKE_SERVER_TERM_GRACE=4 start_suite && started=true || started
 if [ "$started" = true ]; then
   await_file "$REPO/state/playwright-started" 600
   signal_group INT
-  await_log "Stopping this run's production server" 300
-  sleep 1
+  # Synchronised on the server's own marker, not on the log's "Stopping this run's…" line: see the
+  # SIGTERM handler in the fixture. The window this aims into is between that marker and the
+  # server exiting FAKE_SERVER_TERM_GRACE seconds later.
+  await_file "$REPO/state/server-got-term" 600
+  sleep 0.5
   signal_group TERM
   await_log "run-checklist-suite.sh exited" 400
 fi
