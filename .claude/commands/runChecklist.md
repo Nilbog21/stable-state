@@ -122,7 +122,7 @@ The command is the whole suite — no `--spec` flags, since every phase's `(e2e:
 cd {worktree_path} && bash scripts/run-checklist-suite.sh
 ```
 
-**Launch it exactly as `/testIssue` Step 4 prescribes** — that step owns this protocol and is the only place it's written down: background launch, the `cd {worktree_path} &&` prefix, results read from `checklist-suite.log` rather than the tool result, the freshness header and the exit terminator both checked before the log is trusted. The difference here is that you do **not** wait for it: launch, then go straight to Step 1. Step 3.5 collects it.
+**Launch it exactly as `/testIssue` Step 4 prescribes** — that step owns this protocol and is the only place it's written down: background launch, the `cd {worktree_path} &&` prefix, results read from `checklist-suite.log` rather than the tool result, the freshness header and the exit terminator both checked before the log is trusted. Not waiting for it is the same rule there as here since #1602 — launch, then go straight to Step 1. What differs is only who collects the verdict: **Step 3.5** does, against the `(e2e:)` tags, where `/testIssue` hands its full run to `/finishIssue`'s merge gate.
 
 One thing that step doesn't cover, because it never runs the suite this way: never pass `--interactive` or `--hold-open`. Both want a human watching a run nobody is watching — the walk has your attention instead.
 
