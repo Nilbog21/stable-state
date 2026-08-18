@@ -43,6 +43,9 @@ make_repo() {
   touch "$dir/src/lib/db/types.ts"
   mkdir -p "$dir/src/app/barns" && touch "$dir/src/app/barns/page.tsx"
   mkdir -p "$dir/supabase/migrations" && touch "$dir/supabase/migrations/20260101000000_x.sql"
+  # The two dev scripts Tests 20-21 discriminate between: one governs what every spec is pointed
+  # at, the other governs only whether runs serialise.
+  mkdir -p "$dir/scripts" && touch "$dir/scripts/run-checklist-suite.sh" "$dir/scripts/e2e-slot.sh"
 
   git -C "$dir" add -A >/dev/null 2>&1
   echo "$dir"
@@ -284,6 +287,36 @@ if [ "$out" = "mode=full" ]; then
   assert_pass "a runtime component alongside a doc still yields mode=full"
 else
   assert_fail "a runtime component alongside a doc still yields mode=full" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 20: the suite runner itself is always-full
+# #1607 — the selector returned mode=none for a diff that rewrote scripts/run-checklist-suite.sh:
+# no ALWAYS_FULL entry carried it and no spec's covers: globs declare scripts/, so the file that
+# decides what every spec is pointed at was the one file a change to which ran nothing. #1550's
+# "a file that cannot reach a browser cannot be the reason to open one" does not separate it from
+# playwright.config.ts, already on this list — and it governs strictly more: the origin every spec
+# is given, the env every spec reads, and since #1601 whether a production server exists at all.
+REPO="$(make_repo)"
+out="$(select_specs 'scripts/run-checklist-suite.sh')"
+if [ "$out" = "mode=full" ]; then
+  assert_pass "the suite runner yields mode=full"
+else
+  assert_fail "the suite runner yields mode=full" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 21: the slot semaphore is deliberately NOT always-full
+# The guard on Test 20, and the executable form of #1607's recorded exclusion. e2e-slot.sh governs
+# whether runs serialise, never what any spec asserts, and it already has e2e-slot.test.sh in
+# ci.sh — #1598's own mode=full de-escalation rests on exactly that distinction. Without this case
+# "add scripts/ to ALWAYS_FULL" would look like a passing generalisation of Test 20.
+REPO="$(make_repo)"
+out="$(select_specs 'scripts/e2e-slot.sh')"
+if [ "$out" = "mode=none" ]; then
+  assert_pass "the slot semaphore does not escalate the run"
+else
+  assert_fail "the slot semaphore does not escalate the run" "output=$out"
 fi
 rm -rf "$REPO"
 
