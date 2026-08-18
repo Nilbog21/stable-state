@@ -15,7 +15,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 ### Lessons & Appointments
 
 - **A month calendar on the lesson and appointment forms.** Picking a date shows the days a horse or instructor is already booked, and the days a horse has a vet or farrier appointment.
-- **Colour-coded by how tired a horse will be** from the lessons already on the books, so you can see the load before committing to a date.
+- **Color-coded by how tired a horse will be** from the lessons already on the books, so you can see the load before committing to a date.
 - **Selecting a day lists everything on it** — lessons, appointments and events — so conflicts are visible before you save.
 - **Instructors are warned about lessons close to theirs.** Booking a lesson near another instructor's sends them a heads-up — useful when you share an arena. Managers set the buffer (30 minutes by default) in Manage Barn.
 
@@ -40,7 +40,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ### Timezones
 
-- **Times are barn times.** Every date and time in the app displays in your barn's timezone, on every device, for everyone. A 4:00 PM lesson reads as 4:00 PM whether you're at the barn, at home, or travelling.
+- **Times are barn times.** Every date and time in the app displays in your barn's timezone, on every device, for everyone. A 4:00 PM lesson reads as 4:00 PM whether you're at the barn, at home, or traveling.
 
 ### Demo
 
