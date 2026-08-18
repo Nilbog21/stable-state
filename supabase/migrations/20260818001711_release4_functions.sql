@@ -405,8 +405,8 @@ $$;
 
 -- ===========================================================================
 -- Lessons.
--- #999 review follow-up: 20260725005004_lesson_rider_notes_privilege_rls.sql
--- revoked table-wide SELECT on lesson_riders.rider_notes/private_notes for
+-- #999 review follow-up: the companion rls file revokes table-wide SELECT on
+-- lesson_riders.rider_notes/private_notes for
 -- authenticated, but updateLessonRiderNotes still did .update(...).select().
 -- single() with no explicit column list -- PostgREST turns that into an
 -- implicit RETURNING *, and Postgres requires SELECT privilege on every
@@ -507,9 +507,8 @@ $$;
 -- month's lessons at once. This variant takes the id array and returns lesson_id alongside
 -- so one call covers the range.
 --
--- Row filter is identical to the per-lesson function (see
--- 20260725005005_lesson_exertion_owner_visibility.sql): manager/trainer see every row, a
--- rider sees only a horse they hold lesson_read_privileges for.
+-- Row filter is identical to get_lesson_horse_exertion_levels above (#999): manager/trainer
+-- see every row, a rider sees only a horse they hold lesson_read_privileges for.
 CREATE FUNCTION public.get_lesson_horse_exertion_levels_batch(p_lesson_ids uuid[], p_barn_id uuid)
 RETURNS TABLE (lesson_id uuid, horse_id uuid, exertion_level smallint)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
@@ -677,8 +676,8 @@ $$;
 
 -- Ordering note (get_horse_projected_exhaustion): ExhaustionBar lists the returned rows as
 -- "<date> — <exertion>", so they read as a schedule and belong in chronological order.
--- Body is otherwise unchanged from 20260722222910_member_horse_privileges_functions.sql,
--- which added the third (#997 privileged-rider) authorization branch.
+-- Body is otherwise as #997 left it, when it added the third (privileged-rider)
+-- authorization branch.
 CREATE OR REPLACE FUNCTION public.get_horse_projected_exhaustion(
   p_horse_id UUID,
   p_barn_id UUID,
@@ -794,7 +793,8 @@ $$;
 
 -- ===========================================================================
 -- Appointments, cancellations and agreements.
--- #1148 function half (see the ..._appointments_split.sql companion for the rationale).
+-- #1148 function half; the table rename and appointment_costs itself are in the companion
+-- schema file, and the money data's move in the companion backfills file.
 --
 -- The four RPCs keep their names: they are still the expense-writing entry points a manager
 -- drives from /barn/[slug]/expenses, and renaming them would churn the DAL, the docs and

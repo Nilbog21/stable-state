@@ -69,8 +69,9 @@ ALTER TABLE public.horses ADD COLUMN registered_name TEXT;
 
 -- #1014: barn_events holds ad-hoc calendar entries that aren't a lesson or an
 -- expense (e.g. a costume party). visible_to_roles governs both dashboard
--- visibility and which personalized .ics feeds include it (future work) --
--- defaults to everyone so the creator only narrows scope.
+-- visibility and which personalized .ics feeds include it -- get_calendar_feed
+-- in the companion functions file filters on it (#1018). Defaults to everyone
+-- so the creator only narrows scope.
 
 CREATE TABLE public.barn_events (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

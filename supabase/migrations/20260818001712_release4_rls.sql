@@ -53,8 +53,8 @@ GRANT EXECUTE ON FUNCTION public.auth_lesson_has_privileged_horse(uuid, uuid) TO
 
 -- #1547: the delete half of "an owner gets full CRUD on their own horse's documents".
 --
--- horse_documents had no privilege-based DELETE policy at all -- 20260722222911 defines SELECT and
--- INSERT only -- so this is a policy that has never existed rather than a widened one. Gated on
+-- horse_documents had no privilege-based DELETE policy at all -- #997 defines SELECT and INSERT
+-- only (above in this file) -- so this is a policy that has never existed rather than a widened one. Gated on
 -- ownership directly, not on auth_get_horse_document_privilege() = 'write': the Access section's
 -- three-way none/read/write control promises a granted rider reads and uploads, and nothing there
 -- says anything about deletion. Additive, as ever -- Postgres OR-combines permissive policies, so
@@ -69,10 +69,10 @@ CREATE POLICY horse_documents_delete_ownership ON public.horse_documents
 -- quieter here -- the action already swallows a removeFile error, so every owner delete would have
 -- orphaned its object with nothing surfaced. Managers keep deleting through manager_documents_all.
 --
--- Path shape and the bare `name` reference match rider_horse_documents_select/_insert
--- (20260805141450): [1] barn id, [2] the 'horses' prefix, [3] horse id, and a direct helper call
--- rather than an EXISTS subquery, so the objects.name shadowing bug 20260723155501 fixed cannot
--- arise here.
+-- Path shape and the bare `name` reference match rider_horse_documents_select/_insert (#1359,
+-- just below): [1] barn id, [2] the 'horses' prefix, [3] horse id, and a direct helper call
+-- rather than an EXISTS subquery, so the objects.name shadowing bug #1003 fixed cannot arise
+-- here.
 CREATE POLICY rider_horse_documents_delete ON storage.objects FOR DELETE TO authenticated USING (
   bucket_id = 'documents'
   AND (storage.foldername(name))[2] = 'horses'
@@ -85,14 +85,14 @@ CREATE POLICY rider_horse_documents_delete ON storage.objects FOR DELETE TO auth
 -- #1359: storage.objects policies admitting privilege-granted riders on the
 -- documents bucket's horses/ prefix. #997/#999 granted the horse_documents
 -- *table* to privileged riders (SELECT for 'read'/'write', INSERT for 'write',
--- 20260722222911) but no storage policy followed, so the horse detail page's
+-- above in this file) but no storage policy followed, so the horse detail page's
 -- getSignedUrl threw on the RLS denial and the page 500'd for exactly the
 -- riders the grant admitted. Additive only — Postgres OR-combines permissive
 -- policies, so manager/trainer access is unchanged.
 --
 -- Both checks are direct calls to the SECURITY DEFINER helper the table
 -- policies already use (recursion-safe, already granted to authenticated).
--- No EXISTS subquery means the objects.name shadowing bug 20260723155501
+-- No EXISTS subquery means the objects.name shadowing bug #1003
 -- fixed cannot arise here: the bare `name` below is unambiguously
 -- storage.objects.name.
 
@@ -148,7 +148,7 @@ CREATE POLICY barn_events_select_visible_role ON public.barn_events
 DROP POLICY barn_memberships_manager_approve ON public.barn_memberships;
 
 -- ===========================================================================
--- Companion to 20260725005003_lesson_rider_notes_privilege_functions.sql: Postgres
+-- Companion to get_lesson_rider_notes in the functions file (#999): Postgres
 -- has no "all columns except this one" grant, so the table-wide SELECT grant on
 -- lesson_riders is revoked and re-granted for every column except rider_notes/
 -- private_notes -- those are readable only via get_lesson_rider_notes now, the
@@ -161,8 +161,7 @@ GRANT SELECT (id, barn_id, lesson_id, rider_id, cancellation_notes, cancelled_at
 -- replaced once here, with both carve-outs (#1004's profile-photos, #1003's horse-photos)
 -- already applied.
 -- #1003: carve the horse-photos prefix out of the broad manager_documents_all grant
--- (same approach as 20260723022104_profile_photos_manager_write_lock.sql's profile-photos
--- carve-out) and give it its own dynamically-locked policies -- a manager may write only
+-- (same approach as #1004's profile-photos carve-out, below) and give it its own dynamically-locked policies -- a manager may write only
 -- when the horse's photo isn't currently locked by its owner, and the owner may always
 -- write their own horse's photo.
 DROP POLICY manager_documents_all ON storage.objects;
@@ -190,7 +189,7 @@ CREATE POLICY horse_photos_member_select ON storage.objects FOR SELECT TO authen
 -- against every row in this single-bucket table) never sees a non-UUID first segment.
 --
 -- Manager write for managed/stub profiles is already covered by manager_documents_all
--- (barn-scoped FOR ALL) — same as horse-photos (20260722205014). The is_managed-only
+-- (barn-scoped FOR ALL) — same as horse-photos (#1002). The is_managed-only
 -- restriction on *which* profiles a manager may touch is enforced in the server action,
 -- mirroring updateContactInfoAction's existing check, not carved into storage RLS.
 CREATE POLICY profile_photos_self_write ON storage.objects FOR ALL TO authenticated
@@ -298,15 +297,17 @@ CREATE POLICY horse_photos_owner_write ON storage.objects FOR ALL TO authenticat
 );
 
 -- ===========================================================================
--- #1148: the two policies that predate the rename follow it; the two #1019 added are created
--- under their post-rename names below.
--- #1148 RLS half (see the ..._appointments_split.sql companion for the rationale).
+-- #1148 RLS half; the rename itself is in the companion schema file.
 --
--- The four existing policies are renamed rather than dropped and recreated. A policy body
--- is stored against the table's OID, so `USING (auth_is_barn_manager(barn_id))` and #1019's
--- qualified `horse_expenses.barn_id` both follow the table rename on their own -- a rename
--- reaches the same end state as a drop-and-recreate with no chance of the recreated body
--- drifting from the original.
+-- The two policies that predate release-4 are renamed rather than dropped and recreated. A
+-- policy body is stored against the table's OID, so `USING (auth_is_barn_manager(barn_id))`
+-- follows the table rename on its own -- a rename reaches the same end state as a
+-- drop-and-recreate with no chance of the recreated body drifting from the original.
+--
+-- #1019's two trainer policies were born inside this squash, so there is no pre-rename name
+-- for them to be renamed from: they are created under their final names further down, with
+-- their USING clauses qualified `appointments`/`appointment_horses` rather than the
+-- `horse_expenses`/`expense_horses` the original migration wrote.
 ALTER POLICY "manager_all_horse_expenses" ON public.appointments
   RENAME TO "manager_all_appointments";
 
@@ -418,7 +419,7 @@ GRANT EXECUTE ON FUNCTION get_unread_notification_title(uuid, uuid, text) TO ser
 -- sync_rider_cancellation_fee already exempts a NULL-auth.uid() caller from its own
 -- authorization check (the documented service-role-caller exception it shares with
 -- sync_lesson_transactions); only the EXECUTE grant was missing. Same fix as
--- 20260723182521_nearby_instructor_unread_title_service_role_grant.sql and #930's
+-- #1017's get_unread_notification_title grant above and #930's
 -- get_outstanding_transactions grant. No new capability: service_role already bypasses RLS
 -- and can write `transactions` directly.
 GRANT EXECUTE ON FUNCTION public.sync_rider_cancellation_fee(uuid, uuid, lesson_type, boolean) TO service_role;
@@ -463,7 +464,7 @@ GRANT EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boo
 -- restored it. Nobody should have to re-run this audit by hand.
 --
 -- Grant targets are not uniform. ALTER DEFAULT PRIVILEGES (20260629004612_baseline_rls.sql:291-292)
--- covers TABLES only, and 20260723182521_nearby_instructor_unread_title_service_role_grant.sql
+-- covers TABLES only, and #1017's get_unread_notification_title service_role grant above
 -- exists because that gap broke a cron job's call — so a blanket "grant authenticated" here would
 -- repeat that incident. Four of the nine are reached through scripts/script-utils.ts's
 -- service-role client:
@@ -531,8 +532,7 @@ GRANT EXECUTE ON FUNCTION public.set_default_tier(uuid, uuid) TO authenticated;
 -- The shape here mirrors what service_role already has for TABLES in
 -- 20260629004612_baseline_rls.sql:291-292 — a blanket grant plus a default-privileges rule — so a
 -- function added later is covered at creation rather than at the next incident. That gap is what
--- 20260723182521_nearby_instructor_unread_title_service_role_grant.sql was filed for, and what
--- this closes for good.
+-- #1017's one-off service_role grant above was filed for, and what this closes for good.
 --
 -- Nothing is weakened: service_role already holds GRANT ALL ON ALL TABLES and bypasses RLS, so
 -- function EXECUTE grants it no reach it lacked. The `authenticated` half is untouched and still
@@ -551,7 +551,8 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUN
 -- it picked up service_role at creation and `authenticated` only afterwards. Its pair sits
 -- below the block above to reproduce that order.
 -- Only the new function needs a pair: CREATE OR REPLACE preserves the existing ACL, so the two
--- amended helpers keep the grants 20260722222911 gave them (see check-function-grants.sh's header).
+-- amended helpers keep the grants #997 gave them at the top of this file (see
+-- check-function-grants.sh's header).
 REVOKE ALL ON FUNCTION public.auth_is_horse_owner(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.auth_is_horse_owner(uuid, uuid) TO authenticated;
 
