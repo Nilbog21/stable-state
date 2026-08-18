@@ -30,20 +30,24 @@ done
 # (stdout is no longer a TTY); the log keeps one static line per test, which is the better
 # trade for a file read afterwards. What reaches *stdout* differs — see the branches.
 #
-# Both branches fence the writer against TERM and HUP (#1607), and deliberately **not** against
-# INT. A process substitution's children run in this script's own process group — measured, `tee`
-# comes back carrying the script's pgid — so a group-delivered TERM or HUP kills the thing writing
-# the log a fraction of a second before the EXIT trap writes the exit-code terminator into it. That
-# left the terminator unreachable on the paths that most need it, and #1602's merge gate waits on
-# that line: an interrupted run made the gate wait out its cap rather than read a verdict.
+# Both branches fence the writer against TERM and HUP (#1607), so an interrupted run keeps the tail
+# of its log rather than losing everything from the signal onward. A process substitution's children
+# run in this script's own process group — measured, `tee` comes back carrying the script's pgid —
+# so without this a group-delivered TERM or HUP kills the writer mid-run.
 #
-# INT is excluded because adding it is actively harmful, which is the opposite of what it looks
-# like and was caught only by testing all four combinations against both signals. Measured: an
-# unfenced writer already survives a group INT, so the fence buys nothing there — and a writer with
-# INT ignored loses the terminator it was added to protect, because the parent no longer waits for
-# the substitution to drain on that path. `trap '' TERM HUP` is the one combination that delivers
-# the terminator under both signals. An ignored disposition is inherited across `exec`, so this
-# covers `tee` and the filter alike.
+# INT is deliberately absent, and the asymmetry is measured rather than tidy: with INT also ignored
+# the writer stops draining on that path and the tail is lost anyway, so adding it costs the thing
+# the fence is for. An ignored disposition is inherited across `exec`, so what is here covers `tee`
+# and the filter alike.
+#
+# **None of this is load-bearing for the exit-code terminator**, and it must not become so. Whether
+# a writer survives a given signal turns out to be environment-dependent — a group INT leaves it
+# alone on one host and kills it on GitHub Actions — so `cleanup` writes that line straight to
+# $LOG_PATH and to the saved fd 3 instead, and this fence only affects how much of the *rest* of
+# the log survives.
+# fd 3 is the real console, saved before the redirect below claims stdout. `cleanup` writes the
+# exit-code terminator through it and straight to $LOG_PATH, never through the `tee` — see there.
+exec 3>&1
 if [ "$VERBOSE" = true ]; then
   exec > >(trap '' TERM HUP; tee -a "$LOG_PATH") 2>&1
 else
@@ -164,7 +168,13 @@ cleanup() {
   # `teardown-test-barn.sh` and the `sleep`s as well as this shell. A `trap 'handler'` would not —
   # a caught disposition resets to default in the child. Nothing restores the previous traps
   # afterwards, because there is no afterwards: this handler ends in `exit`.
-  trap '' INT TERM HUP
+  trap '' INT TERM HUP PIPE
+  # PIPE is in that list, and `set +e` is here, for the same reason: if the log writer has already
+  # died, every diagnostic write below is a write to a broken pipe. Under the script's `set -e` a
+  # SIGPIPE or an EPIPE from a plain `echo` would abort this handler before the barns are torn down
+  # — which is the failure this whole fence exists to prevent, arriving through the one door the
+  # signal mask does not cover. A cleanup handler must not die of a failed diagnostic write.
+  set +e
   # Before the barn teardown, so the server's memory is released first, and unconditional so every
   # exit path leaves no server behind — a bad flag, a failed build, a Ctrl-C, or a green run.
   stop_server
@@ -172,7 +182,14 @@ cleanup() {
     # --prefix, not --all: --all would delete a concurrent run's barns too.
     bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
   fi
-  echo "=== run-checklist-suite.sh exited $code — full log: $LOG_PATH ==="
+  # Written straight to the log file and to the saved console fd, deliberately **not** through the
+  # `tee` this script's stdout is redirected into. `/testIssue` Step 4 and #1602's merge gate both
+  # parse this line, and routing it through the writer made its delivery depend on that writer
+  # surviving the signal that killed the run — which is environment-dependent: a group INT leaves
+  # the writer alone on one host and kills it on GitHub Actions, and the terminator went missing on
+  # exactly the second kind. A direct append cannot be lost that way, whatever happened upstream.
+  printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
+  printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >&3
   exit "$code"
 }
 # Installed before the .env.local/env-var checks below so those early bails get the same
