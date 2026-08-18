@@ -74,7 +74,7 @@ One line each; full contracts, flags, quirks, and history: [`docs/scripts.md`](.
 - `run-cron` — shared shell wrapper for the 4 nightly cron scripts
 - `generate-outstanding-notifications`, `generate-agreement-charges`, `generate-recurring-lessons`, `prune-old-notifications` — the 4 nightly GHA cron jobs (`run(supabase)` → `{ summary, hadErrors }`)
 - `e2e-slot` — kernel-held 1-slot semaphore the suite runs under (`--exclusive` for `db push`); `flock` on an `exec`'d fd, so death frees the slot
-- `run-checklist-suite` — run the Playwright suite: schema preflight (aborts on a dev DB ahead of the branch), per-run barn prefix, teardown `EXIT` trap, output mirrored to `checklist-suite.log`, dev-server recycle
+- `run-checklist-suite` — run the Playwright suite: schema preflight (aborts on a dev DB ahead of the branch), serves its own server, per-run barn prefix, teardown `EXIT` trap, output mirrored to `checklist-suite.log`
 - `workflow-ci-wait` — blocking CI gate for `/reviewIssue`/`/finishIssue`; exactly one exit-coded verdict line
 - `workflow-context` — worktree/port/branch/base detection for the workflow skills; never fails, empty fields instead
 - `select-specs` — PR diff → e2e blast radius via each spec's `// covers:` globs; `--lint` wired into `ci.sh`

@@ -98,12 +98,25 @@ stop_server() {
     return 0
   fi
   echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID)."
+  # SIGINT is ignored across the whole kill-and-escalate window below, and restored after it.
+  # #1569 added this same fence to `recycle_dev_server`'s structurally identical
+  # SIGTERM -> wait -> SIGKILL sequence, and added it in a *post-review fixup* (445c150a, "fence
+  # the interrupt") precisely because it had been missed once already: a Ctrl-C landing
+  # mid-escalation abandons the sequence before the "still held" diagnostic can print, which is
+  # the one place in this function where an interrupt destroys state rather than merely
+  # abandoning it. Bash's own signal deferral is not a substitute — it covers only the case where
+  # cleanup was entered from the INT trap's own `exit 130`, leaving every other path in (a failed
+  # build, a server that never answered, an ordinary pass or fail) exposed.
+  trap '' INT
   # The whole process group: `next start` spawns a next-server child that is what actually holds
   # the port, so killing the leader alone orphans it — the same lesson #1155/#1569 learned about
   # the dev server. `|| true` because a server that has already died is a branch, not a failure.
   kill -- "-$SERVER_PGID" 2>/dev/null || true
-  if ! wait_for_port_release "$SERVER_PORT" 10; then
-    echo "Port $SERVER_PORT still held 10s after SIGTERM — escalating to SIGKILL."
+  # 15s, inherited from #1569 rather than re-chosen. This server has just served the entire suite,
+  # so if anything it has more to drain than the freshly-relaunched `next dev` that number was set
+  # for — and nothing here measured a shorter one, which is the only thing that would justify one.
+  if ! wait_for_port_release "$SERVER_PORT" 15; then
+    echo "Port $SERVER_PORT still held 15s after SIGTERM — escalating to SIGKILL."
     kill -9 -- "-$SERVER_PGID" 2>/dev/null || true
     if ! wait_for_port_release "$SERVER_PORT" 5; then
       # Loud rather than silent: this script's contract is that a run leaves no server behind,
@@ -111,6 +124,7 @@ stop_server() {
       echo "WARNING: port $SERVER_PORT is still held after SIGKILL. Holder: $(ss -lptnH "sport = :$SERVER_PORT")" >&2
     fi
   fi
+  trap 'exit 130' INT
   SERVER_PGID=""
 }
 
@@ -224,10 +238,12 @@ done
 # assertDevProject (e2e/support/test.ts) both stay fail-closed on non-dev.
 if [ "$ALLOW_PROD" = true ]; then
   PROD_FLAG=(--allow-prod)
-  # Without an origin this seeds the target project and then drives localhost:3000 — your own
-  # server, reading that same target-pointed .env.local — running mutating specs against it.
+  # Without an origin this seeds the target project and then drives a server of its own — built
+  # from this branch and reading that same target-pointed .env.local — running mutating specs
+  # against it. #1601 changed which server that is (its own `next start`, not the developer's
+  # `next dev` on :3000) and changed nothing about why the flag combination is refused.
   if [ -z "$BASE_URL" ]; then
-    echo "Error: --allow-prod requires --base-url (otherwise the run seeds the target project but drives localhost)" >&2
+    echo "Error: --allow-prod requires --base-url (otherwise the run seeds the target project but drives a server it builds itself, which reads that same .env.local)" >&2
     exit 1
   fi
   # Not fatal: the flag is simply redundant on dev. Worth saying, because if --base-url points
@@ -448,7 +464,10 @@ else
   start_server
 fi
 
-E2E_BASE_URL="${BASE_URL:-http://localhost:$SERVER_PORT}"
+# 127.0.0.1 rather than `localhost`, matching the `-H 127.0.0.1` the server binds with: this is the
+# origin Playwright hands to Chromium, so spelling it by name would reintroduce the one resolution
+# hazard the explicit bind exists to remove — a host where `localhost` answers ::1 first.
+E2E_BASE_URL="${BASE_URL:-http://127.0.0.1:$SERVER_PORT}"
 
 PLAYWRIGHT_ARGS=()
 if [ "$MODE" = "auto" ]; then

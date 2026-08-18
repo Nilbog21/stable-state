@@ -142,7 +142,7 @@ done
 # ponytail: no preflight free-RAM guard here. This used to be one of three independent guards on the
 # same failure, alongside recycle-on-exit (#1569) and the dev server's `--max-old-space-size`
 # backstop. #1601 removed the first by removing what it guarded: the suite serves its own production
-# server now, so it fattens nothing there is anything to shed afterwards. Two guards remain, over a
+# server now, so it fattens nothing and there is nothing to shed afterwards. Two guards remain, over a
 # failure #1601 also made much smaller; a third earns its place only if an OOM survives both, and
 # then it belongs right above this line.
 
