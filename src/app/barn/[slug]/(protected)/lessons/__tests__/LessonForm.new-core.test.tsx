@@ -520,4 +520,56 @@ describe('LessonForm', () => {
     expect(screen.getByRole('alert').textContent).toContain('a rider is required')
   })
 
+  // #1616. Both horses land in bucket 2 and both total zero exertion — `baseProps` passes no
+  // `getProjectedExhaustion`, which is not a contrived fixture but the picker's own opening state:
+  // `exhaustionByHorseId` is undefined until the fetch resolves, so *every* horse ties at zero and
+  // the whole within-bucket order rests on the last key. Before the name tie-break that key didn't
+  // exist and the order was `Array.sort`'s stability over input order.
+  it('should_sort_tied_unavailable_horses_by_name', () => {
+    const hazel = createMockHorse({ id: 'horse-hazel', name: 'Hazel', is_available: false })
+    const daisy = createMockHorse({ id: 'horse-daisy', name: 'Daisy', is_available: false })
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[hazel, daisy]} />)
+    const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+      .map((el) => (el as HTMLInputElement).value)
+    expect(rendered).toEqual(['horse-daisy', 'horse-hazel'])
+  })
+
+  // #1616, the other half of the same rule: name breaks a tie, it never overrides the exertion key
+  // above it. Nothing else pins that — the seed's Daisy/Hazel/Willow order comes out the same under
+  // either key order, so a name-first comparator would pass every other test in the repo.
+  it('should_sort_unavailable_horses_by_exertion_before_name', async () => {
+    const anise = createMockHorse({ id: 'horse-anise', name: 'Anise', is_available: false })
+    const basil = createMockHorse({ id: 'horse-basil', name: 'Basil', is_available: false })
+    const thresholds = { high: 11, moderate: 5 }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-anise': {
+        existingRows: [{ lessonAt: { at: '2026-06-01T18:00:00Z', tz: 'America/New_York' }, exertionLevel: 5 }],
+        thresholds,
+      },
+      'horse-basil': { existingRows: [], thresholds },
+    })
+    const { container } = render(
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[anise, basil]} getProjectedExhaustion={getProjectedExhaustion} />
+    )
+    await waitFor(() => {
+      const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+        .map((el) => (el as HTMLInputElement).value)
+      expect(rendered).toEqual(['horse-basil', 'horse-anise'])
+    })
+  })
+
+  // #1616 review round. `horses.name` is `TEXT NOT NULL` with no per-barn uniqueness constraint, so
+  // two horses in one barn really can share a name — and then all three keys above tie and the order
+  // falls back to input order again, the same defect one level down. The id key makes the comparator
+  // total, following the idiom already at six sites (`db/expenses.ts`, `db/lesson-participants.ts`,
+  // `db/lessons.ts`, `horses/[id]/page.tsx`), all of which read `name || id`.
+  it('should_sort_same_name_horses_by_id', () => {
+    const second = createMockHorse({ id: 'horse-b', name: 'Bella', is_available: false })
+    const first = createMockHorse({ id: 'horse-a', name: 'Bella', is_available: false })
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[second, first]} />)
+    const rendered = Array.from(container.querySelectorAll('input[type="checkbox"][name="horse_id"]'))
+      .map((el) => (el as HTMLInputElement).value)
+    expect(rendered).toEqual(['horse-a', 'horse-b'])
+  })
+
 })
