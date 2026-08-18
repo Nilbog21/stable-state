@@ -24,29 +24,51 @@ for arg in "$@"; do
   case "$arg" in --verbose|--interactive) VERBOSE=true ;; esac
 done
 
+# The console, saved before the redirect below so `cleanup` can put its own output back on it once
+# it has finished with the log writer. #1607 left a comment claiming a saved fd 3 that was never
+# actually here — it went out with the drain machinery the comment outlived; #1621 needs it for
+# real. Every long-lived child this script starts closes it again (`3>&-`), because a descriptor
+# onto the caller's stdout is a descriptor that can hang the caller.
+exec 3>&1
+
 # Send this script's stdout and stderr — and that of everything it runs — through `tee`, so
 # the log gets the whole run, including the early bails that kill it under `set -e` before
 # Playwright writes a line. Either branch costs the `list` reporter its live in-place progress
 # (stdout is no longer a TTY); the log keeps one static line per test, which is the better
 # trade for a file read afterwards. What reaches *stdout* differs — see the branches.
 #
-# Both branches fence the writer against TERM and HUP (#1607), so an interrupted run keeps the tail
-# of its log rather than losing everything from the signal onward. A process substitution's children
-# run in this script's own process group — measured, `tee` comes back carrying the script's pgid —
-# so without this a group-delivered TERM or HUP kills the writer mid-run.
+# **The writer is a background job fed through a private fifo, not the `>(…)` process substitution
+# this replaces, and that is #1621's central move.** `cleanup` has to drain the writer before it
+# appends the terminator, or the append races output still in flight (#1607 shipped that race
+# knowingly). A drain needs the writer's pid, and `$!` names a process substitution only from bash
+# 5.0 — and on 4.x `LOG_WRITER_PID=$!` is fatal under `set -u`
+# *before* `trap cleanup EXIT` is installed, so no terminator is written at all. That was #1607's
+# finding C, and a plain background job dissolves it: `$!` is set on every bash in scope, so the
+# stated floor does not have to move to buy the guarantee.
 #
-# INT is deliberately absent, and the asymmetry is measured rather than tidy: with INT also ignored
-# the writer stops draining on that path and the tail is lost anyway, so adding it costs the thing
-# the fence is for. An ignored disposition is inherited across `exec`, so what is here covers `tee`
-# and the filter alike.
+# `exec tee` inside the subshell means the recorded pid **is** `tee`'s — the one process that writes
+# to $LOG_PATH, which is the only process the ordering guarantee is about. #1607's finding A had to
+# talk about killing "the whole writer pipeline" because it killed the process-substitution subshell
+# and left `tee`, its child, alive holding the log open in append mode. Naming `tee` directly is
+# what retires that. The console-side `grep` is deliberately *outside* the drained unit: it writes
+# to fd 3 and never to the log, so it cannot violate the ordering and needs neither drain nor kill.
+#
+# Both branches fence the writer against TERM and HUP (#1607), so an interrupted run keeps the tail
+# of its log rather than losing everything from the signal onward. The writer runs in this script's
+# own process group either way — deliberately, since a group SIGKILL is what closes the caller's
+# stdout when the `EXIT` trap cannot run at all — so without this a group-delivered TERM or HUP
+# kills it mid-run. INT is absent because bash already ignores it here and the trap cannot change
+# that: measured on this host, `/proc/<pid>/status` `SigIgn` is `0x6` (INT+QUIT) for a process
+# substitution's child *and* for a background job, from bash's own rule for asynchronous commands.
 #
 # **None of this is load-bearing for the exit-code terminator**, and it must not become so. Whether
 # a writer survives a given signal turns out to be environment-dependent — a group INT leaves it
 # alone on one host and kills it on GitHub Actions — so `cleanup` writes that line straight to
-# $LOG_PATH and to the saved fd 3 instead, and this fence only affects how much of the *rest* of
-# the log survives.
+# $LOG_PATH, and this fence only affects how much of the *rest* of the log survives.
+WRITER_FIFO_DIR="$(mktemp -d)"
+mkfifo "$WRITER_FIFO_DIR/stream"
 if [ "$VERBOSE" = true ]; then
-  exec > >(trap '' TERM HUP; tee -a "$LOG_PATH") 2>&1
+  ( trap '' TERM HUP; exec tee -a "$LOG_PATH" >&3 ) < "$WRITER_FIFO_DIR/stream" &
 else
   # The log still gets the whole run; stdout drops only the reporter's per-test ✓/- lines,
   # which is ~190 of a 191-test run's 209 and is re-paid as cache-read input on every later
@@ -54,11 +76,16 @@ else
   # (so early bails are untouched), `Running N tests`, ✘ lines, the failure detail blocks,
   # the pass/fail summary counts, and teardown. Not the exit terminator: #1607 routed that
   # around this filter entirely, straight to the log file. A stream filter rather
-  # than a reporter swap because the log has to keep full `list` output either way. (The exit
-  # terminator is no longer in this list: `cleanup` writes it to the log file directly.)
+  # than a reporter swap because the log has to keep full `list` output either way.
   # `--line-buffered` because grep block-buffers to a non-TTY, which would stall the stream.
-  exec > >(trap '' TERM HUP; tee -a "$LOG_PATH" | grep --line-buffered -vE '^  (✓|-) +[0-9]+ ') 2>&1
+  ( trap '' TERM HUP; exec tee -a "$LOG_PATH" ) < "$WRITER_FIFO_DIR/stream" \
+    > >(exec grep --line-buffered -vE '^  (✓|-) +[0-9]+ ' >&3) &
 fi
+LOG_WRITER_PID=$!
+# Blocks until the writer has opened the read end, which is what makes the `rm` below safe: by the
+# time this returns both ends are open and the fifo's name is no longer needed by anyone.
+exec > "$WRITER_FIFO_DIR/stream" 2>&1
+rm -rf "$WRITER_FIFO_DIR"
 
 echo "Logging to $LOG_PATH"
 
@@ -89,6 +116,10 @@ PROD_FLAG=()
 # unreadable Supabase vars, the schema preflight's abort) doesn't call teardown before any
 # barn could exist.
 SEEDED=false
+# This script's own process group, captured once so `stop_server` can refuse to signal it (#1621).
+# `|| true` and a possibly-empty value, because a `ps` that cannot answer must not be the reason a
+# run cannot start; the guard that reads it treats empty as "cannot compare" and proceeds as before.
+SCRIPT_PGID="$(ps -o pgid= -p $$ 2>/dev/null | tr -d ' ')" || true
 # Set only once this run has started a server of its own. Empty on every path that hasn't —
 # an early bail, and every --base-url run, which by definition targets a server it did not
 # launch and must never kill.
@@ -116,7 +147,22 @@ stop_server() {
   if [ -z "$SERVER_PGID" ]; then
     return 0
   fi
-  echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID)."
+  # Refuse to signal our **own** process group, whatever else happens. `SERVER_PGID` is read back
+  # with `ps -o pgid=` from the pid of a `setsid`'d child, and every way that read can go wrong
+  # returns this script's own group instead of the server's — `setsid` forking rather than
+  # `exec`ing (it does that when its caller is already a group leader) leaves `$!` naming the
+  # short-lived parent, which is still in our group. `kill -- -<our own pgid>` then does not stop a
+  # server, it SIGTERMs this script, its harness, and on CI the whole `ci.sh` job: the failure
+  # reads as `Process completed with exit code 143` with nothing pointing at the cause, which is
+  # exactly how it was found. Leaking a server is the lesser harm and is loud; killing the job that
+  # is running you is neither recoverable nor attributable.
+  if [ -n "$SCRIPT_PGID" ] && [ "$SERVER_PGID" = "$SCRIPT_PGID" ]; then
+    echo "WARNING: refusing to stop the server — its pgid ($SERVER_PGID) is this script's own process group." >&2
+    echo "  That means the pgid lookup did not see a detached server. Kill it by port instead: fuser -k $SERVER_PORT/tcp" >&2
+    SERVER_PGID=""
+    return 0
+  fi
+  echo "Stopping this run's production server on port $SERVER_PORT (pgid $SERVER_PGID, this script's pgid $SCRIPT_PGID)."
   # The interrupt fence this sequence needs lives in `cleanup`, which is this function's only
   # caller — see the comment there for why it is installed one level up rather than here. #1569
   # added the original `trap '' INT` at *this* level, in a post-review fixup (445c150a, "fence the
@@ -146,6 +192,7 @@ cleanup() {
   # Captured first: teardown-test-barn.sh's own status would otherwise replace the status
   # the script is actually exiting with.
   local code=$?
+  local teardown_code=0 teardown_warning="" drain_watchdog="" drain_status=0
   # The whole handler is uninterruptible, and the extent is the point (#1607). A group-delivered
   # INT/TERM/HUP abandons a running trap where it stands — it kills the `sleep` or the child the
   # handler is sitting in — and every one of this handler's three jobs is a place where that
@@ -179,24 +226,122 @@ cleanup() {
   stop_server
   if [ "$SEEDED" = true ]; then
     # --prefix, not --all: --all would delete a concurrent run's barns too.
-    bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
+    #
+    # **Bounded (#1620, absorbed into #1621).** The mask above is what stops a signal abandoning
+    # this call midway, and left unbounded it also means a hung or slow Supabase can be escaped
+    # only with SIGKILL — the one path that leaves the server behind. The old behaviour was
+    # interruptible-but-unreliable and #1607's was reliable-but-unbounded; this is both. The budget
+    # is deliberately not the product of a measurement campaign: a healthy run's teardown is one
+    # SELECT returning zero rows, truncation is loud (the recovery command is re-emitted below and
+    # `teardownBarn` deletes the `barns` row last, so an interrupted sweep is recoverable), and the
+    # number only has to beat infinity.
+    #
+    # Two things are true here at once and **each explains the other**:
+    #
+    #   - `timeout` catches INT/QUIT/HUP/TERM before it forks, and a *caught* disposition resets to
+    #     SIG_DFL across `exec` — only an *ignored* one is inherited. Measured on this host:
+    #     `/proc/<child>/status` `SigIgn` goes `0x8007` -> `0` across `timeout`. So a bare
+    #     `timeout … bash scripts/teardown-test-barn.sh` silently stops the mask above from covering
+    #     this call at all. The mask is therefore re-installed *inside*, where `exec` carries it into
+    #     the real script. (Measured too: dropping the re-install does **not** break the harness's
+    #     two second-signal cases, because `timeout` also puts its child in its own process group, so
+    #     the group signal those cases send no longer reaches the teardown either way. The exposure
+    #     is real but latent — which is why the harness grew a case that signals the teardown's *own*
+    #     group rather than the run's.)
+    #   - and once it is re-installed, a default TERM from `timeout` really would be the no-op that
+    #     reads as working. So `-s KILL` is not tidiness: it is the only signal that can end this
+    #     call. (#1620's body gave the inheritance itself as the reason for `-s KILL`; that is not
+    #     what the measurement says, and the re-install is what makes the conclusion true.)
+    teardown_code=0
+    timeout -s KILL "${TEARDOWN_TIMEOUT_SECONDS:-600}" \
+      bash -c 'trap "" INT TERM HUP; exec bash scripts/teardown-test-barn.sh "$@"' \
+      run-checklist-suite-teardown "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || teardown_code=$?
+    # 124 is the documented expiry status; GNU coreutils reports 128+9 when it was `-s KILL` that
+    # ended the call, and the uutils build on this host reports 124 for both. Accept either rather
+    # than pick a coreutils — the run has to read the same on a developer box and on CI.
+    if [ "$teardown_code" -eq 124 ] || [ "$teardown_code" -eq 137 ]; then
+      # Held rather than printed, and emitted below the drain straight into $LOG_PATH. Printing it
+      # here would send it through the log writer, and the ordering test found what that costs: if
+      # whoever is reading this script's stdout has stopped, the writer blocks, the pipe feeding it
+      # fills, and a diagnostic `echo` in this handler blocks **indefinitely** — in the one handler
+      # that must finish. #1607 already had to stop this handler *dying* of a failed diagnostic
+      # write (hence PIPE in the mask and `set +e`); this is the same lesson with the other verb.
+      # A regular-file append can do neither, and emitting it after the drain also keeps it in
+      # order with the rest of the log rather than racing output still in flight.
+      # A plain multi-line assignment, deliberately not `$(printf …)`: command substitution strips
+      # trailing newlines, so the held text arrived here without the one it was written with, and
+      # the terminator below then appended straight onto the end of this line. It passed locally
+      # only because the drain warning happened to fire in between and supplied the newline; on CI,
+      # where the drain succeeded, the terminator was no longer a line of its own — which is
+      # precisely what the position assertion exists to catch, and did.
+      teardown_warning="WARNING: barn teardown did not finish within ${TEARDOWN_TIMEOUT_SECONDS:-600}s and was killed.
+  These barns may still exist. Tear them down with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} --prefix $RUN_PREFIX"
+    fi
+    # Unchanged from #1607: teardown's status replaces the run's own. That the run's exit code can be
+    # overwritten this way is pre-existing and deliberately out of scope here (#1620's own note).
+    if [ "$teardown_code" -ne 0 ]; then
+      code=$teardown_code
+    fi
   fi
-  # The terminator is appended straight to $LOG_PATH rather than echoed through the `tee` this
-  # script's stdout feeds. That is the whole of the mechanism — there is no console copy, no drain
-  # and no watchdog — and it buys exactly one property: the line is **present** on every exit path,
-  # which is what `/testIssue` Step 4 and #1602's merge gate consume. It is written this way because
-  # routing it through the writer made its delivery depend on that writer surviving the signal that
-  # killed the run, and whether it does is environment-dependent: a group INT leaves the writer alone
-  # on this project's dev hosts and kills it on GitHub Actions, where the terminator then went
-  # missing on exactly the INT paths.
+  # --- Drain the log writer, then write the terminator. -------------------------------------------
   #
-  # **What this does NOT guarantee is position.** The append races the writer still emitting
-  # `stop_server`'s output and all of teardown's, so the terminator is usually but not always the
-  # log's last line. `/testIssue` Step 4 and `/overnightRefactor` both describe it as the line the
-  # log "ends with"; treat that as a description of the common case, not a guarantee, and grep for
-  # presence rather than reading the tail. Making it an actual guarantee needs the drain this
-  # deliberately does not do, and doing that correctly is its own design problem — see the follow-up
-  # issue, which also owns the teardown timeout in this same handler.
+  # Everything above this line went through the writer; the terminator does not, because routing it
+  # through made its delivery depend on the writer surviving the signal that killed the run, and
+  # whether it does is environment-dependent (a group INT leaves the writer alone on this project's
+  # dev hosts and kills it on GitHub Actions, where the terminator then went missing on exactly the
+  # INT paths). A direct append cannot be lost that way. What #1607 could not then promise was
+  # **position**: the append raced output still in flight, so the terminator was usually but not
+  # always the last line, while `/testIssue` Step 4 and `/overnightRefactor` both describe the log as
+  # ending with it. #1621 makes that description true, and the ordering is bought by `wait` returning
+  # rather than by any assumption about timing.
+  #
+  # Put this shell's own output back on the console first, which drops our reference to the writer's
+  # fifo. After that the only holders left are leaked descendants of the run — and there can be some:
+  # this script's stdout is inherited by `npx playwright test`, so a leaked browser keeps the pipe
+  # open, the writer never sees EOF, and an unbounded `wait` would block forever inside the one
+  # handler whose whole job is to guarantee teardown and the terminator. That is why the bound is
+  # mandatory rather than defensive (#1607 finding B), and why a watchdog and not just a `wait`.
+  exec 1>&3 2>&3
+  ( sleep "${DRAIN_TIMEOUT_SECONDS:-10}"; kill -9 "$LOG_WRITER_PID" 2>/dev/null ) &
+  drain_watchdog=$!
+  # `wait` rather than polling `kill -0`, and the difference is the guarantee. `wait` returns only
+  # once the writer has been **reaped**, so when it returns `tee` cannot issue another write — not
+  # even one it was already inside when the watchdog fired, which is the window a liveness poll
+  # would leave open. A `kill -0` loop also cannot tell a live writer from an unreaped zombie.
+  wait "$LOG_WRITER_PID" 2>/dev/null
+  drain_status=$?
+  # `kill -9`, and the -9 is the whole point. The watchdog is a child of *this* handler, so it
+  # inherited the `trap '' INT TERM HUP` installed at the top — an ignored disposition, which a
+  # subshell inherits. A plain `kill` is therefore a silent no-op on it, and the `wait` below then
+  # blocks for the remainder of its `sleep`, adding the full DRAIN_TIMEOUT_SECONDS to **every**
+  # run: measured at 10.0s per case across the whole harness, ~30ms before this drain existed, and
+  # it is what pushed CI's `ci` job into a SIGTERM. The drain itself was never slow — `wait` on the
+  # writer returns the moment it is reaped. This is the same lesson as the teardown call one screen
+  # up: the mask reaches further than the thing it was installed for, and every child inside this
+  # handler has to be looked at in that light.
+  #
+  # Safe against pid reuse without a check: the watchdog is our own child either way — still
+  # sleeping, or a zombie this shell has not reaped — so the pid cannot yet belong to anyone else.
+  kill -9 "$drain_watchdog" 2>/dev/null
+  wait "$drain_watchdog" 2>/dev/null
+  # Everything from here on is appended straight to $LOG_PATH and never echoed to the console: the
+  # writer is gone, and a console write is the one thing left that could block or fail (see the
+  # teardown warning above). The log is this handler's contract; the console is not.
+  if [ -n "$teardown_warning" ]; then
+    printf '%s\n' "$teardown_warning" >> "$LOG_PATH"
+  fi
+  if [ "$drain_status" -eq 137 ]; then
+    # The watchdog fired: something still holds the pipe, so the log is missing whatever the writer
+    # had not yet relayed. Said out loud, immediately above the terminator, because a truncated log
+    # that admits it is strictly better than the hang this replaces — and this is the only place
+    # this handler destroys information, on a path that was previously unbounded.
+    printf 'WARNING: the log writer did not drain within %ss and was killed; this log is missing its tail.\n' \
+      "${DRAIN_TIMEOUT_SECONDS:-10}" >> "$LOG_PATH"
+  fi
+  # Positionally last on every path that reaches here, which is every path where the `EXIT` trap
+  # runs at all. The limits — a SIGKILLed run has no terminator, and the drain-timeout path above
+  # truncates — are stated where this line is consumed: `/testIssue` Step 4, `/overnightRefactor`,
+  # and docs/scripts/suite.md.
   printf '=== run-checklist-suite.sh exited %s — full log: %s ===\n' "$code" "$LOG_PATH" >> "$LOG_PATH"
   exit "$code"
 }
@@ -485,7 +630,11 @@ start_server() {
     # never leave the readiness check or a Chromium request talking to nothing.
     # setsid so the server is its own process group and stop_server can kill it whole; the explicit
     # redirect keeps its output out of checklist-suite.log, which this script's stdout is a tee into.
-    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 < /dev/null &
+    # `3>&-` closes the saved console descriptor (#1621). This server is `setsid`'d and so outlives a
+    # SIGKILL of this script, and fd 3 is a descriptor onto the *caller's* stdout — the one thing the
+    # harness's SIGKILL case pins is that a killed run closes it rather than hanging the reader
+    # forever. Without this, adding fd 3 would have handed that property straight back.
+    TZ=UTC setsid npx next start -p "$SERVER_PORT" -H 127.0.0.1 > "$SERVER_LOG" 2>&1 < /dev/null 3>&- &
     pid=$!
     # `|| true`: a server that died before this ran is a branch handled just below, not a failure
     # that should `set -e` the script out mid-assignment (#1569 shipped that bug once already).
@@ -524,7 +673,7 @@ start_server() {
       sleep 2
     done
     if [ "$up" = true ]; then
-      echo "Production server up on port $SERVER_PORT."
+      echo "Production server up on port $SERVER_PORT (pgid $SERVER_PGID, this script's pgid $SCRIPT_PGID)."
       return 0
     fi
     # Kill what we started, but deliberately *not* through stop_server: that waits for the port to
@@ -532,8 +681,14 @@ start_server() {
     # so the wait could only run out its budget and then print a SIGKILL warning naming our own
     # recovery as a failure. Our server never bound the port, so there is nothing of ours to wait
     # for. Clearing SERVER_PGID also leaves the EXIT trap's stop_server correctly a no-op on the
-    # give-up path below.
-    kill -- "-$SERVER_PGID" 2>/dev/null || true
+    # give-up path below. Same own-process-group refusal as `stop_server`'s, and for the same
+    # reason — this call site is reached before that one on the retry path, so a guard on only one
+    # of them would still let a bad pgid lookup SIGTERM the run that is doing the looking.
+    if [ -n "$SCRIPT_PGID" ] && [ "$SERVER_PGID" = "$SCRIPT_PGID" ]; then
+      echo "WARNING: not killing pgid $SERVER_PGID on the retry path — it is this script's own process group." >&2
+    else
+      kill -- "-$SERVER_PGID" 2>/dev/null || true
+    fi
     SERVER_PGID=""
   done
 
@@ -606,6 +761,10 @@ SEEDED=true
 # own status. Unconditional, single-spec runs included — RAM is the constraint whether the run is
 # one spec or seventy-three, and the exemption single-spec runs held under /fableFleet's prose mutex
 # existed only because a human had to grant that lock.
+#
+# `3>&-` for the same reason `start_server` has it (#1621): a leaked browser must not inherit a
+# descriptor onto the caller's stdout. It deliberately does *not* stop a leak holding fd 1 — that is
+# the writer's fifo, and a leak holding it is exactly what `cleanup`'s bounded drain is for.
 PW_EXIT=0
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
@@ -616,7 +775,7 @@ E2E_BASE_URL="$E2E_BASE_URL" \
 E2E_RUN_PREFIX="$RUN_PREFIX" \
 E2E_ALLOW_PROD="$ALLOW_PROD" \
 E2E_HOLD_OPEN="$HOLD_OPEN" \
-  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
+  bash scripts/e2e-slot.sh npx playwright test "${PLAYWRIGHT_ARGS[@]}" 3>&- || PW_EXIT=$?
 
 if [ "$HOLD_OPEN" = true ]; then
   echo

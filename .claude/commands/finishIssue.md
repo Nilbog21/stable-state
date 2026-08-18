@@ -202,6 +202,8 @@ The marker and the log live in the same worktree that launched the run — `spec
 
 **Failure path — do not merge.** Route it back through the loop the workflow already has rather than inventing one here. `grep`/`tail` the log for the `✘` lines and their error blocks.
 
+**Check the log is complete before reading its tail.** Since #1621 the terminator is genuinely the last line, but a `WARNING: the log writer did not drain …` line immediately above it means the run finished and its verdict is good while the log is **missing its tail** — so the `✘` blocks you are about to read may simply not be there. Relaunch rather than classify what is left.
+
 **First, separate a failed run from a failed suite.** `cleanup()` overwrites the run's exit code with `teardown-test-barn.sh`'s if the barn teardown fails, so a non-zero terminator with **zero `✘` lines and a passing count line** is a teardown hiccup — a network-dependent Supabase delete — not a test failure. That is environmental: say so, don't classify it as a finding, and don't defer it. Confirm the barns are gone (`--prefix` teardown is idempotent; re-run it if not) and relaunch or, if the Playwright counts in the log are unambiguously green, treat the gate as satisfied and say on what evidence.
 
 Otherwise classify each failure exactly as `/testIssue` Step 4 does — minor vs. substantial, in-scope vs. out-of-scope:
