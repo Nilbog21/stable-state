@@ -21,5 +21,6 @@ bash scripts/check-function-grants.test.sh
 bash scripts/check-ceremony-tags.sh
 bash scripts/check-ceremony-tags.test.sh
 bash scripts/workflow-context.test.sh
+bash scripts/workflow-ci-wait.test.sh
 bash scripts/e2e-slot.test.sh
 bash scripts/run-checklist-suite.test.sh
