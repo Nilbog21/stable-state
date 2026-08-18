@@ -29,12 +29,12 @@
 // - horseTotalExertion(b) || a.name.localeCompare(b.name)`, where the bucket is `checked -> 0`,
 // `unavailable or inactive -> 2`, everything else `1`, and the third key (#1616) makes an
 // equal-exertion tie a rule rather than input order. That single comparator is what makes the
-// checklist's two headline claims
-// look contradictory and be the same rule: an *unavailable* horse sorts to the bottom (bucket 2),
-// while an *inactive* horse that is already on the lesson being edited sorts to the top — because
-// being checked wins the bucket before its inactivity is ever consulted. Unchecking it drops it
-// straight from bucket 0 to bucket 2, which is the transition the last two tests below drive. Both
-// orders are asserted here so the contrast is visible in one file rather than inferred across two.
+// checklist's two headline claims look contradictory and be the same rule: an *unavailable* horse
+// sorts to the bottom (bucket 2), while an *inactive* horse that is already on the lesson being
+// edited sorts to the top — because being checked wins the bucket before its inactivity is ever
+// consulted. Unchecking it drops it straight from bucket 0 to bucket 2, which is the transition
+// the last two tests below drive. Both orders are asserted here so the contrast is visible in one
+// file rather than inferred across two.
 //
 // ## Why the horse locators are CSS, not `getByRole`
 //
@@ -139,10 +139,13 @@ const CLOVER_EXERTION = 2
 /**
  * Willow's second lesson's exertion, and the reason that lesson exists at all.
  *
- * Without it Willow and Daisy both total 0 once Willow is unchecked, they share bucket 2, the
- * secondary sort ties, and "Willow moves to the bottom" would hold only by `Array.sort`'s stability
- * over the order `horsesForForm` happened to append in — a pass for a reason the checklist line
- * does not claim. At 4 against Daisy's 0 the bottom position is arithmetic.
+ * Without it Willow and Daisy both total 0 once Willow is unchecked, they share bucket 2, and the
+ * secondary sort ties — so "Willow moves to the bottom" would rest on the comparator's third key,
+ * alphabetical order, which happens to put Willow after Daisy for a reason the checklist line does
+ * not claim. (Before #1616 added that key the tie fell through to `Array.sort`'s stability over the
+ * order `horsesForForm` happened to append in, which was weaker still.) At 4 against Daisy's 0 the
+ * bottom position is arithmetic: the second key decides it, independent of both name and append
+ * order.
  *
  * It buys a second thing: the edit page excludes the lesson being edited from its own exertion
  * window, so on that page Willow's bar is the only one reading anything but "0 points from 0
