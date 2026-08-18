@@ -12,13 +12,41 @@ export function formatDemoCredentialsOutput(email: string, password: string): st
 }
 
 /**
+ * `.env.example`'s own placeholder convention, as a value this script must not treat as a
+ * credential (#1619). Anchored, unlike the substring match `run-checklist-suite.sh`'s required-var
+ * loop uses on the same convention, and the asymmetry is the consumer's rather than arbitrary: a
+ * demo password is user-chosen and may legitimately contain an angle bracket mid-string, while
+ * that loop's values (a project URL, two JWTs, a hex string) cannot — and its placeholders are
+ * embedded in a larger value (`https://<your-project-ref>.supabase.co`) rather than whole-value,
+ * which is what a substring match is needed to see.
+ */
+const ENV_EXAMPLE_PLACEHOLDER = /^<.*>$/
+
+/**
  * The credential this run should use: whatever is already configured, or a fresh one when nothing
  * is (#1607). Extracted so the choice is assertable — it is the whole of what makes this script
  * safe to re-run, and before #1607 the unconditional mint made every re-run rotate the password
  * out from under `.env.local` and any deployment reading it.
+ *
+ * A `.env.example` placeholder counts as *nothing configured* (#1619). Until that issue the file
+ * shipped `DEMO_USER_PASSWORD=<demo-user-password>`, and #1607's reuse turned it into a live
+ * credential: a developer who copied the file and filled in only the other lines set the shared
+ * demo user's real password to a literal string committed to this repo, with nothing to signal it
+ * — `formatDemoCredentialsOutput` prints the value back byte-identical to the line already in
+ * their `.env.local`. Routing it through the branch that already exists for empty makes the run
+ * mint, print, and self-heal.
+ *
+ * It deliberately **does not throw**, which is where this parts company with `assertDevProject`'s
+ * refuse-to-run precedent. Since #1607 this script runs on every `reset-db.sh`, so a throw here
+ * would hard-stop an unrelated workflow for anyone still holding a stale `.env.local` — turning a
+ * self-healing nuisance into a broken reset. There is a real credential to mint, so there is no
+ * reason to halt; `run-checklist-suite.sh`'s loop halts on the same convention only because it has
+ * nothing to mint.
  */
 export function resolveDemoPassword(configured: string | undefined): string {
-  return configured && configured.length > 0 ? configured : randomUUID()
+  return configured && configured.length > 0 && !ENV_EXAMPLE_PLACEHOLDER.test(configured)
+    ? configured
+    : randomUUID()
 }
 
 async function run() {

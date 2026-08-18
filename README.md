@@ -26,7 +26,7 @@ Running the app needs only the above. The dev scripts in `scripts/` and the work
 ## Development setup
 
 1. `npm install`
-2. Copy `.env.example` to `.env.local` and fill in your Supabase URL and anon key
+2. Copy `.env.example` to `.env.local` and replace every `<…>` placeholder with a real value — the Supabase URL, anon key and service-role key come from your project's API settings, and `DEV_SUPABASE_URL` must match `NEXT_PUBLIC_SUPABASE_URL` exactly. **Two lines ship empty and are meant to stay empty until you have a real value**: `DEMO_USER_PASSWORD`, which `setup-demo-user.sh` mints and prints for you to paste back, and `CRON_SECRET`, which you generate yourself with `openssl rand -hex 32`. Both are secrets that a copied-through placeholder would silently *become* rather than fail on — the demo user's real password, and the token guarding `/api/cron/reset-demo` — so a leftover `<…>` in either is now rejected: `setup-demo-user` treats it as unset and mints over it, and `run-checklist-suite.sh` refuses to start (#1619). The full per-variable table is [below](#envlocal-variables)
 3. Start Supabase locally (`npx supabase start`) or point `.env.local` at a remote project
 4. `npm run dev`
 

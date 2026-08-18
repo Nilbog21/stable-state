@@ -298,6 +298,31 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set in .env.local" >&2
     exit 1
+  # A value still carrying `.env.example`'s `<…>` placeholder convention (#1619). Empty was
+  # already the right sentinel for all four — the branch above rejects it — and the placeholder
+  # was the one value that defeated it, arriving at a check that only ever asked whether
+  # *something* was there. It matters most for CRON_SECRET: /api/cron/reset-demo compares it to
+  # the request's Authorization header, so copy-through leaves the demo-reaper endpoint guarded
+  # by a string published in this repo, and a developer pasting their own .env.local into the
+  # Vercel dashboard carries that to prod.
+  #
+  # A **substring** match, not the anchored /^<.*>$/ that setup-demo-user.ts's resolver uses on
+  # the same convention. Three of these four placeholders are embedded in a larger value
+  # (`https://<your-project-ref>.supabase.co`), so anchoring would cover CRON_SECRET alone and
+  # silently miss the Supabase ones. Safe here because none of these four can legitimately
+  # contain an angle bracket — a project URL, two JWTs, and a hex string — which is exactly what
+  # is not true of a user-chosen password, hence the anchoring over there.
+  #
+  # This **halts**, where the resolver mints. Same convention, opposite response, and the
+  # difference is that there is nothing here to mint: no value this script could invent would
+  # authenticate against the running server, so continuing would only move the failure into a
+  # spec's 401.
+  #
+  # The offending value is deliberately not echoed. These four are all secrets, and a false
+  # positive would print a live one into a log the fleet reads.
+  elif case "${!var_name}" in *"<"*">"*) true ;; *) false ;; esac; then
+    echo "Error: $var_name is still the .env.example placeholder — replace it with a real value in .env.local" >&2
+    exit 1
   fi
 done
 
