@@ -4,6 +4,61 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v4.0.0 — August 2026
+
+### Calendar
+
+- **The dashboard now has a real calendar.** Day, Week and Month views show lessons, vet and farrier appointments, and barn events together.
+- **Barn events.** Create an event for a show, clinic, closure or anything else, and choose which roles can see it.
+- **Subscribe to your own schedule.** A private link on the Profile page adds your Stable State schedule to Google, Apple or Outlook Calendar, and keeps it up to date. Those apps decide how often they refresh, so a change can take a while to appear in them.
+
+### Lessons & Appointments
+
+- **A month calendar on the lesson and appointment forms.** Picking a date shows the days a horse or instructor is already booked, and the days a horse has a vet or farrier appointment.
+- **Colour-coded by how tired a horse will be** from the lessons already on the books, so you can see the load before committing to a date.
+- **Selecting a day lists everything on it** — lessons, appointments and events — so conflicts are visible before you save.
+- **Instructors are warned about lessons close to theirs.** Booking a lesson near another instructor's sends them a heads-up — useful when you share an arena. Managers set the buffer (30 minutes by default) in Manage Barn.
+
+### Horses
+
+- **Registered name, feed notes and medication notes** on every horse.
+- **Every horse has an owner**, who can be a rider. Owners manage their own horse's documents and notes, and see its upcoming lessons.
+- **Grant a member elevated access to one horse** — a lease customer, for instance — at the manager's discretion.
+
+### Photos
+
+- **Profile photos for members and horses.** Members upload their own; managers and horse owners upload a horse's.
+
+### Backups
+
+- **One-click backups.** Download the whole barn's data as a spreadsheet, or every document as a zip file.
+
+### Finances
+
+- **Collapsible sections** replace one long page.
+- **Drill-down totals match the tab they came from.**
+
+### Timezones
+
+- **Times are barn times.** Every date and time in the app displays in your barn's timezone, on every device, for everyone. A 4:00 PM lesson reads as 4:00 PM whether you're at the barn, at home, or travelling.
+
+### Demo
+
+- **A sample barn anyone can try** from the public site — no signup, and it resets itself.
+
+### Behind the scenes
+
+- **Nearly every screen is now covered by an automated test suite**, run before each release — which should mean fewer bugs reaching the barn.
+
+### Bug fixes
+
+- A lesson whose horse had been made unavailable couldn't be saved (#1276)
+- Cancelling one rider out of a group lesson charged the wrong people (#1278)
+- Managers who don't teach saw an empty Lessons page by default (#1025)
+- Four forms let you navigate away without warning about unsaved changes (#1362)
+
+---
+
 ## v3.0.0 — July 2026
 
 ### Later updates
