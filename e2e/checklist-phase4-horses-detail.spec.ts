@@ -450,13 +450,17 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
   return html.slice(start, end)
 }
 
-// Eight controls, eight forms: Grant Access, then the Owner radio alone on the manager's row, and
-// Set as Owner / the three document-access radios / the lesson-access switch / Revoke on the
-// rider's. #1548 turned that last control from a Can View/Cannot View button into a `Switch` and
-// #1549 turned the document segments and the owner toggle into `Radio`s — each is still one form
-// and one submit, which is the point of it being a count rather than a list of selectors. The
-// count did move by one: #1549 took Revoke off the owner's row, because `revoke_horse_privilege`
-// no longer clears ownership and the button would delete a grant nothing displays.
+// Fourteen controls, fourteen forms: Grant Access (1), the Owner radio alone on the manager's row
+// (1), and Set as Owner / the three document-access radios / the lesson-access switch / Revoke —
+// six apiece — on the trainer's row and the rider's. #1548 turned that last control from a Can
+// View/Cannot View button into a `Switch` and #1549 turned the document segments and the owner
+// toggle into `Radio`s — each is still one form and one submit, which is the point of it being a
+// count rather than a list of selectors. The count has moved twice: #1549 took Revoke off the
+// owner's row, because `revoke_horse_privilege` no longer clears ownership and the button would
+// delete a grant nothing displays; then #1549's /testIssue round added a whole row's worth of six,
+// because `set_horse_owner` now leaves the **outgoing** owner a grant rather than dropping them
+// from the table. Clover is seeded trainer-owned and the manager promotes himself above, so the
+// trainer is that outgoing owner and her row is the six.
 // Before #1390 every one was a `<button type="button" onClick>` with no form at all, so each was a
 // silent no-op inside the hydration window — the defect #1385 fixed for member documents, on a page
 // a manager lands on and immediately clicks. Documents was a `<select>` carrying its value in
@@ -473,7 +477,7 @@ async function servedAccessMarkup(page: Page, horseId: string): Promise<string> 
 // that regressed to an inline closure — the shape e2e/CLAUDE.md fact 10 warns about — drops out
 // of this count while still looking correct in the browser and still passing every other test in
 // this file.
-const EXPECTED_ACCESS_FORMS = 8
+const EXPECTED_ACCESS_FORMS = 14
 
 test('the_access_tables_controls_all_submit_through_enhanced_forms @manager', async ({ page }) => {
   const markup = await servedAccessMarkup(page, cloverId)
@@ -497,9 +501,10 @@ test('the_access_tables_forms_carry_their_action_reference_in_hidden_fields @man
 // and jsdom saw the right FormData, so only a real round-trip plus a reload could see it.
 //
 // The rider's row, not the manager's: since #1547 the owner's row has no document radios to
-// click. Its grant is still at the schema default `none` — nothing in the chain touches it, and
-// `set_horse_owner`'s elevation reached the manager's row alone — so `read` remains a value only
-// this test's own click could have left behind.
+// click. Its grant is still at the schema default `none` — nothing in the chain touches it. The
+// promotion's two privilege writes both land elsewhere: the elevation on the incoming owner's row
+// (the manager's) and, since #1549's /testIssue round, the outgoing owner's (the trainer's). So
+// `read` remains a value only this test's own click could have left behind.
 test('a_document_access_choice_survives_a_reload @manager', async ({ page }) => {
   await page.goto(horseHref(cloverId))
   await openSection(page, 'Access')
