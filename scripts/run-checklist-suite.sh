@@ -222,10 +222,11 @@ SEEDED=true
 # Captured rather than left to `set -e` so --hold-open still prompts on a failing run — which
 # is when holding the barns open to inspect them matters most.
 #
-# Playwright runs under `e2e-slot.sh` (#1295), which blocks until one of two machine-wide slots is
-# free — the cross-worktree half of the memory fix whose per-run half is `workers: 2`. Wrapping only
-# this call is deliberate: the acquire covers exactly the span that loads the dev server, so the
-# --hold-open prompt below and the recycle before it hold no slot while a human walks a checklist.
+# Playwright runs under `e2e-slot.sh` (#1295), which blocks until the one machine-wide slot is free
+# (#1598 dropped it from two) — the cross-worktree half of the memory fix whose per-run half is
+# `workers: 2`. Wrapping only this call is deliberate: the acquire covers exactly the span that
+# loads the dev server, so the --hold-open prompt below and the recycle before it hold no slot
+# while a human walks a checklist.
 # The wrapper `exec`s, so the env prefix here still reaches Playwright and $? is still Playwright's
 # own status. Unconditional, single-spec runs included — RAM is the constraint whether the run is
 # one spec or seventy-three, and the exemption single-spec runs held under /fableFleet's prose mutex
