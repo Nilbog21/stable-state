@@ -676,15 +676,27 @@ cleanup_repo "$REPO"
 
 # --- Exit-code terminator ------------------------------------------------------------------------
 
-# Test 19: a green run's terminator reports 0 and the script exits 0.
+# Test 19: a green run's terminator reports 0, the script exits 0, and **the drain costs nothing**.
+#
+# The timing clause is a regression test with teeth, not a smoke check. `cleanup` masks INT/TERM/HUP
+# for its whole length, and the drain's watchdog is a child of that handler, so it inherits the
+# ignore — which made `kill "$drain_watchdog"` a silent no-op and left the following `wait` blocking
+# for the rest of its `sleep`. Every run paid the full drain bound: measured at 10.0s per case
+# against ~30ms before the drain existed, and it is what pushed CI's `ci` job into a SIGTERM. The
+# bound is set high here precisely so paying it is unmistakable — a healthy drain returns the moment
+# the writer is reaped, so 30s of headroom costs this case nothing and a broken one blows the limit.
 REPO="$(make_repo)"
-run_suite --base-url http://127.0.0.1:9999 && rc=0 || rc=$?
-if [ "$rc" -eq 0 ] && log_has "run-checklist-suite.sh exited 0"; then
-  assert_pass "green run: terminator reports 0 and the script exits 0"
+start=$SECONDS
+DRAIN_TIMEOUT_SECONDS=30 run_suite --base-url http://127.0.0.1:9999 && rc=0 || rc=$?
+elapsed=$((SECONDS - start))
+if [ "$rc" -eq 0 ] && log_has "run-checklist-suite.sh exited 0" && [ "$elapsed" -lt 15 ]; then
+  assert_pass "green run: terminator reports 0, exits 0, and does not pay the drain bound"
 else
-  assert_fail "green run: terminator reports 0 and the script exits 0" "exit=$rc"
+  assert_fail "green run: terminator reports 0, exits 0, and does not pay the drain bound" \
+    "exit=$rc elapsed=${elapsed}s (>=15s means the drain or its watchdog is being waited out)"
 fi
 cleanup_repo "$REPO"
+unset DRAIN_TIMEOUT_SECONDS
 
 # Test 20: Playwright's own status is what both the terminator and the script report.
 # `/testIssue` Step 4 and #1602's merge gate parse that line, so a swallowed non-zero reports a

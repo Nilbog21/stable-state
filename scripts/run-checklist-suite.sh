@@ -285,7 +285,19 @@ cleanup() {
   # would leave open. A `kill -0` loop also cannot tell a live writer from an unreaped zombie.
   wait "$LOG_WRITER_PID" 2>/dev/null
   drain_status=$?
-  kill "$drain_watchdog" 2>/dev/null
+  # `kill -9`, and the -9 is the whole point. The watchdog is a child of *this* handler, so it
+  # inherited the `trap '' INT TERM HUP` installed at the top — an ignored disposition, which a
+  # subshell inherits. A plain `kill` is therefore a silent no-op on it, and the `wait` below then
+  # blocks for the remainder of its `sleep`, adding the full DRAIN_TIMEOUT_SECONDS to **every**
+  # run: measured at 10.0s per case across the whole harness, ~30ms before this drain existed, and
+  # it is what pushed CI's `ci` job into a SIGTERM. The drain itself was never slow — `wait` on the
+  # writer returns the moment it is reaped. This is the same lesson as the teardown call one screen
+  # up: the mask reaches further than the thing it was installed for, and every child inside this
+  # handler has to be looked at in that light.
+  #
+  # Safe against pid reuse without a check: the watchdog is our own child either way — still
+  # sleeping, or a zombie this shell has not reaped — so the pid cannot yet belong to anyone else.
+  kill -9 "$drain_watchdog" 2>/dev/null
   wait "$drain_watchdog" 2>/dev/null
   # Everything from here on is appended straight to $LOG_PATH and never echoed to the console: the
   # writer is gone, and a console write is the one thing left that could block or fail (see the
