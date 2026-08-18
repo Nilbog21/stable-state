@@ -12,7 +12,7 @@
 // covers: src/components/ui/Badge.tsx
 // covers: src/components/ui/SavedIndicator.tsx
 //
-// Twelve of those are not the route directory. `docs/scripts.md`'s discriminating question is
+// Twelve of those are not the route directory. `docs/scripts/suite.md`'s discriminating question is
 // "could an assertion in this file fail if that module changed?" — and the answer is yes for each,
 // so each is declared. The rule is entirely on the author here: `ALWAYS_FULL` swallows
 // `src/lib/**` and `src/components/**`, so `--lint` sees an identical selection whether these

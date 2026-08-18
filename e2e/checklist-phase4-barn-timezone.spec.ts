@@ -21,7 +21,7 @@
 // (`checklist-phase4-lessons-cancel-group.spec.ts` sets the per-file precedent.)
 //
 // The subtree globs are deliberately whole subtrees rather than `new/**`. A `/**` glob is a
-// literal string PREFIX (docs/scripts.md), and the components these tests actually assert on
+// literal string PREFIX (docs/scripts/suite.md), and the components these tests actually assert on
 // — `lessons/LessonStartTime.tsx`, `lessons/LessonForm.tsx`, `lessons/LessonListItem.tsx`,
 // `expenses/ExpenseForm.tsx` — sit one level ABOVE `new/`. `select-specs.sh --lint` passes
 // either way, because `new/**` matches `new/page.tsx`; it just silently fails to select this
@@ -31,7 +31,7 @@
 // The two `src/components/` entries are not routes. Since #1281 `ALWAYS_FULL` carries the whole
 // of `src/components/**` and `src/app/actions/**`, so those entries — and the three
 // `src/app/actions/` lines above — now document what this spec drives rather than select it.
-// They stay declared because the accuracy rule binds regardless (docs/scripts.md) — not because
+// They stay declared because the accuracy rule binds regardless (docs/scripts/suite.md) — not because
 // that membership is provisional, which #1357 measured and it is not. `calendar/**` supplies markup asserted on
 // directly (`CalendarLessonCard`, `CalendarEventCard`, `MonthCalendarPicker`);
 // `useOutsideDismiss.ts` is reached through `MonthCalendarPicker` and owns the open/close state

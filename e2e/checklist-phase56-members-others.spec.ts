@@ -58,7 +58,7 @@
 //    unclaimed stub would invert what the checklist means by it. That is not a fresh judgement:
 //    checklist-phase4-members-agreements.spec.ts already carries the same substitution and the
 //    same reason, applied there as a review finding on PR #1258. The photo *asset* stays
-//    emery-photo.jpg — docs/scripts.md's asset table assigns that file to a profile, and an
+//    emery-photo.jpg — docs/scripts/dev-data.md's asset table assigns that file to a profile, and an
 //    asset name is not a person's name. Whose page is photographed is immaterial to what line
 //    1002 asserts anyway: no gate on this page branches on is_managed for a rider viewer, so the
 //    substitution costs the line nothing. The checklist keeps its wording and only its tag
@@ -108,7 +108,7 @@ const HARPER = { firstName: 'Harper', lastName: 'Test' } // contact columns left
 const BLAKE = { firstName: 'Blake', lastName: 'Norwood' } // contact columns populated below
 const QUINN = { firstName: 'Quinn', lastName: 'Ashford' } // photographed — see header note 5
 
-/** docs/scripts.md's asset table assigns this one to a profile. */
+/** docs/scripts/dev-data.md's asset table assigns this one to a profile. */
 const EMERY_PHOTO = 'emery-photo.jpg'
 
 /** The em-dash ContactInfo substitutes for an unset field — U+2014, matching page.tsx's literal. */

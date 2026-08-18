@@ -101,7 +101,7 @@ mutation pass is blind to setup that did nothing. [full](../docs/e2e-spec-mainte
 
 These live elsewhere and are not repeated here:
 
-- **Every spec declares `// covers:` globs** — `docs/scripts.md`. `scripts/ci.sh` fails
+- **Every spec declares `// covers:` globs** — `docs/scripts/suite.md`. `scripts/ci.sh` fails
   without them, and `scripts/select-specs.sh` is what turns them into a run scope.
 - **No two fixture person names may collide, in either of two ways** — neither containing the
   other, nor sharing a first-initial-derived form. Both halves, and what binds them, are on

@@ -163,7 +163,7 @@ echo "base_from_label=$base_from_label"
 # this is a second name for it rather than a second derivation (#1118's rule).
 #
 # It is only as fresh as the caller's remote-tracking refs — nothing here fetches, on
-# purpose (#1231). A caller that gates on it fetches first; see `docs/scripts.md`.
+# purpose (#1231). A caller that gates on it fetches first; see `docs/scripts/workflow.md`.
 echo "release_base=${release_ref#origin/}"
 echo "pr=$pr"
 echo "pr_state=$pr_state"

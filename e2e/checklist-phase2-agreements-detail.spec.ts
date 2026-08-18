@@ -16,7 +16,7 @@
 // This file asserts on several rendered strings it does not own, and every one of them is produced
 // under `src/lib/`: `formatFee`'s "$450.00" (`format-currency.ts`), `formatChargePeriod`'s
 // "Aug 2026" (`format-date.ts`), `getAgreementStatusLabel`'s "Active"/"Complete" (`db/agreements.ts`)
-// and `resolveMemberNames`' "Test Rider" (`db/member-names.ts`). By `docs/scripts.md`'s
+// and `resolveMemberNames`' "Test Rider" (`db/member-names.ts`). By `docs/scripts/suite.md`'s
 // discriminating question — "could an assertion in this file fail if that module changed?" — all
 // four are plainly yes, and declaring them looks correct.
 //

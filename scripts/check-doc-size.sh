@@ -14,6 +14,7 @@ PAIRS=(
   "ARCHITECTURE.md:docs/architecture"
   "e2e/CLAUDE.md:docs/e2e-framework-facts.md"
   "e2e/CLAUDE.md:docs/e2e-spec-maintenance.md"
+  "scripts/CLAUDE.md:docs/scripts"
 )
 
 # Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
@@ -45,20 +46,21 @@ BUDGETS=(
   # stated just above it. New index entries, not elaboration of existing ones — the
   # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13
   # characters of headroom, so no trim was available; all three scripts' rationale lives in
-  # docs/scripts.md, and the index entries stay one line each per #1468's cap.
+  # docs/scripts/checks.md and docs/scripts/workflow.md, and the index entries stay one line
+  # each per #1468's cap.
   # Raised from 9950 by #1295: 9899 -> 10232. One genuinely new script entering the index
   # (e2e-slot, the kernel-held suite semaphore), plus the sentence its .test.sh owes the
   # no-.test.sh-for-shell policy right above — that list is normative, so a wired-in test that
   # isn't named there reads as one to delete. New index entry, not elaboration of an existing
   # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
-  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts.md.
+  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts/suite.md.
   # Raised from 10300 by #1607: 10294 -> 10666. One genuinely new `.test.sh` entering the
   # no-.test.sh-for-shell policy's surviving list, plus the clause that list obliges it to carry
   # (why it isn't an exception). That list is normative — "if a .test.sh isn't wired in, delete
   # it" — so a wired-in gate missing from it reads as one to delete, which is the same argument
   # #1295's raise made for e2e-slot and the legitimate-raise case this file describes. The file
   # was at 6 characters of headroom, so no trim was available; the harness's whole contract, its
-  # seam and its fidelity choices are in docs/scripts.md.
+  # seam and its fidelity choices are in docs/scripts/suite.md.
   #
   # The raise deliberately does NOT fund index-line elaboration. #1601's own review fixup
   # (e08fd641) settled that: "the index line is shortened rather than its budget raised — the

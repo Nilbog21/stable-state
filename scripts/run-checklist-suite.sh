@@ -363,7 +363,7 @@ fi
 # *push*, and none covers a push whose schema stays applied afterwards. The fix can't be merged
 # down from base either, since base won't carry the pushing branch's migration until that PR
 # merges. So the check has to be about the state of the DB, not about branch ancestry. Which
-# guard covers which window is inventoried once, in docs/scripts.md — not duplicated here,
+# guard covers which window is inventoried once, in docs/scripts/suite.md — not duplicated here,
 # because a list kept in two places is the drift #1542 had to go back and fix.
 #
 # Placed here deliberately: after arg parsing (the --allow-prod skip below needs it) but before

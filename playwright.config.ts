@@ -104,7 +104,7 @@ export default defineConfig({
   // holds, sharpened in both directions: the lever was never workers, it was the dev server — and
   // memory is not what stops you raising this either. And `scripts/e2e-slot.sh`'s one slot is
   // unchanged (#1598) — #1601 deliberately did not retune it in the same issue that re-priced it;
-  // see that script's entry in docs/scripts.md.
+  // see that script's entry in docs/scripts/suite.md.
   //
   // Fixed rather than a percentage, unchanged from #1238's reasoning: a fraction of core count
   // misreads the bottleneck ('25%' on a 64-core box is 16 workers).

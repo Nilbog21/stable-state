@@ -41,7 +41,7 @@
 // one-time, and the checklist's lease is the **monthly** one added two lines earlier in the same
 // chain. Adding a cadence option to that builder is out of the question — `e2e/support/**` is in
 // `select-specs.sh`'s ALWAYS_FULL, so one edit there forces `mode=full`. The mutex serializes
-// every *multi-spec* run, `mode=scoped` included (`docs/scripts.md`), so what touching only this
+// every *multi-spec* run, `mode=scoped` included (`docs/scripts/suite.md`), so what touching only this
 // spec buys is not "scoped instead of full" but a **single-spec** selection, which is the case
 // that runs mutex-free. Importing a DAL function into a spec is precedented: `fixtures.ts`
 // imports this very function, and `checklist-phase4-expenses-form.spec.ts` imports

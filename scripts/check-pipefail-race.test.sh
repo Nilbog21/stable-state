@@ -84,7 +84,7 @@ fi
 rm -rf "$REPO"
 
 # Tests 6-10: the flag cluster doesn't have to *end* in q/m. No live site spells it this way — the
-# repo's own `grep -m1` copies are producers, not consumers (see docs/scripts.md's sweep history) —
+# repo's own `grep -m1` copies are producers, not consumers (see docs/scripts/checks.md's sweep history) —
 # so these fixtures are what the gate has to hold for next, not a replay of something it found.
 for variant in 'grep -qi needle' 'grep -qE needle' 'grep --quiet needle' 'grep -m1 needle' 'grep -m 1 needle'; do
   REPO="$(make_repo victim.sh "#!/usr/bin/env bash
