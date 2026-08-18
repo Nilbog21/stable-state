@@ -179,7 +179,7 @@ test('each_agreement_card_shows_its_fee @manager', async ({ page }) => {
 // waitForURL carries no explicit timeout — navigationTimeout defaults to none, so any number
 // here could only tighten the test's own budget (#1211). test.slow() is the sanctioned way to
 // buy room instead (#1206), and this test needs it: four navigations, two into a route no other
-// test in this file warms, so it pays the dev server's cold-compile cost under `workers: 4`.
+// test in this file warms, so it pays the dev server's cold-compile cost under concurrent load.
 test('each_agreement_card_links_to_its_agreement_detail_page @manager', async ({ page }) => {
   test.slow()
   await page.goto(riderPage())

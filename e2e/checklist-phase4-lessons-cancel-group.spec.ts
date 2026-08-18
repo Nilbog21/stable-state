@@ -347,7 +347,7 @@ async function pendingIncome(page: Page): Promise<number> {
  * to only one of them is #1206's bug (`a97bd435`) wearing a different hat. Six of this file's
  * tests reach the cancel page directly and never touch `openCancelPage`; under a standalone
  * `--grep` any one of them is the run that compiles the route cold, on a bare budget, against a
- * dev server shared with three other workers. The first version of this file attached
+ * dev server shared with the run's other workers. The first version of this file attached
  * `test.slow()` to `openCancelPage` alone and its comment claimed the coverage this pair of
  * helpers actually provides.
  *

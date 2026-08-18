@@ -181,7 +181,7 @@ After plan approval, do the following in order:
 cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {spec-file}
 ```
 
-**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and on `/fableFleet` a full run also burns the fleet-wide mutex. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here. The mutex itself is `/fableFleet`'s, and is stated in its Step 5.
+**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and a full run holds one of the machine's two e2e slots for the whole of it. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here. Nothing to request and nobody to ask: `run-checklist-suite.sh` acquires its own slot from `scripts/e2e-slot.sh` (#1295) and simply waits if both are taken.
 
 A new spec also needs its `// covers:` declaration lines (see `docs/scripts.md`) — `scripts/ci.sh` fails without them.
 

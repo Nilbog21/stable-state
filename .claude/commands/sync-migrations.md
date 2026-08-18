@@ -70,12 +70,14 @@ Check Supabase migration status, rename pending migrations to the current timest
 
 8. If the user types `sync`, assert the push target is the dev project and push in one command, so the push cannot run on its own:
    ```
-   bash scripts/assert-dev-project.sh && npx supabase db push
+   bash scripts/assert-dev-project.sh && bash scripts/e2e-slot.sh --exclusive npx supabase db push
    ```
    If the guard aborts, **stop and report what it printed** — do not retry with `--allow-prod` to get past it. That flag exists for the deliberate production push (the same opt-in `seed-account`, `seed-test-barn`, `teardown-test-barn`, and `change-user` already take), and only the developer can say this is one:
    ```
-   bash scripts/assert-dev-project.sh --allow-prod && npx supabase db push
+   bash scripts/assert-dev-project.sh --allow-prod && bash scripts/e2e-slot.sh --exclusive npx supabase db push
    ```
+
+   `e2e-slot.sh --exclusive` (#1295) takes every e2e slot for the duration, so the push and a checklist-suite run cannot overlap **in either direction**. Only the first direction is obvious; the second is the one that bites, because a suite that starts mid-push reads half-applied schema and fails in ways nobody can diagnose from inside their own issue. It blocks rather than erroring — if it prints that it is waiting, a suite is in flight somewhere on this machine and the push will start when that run finishes. This replaces the orchestrator discipline `/fableFleet` used to carry: the interlock is now kernel-held, so it holds for a push the *user* runs from their own worktree too, which no amount of fleet prose ever could.
 
    Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the seven seed/teardown call sites and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`supabase/CLAUDE.md`); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
 

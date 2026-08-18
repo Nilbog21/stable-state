@@ -46,7 +46,13 @@ BUDGETS=(
   # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13
   # characters of headroom, so no trim was available; all three scripts' rationale lives in
   # docs/scripts.md, and the index entries stay one line each per #1468's cap.
-  "scripts/CLAUDE.md:9950"
+  # Raised from 9950 by #1295: 9899 -> 10232. One genuinely new script entering the index
+  # (e2e-slot, the kernel-held suite semaphore), plus the sentence its .test.sh owes the
+  # no-.test.sh-for-shell policy right above — that list is normative, so a wired-in test that
+  # isn't named there reads as one to delete. New index entry, not elaboration of an existing
+  # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
+  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts.md.
+  "scripts/CLAUDE.md:10300"
   # Lowered from 15500 by #1420, which split the framework facts out to
   # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
   # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each
