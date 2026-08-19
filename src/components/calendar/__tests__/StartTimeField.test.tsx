@@ -1,28 +1,33 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
-import { LessonStartTime } from '../LessonStartTime'
+import { StartTimeField } from '../StartTimeField'
 
 afterEach(cleanup)
 
-// The minute-granular replacement for DateHourPicker's hour <select> (#1021). Every expectation
-// below is barn-local (America/New_York), never the host's zone — 20:30Z is 4:30 PM EDT (UTC-4).
+// The minute-granular replacement for DateHourPicker's hour <select> (#1021), shared by the
+// lesson and barn-event forms since #1645. Every expectation below is barn-local
+// (America/New_York), never the host's zone — 20:30Z is 4:30 PM EDT (UTC-4).
 //
 // No clock is pinned here, and its absence is the point since #1578: the component no longer
 // reads the clock at all. Every test that needs a time in the field supplies one through
 // `initialTime`, which is also what the edit form does.
-describe('LessonStartTime', () => {
-  function hidden(container: HTMLElement) {
-    return container.querySelector('input[name="lesson_at"]') as HTMLInputElement | null
+describe('StartTimeField', () => {
+  // The lesson form's pair, so the moved cases below read exactly as they did when the field
+  // hard-coded them. `id`/`name` are exercised as *parameters* by the two tests at the end.
+  const ids = { id: 'lesson-start-time', name: 'lesson_at' }
+
+  function hidden(container: HTMLElement, name = 'lesson_at') {
+    return container.querySelector(`input[name="${name}"]`) as HTMLInputElement | null
   }
 
   it('should_render_a_time_input', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" />)
 
     expect(screen.getByLabelText('Start Time')).toBeDefined()
   })
 
   it('should_accept_minutes_rather_than_whole_hours_only', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" />)
 
     // step=60 (seconds) is what makes the native control minute-granular rather than
     // hour-granular; the whole point of #1021.
@@ -33,35 +38,35 @@ describe('LessonStartTime', () => {
   // `required` able to catch a manager who never looked at it. The pre-#1578 fallback to the top
   // of the barn's current hour was never a value the user chose, and a wrong one was invisible.
   it('should_default_to_an_empty_time_when_no_initialTime_is_given', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" />)
 
     expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('')
   })
 
   it('should_omit_the_hidden_input_when_no_initialTime_is_given', () => {
-    const { container } = render(<LessonStartTime timezone="America/New_York" date="2026-06-01" />)
+    const { container } = render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" />)
 
     expect(hidden(container)).toBeNull()
   })
 
   it('should_use_initialTime_when_provided', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="16:30" />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="16:30" />)
 
     expect((screen.getByLabelText('Start Time') as HTMLInputElement).value).toBe('16:30')
   })
 
-  it('should_combine_date_and_time_into_lesson_at_as_a_utc_instant', () => {
+  it('should_combine_date_and_time_into_the_hidden_field_as_a_utc_instant', () => {
     const { container } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
     )
 
     // 2026-06-01 14:00 America/New_York (EDT, UTC-4) => 18:00 UTC
     expect(hidden(container)!.value).toBe('2026-06-01T18:00:00.000Z')
   })
 
-  it('should_carry_the_minutes_through_into_lesson_at', () => {
+  it('should_carry_the_minutes_through_into_the_hidden_field', () => {
     const { container } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="16:30" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="16:30" />
     )
 
     // The #1021 bug in one assertion: the old picker rendered this as 20:00:00.000Z.
@@ -72,15 +77,15 @@ describe('LessonStartTime', () => {
     // Jan 15 is EST (UTC-5), unlike the EDT (UTC-4) dates used elsewhere here — catches a
     // hardcoded offset.
     const { container } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-01-15" initialTime="16:45" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-01-15" initialTime="16:45" />
     )
 
     expect(hidden(container)!.value).toBe('2026-01-15T21:45:00.000Z')
   })
 
-  it('should_update_lesson_at_when_the_time_changes', () => {
+  it('should_update_the_hidden_field_when_the_time_changes', () => {
     const { container } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
     )
 
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '09:15' } })
@@ -89,7 +94,7 @@ describe('LessonStartTime', () => {
   })
 
   it('should_omit_the_hidden_input_when_the_date_is_empty', () => {
-    const { container } = render(<LessonStartTime timezone="America/New_York" date="" />)
+    const { container } = render(<StartTimeField {...ids} timezone="America/New_York" date="" />)
 
     expect(hidden(container)).toBeNull()
   })
@@ -103,7 +108,7 @@ describe('LessonStartTime', () => {
   // The three below seed `initialTime` since #1578: with the field opening empty, clearing an
   // already-empty field would exercise nothing and all three would pass vacuously.
   it('should_not_throw_when_the_time_is_cleared', () => {
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="14:00" />)
 
     expect(() =>
       fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
@@ -112,7 +117,7 @@ describe('LessonStartTime', () => {
 
   it('should_omit_the_hidden_input_when_the_time_is_cleared', () => {
     const { container } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="14:00" />
     )
 
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '' } })
@@ -123,7 +128,8 @@ describe('LessonStartTime', () => {
   it('should_call_onChange_with_an_empty_string_when_the_time_is_cleared', () => {
     const onChange = vi.fn()
     render(
-      <LessonStartTime
+      <StartTimeField
+        {...ids}
         timezone="America/New_York"
         date="2026-06-01"
         initialTime="14:00"
@@ -143,7 +149,8 @@ describe('LessonStartTime', () => {
     const onChange = vi.fn()
 
     render(
-      <LessonStartTime
+      <StartTimeField
+        {...ids}
         timezone="America/New_York"
         date="2026-06-01"
         initialTime="14:00"
@@ -162,7 +169,7 @@ describe('LessonStartTime', () => {
   it('should_call_onChange_with_an_empty_string_on_mount_when_no_initialTime_is_given', () => {
     const onChange = vi.fn()
 
-    render(<LessonStartTime timezone="America/New_York" date="2026-06-01" onChange={onChange} />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" onChange={onChange} />)
 
     expect(onChange).toHaveBeenCalledWith('')
   })
@@ -170,18 +177,37 @@ describe('LessonStartTime', () => {
   it('should_call_onChange_with_an_empty_string_when_the_date_is_empty', () => {
     const onChange = vi.fn()
 
-    render(<LessonStartTime timezone="America/New_York" date="" onChange={onChange} />)
+    render(<StartTimeField {...ids} timezone="America/New_York" date="" onChange={onChange} />)
 
     expect(onChange).toHaveBeenCalledWith('')
   })
 
   it('should_recombine_against_a_new_date_supplied_by_the_calendar', () => {
     const { container, rerender } = render(
-      <LessonStartTime timezone="America/New_York" date="2026-06-01" initialTime="16:30" />
+      <StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="16:30" />
     )
 
-    rerender(<LessonStartTime timezone="America/New_York" date="2026-06-15" initialTime="16:30" />)
+    rerender(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-15" initialTime="16:30" />)
 
     expect(hidden(container)!.value).toBe('2026-06-15T20:30:00.000Z')
+  })
+
+  // #1645 — the two props that made this shared. `EventForm` submits the same field under
+  // `event_at` and needs its own `id`, since two of these can never coexist on one page but the
+  // e2e specs address each form's field by id.
+  it('should_name_the_hidden_input_from_the_name_prop', () => {
+    const { container } = render(
+      <StartTimeField id="event-start-time" name="event_at" timezone="America/New_York" date="2026-06-01" initialTime="16:30" />
+    )
+
+    expect(hidden(container, 'event_at')!.value).toBe('2026-06-01T20:30:00.000Z')
+  })
+
+  it('should_bind_the_label_to_the_time_input_through_the_id_prop', () => {
+    render(
+      <StartTimeField id="event-start-time" name="event_at" timezone="America/New_York" date="2026-06-01" />
+    )
+
+    expect(screen.getByLabelText('Start Time').getAttribute('id')).toBe('event-start-time')
   })
 })

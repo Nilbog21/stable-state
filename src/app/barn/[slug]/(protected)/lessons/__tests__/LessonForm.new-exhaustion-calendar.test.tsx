@@ -84,7 +84,7 @@ describe('LessonForm exhaustion bars', () => {
   })
 
   // The estimate combines two halves, and the native date input is clearable, so the empty half
-  // has to be guarded — for the same reason `LessonStartTime` guards its own combination: an
+  // has to be guarded — for the same reason `StartTimeField` guards its own combination: an
   // empty half builds an Invalid Date, which throws RangeError out of `wallClockToInstant`
   // *during render* and unmounts the form, taking every other field the manager had filled in.
   it('should_survive_the_date_being_cleared_with_no_start_time_entered', async () => {
@@ -212,7 +212,7 @@ describe('LessonForm exhaustion bars', () => {
 
 // #1019 — the date field becomes a month conflict calendar when the form is given a
 // schedule reader; without one it stays a plain native date input. Since #1021 that fallback is
-// LessonForm's own inline `#lesson-date` input, not DateHourPicker's — the lesson form no longer
+// LessonForm's own inline `#lesson-date` input, not the month calendar's — the lesson form no longer
 // uses that component at all.
 describe('LessonForm — month conflict calendar', () => {
   beforeEach(() => {

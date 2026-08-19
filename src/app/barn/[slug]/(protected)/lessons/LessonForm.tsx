@@ -2,10 +2,10 @@
 
 import { useActionState, useState, useEffect } from 'react'
 import type { CalendarDate, Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
-import { LessonStartTime } from './LessonStartTime'
 import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { StartTimeField } from '@/components/calendar/StartTimeField'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays, calendarDate } from '@/lib/local-day'
 import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
@@ -200,12 +200,12 @@ export function LessonForm({
   // measures against, so an opening estimate is never its own past lesson, at any hour and
   // across the boundary between two.
   //
-  // CREATE ONLY. The edit form is seeded from the stored instant, which `LessonStartTime` reports
+  // CREATE ONLY. The edit form is seeded from the stored instant, which `StartTimeField` reports
   // on its own mount effect — one render after `lessonAt`'s initial `''`. Estimating into that
   // render would cost every edit-form open a second round trip, and would flash a past lesson's
   // bars for one frame before the real instant gates them off again.
   //
-  // `lessonDate` is guarded for the reason `LessonStartTime` guards its own combination: the
+  // `lessonDate` is guarded for the reason `StartTimeField` guards its own combination: the
   // no-calendar branch's native date input is clearable, and an empty half builds an Invalid Date
   // that throws RangeError out of `wallClockToInstant` *during render*, unmounting the form and
   // taking every other filled-in field with it.
@@ -671,7 +671,7 @@ export function LessonForm({
           describeItem={describeScheduleItem}
           label={dateLabel}
           dayPanelAlwaysOpen
-          dayPanel={<LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />}
+          dayPanel={<StartTimeField timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} id="lesson-start-time" name="lesson_at" />}
         />
       ) : (
         <div className="flex flex-col gap-4">
@@ -688,7 +688,7 @@ export function LessonForm({
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
           </div>
-          <LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />
+          <StartTimeField timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} id="lesson-start-time" name="lesson_at" />
         </div>
       )}
 

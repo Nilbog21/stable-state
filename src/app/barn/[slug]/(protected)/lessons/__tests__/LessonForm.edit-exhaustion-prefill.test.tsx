@@ -62,7 +62,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   // #1578's current-hour estimate is a CREATE-form device and must not reach this one. The edit
-  // form is seeded from the stored instant, which `LessonStartTime` reports on its mount effect —
+  // form is seeded from the stored instant, which `StartTimeField` reports on its mount effect —
   // one render after `lessonAt`'s initial `''`. An unguarded estimate would fill that render with
   // a fetch for *today*, so every edit-form open would cost two round trips instead of one, and a
   // past lesson would flash a set of bars that the very next render gates off again.

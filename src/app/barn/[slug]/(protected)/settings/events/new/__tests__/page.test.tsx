@@ -1,90 +1,69 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
-import { setupAuth } from '@/test/mocks/auth'
+import { guardAs } from '@/test/mocks/guard'
 
-vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
-vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
+vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
+vi.mock('@/app/actions/lessons', () => ({ getScheduleRangeForBarn: vi.fn() }))
 vi.mock('../../../actions', () => ({
   createEventAction: vi.fn(),
 }))
 vi.mock('../../EventForm', () => ({
-  EventForm: ({ mode }: { mode: string }) => (
-    <div data-testid="event-form" data-mode={mode}>EventForm</div>
+  EventForm: ({ mode, timezone, getScheduleRange }: { mode: string; timezone: string; getScheduleRange: unknown }) => (
+    <div
+      data-testid="event-form"
+      data-mode={mode}
+      data-timezone={timezone}
+      data-has-schedule-range={typeof getScheduleRange === 'function'}
+    >
+      EventForm
+    </div>
   ),
 }))
 
-const mockNotFound = vi.hoisted(() =>
-  vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
-)
-const mockRedirect = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw Object.assign(new Error('NEXT_REDIRECT'), {
-      digest: `NEXT_REDIRECT;replace;${url}`,
-    })
-  })
-)
-vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
-
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import EventNewPage from '../page'
 
-const mockBarn = createMockBarn()
+const mockBarn = createMockBarn({ timezone: 'America/Denver' })
 const managerMembership = createMockMembership({ role: 'manager', status: 'active' })
 
 describe('EventNewPage', () => {
   beforeEach(() => {
-    vi.mocked(getBarnBySlug).mockReset()
-    vi.mocked(getUserMembership).mockReset()
-    mockNotFound.mockClear()
-    mockRedirect.mockClear()
-    setupAuth()
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
+    vi.mocked(requireMembership).mockReset()
+    guardAs(managerMembership, mockBarn)
   })
 
-  it('should_call_notFound_when_barn_does_not_exist', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+  // #1645 — the page no longer hand-rolls the auth check it predated `requireMembership` by.
+  // Every non-manager outcome (no user, unknown barn, wrong role, inactive membership) is the
+  // guard's, and asserting the call is what says this page delegates all four rather than
+  // re-deciding any of them.
+  it('should_guard_the_page_as_manager_only', async () => {
+    await EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
-    await expect(
-      EventNewPage({ params: Promise.resolve({ slug: 'unknown' }) })
-    ).rejects.toThrow('NEXT_NOT_FOUND')
-  })
-
-  it('should_redirect_when_user_is_not_authenticated', async () => {
-    setupAuth(null)
-
-    await expect(
-      EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    ).rejects.toThrow('NEXT_REDIRECT')
-  })
-
-  it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
-    setupAuth(null)
-
-    try { await EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-  })
-
-  it('should_redirect_when_user_is_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(
-      createMockMembership({ role: 'trainer', status: 'active' })
-    )
-
-    await expect(
-      EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(vi.mocked(requireMembership).mock.calls[0]).toEqual(['green-acres', ['manager']])
   })
 
   it('should_render_event_form_in_new_mode', async () => {
     const jsx = await EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    const form = screen.getByTestId('event-form')
-    expect(form.getAttribute('data-mode')).toBe('new')
+    expect(screen.getByTestId('event-form').getAttribute('data-mode')).toBe('new')
+  })
+
+  it('should_pass_the_barns_timezone_to_the_form', async () => {
+    const jsx = await EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('event-form').getAttribute('data-timezone')).toBe('America/Denver')
+  })
+
+  // The always-open day panel's data source (#1580) — without it the panel renders its heading
+  // over a permanently empty body.
+  it('should_bind_the_barns_schedule_range_reader_into_the_form', async () => {
+    const jsx = await EventNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('event-form').getAttribute('data-has-schedule-range')).toBe('true')
   })
 
   it('should_render_new_event_heading', async () => {

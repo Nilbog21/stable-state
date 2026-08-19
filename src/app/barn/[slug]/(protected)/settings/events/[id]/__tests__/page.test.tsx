@@ -1,18 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockBarnEvent } from '@/test/fixtures'
-import { setupAuth } from '@/test/mocks/auth'
+import { guardAs } from '@/test/mocks/guard'
 
-vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
-vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
+vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/barn-events', () => ({ getEventById: vi.fn() }))
+vi.mock('@/app/actions/lessons', () => ({ getScheduleRangeForBarn: vi.fn() }))
 vi.mock('../../../actions', () => ({
   updateEventAction: vi.fn(),
 }))
 vi.mock('../../EventForm', () => ({
-  EventForm: ({ mode, initialEvent }: { mode: string; initialEvent?: { title: string } }) => (
-    <div data-testid="event-form" data-mode={mode} data-event-title={initialEvent?.title}>
+  EventForm: ({
+    mode,
+    timezone,
+    initialEvent,
+    getScheduleRange,
+  }: {
+    mode: string
+    timezone: string
+    initialEvent?: { title: string }
+    getScheduleRange: unknown
+  }) => (
+    <div
+      data-testid="event-form"
+      data-mode={mode}
+      data-timezone={timezone}
+      data-event-title={initialEvent?.title}
+      data-has-schedule-range={typeof getScheduleRange === 'function'}
+    >
       EventForm
     </div>
   ),
@@ -21,61 +36,31 @@ vi.mock('../../EventForm', () => ({
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 )
-const mockRedirect = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw Object.assign(new Error('NEXT_REDIRECT'), {
-      digest: `NEXT_REDIRECT;replace;${url}`,
-    })
-  })
-)
-vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
+vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { getEventById } from '@/lib/db/barn-events'
 import EventEditPage from '../page'
 
-const mockBarn = createMockBarn()
+const mockBarn = createMockBarn({ timezone: 'America/Denver' })
 const managerMembership = createMockMembership({ role: 'manager', status: 'active' })
 const mockEvent = createMockBarnEvent({ id: 'event-1', title: 'Costume Party' })
 
 describe('EventEditPage', () => {
   beforeEach(() => {
-    vi.mocked(getBarnBySlug).mockReset()
-    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(requireMembership).mockReset()
     vi.mocked(getEventById).mockReset()
     mockNotFound.mockClear()
-    mockRedirect.mockClear()
-    setupAuth()
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
+    guardAs(managerMembership, mockBarn)
     vi.mocked(getEventById).mockResolvedValue(mockEvent)
   })
 
-  it('should_call_notFound_when_barn_does_not_exist', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+  // #1645 — every non-manager outcome is `requireMembership`'s since the hand-rolled check went;
+  // see the New Event page test for the same assertion's rationale.
+  it('should_guard_the_page_as_manager_only', async () => {
+    await EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
 
-    await expect(
-      EventEditPage({ params: Promise.resolve({ slug: 'unknown', id: 'event-1' }) })
-    ).rejects.toThrow('NEXT_NOT_FOUND')
-  })
-
-  it('should_redirect_when_user_is_not_authenticated', async () => {
-    setupAuth(null)
-
-    await expect(
-      EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
-    ).rejects.toThrow('NEXT_REDIRECT')
-  })
-
-  it('should_redirect_when_user_is_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(
-      createMockMembership({ role: 'rider', status: 'active' })
-    )
-
-    await expect(
-      EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
-    ).rejects.toThrow('NEXT_REDIRECT')
+    expect(vi.mocked(requireMembership).mock.calls[0]).toEqual(['green-acres', ['manager']])
   })
 
   it('should_call_notFound_when_event_does_not_exist', async () => {
@@ -90,16 +75,28 @@ describe('EventEditPage', () => {
     const jsx = await EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
     render(jsx)
 
-    const form = screen.getByTestId('event-form')
-    expect(form.getAttribute('data-mode')).toBe('edit')
+    expect(screen.getByTestId('event-form').getAttribute('data-mode')).toBe('edit')
   })
 
   it('should_pass_event_data_to_form', async () => {
     const jsx = await EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
     render(jsx)
 
-    const form = screen.getByTestId('event-form')
-    expect(form.getAttribute('data-event-title')).toBe('Costume Party')
+    expect(screen.getByTestId('event-form').getAttribute('data-event-title')).toBe('Costume Party')
+  })
+
+  it('should_pass_the_barns_timezone_to_the_form', async () => {
+    const jsx = await EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('event-form').getAttribute('data-timezone')).toBe('America/Denver')
+  })
+
+  it('should_bind_the_barns_schedule_range_reader_into_the_form', async () => {
+    const jsx = await EventEditPage({ params: Promise.resolve({ slug: 'green-acres', id: 'event-1' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('event-form').getAttribute('data-has-schedule-range')).toBe('true')
   })
 
   it('should_render_edit_event_heading', async () => {

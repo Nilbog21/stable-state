@@ -564,7 +564,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e: barn_event_row_on_manage_barn_shows_the_barn_local_four_pm) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e: barn_event_card_on_the_dashboard_shows_the_barn_local_four_pm) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e: add_event_form_checks_all_three_visible_to_roles_by_default) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
-- [ ] (e2e: creating_a_barn_event_lists_it_under_its_title) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
+- [ ] (e2e: creating_a_barn_event_lists_it_under_its_title) Create an event with a title, date, start time, and notes → it appears in the Barn Events list under the correct title
+- [ ] (e2e: the_edit_event_day_panel_lists_that_days_event) (#1645) Reopen that event's **Edit** form — the day panel below the month calendar lists what is scheduled on that day, that event among it, as `time — description`
 - [ ] (e2e: barn_event_list_entry_shows_the_events_date_and_time) That list entry shows the correct date
 - [ ] (e2e: barn_event_list_entry_shows_its_visible_to_roles) That list entry shows "manager, trainer, rider" visible-to text
 - [ ] (e2e: unchecking_rider_on_an_event_persists_after_save) **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked

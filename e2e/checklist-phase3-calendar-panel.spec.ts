@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/components/calendar/StartTimeField.tsx
 // covers: src/components/ExhaustionBar.tsx
 // covers: src/lib/month-calendar.ts
 // covers: src/lib/band-colors.ts
@@ -13,12 +14,12 @@
 // (checklists/pre-release/phase-3-manager-lesson-entry.md, from "Tap a day that has a lesson on
 // it — the day panel below the grid lists that day's items" through "That dimmed
 // neighbouring-month day is still selectable", and from "The popup opened by tapping a day in the
-// calendar's first row does not cover that day" through "Manage Barn → Events → Add Event still
-// uses a plain native date box, not the month calendar"): the day panel's contents, the tap that
-// both rings a day and dates the lesson, month navigation and the shading that follows it, the
-// dimmed neighbouring-month day, the panel's placement relative to the day that opened it, the
-// bar/calendar hue match, and the one form in the app that deliberately still uses a native date
-// box.
+// calendar's first row does not cover that day" through "Manage Barn → Events → Add Event uses
+// the month calendar"): the day panel's contents, the tap that both rings a day and dates the
+// lesson, month navigation and the shading that follows it, the dimmed neighbouring-month day,
+// the panel's placement relative to the day that opened it, the bar/calendar hue match, and —
+// since #1645 moved the barn-event form onto the same grid — that no form in the app is left on
+// a native date box.
 //
 // The two `(manual)` dark-mode lines sitting inside this range — the amber/red colour-separation
 // judgement and the neighbouring-month contrast judgement — are #1413's verdicts and are NOT
@@ -939,7 +940,7 @@ test.describe('The day panel’s placement and the exhaustion bar’s hue', () =
 })
 
 // ---------------------------------------------------------------------------
-// The Recurring relabel, and the one form that still uses a native date box
+// The Recurring relabel, and the barn-event form's own month calendar
 // ---------------------------------------------------------------------------
 
 // The month calendar is asserted to be *still rendered* alongside its relabelled field, which is
@@ -965,22 +966,23 @@ test('manager_checking_recurring_relabels_the_month_calendars_own_field_label @m
   await expect(dayCells(page)).toHaveCount(GRID_CELLS)
 })
 
-// "still uses a plain native date box, not the month calendar" is two claims and both are made:
-// the input's own `type`, and the absence of a month grid. The absence half needs a same-test
-// positive anchor on the same page state (#1434, e2e/CLAUDE.md fact 18) — `toHaveCount(0)` is
-// satisfied on its first poll, so on its own it would pass against a page that had not rendered
-// yet. The visible native date input is that anchor.
+// "uses the month calendar, not a plain native date box" is two claims and both are made: the
+// full 42-cell grid, and the absence of `DateHourPicker`'s native date input. #1645 INVERTED
+// this test — it asserted the opposite pair until the barn-event form was the last screen left
+// on the native box — and the inversion swaps which half is the positive anchor the other needs
+// (#1434, e2e/CLAUDE.md fact 18): `toHaveCount(0)` is satisfied on its first poll, so the
+// absence half would pass against a page that had not rendered yet. The 42 cells are now that
+// anchor, and they are asserted first for exactly that reason.
 //
 // Reached by `goto` rather than by clicking through Manage Barn → Events → Add Event.
 // checklist-phase4-settings-tiers-events.spec.ts reaches this same route by `goto` too, which is
 // the precedent being followed. Framework fact 11 binds switching a *tab or filter*, where the
 // query param is the state under test; a route is not that.
-test('manager_add_event_uses_a_plain_native_date_box_and_no_month_calendar @manager', async ({ page }) => {
+test('manager_add_event_uses_the_month_calendar @manager', async ({ page }) => {
   test.slow()
   await page.goto(`/barn/${barn.slug}/settings/events/new`)
   await page.getByRole('heading', { level: 1, name: 'New Event' }).waitFor()
 
-  await expect(page.locator('#dh-date')).toBeVisible()
-  await expect(page.locator('#dh-date')).toHaveAttribute('type', 'date')
-  await expect(dayCells(page)).toHaveCount(0)
+  await expect(dayCells(page)).toHaveCount(GRID_CELLS)
+  await expect(page.locator('#dh-date')).toHaveCount(0)
 })

@@ -38,7 +38,7 @@ type ExpenseFormProps = {
    *  the server host's UTC day, which runs ahead of every zone the barn picker offers. */
   todayStr: CalendarDate
   /** The barn's `barns.timezone`. Required, and the frame the entered date and time resolve
-   *  in: they mean that wall clock *at the barn*, same as `DateHourPicker`'s (#1222). */
+   *  in: they mean that wall clock *at the barn*, same as `StartTimeField`'s (#1222). */
   timezone: string
   /** #1020 — supplied, the Date field becomes the same month conflict calendar the lesson form
    *  got in #1019; omitted, it stays a plain `<input type="date">`. Injected rather than called

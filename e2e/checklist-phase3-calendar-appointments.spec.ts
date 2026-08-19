@@ -509,12 +509,12 @@ test.describe('#1021 start time shifts the shading', () => {
     // The band wait is safe as a `low` wait only because the fetch was already proved above (at
     // hour 10, which `openNewLessonForm`'s barrier fill put the form in — since #1578 the form
     // opens with no start time, so nothing here inherits an hour from one). But it proves only
-    // `hour < 8`, not `hour == 6`: whenever `lessonAt` is `''` — which `LessonStartTime` produces
+    // `hour < 8`, not `hour == 6`: whenever `lessonAt` is `''` — which `StartTimeField` produces
     // for an empty time input — `selectedHour` comes off `estimateAt` instead (LessonForm.tsx),
     // the barn's current hour, which is unpinned and on most runs is not 6. Different hours give
     // genuinely different grids, so that is not a distinction without a difference.
     //
-    // The `lesson_at` wait closes it: only client-side `LessonStartTime` writes that value, and
+    // The `lesson_at` wait closes it: only client-side `StartTimeField` writes that value, and
     // once it is non-empty it is what `selectedHour` is derived from — the estimate only stands
     // in while it is `''` — so the two together say the hour is exactly 6 AND the decorations
     // have re-rendered against it. Ordered `lesson_at` first because it is the cause and the band

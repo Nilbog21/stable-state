@@ -14,10 +14,10 @@ import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
  * component holds no scheduling logic of its own — see `src/lib/month-calendar.ts` for the
  * model. Tapping a day both selects it and opens that day's schedule.
  *
- * Originally a form date field (#1019), and still one for `LessonForm`/`ExpenseForm`. #1558
- * made the dashboard a third caller, browsing a month rather than picking a day in one — the
- * only difference being that it renders its own day panel (`renderDayPanel`) and passes no
- * exhaustion band. Nothing here is form-specific; keep it that way.
+ * Originally a form date field (#1019), and still one for `LessonForm`/`ExpenseForm`, joined by
+ * `EventForm` in #1645. #1558 made the dashboard the one non-form caller, browsing a month rather
+ * than picking a day in one — the only difference being that it renders its own day panel
+ * (`renderDayPanel`) and passes no exhaustion band. Nothing here is form-specific; keep it that way.
  */
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'

@@ -1,6 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/new/**
 // covers: src/app/barn/[slug]/(protected)/lessons/LessonForm.tsx
-// covers: src/app/barn/[slug]/(protected)/lessons/LessonStartTime.tsx
+// covers: src/components/calendar/StartTimeField.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/page.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/LessonListItem.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/[id]/page.tsx
@@ -64,7 +64,7 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   // the `<select>`, the month taps, the day tap and the fill — is lost outright if React has not
   // mounted yet, and nothing replays any of them (facts 9 and 10). `openNewLessonForm` is the
   // shared barrier for exactly this form; it fills BARRIER_TIME and waits on the hidden
-  // `lesson_at` only client-side `LessonStartTime` can write, so it settles on hydration itself
+  // `lesson_at` only client-side `StartTimeField` can write, so it settles on hydration itself
   // rather than on markup the server also renders.
   //
   // Its BARRIER_TIME is then overwritten by this test's own `fill` further down, which is why the
@@ -111,7 +111,7 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   // redirect itself actually completing.
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 
-  // Mirrors LessonStartTime.tsx's own conversion — this checks the real
+  // Mirrors StartTimeField.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
   // re-derivation of the logic under test. #1222 moved that conversion off the
   // browser's zone and onto the *barn's*, so the mirror names the barn's zone.
