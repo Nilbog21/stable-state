@@ -22,6 +22,7 @@
 - [ ] (manual — a spec cannot drive it: `seed-account.sh` prompts on a TTY for first name, last name and barn slug) Run `bash scripts/seed-account.sh`, accepting the default first/last name, and enter `test-barn-checklist` as the barn slug — creates a fresh managed-manager stub invite in that barn and prints `Invite path: /barn/test-barn-checklist/register?token=<uuid>`
 - [ ] (e2e: opening_the_second_barns_invite_while_signed_in_shows_a_join_confirmation) Open that invite path as `DEV_EMAIL` (already signed in elsewhere in this browser) — shows a "Join test-barn-checklist" confirmation
 - [ ] (e2e: the_second_barns_join_confirmation_carries_an_accept_invite_button) That confirmation carries an **Accept Invite** button
+- [ ] (e2e: the_second_barns_join_confirmation_names_the_signed_in_account) That confirmation names the account you are signed in as, with a **Sign out** link beside it (`#1641` — the token is single-use, so this is the last point at which a claimant can see they are about to bind the wrong account)
 - [ ] (e2e: the_second_barns_join_confirmation_shows_no_google_sign_in_button) That confirmation shows no Google sign-in button
 - [ ] (e2e: accepting_the_second_barns_invite_lands_in_that_barn) Click **Accept Invite** → the claim succeeds and you land in **test-barn-checklist**
 - [ ] (e2e: the_claimed_second_barn_membership_is_manager) You hold **manager** in that barn

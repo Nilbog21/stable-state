@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
-import { claimManagedMember } from '@/lib/db/member-invites'
+import { claimManagedMember, isDemoClaimRejection } from '@/lib/db/member-invites'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -94,7 +94,14 @@ export async function GET(request: NextRequest) {
       if (inviteToken && barnSlug && user) {
         try {
           await claimManagedMember(inviteToken, user.id, user.email ?? null)
-        } catch {
+        } catch (claimError) {
+          // #1641: the demo rejection keeps the token and drops the error param, so the register
+          // page's demo branch renders instead of the InvalidInvite screen — the invite is fine,
+          // the session is wrong. Unreachable in practice (this branch is OAuth-only and the
+          // shared demo account is email/password), but it is the second of the RPC's two callers.
+          if (isDemoClaimRejection(claimError)) {
+            return redirect(`${origin}/barn/${barnSlug}/register?token=${encodeURIComponent(inviteToken)}`)
+          }
           // The register page renders its InvalidInvite screen on `?error=`, ahead of
           // its own auth check — the login page it used to land on reads no error param.
           return redirect(`${origin}/barn/${barnSlug}/register?error=invite_claim_failed`)

@@ -134,7 +134,7 @@ describe('BarnRegisterPage signed-in identity', () => {
   it('should_render_the_demo_screen_when_the_session_is_the_demo_account', async () => {
     vi.mocked(getProfileByUserId).mockResolvedValue(createMockProfile({ is_demo: true }))
     render(await renderPage('green-acres', 'tok-1'))
-    expect(screen.getByText(/demo account/i)).toBeDefined()
+    expect(screen.getByRole('heading', { name: /demo account/i })).toBeDefined()
   })
 
   it('should_not_render_the_accept_button_when_the_session_is_the_demo_account', async () => {

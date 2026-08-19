@@ -3,7 +3,8 @@
  * RPC, returning the new `membershipId`), `claimManagedMember` (the
  * `claim_managed_member` RPC, binding an invite token to the claiming user), and
  * `revokeInviteToken`, which rotates `barn_memberships.invite_token` to a fresh
- * `crypto.randomUUID` so the old invite link stops working.
+ * `crypto.randomUUID` so the old invite link stops working. `isDemoClaimRejection` reads the one
+ * `claim_managed_member` rejection both claim callers translate specially (#1641).
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -59,4 +60,14 @@ export async function revokeInviteToken(
 
   if (error) throw error
   return data.invite_token
+}
+
+/**
+ * True for `claim_managed_member`'s `demo_account_cannot_claim` raise (#1641). Both callers —
+ * `acceptInvite` and `/auth/callback`'s invite-token branch — route it back to the register page
+ * with the token intact instead of down their generic failure path, whose screen says the invite
+ * is invalid or expired. It isn't: the invite is fine and the session is the shared demo account.
+ */
+export function isDemoClaimRejection(error: unknown): boolean {
+  return (error as { message?: unknown } | null)?.message === 'demo_account_cannot_claim'
 }
