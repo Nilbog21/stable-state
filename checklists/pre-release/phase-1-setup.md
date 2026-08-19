@@ -44,6 +44,8 @@ The `/demo` lines below are verdicted individually rather than as a block: they 
 - [ ] (e2e: opening_an_invite_link_with_no_session_redirects_to_the_barn_login_page) Open that path on your app origin (no existing session) — it redirects to `/barn/dev-barn/login?token=<uuid>`
 - [ ] (e2e: the_barn_login_page_shows_a_keep_me_logged_in_checkbox) The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox
 - [ ] (e2e: the_keep_me_logged_in_checkbox_is_checked_by_default) That checkbox is checked by default
+- [ ] (e2e: opening_an_invite_while_signed_in_as_the_demo_account_shows_the_demo_screen) Open that same invite path while signed in as the shared demo account — the page says you are signed in as the demo account, rather than the "Invite invalid" screen `claim_managed_member`'s raise would otherwise land on (`#1641`. The spec stands in for the demo account with a login whose profile carries `is_demo`, which is the only thing `register/page.tsx` branches on)
+- [ ] (e2e: the_demo_account_invite_screen_shows_no_accept_invite_button) That screen carries no **Accept Invite** button
 - [ ] (manual — a real Google OAuth consent flow; the suite's logins are password-based) Sign in with the **`DEV_EMAIL`** Google account — you are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] (e2e: saving_the_contact_fields_on_profile_complete_lands_in_the_app) Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app. A spec reaches `/profile/complete` from a seeded membership whose profile has blank contact fields, rather than through the OAuth sign-in above
 - [ ] (e2e: the_claimed_invite_holds_manager_in_the_barn) You hold **manager** in Dev Barn

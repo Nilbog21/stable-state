@@ -41,7 +41,14 @@ BUDGETS=(
   # The file was at 84 characters of headroom, so no trim was available. The rule itself and all of
   # its rationale are in CLAUDE.md's Patch Workflow, whose paragraph this same PR trimmed from 788
   # characters to 253 to stay inside its own budget rather than raise it.
-  "ARCHITECTURE.md:21500"
+  # Raised from 21500 by #1641, which added the `auth_profile_is_demo` RLS helper: 21519 -> 21600.
+  # Same legitimate-raise case as #1547 above -- a new helper always gets its line here (root
+  # CLAUDE.md's Architecture Docs rule). #1640's raise landed first and left 84 characters of
+  # headroom; this one line is 101, so it does not fit and no trim was available -- the line is
+  # already cut to the helper's name and the single policy it backs, and every word of rationale
+  # (why the pin exists, why `profiles_manager_update` is not pinned) is in
+  # docs/architecture/schema.md's `profiles` row.
+  "ARCHITECTURE.md:21600"
   # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
   # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
   # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was

@@ -65,6 +65,7 @@ export interface Profile {
   user_id: string | null
   email: string | null
   is_managed: boolean
+  is_demo: boolean
   first_name: string
   last_name: string
   phone: string | null

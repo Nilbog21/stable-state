@@ -216,6 +216,9 @@ let throwawayUserId: string | null = null
 let memberContext: BrowserContext | null = null
 let memberPage: Page | null = null
 
+/** The throwaway login's address — what the Join confirmation must name back (#1641). */
+let memberEmail: string | null = null
+
 /**
  * Where barn B's claim landed, captured by the claim test and read by the `?error=1` test. The
  * claim is one-shot (`claim_managed_member` nulls the token), so the second line cannot re-drive
@@ -226,6 +229,7 @@ let claimLandingUrl: string | null = null
 test.beforeAll(async ({ browser }, testInfo) => {
   admin = serviceClient()
   const email = throwawayAuthEmail(runPrefix(), BARN_KEY, testInfo.project.name)
+  memberEmail = email
   // Assigned before the steps below, any of which can throw with the login already created;
   // gating teardown on a fully-built context instead would strand it (note 6).
   throwawayUserId = await createThrowawayAuthUser(admin, email)
@@ -266,6 +270,12 @@ test.afterAll(async () => {
 function member(): Page {
   if (!memberPage) throw new Error('no member page — beforeAll did not complete')
   return memberPage
+}
+
+/** Named for the same reason as `member()` — a failure here is a `beforeAll` failure, not a null deref. */
+function signedInEmail(): string {
+  if (!memberEmail) throw new Error('no member email — beforeAll did not complete')
+  return memberEmail
 }
 
 function context(): BrowserContext {
@@ -433,6 +443,22 @@ test('the_second_barns_join_confirmation_carries_an_accept_invite_button @manage
   await page.goto(invitePathB())
 
   await expect(acceptInviteButton(page)).toBeVisible()
+})
+
+/**
+ * #1641. The token is single-use, so this confirmation is the last point at which a claimant can
+ * see *which* account is about to take the membership — the whole of what fired on prod, where a
+ * tester who had tried `/demo` first bound the shared demo account to her real barn's stub.
+ * Asserted on the email rather than the name: the name comes from whichever stub barn A's claim
+ * merged onto, while the email is the throwaway login's own and is what identifies the session.
+ * `toBeVisible()` on the Accept Invite button first, for the same settling reason as below.
+ */
+test('the_second_barns_join_confirmation_names_the_signed_in_account @manager', async () => {
+  const page = member()
+  await page.goto(invitePathB())
+
+  await expect(acceptInviteButton(page)).toBeVisible()
+  await expect(page.getByText(signedInEmail())).toBeVisible()
 })
 
 /**

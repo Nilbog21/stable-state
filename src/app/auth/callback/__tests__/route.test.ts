@@ -15,7 +15,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getActiveMemberships: vi.fn(),
 }))
 
-vi.mock('@/lib/db/member-invites', () => ({
+// `isDemoClaimRejection` is spread in real rather than stubbed — it is what separates the demo
+// rejection from every other claim failure, so a stub would assert nothing.
+vi.mock('@/lib/db/member-invites', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/member-invites')>()),
   claimManagedMember: vi.fn(),
 }))
 
@@ -935,6 +938,18 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
       expect(mockRedirect).toHaveBeenCalledWith(
         'http://localhost:3000/barn/green-acres/register?error=invite_claim_failed'
+      )
+    })
+
+    // #1641. Unreachable in practice — this branch is OAuth-only and the shared demo account is
+    // email/password — but it is the second of the two callers the RPC block covers, and the
+    // "invite invalid" screen is the wrong answer here for the same reason it is in acceptInvite.
+    it('should_redirect_to_the_invite_without_an_error_when_the_claim_is_a_demo_session', async () => {
+      vi.mocked(claimManagedMember).mockRejectedValue(new Error('demo_account_cannot_claim'))
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123&barn=green-acres')
+      await GET(request as any)
+      expect(mockRedirect).toHaveBeenCalledWith(
+        'http://localhost:3000/barn/green-acres/register?token=tok-123'
       )
     })
 

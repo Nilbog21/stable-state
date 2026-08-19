@@ -16,7 +16,7 @@
 // Phase 1's invite-claim story, from an unauthenticated browser through to a completed profile
 // (checklists/pre-release/phase-1-setup.md, the block from "Open that path on your app origin (no
 // existing session)" through "You hold **manager** in Dev Barn"). One managed stub, one invite
-// token, five checks.
+// token, seven checks.
 //
 // The line between them — "Sign in with the **`DEV_EMAIL`** Google account" — stays `(manual)`
 // and is not automated here: the app offers no password login form (both `login/page.tsx` files
@@ -29,7 +29,7 @@
 // Five things about this file that are load-bearing rather than stylistic
 // ---------------------------------------------------------------------------
 //
-// 1. THERE ARE TWO SESSIONS HERE AND NEITHER IS THE PROJECT'S. `anonPage` is the genuinely
+// 1. THERE ARE THREE SESSIONS HERE AND NONE IS THE PROJECT'S. `anonPage` is the genuinely
 //    session-less one — `browser.newContext({ storageState: { cookies: [], origins: [] } })` and
 //    no other form, with the cookie-count guard that keeps that impossible to regress silently
 //    (e2e/CLAUDE.md fact 4; the guard and its reasoning are #1422's, copied deliberately). It is
@@ -43,6 +43,14 @@
 //    `/profile/complete` would race every other spec across the suite's workers. The full
 //    statement, including why per-barn auth users still do not exist, is on
 //    `createThrowawayAuthUser` in support/fixtures.ts.
+//
+//    `demoPage` is a third context, on a second throwaway login whose profile is flagged
+//    `is_demo` (#1641). It stands in for the shared `/demo` account: `register/page.tsx` branches
+//    on `profile.is_demo` alone, so this reaches the same branch without either plumbing
+//    `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` into the suite's fixed env list or making a `/demo`
+//    visit whose barn this file would then owe teardown for. It is a *second* login rather than a
+//    reuse of `claimedPage`'s because it needs a profile row and that one must not have one — see
+//    the note on `createThrowawayAuthUser`.
 //
 //    NO TEST HERE REQUESTS THE `page` FIXTURE, AND NONE MAY: it authenticates as the manager
 //    login, which already holds a membership in this barn and would claim nothing.
@@ -66,9 +74,11 @@
 //    and a toggle, which is what `waitForBarnPageHydrated` binds to. It is also the literal URL
 //    `auth/callback/route.ts` redirects to, so it is the real shape rather than a test-only one.
 //
-// 4. THE THROWAWAY LOGIN IS TORN DOWN UNCONDITIONALLY, AND AFTER THE BARN. `throwawayUserId` is
-//    assigned the instant the user exists and before anything that can throw — `withBarn`'s own
-//    `state.created` discipline — so a failure anywhere below still hands it back. The `afterAll`
+// 4. BOTH THROWAWAY LOGINS ARE TORN DOWN UNCONDITIONALLY, AND AFTER THE BARN. `throwawayUserId`
+//    and `demoUserId` are each assigned the instant their user exists and before anything that
+//    can throw — `withBarn`'s own `state.created` discipline — so a failure anywhere below still
+//    hands both back. `deleteThrowawayAuthUser` deletes the profile row before the auth user,
+//    which is what the demo login needs: it has one by construction. The `afterAll`
 //    is registered *after* `withBarn`, and file-scoped hooks run in registration order rather
 //    than reversed (measured, stated in support/test.ts), so the barn's memberships are gone
 //    before the profile row they reference is deleted.
@@ -76,9 +86,10 @@
 //    THE ONE CASE THAT DOES LEAK IS `--hold-open`, DELIBERATELY. Under `E2E_HOLD_OPEN` the barn
 //    and its membership are kept alive for manual checklist steps, so deleting the profile
 //    beneath them would FK-fail noisily on a developer who asked for exactly that state. The
-//    throwaway login therefore survives, and nothing sweeps it: run-checklist-suite.sh's exit
-//    trap reaches barns by run prefix, not auth users. Delete it by hand alongside the held-open
-//    barn — its address is `<run prefix>-<key>-<project>-invite@e2e.test`.
+//    throwaway logins therefore survive, and nothing sweeps them: run-checklist-suite.sh's exit
+//    trap reaches barns by run prefix, not auth users. Delete them by hand alongside the held-open
+//    barn — their addresses are `<run prefix>-<key>-<project>-invite@e2e.test`, with `<key>` being
+//    `invite` and `invite-demo`.
 //
 // 5. "YOU HOLD MANAGER" IS ASSERTED THROUGH `Manage Barn`, THE ONE NAV LABEL NO OTHER ROLE GETS.
 //    `buildNavLinks` returns it only on its manager branch, so its presence is a role
@@ -107,6 +118,8 @@ import {
   throwawayAuthEmail,
   E2E_PASSWORD,
 } from './support/fixtures'
+import { upsertProfile } from '@/lib/db/profiles'
+import { mustAffect } from './support/must-affect'
 import { waitForBarnPageHydrated } from './support/hydration'
 
 /**
@@ -128,6 +141,23 @@ const MANAGER_ONLY_NAV_LINK = 'Manage Barn'
 /** This file's key, shared by its barn's slug and its throwaway login's address. */
 const BARN_KEY = 'invite'
 
+/**
+ * The second throwaway login's key (#1641). A distinct key rather than a suffix on the address
+ * itself, because `throwawayAuthEmail` is what owns that address's shape — and the two logins have
+ * to differ per (spec file × project) for the same reason the first one does.
+ */
+const DEMO_KEY = `${BARN_KEY}-demo`
+
+/** Held to the same collision constraints as `INVITEE` — see its note. */
+const DEMO_PERSON = { firstName: 'Marlowe', lastName: 'Vantassel' }
+
+/**
+ * `register/page.tsx`'s `<DemoSession>` heading, minus its leading "You&rsquo;re" — the entity is
+ * the one part of that heading a literal cannot spell, and `getByRole`'s `name` is a
+ * case-insensitive *substring* match by default, so dropping the word is the whole fix.
+ */
+const DEMO_SCREEN_HEADING = 'signed in as the demo account'
+
 let inviteToken: string | null = null
 
 const barn = withBarn(BARN_KEY, async ({ supabase, barn: seeded }) => {
@@ -141,6 +171,9 @@ let admin: SupabaseClient | null = null
 let throwawayUserId: string | null = null
 let claimedContext: BrowserContext | null = null
 let claimedPage: Page | null = null
+let demoUserId: string | null = null
+let demoContext: BrowserContext | null = null
+let demoPage: Page | null = null
 
 base.beforeAll(async ({ browser }, testInfo) => {
   admin = serviceClient()
@@ -150,12 +183,48 @@ base.beforeAll(async ({ browser }, testInfo) => {
   throwawayUserId = await createThrowawayAuthUser(admin, email)
   claimedContext = await browser.newContext({ storageState: await authStorageState(email, E2E_PASSWORD) })
   claimedPage = await claimedContext.newPage()
+
+  // #1641's login. A SECOND throwaway rather than a reuse of the one above: this one needs a
+  // profile row, and `createThrowawayAuthUser`'s note states why the claiming login must not have
+  // one — a profile sends `claim_managed_member` down its stub-deleting branch and the
+  // profile-completion check below would then have nothing blank to complete.
+  //
+  // It stands in for the shared `/demo` account rather than being it. `register/page.tsx` branches
+  // on `profile.is_demo` and nothing else, so this is the same branch by construction; driving the
+  // real `demo@stable-state.app` would mean either plumbing `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD`
+  // through run-checklist-suite.sh's fixed var list, or a `/demo` visit whose barn this file would
+  // then have to reap. Neither buys coverage this does not already have.
+  const demoEmail = throwawayAuthEmail(runPrefix(), DEMO_KEY, testInfo.project.name)
+  demoUserId = await createThrowawayAuthUser(admin, demoEmail)
+  const demoProfile = await upsertProfile(
+    demoUserId,
+    demoEmail,
+    DEMO_PERSON.firstName,
+    DEMO_PERSON.lastName,
+    admin
+  )
+  // Service-role, necessarily: `profiles_own_update`'s WITH CHECK pins the column against the
+  // user's own client (and `profiles_own_delete` refuses the DELETE half of the same bypass).
+  //
+  // Raw call rather than `markProfileAsDemo`, so the write can end `.select('id')` and be counted:
+  // the DAL function is a bare `.update().eq()`, and a filter that matched nothing would come back
+  // `error: null` and leave both checks below asserting against an unflagged profile
+  // (spec-maintenance rule 5). Exactly one row — the id is `upsertProfile`'s primary key.
+  mustAffect(
+    await admin.from('profiles').update({ is_demo: true }).eq('id', demoProfile.id).select('id'),
+    `flag ${demoEmail}'s profile as the demo account`,
+    1
+  )
+  demoContext = await browser.newContext({ storageState: await authStorageState(demoEmail, E2E_PASSWORD) })
+  demoPage = await demoContext.newPage()
 })
 
 base.afterAll(async () => {
   await claimedContext?.close()
+  await demoContext?.close()
   if (process.env.E2E_HOLD_OPEN === 'true') return
   if (admin && throwawayUserId) await deleteThrowawayAuthUser(admin, throwawayUserId)
+  if (admin && demoUserId) await deleteThrowawayAuthUser(admin, demoUserId)
 })
 
 /**
@@ -199,11 +268,21 @@ function claimed(): Page {
   return claimedPage
 }
 
+/** Same reason as `claimed()` above. */
+function demo(): Page {
+  if (!demoPage) throw new Error('no demo-flagged-login page — beforeAll did not complete')
+  return demoPage
+}
+
 const invitePath = () => `/barn/${barn.slug}/register?token=${token()}`
 const barnLoginPath = () => `/barn/${barn.slug}/login?token=${token()}`
 
 function rememberCheckbox(page: Page) {
   return page.getByRole('checkbox', { name: REMEMBER_LABEL, exact: true })
+}
+
+function acceptInviteButton(page: Page) {
+  return page.getByRole('button', { name: 'Accept Invite', exact: true })
 }
 
 /** Path plus query, which is what the redirect line claims — the token has to survive it. */
@@ -239,6 +318,42 @@ test('the_keep_me_logged_in_checkbox_is_checked_by_default @manager', async ({ a
 })
 
 // ---------------------------------------------------------------------------
+// The invite path with the demo account's session (#1641)
+// ---------------------------------------------------------------------------
+
+/**
+ * The ordinary journey that fired on prod: try the demo, then open the invite you were sent, same
+ * browser, no sign-out in between. `register/page.tsx` catches it ahead of `claim_managed_member`'s
+ * raise, because that path's screen says the invite is invalid or has expired — the worst possible
+ * message, since the invite is fine and the session is wrong.
+ *
+ * Ahead of the claim below only for readability; unlike the anonymous checks above it, this one
+ * does not depend on a live token — the demo branch returns before anything reads it.
+ */
+test('opening_an_invite_while_signed_in_as_the_demo_account_shows_the_demo_screen @manager', async () => {
+  const page = demo()
+  await page.goto(invitePath())
+
+  await expect(page.getByRole('heading', { name: DEMO_SCREEN_HEADING })).toBeVisible()
+})
+
+/**
+ * The absence is asserted only *after* the heading has settled, and that ordering is the whole
+ * point — a web-first matcher expecting nothing is satisfied on its first poll, which can land
+ * while the new document is still committing (#1425 measured a planted `toHaveCount(0)` passing on
+ * a link that demonstrably renders). The heading proves the demo screen is what rendered; only
+ * then does the button's absence mean this screen has no Accept Invite, rather than that nothing
+ * had painted yet.
+ */
+test('the_demo_account_invite_screen_shows_no_accept_invite_button @manager', async () => {
+  const page = demo()
+  await page.goto(invitePath())
+
+  await expect(page.getByRole('heading', { name: DEMO_SCREEN_HEADING })).toBeVisible()
+  await expect(acceptInviteButton(page)).toHaveCount(0)
+})
+
+// ---------------------------------------------------------------------------
 // Claiming it, and completing the profile
 // ---------------------------------------------------------------------------
 
@@ -248,7 +363,7 @@ test('saving_the_contact_fields_on_profile_complete_lands_in_the_app @manager', 
   // No hydration barrier: `acceptInvite` is passed to `action=` as a `.bind` of the Server
   // Function itself, so React serves enhanced markup that an early click submits on its own
   // (fact 10). A real sync point rather than fact 3's no-op — the click starts on `/register`.
-  await page.getByRole('button', { name: 'Accept Invite', exact: true }).click()
+  await acceptInviteButton(page).click()
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/?$`), { waitUntil: 'commit' })
 
   await page.goto(`/profile/complete?barn=${barn.slug}`)

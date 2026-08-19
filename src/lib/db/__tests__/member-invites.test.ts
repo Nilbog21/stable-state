@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createManagedMember, claimManagedMember, revokeInviteToken } from '../member-invites'
+import { createManagedMember, claimManagedMember, revokeInviteToken, isDemoClaimRejection } from '../member-invites'
 
 describe('createManagedMember', () => {
   beforeEach(() => { vi.mocked(createClient).mockReset() })
@@ -157,5 +157,26 @@ describe('revokeInviteToken', () => {
     } as any
     await revokeInviteToken('mem-1', 'barn-1', injectedClient)
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+})
+
+// #1641. Both claim callers translate this one rejection specially — surfacing it as the generic
+// claim failure would tell the claimant their invite expired, when the invite is fine and the
+// session is the shared demo account.
+describe('isDemoClaimRejection', () => {
+  it('should_be_true_for_the_rpc_rejection', () => {
+    expect(isDemoClaimRejection(new Error('demo_account_cannot_claim'))).toBe(true)
+  })
+
+  it('should_be_true_when_postgres_wraps_the_message', () => {
+    expect(isDemoClaimRejection({ message: 'demo_account_cannot_claim', code: 'P0001' })).toBe(true)
+  })
+
+  it('should_be_false_for_a_different_rpc_rejection', () => {
+    expect(isDemoClaimRejection(new Error('token_not_found'))).toBe(false)
+  })
+
+  it('should_be_false_for_a_non_error_value', () => {
+    expect(isDemoClaimRejection(null)).toBe(false)
   })
 })

@@ -5,7 +5,8 @@
  * `replaceProfilePhoto` re-fetches the current `photo_path` (so a stale caller can't
  * clobber a concurrent change), uploads, repoints, removes the just-uploaded file if
  * the DB write fails, then best-effort deletes the old file; `removeProfilePhoto`
- * repoints to `null` before its best-effort delete.
+ * repoints to `null` before its best-effort delete. `markProfileAsDemo` flags the shared `/demo`
+ * account (#1641).
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -102,6 +103,20 @@ export async function updateProfilePhotoPath(profileId: string, photoPath: strin
   const { error } = await supabase
     .from('profiles')
     .update({ photo_path: photoPath })
+    .eq('id', profileId)
+  if (error) throw error
+}
+
+/**
+ * Flags a profile as the shared `/demo` account (#1641), which `claim_managed_member` refuses to
+ * bind a real barn's invite stub to. Service-role callers only — `profiles_own_update`'s WITH
+ * CHECK pins the column, so a user-context client's write is refused by RLS.
+ */
+export async function markProfileAsDemo(profileId: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_demo: true })
     .eq('id', profileId)
   if (error) throw error
 }

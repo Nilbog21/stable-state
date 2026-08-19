@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
-import { upsertProfile, updateContactInfo } from '@/lib/db/profiles'
+import { upsertProfile, updateContactInfo, markProfileAsDemo } from '@/lib/db/profiles'
 import { createServiceClient, findAuthUserIdsByEmails } from './script-utils'
 
 // Email/password provider must be enabled in the Supabase dashboard:
@@ -101,6 +101,11 @@ async function run() {
     },
     supabase
   )
+  // #1641: what `claim_managed_member` checks to refuse binding a real barn's invite stub to the
+  // shared demo account. Set here so a fresh project is correct from the start; prod's already-
+  // minted demo user is flagged by `createOrResumeDemoBarn` instead, since re-running this
+  // script against prod would rotate a credential Vercel holds.
+  await markProfileAsDemo(profile.id, supabase)
 
   console.log(formatDemoCredentialsOutput(DEMO_EMAIL, password))
 }

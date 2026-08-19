@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
 import { getUserMembership, createActiveMembership } from '@/lib/db/barn-memberships'
-import { getProfileByUserId } from '@/lib/db/profiles'
+import { getProfileByUserId, markProfileAsDemo } from '@/lib/db/profiles'
 import { createServiceClient, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
 import { seedBarn, withEmailDomain, DEV_MANAGER_2 } from '../../../scripts/seed-barn'
 
@@ -67,6 +67,18 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   }
 
   const serviceClient = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+
+  // #1641: `claim_managed_member` refuses to bind a real barn's invite stub to a profile flagged
+  // here, which is what stops the *try the demo, then accept the invite you were sent* journey
+  // from handing a real membership to the shared demo account. Set on every visit rather than at
+  // bootstrap because prod's demo user predates the column and re-running `setup-demo-user.ts`
+  // there would rotate the credential Vercel holds — this flags it on the first visit after
+  // deploy, necessarily before that session could claim anything. Gated on the email so an
+  // already-signed-in real user, who skips the sign-in above and gets a demo barn under their own
+  // account, is not flagged and locked out of their own future invites.
+  if (user.email === DEMO_USER_EMAIL) {
+    await markProfileAsDemo(profile.id, serviceClient)
+  }
 
   const cookieStore = await cookies()
   const existingSlug = cookieStore.get(DEMO_BARN_SLUG_COOKIE)?.value

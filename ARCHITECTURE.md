@@ -65,6 +65,7 @@ Policy-helper functions — all `SECURITY DEFINER` SQL, each existing to break a
 - `auth_can_read_instructor_membership(p_membership_id, p_barn_id)` — auth check inside `get_instructor_membership_names` (a row policy would expose `invite_token`)
 - `auth_is_active_barn_member(p_barn_id)` — used inside `get_active_barn_member_summaries` (same `invite_token` reason)
 - `auth_can_read_barn_member_profile(p_profile_id)` — backs `profiles_barn_members_read`
+- `auth_profile_is_demo(p_id)` — pins `profiles.is_demo` in `profiles_own_update`'s WITH CHECK (#1641)
 - `auth_is_horse_owner(p_horse_id, p_barn_id)` — the ownership branch inside both horse-privilege helpers below; also backs `horse_documents_delete_ownership` and `rider_horse_documents_delete` (#1547)
 - `auth_get_horse_document_privilege(p_horse_id, p_barn_id)` — backs the two `horse_documents` privilege policies and their `storage.objects` counterparts (#1359)
 - `auth_has_horse_lesson_read_privilege(p_horse_id, p_barn_id)` — backs `lesson_horses_select_horse_privilege` and `get_horse_projected_exhaustion`'s check
