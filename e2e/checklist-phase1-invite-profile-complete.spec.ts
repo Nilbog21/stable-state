@@ -16,7 +16,7 @@
 // Phase 1's invite-claim story, from an unauthenticated browser through to a completed profile
 // (checklists/pre-release/phase-1-setup.md, the block from "Open that path on your app origin (no
 // existing session)" through "You hold **manager** in Dev Barn"). One managed stub, one invite
-// token, five checks.
+// token, seven checks.
 //
 // The line between them — "Sign in with the **`DEV_EMAIL`** Google account" — stays `(manual)`
 // and is not automated here: the app offers no password login form (both `login/page.tsx` files
@@ -118,7 +118,8 @@ import {
   throwawayAuthEmail,
   E2E_PASSWORD,
 } from './support/fixtures'
-import { upsertProfile, markProfileAsDemo } from '@/lib/db/profiles'
+import { upsertProfile } from '@/lib/db/profiles'
+import { mustAffect } from './support/must-affect'
 import { waitForBarnPageHydrated } from './support/hydration'
 
 /**
@@ -150,8 +151,12 @@ const DEMO_KEY = `${BARN_KEY}-demo`
 /** Held to the same collision constraints as `INVITEE` — see its note. */
 const DEMO_PERSON = { firstName: 'Marlowe', lastName: 'Vantassel' }
 
-/** `register/page.tsx`'s `<DemoSession>` heading. A regex because the page renders `&rsquo;`. */
-const DEMO_SCREEN_HEADING = /signed in as the demo account/i
+/**
+ * `register/page.tsx`'s `<DemoSession>` heading, minus its leading "You&rsquo;re" — the entity is
+ * the one part of that heading a literal cannot spell, and `getByRole`'s `name` is a
+ * case-insensitive *substring* match by default, so dropping the word is the whole fix.
+ */
+const DEMO_SCREEN_HEADING = 'signed in as the demo account'
 
 let inviteToken: string | null = null
 
@@ -199,8 +204,17 @@ base.beforeAll(async ({ browser }, testInfo) => {
     admin
   )
   // Service-role, necessarily: `profiles_own_update`'s WITH CHECK pins the column against the
-  // user's own client, which is the whole of what #1641's RLS migration does.
-  await markProfileAsDemo(demoProfile.id, admin)
+  // user's own client (and `profiles_own_delete` refuses the DELETE half of the same bypass).
+  //
+  // Raw call rather than `markProfileAsDemo`, so the write can end `.select('id')` and be counted:
+  // the DAL function is a bare `.update().eq()`, and a filter that matched nothing would come back
+  // `error: null` and leave both checks below asserting against an unflagged profile
+  // (spec-maintenance rule 5). Exactly one row — the id is `upsertProfile`'s primary key.
+  mustAffect(
+    await admin.from('profiles').update({ is_demo: true }).eq('id', demoProfile.id).select('id'),
+    `flag ${demoEmail}'s profile as the demo account`,
+    1
+  )
   demoContext = await browser.newContext({ storageState: await authStorageState(demoEmail, E2E_PASSWORD) })
   demoPage = await demoContext.newPage()
 })
