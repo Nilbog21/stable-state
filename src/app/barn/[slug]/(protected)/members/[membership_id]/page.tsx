@@ -234,7 +234,7 @@ export default async function MemberDetailPage({
         </div>
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset
-          <img src={photoUrl} alt={displayName} className="h-48 w-auto rounded-md" />
+          <img src={photoUrl} alt={displayName} className="max-h-48 w-auto max-w-full rounded-md" />
         ) : (
           <EmptyState heading="No photo yet" subtext="A photo helps other members identify this person at a glance." />
         )}

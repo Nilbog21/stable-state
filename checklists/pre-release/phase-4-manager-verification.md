@@ -230,7 +230,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: the_photo_upload_screen_has_no_expiration_reminder_date_field) That screen has no Expiration reminder date field
 - [ ] (e2e: choosing_a_photo_file_uploads_it_immediately_with_no_upload_click) Tap **Choose File** and select `scripts/data/clover-photo.png` (non-square) → the upload starts immediately, with no separate Upload button to click
 - [ ] (e2e: the_uploaded_horse_photo_displays_on_the_horse_detail_page) You land back on the horse detail page with the photo displayed
-- [ ] (e2e: the_horse_photo_is_scaled_to_a_fixed_height_with_its_aspect_ratio_preserved) That photo is scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
+- [ ] (e2e: the_horse_photo_is_scaled_within_a_capped_height_with_its_aspect_ratio_preserved) That photo is scaled to fit within a maximum height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square. (#1639 made the height a **maximum** rather than a fixed value, so a photo narrower than the content box now renders shorter than the cap rather than being stretched to it)
+- [ ] (e2e: the_horse_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved) (#1639) Narrow the window to a phone width (390px) → the photo shrinks to the content width with its ratio intact. Pre-fix the header stretched it to the full content width while the fixed height held it at 128px, so the horse came out squashed
+- [ ] (e2e: a_portrait_horse_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved) (#1639) Set `scripts/data/portrait-photo.png` (260×900, taller than wide) on a horse and view it at that same phone width → it renders tall and narrow, both `|` edge bars still visible. This is the orientation the stretch bug mangled most visibly
 - [ ] (e2e: replacing_the_horse_photo_uploads_the_new_file_immediately) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
 - [ ] (e2e: the_replaced_horse_photo_displays_the_new_image) The displayed word changes from `clover` to `butter`
 - [ ] (e2e: the_replaced_horse_photo_survives_a_reload_and_the_old_one_is_gone) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
@@ -314,6 +316,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e: removing_the_member_photo_restores_the_set_photo_button) The **Set Photo** button returns with it
 - [ ] (e2e: claimed_member_photo_section_offers_no_edit_controls_to_a_manager) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
 - [ ] (e2e: uploading_your_own_photo_displays_it_on_your_member_page) On your own manager member detail page, tap **Set Photo** and upload `scripts/data/clover-photo.png` → the photo displays
+- [ ] (e2e: the_member_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved) (#1639) At a phone width (390px), a member photo shrinks to the content width with its ratio intact — pre-fix a 900×260 asset rendered 358×192, nearly twice as wide as it should be for its height
 - [ ] (e2e: your_own_member_photo_persists_across_a_reload) That photo persists on reload
 - [ ] (e2e: uploading_a_member_document_redirects_back_to_the_member_page) Tap **Add Document** on Harper Test's page and upload `scripts/data/test_1_kb.pdf` → redirects back to the member page
 - [ ] (e2e: the_uploaded_member_document_is_listed_on_the_member_page) The document is listed there

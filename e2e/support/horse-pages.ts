@@ -26,6 +26,10 @@ export const CLOVER_PHOTO = 'clover-photo.png'
 export const BUTTER_PHOTO = 'butter-photo.jpg'
 export const HARPER_PHOTO = 'harper-photo.png'
 export const EMERY_PHOTO = 'emery-photo.jpg'
+// #1639's asset, and the only one of the five that is taller than it is wide. No checklist line
+// names it as an upload source — it exists so the geometry assertions have a portrait case, which
+// is the axis the header's stretch bug distorted and the four landscape assets cannot reach.
+export const PORTRAIT_PHOTO = 'portrait-photo.png'
 
 const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
 
@@ -34,10 +38,10 @@ const digestOf = (bytes: Buffer | Uint8Array): string => createHash('sha256').up
  *
  * The rendered <img src> is a signed URL over the stored object, so fetching it and hashing the
  * response identifies *which file* is on screen, exactly — and it carries its own negative half,
- * since matching one asset's digest excludes the other three by construction.
+ * since matching one asset's digest excludes the other four by construction.
  */
 const ASSET_BY_DIGEST = new Map(
-  [CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO].map(
+  [CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, PORTRAIT_PHOTO].map(
     (name) => [digestOf(readFileSync(assetPath(name))), name] as const
   )
 )

@@ -22,7 +22,8 @@
 // between them is the column the lock keys on.
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, setHorsePhoto, assetPath } from './support/fixtures'
-import { CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, displayedPhotoAsset, photoControls, photoImage, photoSection } from './support/horse-pages'
+import { CLOVER_PHOTO, BUTTER_PHOTO, HARPER_PHOTO, EMERY_PHOTO, PORTRAIT_PHOTO, displayedPhotoAsset, photoControls, photoImage, photoSection } from './support/horse-pages'
+import { settledImageGeometry } from './support/read'
 import { uploadForm } from './support/document-upload'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -33,6 +34,7 @@ const CLOVER = 'Clover'
 const APPLE = 'Apple'
 const BUTTER = 'Butter'
 const DAISY = 'Daisy'
+const POPPY = 'Poppy'
 
 // The one assertion here that waits on a server action plus its revalidate with nothing else to
 // synchronise on. `toBeVisible` is a web-first matcher, so it runs on expect's 5s default and
@@ -47,24 +49,48 @@ const SETTLE_AFTER_WRITE = 15_000
 // support/horse-pages.ts with the consts themselves.
 const TEST_PDF = 'test_1_kb.pdf'
 
-// All four images are 900x260 — deliberately non-square, which is the whole point of the
+// Four of the five images are 900x260 — deliberately non-square, which is the whole point of the
 // "aspect ratio preserved" line's "not cropped off to make a square". Written as literals
 // rather than measured from the file: the
 // assertion has to disagree with a wrong render, and a value read from the same bytes the browser
 // decoded would agree with any bug in between.
 const PHOTO_NATURAL_SIZE = '900x260'
-// Tailwind h-32 on the <img> (horses/[id]/page.tsx — h-48 until #1390 moved the photo into the
-// identity header). w-auto then makes the width follow the intrinsic ratio:
-// 128 * 900 / 260 = 443.077..., which rounds to 443. A square crop would render 128x128, so the
-// pair fails on width while still passing on height — which is what makes the triple a real test
-// of "aspect ratio preserved" rather than of "an image is present".
+// #1639's fifth asset, the only portrait one.
+const PORTRAIT_NATURAL_SIZE = '260x900'
+// Tailwind max-h-32 on the <img> (horses/[id]/page.tsx — a plain h-32 until #1639, and h-48 until
+// #1390 moved the photo into the identity header). w-auto then makes the width follow the
+// intrinsic ratio: 128 * 900 / 260 = 443.077..., which rounds to 443. A square crop would render
+// 128x128, so the pair fails on width while still passing on height — which is what makes the
+// triple a real test of "aspect ratio preserved" rather than of "an image is present".
 const PHOTO_RENDERED_HEIGHT = 128
 const PHOTO_RENDERED_WIDTH = 443
+
+// #1639. A phone, and the content box the page gives an image inside one: `mx-auto max-w-3xl px-4`
+// on <main>, so min(768, viewport - 32). At 390 that is 358, narrower than the 443 the landscape
+// assets want, so the width cap binds and the height follows the ratio down to
+// 358 * 260 / 900 = 103.4, rounding to 103.
+//
+// The width was always capped — Tailwind preflight ships `img { max-width: 100%; height: auto }`.
+// What broke was the pairing: an explicit `h-32` overrides preflight's `height: auto`, leaving a
+// capped width against a pinned height, which squashes. Below the `sm` breakpoint the header
+// compounded it, being a flex *column* with `align-items` defaulted to `stretch`, so the image was
+// pushed out to the full 358 rather than merely allowed to reach it.
+//
+// The landscape case renders 358x128 pre-fix — a ratio of 2.80 against the file's 3.46, wrong but
+// not obviously so. The portrait case is where it is unmissable: the same 358x128 for a file that
+// is 0.29 wide per unit tall.
+const PHONE_VIEWPORT = { width: 390, height: 844 }
+const PHONE_CONTENT_WIDTH = 358
+const PHOTO_PHONE_HEIGHT = 103
+// The portrait asset is the other way round: 128 * 260 / 900 = 36.98 -> 37, well inside 358, so
+// `max-h-32` is what binds and the width is what follows.
+const PORTRAIT_PHONE_WIDTH = 37
 
 let cloverId: string
 let appleId: string
 let butterId: string
 let daisyId: string
+let poppyId: string
 /** Captured in the seed so the storage probe in the reload test can't depend on `barn.data`. */
 let seedClient: SupabaseClient | null = null
 /** Clover's pre-replace storage object path, captured by the replace test and read by the next. */
@@ -99,6 +125,12 @@ const barn = withBarn('phase4-horses-photos', async ({ supabase, barn, members }
   // assertion depend on declaration order and fail under a standalone --grep of it.
   daisyId = (await addHorse(supabase, barn.id, DAISY, { owningMemberId: members.rider2.membershipId })).id
   await setHorsePhoto(supabase, barn, daisyId, BUTTER_PHOTO)
+
+  // #1639's portrait case. A fifth horse rather than a second photo on an existing one: every
+  // other horse here is already pinned to a starting state some block depends on, and this one
+  // only ever has its geometry read, so it stays out of all of their ways.
+  poppyId = (await addHorse(supabase, barn.id, POPPY)).id
+  await setHorsePhoto(supabase, barn, poppyId, PORTRAIT_PHOTO)
 })
 
 // ---------------------------------------------------------------------------
@@ -291,27 +323,17 @@ test.describe.serial('the horse photo lifecycle', () => {
 
   // The line's "both | edge bars still visible, not cropped off to make a square" is a pixel
   // judgment; the invariant underneath it is geometric and is asserted in full. `natural` proves the
-  // whole 900x260 image is what loaded (nothing cropped on the way in), `height` proves the fixed
-  // h-48 scale, and `width` proves the ratio survived it — a square crop renders 192x192 and fails
-  // on natural and width both. What this cannot see is the image's pixel content; that limit is
-  // stated in the PR body rather than papered over.
+  // whole 900x260 image is what loaded (nothing cropped on the way in), `height` proves the capped
+  // max-h-32 scale, and `width` proves the ratio survived it — a square crop renders 128x128 and
+  // fails on natural and width both. What this cannot see is the image's pixel content; that limit
+  // is stated in the PR body rather than papered over.
   //
-  // decode() rather than a bare read: naturalWidth is 0 until the image is decoded, and evaluate()
-  // waits only for the element to be attached.
-  test('the_horse_photo_is_scaled_to_a_fixed_height_with_its_aspect_ratio_preserved @manager', async ({ page }) => {
+  // settledImageGeometry rather than a bare read: naturalWidth is 0 until the image is decoded,
+  // and evaluate() waits only for the element to be attached.
+  test('the_horse_photo_is_scaled_within_a_capped_height_with_its_aspect_ratio_preserved @manager', async ({ page }) => {
     await page.goto(horseUrl(cloverId))
 
-    const geometry = await photoImage(page, CLOVER).evaluate(async (el: HTMLImageElement) => {
-      if (!el.complete) await el.decode()
-      const box = el.getBoundingClientRect()
-      return {
-        natural: `${el.naturalWidth}x${el.naturalHeight}`,
-        height: Math.round(box.height),
-        width: Math.round(box.width),
-      }
-    })
-
-    expect(geometry).toEqual({
+    expect(await settledImageGeometry(photoImage(page, CLOVER))).toEqual({
       natural: PHOTO_NATURAL_SIZE,
       height: PHOTO_RENDERED_HEIGHT,
       width: PHOTO_RENDERED_WIDTH,
@@ -510,5 +532,58 @@ test.describe('a horse whose photo was set by its owning member', () => {
     const unlocked = await photoControls(page).count()
 
     expect({ locked, unlocked }).toEqual({ locked: 0, unlocked: 2 })
+  })
+})
+
+// #1639. The header's stretch, and the capped-width-against-pinned-height squash underneath it —
+// both only visible narrower than the `sm` breakpoint, and every other test in this file runs at
+// the project's default width, where the header is already a row and 443px fits.
+//
+// setViewportSize inline rather than checklist-phase7-multi-barn.spec.ts:80-99's
+// beforeAll/afterAll pair: that protocol exists because phase7 holds a *file-scoped* page built in
+// its own beforeAll, so a width set on it outlives the test that set it. Here `page` is the
+// test-scoped fixture (support/test.ts), so each test opens a fresh one and there is nothing to
+// restore — the precedent is checklist-phase4-lessons-list.spec.ts:279. The half of that protocol
+// that does apply is honoured: the expectation reads `page.viewportSize()!.width` rather than
+// hardcoding 390, which is fact 6 — four mobile tests once passed unchanged at 1280x800.
+//
+// Daisy and Poppy rather than Clover: the lifecycle chain above ends with Clover's photo removed,
+// so reading her geometry here would depend on declaration order and fail under a standalone
+// --grep. Both of these are seeded, so this block depends on nothing but its own barn.
+test.describe('a horse photo on a phone', () => {
+  test('the_horse_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved @manager', async ({ page }) => {
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.goto(horseUrl(daisyId))
+
+    expect({
+      viewportWidth: page.viewportSize()!.width,
+      ...(await settledImageGeometry(photoImage(page, DAISY))),
+    }).toEqual({
+      viewportWidth: PHONE_VIEWPORT.width,
+      natural: PHOTO_NATURAL_SIZE,
+      width: PHONE_CONTENT_WIDTH,
+      height: PHOTO_PHONE_HEIGHT,
+    })
+  })
+
+  // The portrait case, and the one that isolates `items-start` from the height change. With
+  // `max-h-32` alone, a *landscape* image comes out right even under `stretch` — the stretched
+  // width is 358, `height: auto` follows to 103, and 103 is inside the cap, so the ratio survives
+  // by luck. A portrait image stretched to 358 computes 1239 tall, the cap clamps that to 128, and
+  // the width stays 358. So this is the only assertion here that fails if `items-start` is dropped
+  // and the rest of the fix kept.
+  test('a_portrait_horse_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved @manager', async ({ page }) => {
+    await page.setViewportSize(PHONE_VIEWPORT)
+    await page.goto(horseUrl(poppyId))
+
+    expect({
+      viewportWidth: page.viewportSize()!.width,
+      ...(await settledImageGeometry(photoImage(page, POPPY))),
+    }).toEqual({
+      viewportWidth: PHONE_VIEWPORT.width,
+      natural: PORTRAIT_NATURAL_SIZE,
+      width: PORTRAIT_PHONE_WIDTH,
+      height: PHOTO_RENDERED_HEIGHT,
+    })
   })
 })
