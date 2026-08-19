@@ -11,6 +11,32 @@ import type { ScheduleItem } from '../types'
 import { calendarDate } from '@/lib/local-day'
 
 describe('mergeScheduleItems', () => {
+  // #1640 follow-up: only appointments can be all-day. A lesson or barn event always carries a
+  // real instant, so the flag is hard-false on those branches rather than plumbed through.
+  it('should_carry_the_all_day_flag_from_an_expense_row', () => {
+    const result = mergeScheduleItems([], [{ id: 'e1', start: '2026-07-03T00:00:00', horse_ids: [], all_day: true }])
+
+    expect(result[0].allDay).toBe(true)
+  })
+
+  it('should_default_an_expense_row_without_the_flag_to_not_all_day', () => {
+    const result = mergeScheduleItems([], [{ id: 'e1', start: '2026-07-03T10:00:00', horse_ids: [] }])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_never_mark_a_lesson_as_all_day', () => {
+    const result = mergeScheduleItems([{ id: 'l1', start: '2026-07-03T10:00:00', instructor_id: null, horse_ids: [] }], [])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_never_mark_a_barn_event_as_all_day', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'ev1', start: '2026-07-03T10:00:00' }])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
     expect(mergeScheduleItems([], [])).toEqual([])
   })
@@ -618,6 +644,36 @@ describe('getScheduleForRange', () => {
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
     expect(result[0].start).toBe('2026-07-03T00:00:00')
+  })
+
+  // #1640 follow-up: midnight is a real clock time, so `start` alone cannot say whether the
+  // appointment is all-day or genuinely at 12:00 AM. The Month view renders `start` blindly and
+  // showed "12:00 AM" for every time-less appointment until this flag gave it the distinction.
+  it('should_mark_a_time_less_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(true)
+  })
+
+  it('should_not_mark_a_timed_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_not_mark_a_midnight_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '00:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(false)
   })
 
   it('should_sort_a_time_less_appointment_ahead_of_a_timed_item_on_the_same_day', async () => {
