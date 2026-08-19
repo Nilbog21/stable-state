@@ -227,10 +227,30 @@ describe('HorseDetailPage', () => {
       expect(screen.queryByText('No owner set')).toBeNull()
     })
 
-    it('should_render_the_photo_at_header_height', async () => {
+    // #1639: both dimensions are maximums, so the browser scales the image down to fit inside
+    // whichever binds and keeps the ratio itself. Asserted as `max-h-32`, not `h-32` — the
+    // latter is a substring of the former, so it stayed green through the very change it was
+    // there to notice.
+    it('should_render_the_photo_at_a_capped_header_height', async () => {
       vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
       render(await HorseDetailPage({ params: pageParams }))
-      expect(screen.getByRole('img', { name: 'Thunderbolt' }).className).toContain('h-32')
+      expect(screen.getByRole('img', { name: 'Thunderbolt' }).className).toContain('max-h-32')
+    })
+
+    it('should_cap_the_photo_at_the_content_width', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+      render(await HorseDetailPage({ params: pageParams }))
+      expect(screen.getByRole('img', { name: 'Thunderbolt' }).className).toContain('max-w-full')
+    })
+
+    // The stretch bug itself. The header is a flex *column* below `sm`, so its cross axis is
+    // horizontal and `align-items` falls back to `stretch`, which pulls a `w-auto` image out to
+    // the full content width. `sm:items-start` alone left exactly the phone case uncovered, so
+    // this asserts the unprefixed class — the one a `sm:`-only rule cannot satisfy.
+    it('should_align_the_header_to_the_start_at_every_breakpoint', async () => {
+      vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+      const { container } = render(await HorseDetailPage({ params: pageParams }))
+      expect([...container.querySelector('header')!.classList]).toContain('items-start')
     })
   })
 

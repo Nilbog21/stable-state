@@ -2,6 +2,7 @@
 // covers: src/app/barn/[slug]/(protected)/documents/new/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addManagedMember, setMemberPhoto, assetPath, E2E_USERS } from './support/fixtures'
+import { settledImageGeometry } from './support/read'
 import { mustSucceed } from '@/lib/db/service-role'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -380,4 +381,49 @@ test('rider_add_document_button_links_to_the_rider_upload_page @manager', async 
     'href',
     `/barn/${barn.slug}/documents/new?entity=rider&id=${secondRiderId}`
   )
+})
+
+// ---------------------------------------------------------------------------
+// The member photo on a phone (#1639)
+// ---------------------------------------------------------------------------
+
+// The member page had no geometry assertion at any viewport, and it is the simpler half of #1639:
+// no flex parent, so no stretch — just an explicit `h-48` against Tailwind preflight's
+// `img { max-width: 100%; height: auto }`. The explicit height wins over preflight's `height:
+// auto`, so preflight's width cap has nothing to scale *with*: on a screen narrower than the
+// image wants, the width is clipped to the content box while the height stays pinned, and the
+// photo is squashed rather than either scaled or overflowing. Pre-fix this reads 358x192 for a
+// 900x260 file — a person 1.9x too wide.
+//
+// (The issue predicted 664x192 plus a horizontal scrollbar. That would be the render if nothing
+// capped the width at all; preflight does, which is why the symptom is a squash and not a
+// scrollbar, and why an overflow assertion here passes just as well before the fix as after.)
+//
+// `mx-auto max-w-3xl px-4` on <main> gives min(768, viewport - 32) = 358 at this width, so the
+// post-fix height follows the ratio down to 358 * 260 / 900 = 103.4 -> 103.
+//
+// Rowan, the claimed trainer, because the seed gives her emery-photo.jpg in beforeAll and no test
+// in this file writes to it — so this stands alone rather than joining the serial chain that sets,
+// replaces and finally removes Harper's.
+//
+// setViewportSize inline, with the width read back in the expectation: same reasoning as
+// checklist-phase4-horses-photos.spec.ts's phone block, stated in full there.
+const PHONE_VIEWPORT = { width: 390, height: 844 }
+const PHOTO_NATURAL_SIZE = '900x260'
+const PHONE_CONTENT_WIDTH = 358
+const PHOTO_PHONE_HEIGHT = 103
+
+test('the_member_photo_fits_a_phone_viewport_with_its_aspect_ratio_preserved @manager', async ({ page }) => {
+  await page.setViewportSize(PHONE_VIEWPORT)
+  await page.goto(memberUrl(claimedTrainerId))
+
+  expect({
+    viewportWidth: page.viewportSize()!.width,
+    ...(await settledImageGeometry(section(page, 'Photo').getByRole('img', { name: fullName(CLAIMED_TRAINER) }))),
+  }).toEqual({
+    viewportWidth: PHONE_VIEWPORT.width,
+    natural: PHOTO_NATURAL_SIZE,
+    width: PHONE_CONTENT_WIDTH,
+    height: PHOTO_PHONE_HEIGHT,
+  })
 })

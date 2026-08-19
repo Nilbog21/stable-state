@@ -13,6 +13,13 @@ import { fileURLToPath } from 'node:url'
 // generation time; asserting that here would need a JPEG SOF parser for a one-time property
 // of a file that never changes. Same for "opens in a browser PDF viewer" — verified with
 // ghostscript at generation and by a manual open during /testIssue.
+//
+// #1639 carves out one exception: portrait-photo.png. Every other asset is 900x260, so
+// "landscape" is an incidental property of files that exist to be non-square; being *portrait*
+// is this one's entire reason to exist — it is the only asset that exercises the axis the
+// stretch bug distorted, and an e2e geometry expectation is written against its exact ratio.
+// A PNG needs no decoder for that: the IHDR is fixed-offset, so the check below costs 8 bytes
+// of arithmetic rather than the SOF parser a JPEG would have needed.
 const DATA_DIR = join(dirname(fileURLToPath(import.meta.url)), 'data')
 
 // src/lib/db/document-storage.ts's MAX_FILE_SIZE.
@@ -23,6 +30,7 @@ const MANIFEST = [
   'emery-photo.jpg',
   'clover-photo.png',
   'harper-photo.png',
+  'portrait-photo.png',
   'test_1_kb.pdf',
   'test_4_4_mb.pdf',
   'test_4_6_mb.pdf',
@@ -44,7 +52,7 @@ describe('scripts/data test assets', () => {
     })
   })
 
-  describe.each(['clover-photo.png', 'harper-photo.png'])('%s', (name) => {
+  describe.each(['clover-photo.png', 'harper-photo.png', 'portrait-photo.png'])('%s', (name) => {
     it('should_start_with_the_png_magic_bytes', () => {
       expect(readFileSync(join(DATA_DIR, name)).subarray(0, 8)).toEqual(PNG_MAGIC)
     })
@@ -58,6 +66,13 @@ describe('scripts/data test assets', () => {
     it('should_end_with_the_pdf_eof_marker', () => {
       expect(readFileSync(join(DATA_DIR, name)).subarray(-6).toString('latin1').trim()).toBe('%%EOF')
     })
+  })
+
+  it('should_ship_portrait_photo_taller_than_it_is_wide', () => {
+    // PNG IHDR: an 8-byte signature, then a 4-byte length and the 'IHDR' tag, then the
+    // dimensions — width big-endian u32 at 16, height at 20.
+    const header = readFileSync(join(DATA_DIR, 'portrait-photo.png'))
+    expect(header.readUInt32BE(20)).toBeGreaterThan(header.readUInt32BE(16))
   })
 
   it('should_keep_test_4_4_mb_under_the_upload_size_limit', () => {

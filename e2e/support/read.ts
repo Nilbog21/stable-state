@@ -1,4 +1,4 @@
-// Settling text reads for the checklist specs (#1243).
+// Settling reads for the checklist specs (#1243) — text, and since #1639 rendered image geometry.
 //
 // `Locator.allInnerTexts` and `Locator.allTextContents` are one-shot: unlike `expect`'s matchers
 // they do not auto-retry, so a table that hasn't rendered yet yields `[]` and the read returns
@@ -44,6 +44,9 @@
 
 import type { Locator } from '@playwright/test'
 
+/** What an `<img>` was decoded from, and what the browser actually laid it out as. */
+export type ImageGeometry = { natural: string; width: number; height: number }
+
 /**
  * Every match's `innerText`, read only once the first match is **visible**. Not for anything
  * that can't be — a collapsed `<select>`'s options, a closed `<details>`' contents — where the
@@ -67,4 +70,30 @@ export async function settledInnerTexts(locator: Locator): Promise<string[]> {
 export async function settledTextContents(locator: Locator): Promise<string[]> {
   await locator.first().waitFor()
   return locator.allTextContents()
+}
+
+/**
+ * An `<img>`'s intrinsic size and its rendered box, read only once the image has **decoded**
+ * (#1639).
+ *
+ * The same one-shot hazard this module exists for, in a second shape: `naturalWidth` is 0 until
+ * the bytes are decoded, and `evaluate` waits only for the element to be attached — so a read
+ * taken too early reports `0x0` against a real rendered box, which is a wrong ratio rather than
+ * an empty one.
+ *
+ * `natural` travels with the box on purpose. It is what separates "the ratio survived the scale"
+ * from "a differently-proportioned file got uploaded": an assertion on width and height alone
+ * cannot tell those apart, and both are ways the photo can come out wrong.
+ */
+export async function settledImageGeometry(locator: Locator): Promise<ImageGeometry> {
+  await locator.waitFor()
+  return locator.evaluate(async (el: HTMLImageElement) => {
+    if (!el.complete) await el.decode()
+    const box = el.getBoundingClientRect()
+    return {
+      natural: `${el.naturalWidth}x${el.naturalHeight}`,
+      width: Math.round(box.width),
+      height: Math.round(box.height),
+    }
+  })
 }
