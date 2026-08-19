@@ -53,7 +53,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_without_a_lesson_read_privilege_sees_no_upcoming_lessons_section) (#999) On that same horse, no Upcoming Lessons section appears either
 - [ ] (e2e: rider_dashboard_day_view_shows_only_lessons_she_is_enrolled_in) Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day
 - [ ] (e2e: rider_dashboard_day_view_shows_no_appointment_cards) (#1148) It shows no appointments — manager and trainer only; riders gained no appointment visibility
-- [ ] (e2e: rider_dashboard_day_view_hides_an_event_outside_her_visible_to_roles) It shows no events outside her role's `visible_to_roles`
+- [ ] (e2e: rider_dashboard_day_view_hides_an_event_outside_her_visible_to_roles) It shows the day's all-roles barn event and **only** that one — an event whose `visible_to_roles` omits rider does not reach her. Both halves are one assertion on purpose: a calendar rendering no events at all fails it too
 - [ ] (e2e: rider_dashboard_week_view_shows_only_her_enrolled_lessons_across_the_week) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
 - [ ] (e2e: rider_dashboard_month_view_tints_only_days_she_is_enrolled_on) (#1558) In Month view, only days Dana is enrolled on are tinted — another rider's day is left untinted
 - [ ] (e2e: rider_dashboard_month_view_day_panel_shows_no_appointment_cards) (#1558) In Month view, tapping a day shows her enrolled lessons and no appointment cards
