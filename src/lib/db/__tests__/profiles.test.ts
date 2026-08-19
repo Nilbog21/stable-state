@@ -12,7 +12,7 @@ vi.mock('../document-storage', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { uploadFile, removeFile } from '../document-storage'
-import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, getProfileById, updateProfile, updateProfilePhotoPath, replaceProfilePhoto, removeProfilePhoto } from '../profiles'
+import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, getProfileById, updateProfile, updateProfilePhotoPath, replaceProfilePhoto, removeProfilePhoto, markProfileAsDemo } from '../profiles'
 
 const mockProfile = createMockProfile()
 
@@ -730,5 +730,53 @@ describe('removeProfilePhoto', () => {
     await removeProfilePhoto('profile-1', injectedClient)
 
     expect(removeFile).toHaveBeenCalledWith('barn-1/profile-photos/profile-1/photo.jpg', injectedClient)
+  })
+})
+
+// #1641. Written only by service-role callers — `scripts/setup-demo-user.ts` at bootstrap and
+// `createOrResumeDemoBarn` on the first `/demo` visit after deploy. RLS pins the column against
+// a self-update, so a user-context client calling this would be refused by the policy.
+describe('markProfileAsDemo', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_set_is_demo_true', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await markProfileAsDemo('profile-1')
+
+    expect(update).toHaveBeenCalledWith({ is_demo: true })
+  })
+
+  it('should_filter_by_profile_id', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq }) }),
+    } as any)
+
+    await markProfileAsDemo('profile-1')
+
+    expect(eq).toHaveBeenCalledWith('id', 'profile-1')
+  })
+
+  it('should_throw_when_update_fails', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: new Error('update failed') })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq }) }),
+    } as any)
+
+    await expect(markProfileAsDemo('profile-1')).rejects.toThrow('update failed')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq }) }) } as any
+
+    await markProfileAsDemo('profile-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })

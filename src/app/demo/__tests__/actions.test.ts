@@ -15,7 +15,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   createActiveMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/profiles', () => ({ getProfileByUserId: vi.fn() }))
+vi.mock('@/lib/db/profiles', () => ({ getProfileByUserId: vi.fn(), markProfileAsDemo: vi.fn() }))
 vi.mock('@/lib/db/service-role', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/service-role')>()
   return {
@@ -48,7 +48,7 @@ vi.mock('next/headers', () => ({ cookies: mockCookies }))
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
 import { getUserMembership, createActiveMembership } from '@/lib/db/barn-memberships'
-import { getProfileByUserId } from '@/lib/db/profiles'
+import { getProfileByUserId, markProfileAsDemo } from '@/lib/db/profiles'
 import { createServiceClient, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
 import { seedBarn } from '../../../../scripts/seed-barn'
 import { createOrResumeDemoBarn } from '../actions'
@@ -82,6 +82,7 @@ describe('createOrResumeDemoBarn', () => {
     vi.mocked(getUserMembership).mockReset().mockResolvedValue(null)
     vi.mocked(createActiveMembership).mockReset()
     vi.mocked(getProfileByUserId).mockReset().mockResolvedValue(demoProfile as any)
+    vi.mocked(markProfileAsDemo).mockReset()
     vi.mocked(createServiceClient).mockReset().mockReturnValue({} as any)
     vi.mocked(findOrCreateAuthUser).mockReset().mockResolvedValue('morgan-user-1')
     vi.mocked(teardownBarnData).mockReset()
@@ -89,6 +90,37 @@ describe('createOrResumeDemoBarn', () => {
 
     setupAuth(demoUser)
     mockCookieStore()
+  })
+
+  // #1641. Prod's demo user was minted before the column existed, and re-running
+  // `setup-demo-user.ts` against prod is not an option (`.env.local` carries no prod
+  // DEMO_USER_PASSWORD, so #1607's reuse path would mint a fresh one and break Vercel's copy).
+  // Flagging here is what gets it set — necessarily before that session could claim anything.
+  it('should_flag_the_demo_profile_as_demo', async () => {
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+    expect(markProfileAsDemo).toHaveBeenCalledWith('profile-1', expect.anything())
+  })
+
+  it('should_flag_the_demo_profile_when_the_session_was_just_signed_in', async () => {
+    setupAuth(null)
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { signInWithPassword: vi.fn().mockResolvedValue({ data: { user: demoUser }, error: null }) },
+    } as any)
+
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(markProfileAsDemo).toHaveBeenCalledWith('profile-1', expect.anything())
+  })
+
+  // The reverse direction of the same ambient-session assumption: an already-authenticated real
+  // user who visits /demo skips the sign-in and gets a demo barn under their own account. Benign
+  // on its own, but flagging that profile would lock them out of every future invite claim.
+  it('should_not_flag_the_profile_when_an_unrelated_user_is_already_signed_in', async () => {
+    setupAuth(createMockUser({ id: 'real-user-1', email: 'jane@example.com' }))
+
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(markProfileAsDemo).not.toHaveBeenCalled()
   })
 
   it('should_redirect_to_login_when_demo_user_email_missing', async () => {

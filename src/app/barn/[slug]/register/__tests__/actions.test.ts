@@ -3,7 +3,13 @@ import { createMockUser } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
-vi.mock('@/lib/db/member-invites', () => ({ claimManagedMember: vi.fn() }))
+// `isDemoClaimRejection` is spread in real, not stubbed — it is the whole of what routes the
+// demo rejection away from the "invite invalid" screen, so a stub would assert nothing.
+vi.mock('@/lib/db/member-invites', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/member-invites')>()),
+  claimManagedMember: vi.fn(),
+}))
+vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -14,7 +20,8 @@ const mockCookies = vi.hoisted(() => vi.fn())
 vi.mock('next/headers', () => ({ cookies: mockCookies }))
 
 import { claimManagedMember } from '@/lib/db/member-invites'
-import { acceptInvite } from '../actions'
+import { createClient } from '@/lib/supabase/server'
+import { acceptInvite, signOutAndReturnToInvite } from '../actions'
 
 function mockCookieStore() {
   const set = vi.fn()
@@ -88,5 +95,57 @@ describe('acceptInvite', () => {
     const { set } = mockCookieStore()
     await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
     expect(set).not.toHaveBeenCalled()
+  })
+})
+
+// #1641. The demo session is caught at render, so this path needs a forged or raced POST to
+// reach — but it must not tell the claimant their invite expired when the invite is fine.
+// Redirecting back to the register page with the token intact (and no `error`) lets the page's
+// own demo branch render the right screen, rather than minting a third error state.
+describe('acceptInvite with a demo session', () => {
+  beforeEach(() => {
+    mockRedirect.mockClear()
+    vi.mocked(claimManagedMember).mockReset()
+    setupAuth(createMockUser({ id: 'demo-user-1', email: 'demo@stable-state.app' }))
+    vi.mocked(claimManagedMember).mockRejectedValue(new Error('demo_account_cannot_claim'))
+    mockCookieStore()
+  })
+
+  it('should_redirect_back_to_the_invite_without_an_error_param', async () => {
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/register?token=tok-1')
+  })
+
+  it('should_not_set_barn_session_cookie', async () => {
+    const { set } = mockCookieStore()
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(set).not.toHaveBeenCalled()
+  })
+})
+
+// `signOut` from `@/app/actions/auth` lands on `/login` and strands the invite — the claimant
+// would have to find the emailed link again. This keeps the journey going.
+describe('signOutAndReturnToInvite', () => {
+  const signOut = vi.fn()
+
+  beforeEach(() => {
+    mockRedirect.mockClear()
+    signOut.mockReset().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockReset().mockResolvedValue({ auth: { signOut } } as any)
+  })
+
+  it('should_sign_the_session_out', async () => {
+    await expect(signOutAndReturnToInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(signOut).toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_the_barn_login_carrying_the_token', async () => {
+    await expect(signOutAndReturnToInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login?token=tok-1')
+  })
+
+  it('should_encode_the_token', async () => {
+    await expect(signOutAndReturnToInvite('green-acres', 'a b')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login?token=a%20b')
   })
 })
