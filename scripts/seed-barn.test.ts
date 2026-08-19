@@ -262,15 +262,32 @@ describe('buildExpenseSeeds', () => {
     expect(seeds.filter((s) => s.daysOffset > 0 && s.time !== null)).toHaveLength(1)
   })
 
-  it('should_include_exactly_one_future_dated_date_only_expense', () => {
+  // #950's fixture, restated for #1640: a future date-only expense stays off the dashboard —
+  // which is now the *unticked* ones, since a ticked date-only row is exactly the all-day case
+  // shows_on_calendar opened up. Both branches get a seed of their own below.
+  it('should_include_exactly_one_date_only_expense_for_tomorrow', () => {
     const seeds = buildExpenseSeeds(NOW)
-    expect(seeds.filter((s) => s.daysOffset > 0 && s.time === null)).toHaveLength(1)
+    expect(seeds.filter((s) => s.daysOffset === 1 && s.time === null)).toHaveLength(1)
   })
 
-  it('should_set_the_future_date_only_expense_to_tomorrow', () => {
+  it('should_leave_the_tomorrow_date_only_expense_unticked', () => {
     const seeds = buildExpenseSeeds(NOW)
-    const dateOnly = seeds.find((s) => s.daysOffset > 0 && s.time === null)
-    expect(dateOnly?.daysOffset).toBe(1)
+    expect(seeds.find((s) => s.daysOffset === 1)?.showsOnCalendar).toBe(false)
+  })
+
+  it('should_include_exactly_one_ticked_future_dated_date_only_expense', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.filter((s) => s.daysOffset > 0 && s.time === null && s.showsOnCalendar)).toHaveLength(1)
+  })
+
+  it('should_tick_every_future_dated_timed_expense', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.filter((s) => s.daysOffset > 0 && s.time !== null).every((s) => s.showsOnCalendar)).toBe(true)
+  })
+
+  it('should_leave_every_past_dated_expense_unticked', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.filter((s) => s.daysOffset < 0).every((s) => !s.showsOnCalendar)).toBe(true)
   })
 
   it('should_leave_the_future_date_only_expense_unpriced', () => {

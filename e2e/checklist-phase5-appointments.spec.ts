@@ -119,3 +119,52 @@ test('manager_appointment_page_shows_the_amount @manager', async ({ page }) => {
   await page.goto(appointmentPath())
   await expect(page.getByLabel(/amount/i)).toHaveValue(String(APPOINTMENT_AMOUNT))
 })
+
+// ---------------------------------------------------------------------------
+// #1640 — the "Show on barn calendar" checkbox
+// ---------------------------------------------------------------------------
+//
+// The seeded appointment carries a time, so `addExpense`'s default ticked it — which is what
+// makes the edit form the right place to read the persisted flag: it round-trips through
+// update_expense_with_horses, and a writer that dropped p_shows_on_calendar would show an
+// unticked box here while every in-memory unit test still passed.
+
+function calendarCheckbox(page: Page) {
+  return page.getByRole('checkbox', { name: /show on barn calendar/i })
+}
+
+test('manager_appointment_page_shows_the_barn_calendar_checkbox @manager', async ({ page }) => {
+  await page.goto(appointmentPath())
+  await expect(calendarCheckbox(page)).toBeVisible()
+})
+
+test('manager_appointment_page_reflects_the_stored_calendar_flag @manager', async ({ page }) => {
+  await page.goto(appointmentPath())
+  await expect(calendarCheckbox(page)).toBeChecked()
+})
+
+// Setting a time auto-ticks the box, one-way: the strongest available signal that this row is a
+// visit rather than a bill. Read on the New Appointment form, where the box starts unticked —
+// on the edit form above it is already ticked and the branch would not fire.
+test('manager_new_appointment_form_starts_with_the_calendar_checkbox_unticked @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/expenses/new`)
+  await expect(calendarCheckbox(page)).not.toBeChecked()
+})
+
+test('manager_setting_a_time_ticks_the_barn_calendar_checkbox @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/expenses/new`)
+  await expect(calendarCheckbox(page)).not.toBeChecked()
+  await page.getByLabel(/^time/i).fill('14:00')
+  await expect(calendarCheckbox(page)).toBeChecked()
+})
+
+// The durability half. Clearing the time must not untick — the box is the manager's decision
+// once made, and only the empty-to-set transition on an unticked box ever writes to it.
+test('manager_clearing_the_time_leaves_the_barn_calendar_checkbox_ticked @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/expenses/new`)
+  const time = page.getByLabel(/^time/i)
+  await time.fill('14:00')
+  await expect(calendarCheckbox(page)).toBeChecked()
+  await time.fill('')
+  await expect(calendarCheckbox(page)).toBeChecked()
+})

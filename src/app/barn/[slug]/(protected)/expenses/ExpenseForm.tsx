@@ -21,6 +21,7 @@ type ExpenseFormInitial = {
   appliesToAllHorses: boolean
   horseIds: string[]
   paymentType?: PaymentType | null
+  showsOnCalendar?: boolean
 }
 
 type ExpenseFormProps = {
@@ -94,7 +95,9 @@ export function ExpenseForm({
   const [paymentType, setPaymentType] = useState(initial?.paymentType ?? '')
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
+  const [showsOnCalendar, setShowsOnCalendar] = useState(initial?.showsOnCalendar ?? false)
   const [typeFlashing, setTypeFlashing] = useState(false)
+  const [calendarFlashing, setCalendarFlashing] = useState(false)
   const [calendarMonth, setCalendarMonth] = useState((defaultDate ?? todayStr).slice(0, 7))
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
   const [dirty, setDirty] = useState(false)
@@ -136,6 +139,19 @@ export function ExpenseForm({
       .map((id) => horseNameById.get(id))
       .filter((name): name is string => name !== undefined)
     return names.length ? `Lesson — ${names.join(', ')}` : 'Lesson'
+  }
+
+  // Naming a time is the strongest available signal that this is a visit rather than a bill,
+  // so it ticks the calendar box for the manager and flashes it so they see it happen (#1640).
+  // Deliberately one-way and once: it fires only on empty → set with the box still off, so
+  // clearing the time never unticks and a manual untick survives every later time edit.
+  function handleTimeChange(next: string) {
+    if (next !== '' && expenseTime === '' && !showsOnCalendar) {
+      setShowsOnCalendar(true)
+      setCalendarFlashing(true)
+      setTimeout(() => setCalendarFlashing(false), 600)
+    }
+    setExpenseTime(next)
   }
 
   async function handleRecipientBlur() {
@@ -288,11 +304,26 @@ export function ExpenseForm({
             name="expense_time"
             type="time"
             value={expenseTime}
-            onChange={(e) => setExpenseTime(e.target.value)}
+            onChange={(e) => handleTimeChange(e.target.value)}
             className={inputClassName}
           />
         </div>
       )}
+
+      {/* Rendered on past dates too, unlike Time above: a past appointment can still be worth
+        * a calendar entry, and hiding the control would strand an already-ticked row with no
+        * way to untick it. */}
+      <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+        <input
+          type="checkbox"
+          name="shows_on_calendar"
+          value="true"
+          checked={showsOnCalendar}
+          onChange={(e) => setShowsOnCalendar(e.target.checked)}
+          className={`rounded border-zinc-300 transition dark:border-zinc-600 ${calendarFlashing ? 'ring-2 ring-blue-400' : ''}`}
+        />
+        Show on barn calendar
+      </label>
 
       <div>
         <label htmlFor="expense-amount" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

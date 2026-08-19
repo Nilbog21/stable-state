@@ -503,6 +503,11 @@ export interface Appointment {
   expense_type: string
   notes: string | null
   applies_to_all_horses: boolean
+  /** #1640 — whether this appointment appears on the dashboard, the month conflict calendar
+   *  and the `.ics` feed. Replaced the `expense_time IS NOT NULL` proxy rule those surfaces
+   *  used to stand in, which both hid a time-less farrier day and had no way to keep an
+   *  Insurance bill off a subscriber's phone. */
+  shows_on_calendar: boolean
   created_at: string
   updated_at: string
 }
@@ -522,10 +527,6 @@ export interface ExpenseWithHorses extends HorseExpense {
   horse_ids: string[]
 }
 
-export interface ScheduledAppointment extends ExpenseWithHorses {
-  expense_time: string
-}
-
 export interface ExpenseInput {
   // Write inputs stay bare `string` (#1223 scope ruling): a form field is unvalidated text
   // until something checks it, and branding it here would only move the lie earlier.
@@ -539,6 +540,7 @@ export interface ExpenseInput {
   horseIds?: string[]
   paymentType?: PaymentType | null
   occurredAt?: string
+  showsOnCalendar?: boolean
 }
 
 export interface HorseExpenseSummary {
@@ -572,13 +574,18 @@ export interface RecipientExpenseDetailRow {
   amount: number
 }
 
-export type CalendarFeedItemType = 'lesson' | 'event'
+export type CalendarFeedItemType = 'lesson' | 'event' | 'appointment'
 
 export interface CalendarFeedItem {
   itemType: CalendarFeedItemType
   id: string
   title: string
-  startsAt: string // true UTC instant
+  /** A true UTC instant — except on an all-day item, where it carries the raw "YYYY-MM-DD"
+   *  digits instead (see `allDay`). */
+  startsAt: string
+  /** #1640 — set only by a time-less appointment, which renders as a `VALUE=DATE` VEVENT.
+   *  Absent on every lesson and event, which are always instants. */
+  allDay?: boolean
   durationMinutes: number
   notes: string | null
 }

@@ -198,6 +198,11 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: the_edit_form_opens_prefilled_with_the_expenses_stored_values) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
 - [ ] (e2e: the_edit_form_opens_with_the_stored_all_and_horse_checkbox_state) That form opens with the correct All / specific-horse checkbox state
 - [ ] (e2e: manager_appointment_page_shows_the_amount) That edit form's **Amount** field shows the stored amount (the manager half of `phase-5-trainer.md`'s `trainer_appointment_page_never_shows_the_amount` check)
+- [ ] (e2e: manager_appointment_page_shows_the_barn_calendar_checkbox) (#1640) That edit form carries a **Show on barn calendar** checkbox
+- [ ] (e2e: manager_appointment_page_reflects_the_stored_calendar_flag) (#1640) That checkbox reflects the appointment's stored setting
+- [ ] (e2e: manager_new_appointment_form_starts_with_the_calendar_checkbox_unticked) (#1640) On the new-expense form the checkbox starts unticked
+- [ ] (e2e: manager_setting_a_time_ticks_the_barn_calendar_checkbox) (#1640) Setting a **Time** on that form ticks the checkbox for you
+- [ ] (e2e: manager_clearing_the_time_leaves_the_barn_calendar_checkbox_ticked) (#1640) Clearing the Time again leaves it ticked — the tick is yours once made
 - [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient
 - [ ] (e2e: changing_the_amount_and_saving_updates_the_card) Change the amount and save → the card shows the new amount
 - [ ] (e2e: a_payment_type_set_on_the_new_expense_form_persists) On the new-expense form, set a **Payment Type**, save → it persists on reload
@@ -654,6 +659,10 @@ Calendar feed (#1018):
 - [ ] (e2e: the_calendar_feed_url_serves_a_text_calendar_response) Open that URL directly (or `curl` it) — it returns `Content-Type: text/calendar`
 - [ ] (e2e: the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson) Its body includes VEVENT entries for the barn's lessons
 - [ ] (e2e: the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn) Those entries cover lessons across the whole barn (manager sees everything), not just your own
+- [ ] (e2e: the_calendar_feed_body_carries_a_vevent_for_a_timed_appointment) (#1640) Its body includes a VEVENT for a vet/farrier appointment ticked **Show on barn calendar**
+- [ ] (e2e: the_calendar_feed_renders_a_time_less_appointment_as_an_all_day_event) (#1640) A ticked appointment with no time appears as an all-day entry on its own barn date, not at a converted hour
+- [ ] (e2e: the_calendar_feed_omits_an_appointment_that_is_not_ticked_for_the_calendar) (#1640) An appointment left unticked (a bill — Insurance, Feed, Tack) appears nowhere in the feed
+- [ ] (e2e: the_calendar_feed_carries_no_appointment_amount_anywhere) (#1640) No appointment's amount appears anywhere in the payload
 - [ ] (e2e: regenerating_the_calendar_link_issues_a_different_token) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
 - [ ] (e2e: the_pre_regenerate_calendar_url_stops_working) Open the pre-regenerate URL — it now 404s
 

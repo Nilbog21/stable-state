@@ -55,8 +55,10 @@
 //    `unauthenticatedRequest` below is that third form, and throws if it ever stops being it.
 import type { APIRequestContext, PlaywrightWorkerArgs } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
-import { addTier, addHorse, addPaidLesson, addUnpaidLesson, daysFromNow, E2E_USERS } from './support/fixtures'
+import { addTier, addHorse, addPaidLesson, addUnpaidLesson, addExpense, daysFromNow, E2E_USERS, type SeededAppointment } from './support/fixtures'
 import type { Lesson } from '@/lib/db/types'
+import { wallClockToInstant } from '@/lib/barn-timezone'
+import { addDays, calendarDate } from '@/lib/local-day'
 
 // One horse per lesson, and the horse name is the only term that differs between the two ICS
 // SUMMARY lines asserted below — both lessons carry the same rider, so if these two were equal
@@ -70,6 +72,20 @@ const ZEPHYR = 'Zephyr'
  * calendar day and the date axis stops discriminating.
  */
 const LESSON_TIME = '21:00'
+
+/** Same hour and same reason as `LESSON_TIME` — see note 1. */
+const APPOINTMENT_TIME = '21:00'
+
+const VET = 'Riverside Vet Clinic'
+const FARRIER = 'Dr. Hoof Farrier'
+const INSURER = 'Barn Insurance Co.'
+
+/**
+ * Deliberately not a round figure: the "no amount reaches the feed" assertion scans the whole
+ * payload for these digits, and a value like 450 could plausibly collide with a UID's hex or a
+ * timestamp. 4137.29 cannot.
+ */
+const UNLISTED_AMOUNT = 4137.29
 
 /**
  * `get_calendar_feed` titles a normal lesson `Lesson - <rider initials>, <horses>`, where the
@@ -95,6 +111,19 @@ let managerLesson: Lesson
  */
 let trainerLesson: Lesson
 
+/**
+ * #1640's two branches, one appointment each. `timedAppointment` carries a barn-local time and
+ * converts to a UTC `DTSTART` like a lesson does; `allDayAppointment` carries none and renders
+ * as a `VALUE=DATE` VEVENT whose digits are the barn's own calendar day, never an instant.
+ *
+ * `unlistedAppointment` is the control: same table, `shows_on_calendar` false, and it must
+ * appear in no VEVENT at all — that flag is the only thing keeping an Insurance bill off a
+ * manager's phone, so a spec that seeded only ticked rows would pass with the gate removed.
+ */
+let timedAppointment: SeededAppointment
+let allDayAppointment: SeededAppointment
+let unlistedAppointment: SeededAppointment
+
 const barn = withBarn('calendar-feed', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, { name: 'Feed Tier', price: 60, isDefault: true })
   const comet = await addHorse(supabase, barn.id, COMET)
@@ -119,6 +148,37 @@ const barn = withBarn('calendar-feed', async ({ supabase, barn, members }) => {
     fee: 60,
     tierName: tier.name,
   })
+
+  // Barn-local 21:00, the same hour and for the same reason as the lessons above (note 1): at a
+  // daytime hour the UTC instant lands on the barn's own calendar day and the date component of
+  // DTSTART stops discriminating the two frames.
+  timedAppointment = await addExpense(supabase, barn, {
+    at: daysFromNow(5, barn.timezone),
+    time: APPOINTMENT_TIME,
+    recipient: VET,
+    expenseType: 'Veterinary',
+    horseIds: [comet.id],
+  })
+
+  // No `time`, so `showsOnCalendar` has to be explicit — the fixture's default mirrors the old
+  // proxy rule, and defaulting is exactly what this appointment exists to disprove.
+  allDayAppointment = await addExpense(supabase, barn, {
+    at: daysFromNow(6, barn.timezone),
+    showsOnCalendar: true,
+    recipient: FARRIER,
+    expenseType: 'Farrier',
+    horseIds: [zephyr.id],
+  })
+
+  // Amounted, so it is also the fixture the "no cost reaches the feed" assertion reads: the
+  // amount exists in appointment_costs and must appear in no line of the payload.
+  unlistedAppointment = await addExpense(supabase, barn, {
+    at: daysFromNow(7, barn.timezone),
+    showsOnCalendar: false,
+    recipient: INSURER,
+    expenseType: 'Insurance',
+    amount: UNLISTED_AMOUNT,
+  })
 })
 
 function profileUrl(): string {
@@ -128,6 +188,17 @@ function profileUrl(): string {
 function uidFor(lesson: Lesson): string {
   return `lesson-${lesson.id}@stablestate.app`
 }
+
+function appointmentUidFor(appointment: SeededAppointment): string {
+  return `appointment-${appointment.id}@stablestate.app`
+}
+
+/**
+ * `get_calendar_feed` titles an appointment `<expense_type> — <recipient>`, reusing the label
+ * `schedule.ts` builds for the in-app calendar so the two surfaces cannot drift. The em dash is
+ * the RPC's; `escapeIcsText` leaves it alone (only `\`, newline, `,` and `;` are escaped).
+ */
+const appointmentSummaryFor = (type: string, recipient: string) => `${type} — ${recipient}`
 
 // ---------------------------------------------------------------------------
 // The copied URLs, and the guard that keeps a stale one from failing quietly
@@ -275,6 +346,19 @@ function veventBlocks(body: string): string[][] {
   return blocks
 }
 
+/**
+ * An all-day VEVENT writes `DTSTART;VALUE=DATE:20260801`, not `DTSTART:...`, so `property`
+ * cannot read it — its `startsWith(`${name}:`)` is what makes a timed lookup unambiguous, and
+ * relaxing that would let a DATE line answer a DTSTART query and hide exactly the regression
+ * this file is here to catch. A separate reader keeps the two forms distinguishable.
+ */
+function dateProperty(block: string[], name: string): string {
+  const prefix = `${name};VALUE=DATE:`
+  const line = block.find((l) => l.startsWith(prefix))
+  if (line === undefined) throw new Error(`no ${name};VALUE=DATE in VEVENT block:\n${block.join('\n')}`)
+  return line.slice(prefix.length)
+}
+
 function property(block: string[], name: string): string {
   const line = block.find((l) => l.startsWith(`${name}:`))
   // Throws rather than returning undefined: a block that lost the property must fail loudly
@@ -285,6 +369,23 @@ function property(block: string[], name: string): string {
 
 function allUids(body: string): string[] {
   return veventBlocks(body).map((block) => property(block, 'UID'))
+}
+
+function blockFor(body: string, uid: string): string[] {
+  const block = veventBlocks(body).find((b) => property(b, 'UID') === uid)
+  if (!block) throw new Error(`no VEVENT with UID ${uid} among [${allUids(body).join(', ')}]`)
+  return block
+}
+
+/** The all-day counterpart of `veventFor`, reading the DATE-valued form of both bounds. */
+function allDayVeventFor(body: string, uid: string): { uid: string; dtstart: string; dtend: string; summary: string } {
+  const block = blockFor(body, uid)
+  return {
+    uid: property(block, 'UID'),
+    dtstart: dateProperty(block, 'DTSTART'),
+    dtend: dateProperty(block, 'DTEND'),
+    summary: property(block, 'SUMMARY'),
+  }
 }
 
 /** Located by UID, never by index — see note 2 in the file header. */
@@ -309,6 +410,24 @@ function veventFor(body: string, uid: string): { uid: string; dtstart: string; d
  */
 function icsUtc(instant: string): string {
   return new Date(instant).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+}
+
+/**
+ * The barn-local-to-UTC conversion note 1 insists on doing explicitly, for an appointment —
+ * whose `expense_date`/`expense_time` are zoneless barn-local digits rather than the instant a
+ * lesson's `lesson_at` already is.
+ */
+function wallClockToUtc(day: string, time: string): string {
+  return wallClockToInstant(`${day}T${time}:00`, barn.data.barn.timezone).toISOString()
+}
+
+/** RFC 5545 §3.3.4: a DATE value is bare "YYYYMMDD". */
+function compactDate(day: string): string {
+  return day.replace(/-/g, '')
+}
+
+function nextDay(day: string): string {
+  return addDays(calendarDate(day), 1)
 }
 
 /** `buildEventLines` sets DTEND = DTSTART + `durationMinutes`; the RPC hardcodes 60 for a lesson. */
@@ -504,6 +623,68 @@ test.describe('the calendar feed payload', () => {
     // discriminates two distinct regressions with one assertion: collapse the manager branch
     // to the trainer's and the trainer-instructed lesson vanishes while the manager's own
     // survives; collapse it to the rider's and both vanish.
-    expect(allUids(response.body).sort()).toEqual([uidFor(managerLesson), uidFor(trainerLesson)].sort())
+    expect(allUids(response.body).sort()).toEqual(
+      [
+        uidFor(managerLesson),
+        uidFor(trainerLesson),
+        appointmentUidFor(timedAppointment),
+        appointmentUidFor(allDayAppointment),
+      ].sort()
+    )
+  })
+
+  // #1640 — vet and farrier visits reach the feed. get_calendar_feed shipped before #1148
+  // renamed horse_expenses to appointments, so until now a manager saw lessons and barn events
+  // in their .ics and no appointments at all.
+  test('the_calendar_feed_body_carries_a_vevent_for_a_timed_appointment @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
+
+    // DTEND equals DTSTART: the RPC gives an appointment durationMinutes 0, matching
+    // barn_events and mergeScheduleItems' expense branch — it records when someone is coming,
+    // not for how long. The instant is derived the same explicit barn-local-to-UTC way the
+    // lesson expectations are (note 1).
+    const startsAt = wallClockToUtc(timedAppointment.expense_date, APPOINTMENT_TIME)
+    expect(veventFor(response.body, appointmentUidFor(timedAppointment))).toEqual({
+      uid: appointmentUidFor(timedAppointment),
+      dtstart: icsUtc(startsAt),
+      dtend: icsUtc(startsAt),
+      summary: appointmentSummaryFor('Veterinary', VET),
+    })
+  })
+
+  // The whole reason the flag exists rather than a naive union: a time-less appointment is a
+  // real farrier day, not a bill, and it has to arrive as an all-day entry. The digits are the
+  // barn's own calendar day, asserted against expense_date directly — a DTSTART built by
+  // round-tripping that day through an instant would land on the neighbouring day for any
+  // subscriber the other side of UTC midnight, which is the regression this form prevents.
+  test('the_calendar_feed_renders_a_time_less_appointment_as_an_all_day_event @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
+
+    expect(allDayVeventFor(response.body, appointmentUidFor(allDayAppointment))).toEqual({
+      uid: appointmentUidFor(allDayAppointment),
+      dtstart: compactDate(allDayAppointment.expense_date),
+      // Exclusive, per RFC 5545 — a one-day event ends on the following day.
+      dtend: compactDate(nextDay(allDayAppointment.expense_date)),
+      summary: appointmentSummaryFor('Farrier', FARRIER),
+    })
+  })
+
+  // The gate itself. Set equality above already fails if an unticked row appears, but only
+  // while the ticked ones stay exactly two — this reads the control appointment by name, so it
+  // keeps its claim whatever else the fixture grows.
+  test('the_calendar_feed_omits_an_appointment_that_is_not_ticked_for_the_calendar @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
+
+    expect(allUids(response.body)).not.toContain(appointmentUidFor(unlistedAppointment))
+  })
+
+  // get_calendar_feed is SECURITY DEFINER and bypasses RLS, so nothing but the SQL itself stops
+  // it joining appointment_costs — and #1148 split that table off precisely so a trainer's read
+  // returns no money. A leak would be invisible in the app and visible only here, on a
+  // subscriber's phone, which is why this scans the entire payload rather than one VEVENT.
+  test('the_calendar_feed_carries_no_appointment_amount_anywhere @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
+
+    expect(payloadLines(response.body).filter((line) => line.includes(String(UNLISTED_AMOUNT)))).toEqual([])
   })
 })

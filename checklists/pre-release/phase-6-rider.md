@@ -107,6 +107,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: rider_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: rider_calendar_feed_carries_only_lessons_they_are_enrolled_in) (#1018) On the same Profile page, Dana's Calendar Feed link includes only lessons Dana is enrolled in, not other riders' lessons
+- [ ] (e2e: rider_calendar_feed_carries_no_barn_appointment) (#1640) That feed carries no vet/farrier appointments either — appointments reach managers and trainers only
 
 Visual sweep — one pass per feature area, walked at the end of the phase while still acting as the rider (#1414):
 
