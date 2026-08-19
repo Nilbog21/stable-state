@@ -56,17 +56,25 @@
 //    stays asserted where it lives,
 //    in checklist-phase4-calendar-feed.spec.ts's `unauthenticatedRequest`.
 import { test, expect, withBarn, type Page } from './support/test'
-import { addHorse, addUnpaidLesson, daysFromNow } from './support/fixtures'
+import { addHorse, addUnpaidLesson, addExpense, daysFromNow, type SeededAppointment } from './support/fixtures'
 import { hydrateByDriving } from './support/hydration'
 import type { Lesson } from '@/lib/db/types'
 
 const TRAINER_HORSE = 'Solstice'
 const RIDER_HORSE = 'Lantern'
+const FARRIER = 'Dr. Hoof Farrier'
 
 /** Instructed by the trainer login; its rider is the stub, never the rider login. See note 2. */
 let trainerLesson: Lesson
 /** Ridden by the rider login; its instructor is the manager, never the trainer login. */
 let riderLesson: Lesson
+/**
+ * #1640 — a barn appointment, ticked for the calendar. It is a third negative control on one
+ * more variable: get_calendar_feed's appointment branch admits manager and trainer only, so the
+ * same row proves the trainer's feed gained appointments AND that the rider's did not, with no
+ * per-role fixture.
+ */
+let appointment: SeededAppointment
 
 const barn = withBarn('phase56-nav-profile', async ({ supabase, barn, members }) => {
   const solstice = await addHorse(supabase, barn.id, TRAINER_HORSE)
@@ -90,6 +98,14 @@ const barn = withBarn('phase56-nav-profile', async ({ supabase, barn, members })
     horseIds: [lantern.id],
     riderIds: [members.rider.membershipId],
     fee: 60,
+  })
+
+  appointment = await addExpense(supabase, barn, {
+    at: daysFromNow(5, barn.timezone),
+    time: '14:00',
+    recipient: FARRIER,
+    expenseType: 'Farrier',
+    horseIds: [solstice.id],
   })
 })
 
@@ -302,6 +318,15 @@ test('rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page @rider', a
  *
  * "Copied!" is the sync point for the clipboard write, because it is set only after `writeText`
  * RESOLVES — the app's own signal that the clipboard is populated (e2e/CLAUDE.md fact 8).
+ *
+ * `Get my calendar link` is clicked CONDITIONALLY, the same branch
+ * checklist-phase4-calendar-feed.spec.ts's `copyFreshCalendarLink` carries. `calendar_feed_token`
+ * persists on the membership, so the second call for a given login finds the token already minted
+ * and the section rendering `Copy Link`/`Regenerate` in that button's place — an unconditional
+ * click then waits out the whole test budget on a control that will never reappear. #1640 added
+ * the second calendar-feed test per project to this file, which is what first made that reachable.
+ * The guard is the SECTION heading rather than either button, because `count()` does not retry and
+ * a read landing before render returns 0; the heading renders whichever branch is showing.
  */
 async function copyCalendarFeedUrl(
   page: Page,
@@ -312,7 +337,9 @@ async function copyCalendarFeedUrl(
   await openAvatarMenu(page)
   await closeAvatarMenu(page)
 
-  await page.getByRole('button', { name: 'Get my calendar link', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Calendar Feed', exact: true })).toBeVisible()
+  const getLink = page.getByRole('button', { name: 'Get my calendar link', exact: true })
+  if (await getLink.count()) await getLink.click()
   await page.getByRole('button', { name: 'Copy Link', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Copied!', exact: true })).toBeVisible()
   return page.evaluate(() => navigator.clipboard.readText())
@@ -337,6 +364,10 @@ function uidFor(lesson: Lesson): string {
   return `lesson-${lesson.id}@stablestate.app`
 }
 
+function appointmentUid(): string {
+  return `appointment-${appointment.id}@stablestate.app`
+}
+
 test('trainer_calendar_feed_carries_only_lessons_they_instruct @trainer', async ({ page, context, request }) => {
   const url = await copyCalendarFeedUrl(page, context)
   const response = await request.get(url)
@@ -344,7 +375,18 @@ test('trainer_calendar_feed_carries_only_lessons_they_instruct @trainer', async 
   // Set equality over EVERY UID, not containment: containment on `trainerLesson` alone would
   // pass against a feed that also leaked the manager-instructed one, which is the whole of what
   // "not Blake's" claims.
-  expect(feedUids(await response.text())).toEqual([uidFor(trainerLesson)])
+  expect(feedUids(await response.text())).toEqual([uidFor(trainerLesson), appointmentUid()].sort())
+})
+
+// #1640 — the trainer half of the appointment branch. Split out from the line above rather than
+// folded into it: that line's claim is about which *lessons* survive the instructor filter, and
+// widening its expectation to cover appointments too would leave the checklist with one line
+// asserting two unrelated things.
+test('trainer_calendar_feed_carries_a_barn_appointment @trainer', async ({ page, context, request }) => {
+  const url = await copyCalendarFeedUrl(page, context)
+  const response = await request.get(url)
+
+  expect(feedUids(await response.text())).toContain(appointmentUid())
 })
 
 test('rider_calendar_feed_carries_only_lessons_they_are_enrolled_in @rider', async ({ page, context, request }) => {
@@ -354,4 +396,16 @@ test('rider_calendar_feed_carries_only_lessons_they_are_enrolled_in @rider', asy
   // The mirror claim, and the reason the fixture seeds two lessons rather than one: the stub
   // rider's lesson is in the same barn and is excluded on enrollment alone.
   expect(feedUids(await response.text())).toEqual([uidFor(riderLesson)])
+})
+
+// The other half, and the reason the appointment needs no rider-specific fixture: the same
+// ticked row the trainer sees is absent here. get_calendar_feed's appointment CTE gates on
+// `r.role IN ('manager', 'trainer')`, matching appointments' own RLS — a rider has no read on
+// that table in the app either, and SECURITY DEFINER means this SQL is the only thing enforcing
+// it for the feed.
+test('rider_calendar_feed_carries_no_barn_appointment @rider', async ({ page, context, request }) => {
+  const url = await copyCalendarFeedUrl(page, context)
+  const response = await request.get(url)
+
+  expect(feedUids(await response.text())).not.toContain(appointmentUid())
 })

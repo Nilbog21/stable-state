@@ -27,6 +27,9 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_conflict_dot_fires_on_the_selected_horses_appointment_day) (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 3) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
 - [ ] (e2e: trainer_dashboard_calendar_shows_the_appointment_alongside_their_own_lessons) (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
 - [ ] (e2e: trainer_dashboard_appointment_card_is_a_link_to_its_detail_page) (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
+- [ ] (e2e: trainer_dashboard_shows_a_ticked_appointment_that_carries_no_time) (#1640) An appointment ticked **Show on barn calendar** but carrying no time also appears on that calendar — before, a time-less appointment was invisible everywhere
+- [ ] (e2e: trainer_dashboard_labels_a_time_less_appointment_all_day) (#1640) That card reads **All day** where a timed one shows its time
+- [ ] (e2e: trainer_dashboard_hides_an_appointment_that_is_not_ticked_for_the_calendar) (#1640) An appointment left unticked does not appear on the calendar at all
 - [ ] (e2e: trainer_can_open_the_appointment_detail_page) (#1148) Opening it reaches a page headed **Appointment**
 - [ ] (e2e: trainer_appointment_page_shows_the_recipient) (#1148) That page shows the appointment's recipient
 - [ ] (e2e: trainer_appointment_page_shows_the_assigned_horse) (#1148) That page shows the appointment's horse
@@ -106,6 +109,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e: trainer_profile_reached_from_the_avatar_menu_renders_the_barn_nav_bar) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
 - [ ] (e2e: trainer_profile_nav_carries_the_same_four_link_set_as_a_barn_page) That nav bar carries the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (e2e: trainer_calendar_feed_carries_only_lessons_they_instruct) (#1018) On the same Profile page, your Calendar Feed link includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
+- [ ] (e2e: trainer_calendar_feed_carries_a_barn_appointment) (#1640) That same feed also includes the barn's vet/farrier appointments — the ones ticked **Show on barn calendar** — which never reached it before
 
 Visual sweep — one pass per feature area, walked at the end of the phase while still acting as the trainer (#1414):
 

@@ -11,6 +11,32 @@ import type { ScheduleItem } from '../types'
 import { calendarDate } from '@/lib/local-day'
 
 describe('mergeScheduleItems', () => {
+  // #1640 follow-up: only appointments can be all-day. A lesson or barn event always carries a
+  // real instant, so the flag is hard-false on those branches rather than plumbed through.
+  it('should_carry_the_all_day_flag_from_an_expense_row', () => {
+    const result = mergeScheduleItems([], [{ id: 'e1', start: '2026-07-03T00:00:00', horse_ids: [], all_day: true }])
+
+    expect(result[0].allDay).toBe(true)
+  })
+
+  it('should_default_an_expense_row_without_the_flag_to_not_all_day', () => {
+    const result = mergeScheduleItems([], [{ id: 'e1', start: '2026-07-03T10:00:00', horse_ids: [] }])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_never_mark_a_lesson_as_all_day', () => {
+    const result = mergeScheduleItems([{ id: 'l1', start: '2026-07-03T10:00:00', instructor_id: null, horse_ids: [] }], [])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_never_mark_a_barn_event_as_all_day', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'ev1', start: '2026-07-03T10:00:00' }])
+
+    expect(result[0].allDay).toBe(false)
+  })
+
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
     expect(mergeScheduleItems([], [])).toEqual([])
   })
@@ -447,14 +473,14 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
-  // expenses query: select → eq(barn_id) → not(expense_time) → gte(expense_date) → lte(expense_date) → resolves
+  // expenses query: select → eq(barn_id) → or(shows_on_calendar/expense_time) → gte(expense_date) → lte(expense_date) → resolves
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLte = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lte: mockLte })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockOr = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ or: mockOr })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockNot, mockGte, mockLte }
+    return { select: mockSelect, mockEq, mockOr, mockGte, mockLte }
   }
 
   // appointment_horses junction: select → eq(barn_id) → in(appointment_id) → resolves
@@ -573,8 +599,13 @@ describe('getScheduleForRange', () => {
     expect(mockIs).toHaveBeenCalledWith('cancelled_at', null)
   })
 
-  it('should_exclude_expenses_with_null_expense_time_at_the_query_level', async () => {
-    const { select, mockNot } = makeExpensesChain([])
+  // #1640: this query answers "is anything booked?" — the #1019 month conflict calendar reads it
+  // as well as the dashboard — so it returns the union of the old expense_time proxy and the new
+  // flag. Narrowing it to the flag alone drops an unticked *timed* appointment out of
+  // double-booking detection, which is #1019's whole purpose. Which of these rows a calendar
+  // then *displays* is the dashboard's own shows_on_calendar filter, not this one's.
+  it('should_return_appointments_that_are_ticked_or_timed', async () => {
+    const { select, mockOr } = makeExpensesChain([])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'appointments') return { select }
       return makeFrom()(table)
@@ -583,7 +614,76 @@ describe('getScheduleForRange', () => {
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
-    expect(mockNot).toHaveBeenCalledWith('expense_time', 'is', null)
+    expect(mockOr).toHaveBeenCalledWith('shows_on_calendar.eq.true,expense_time.not.is.null')
+  })
+
+  // The conflict-dot claim in behavioural form: no JS-side mirror of the flag may creep back in
+  // beside the query clause above, the way the retired expense_time proxy had one.
+  it('should_include_an_unticked_timed_appointment', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '14:00:00', shows_on_calendar: false })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1'])
+  })
+
+  it('should_include_a_ticked_appointment_that_carries_no_time', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1'])
+  })
+
+  it('should_start_a_time_less_appointment_at_midnight_of_its_own_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].start).toBe('2026-07-03T00:00:00')
+  })
+
+  // #1640 follow-up: midnight is a real clock time, so `start` alone cannot say whether the
+  // appointment is all-day or genuinely at 12:00 AM. The Month view renders `start` blindly and
+  // showed "12:00 AM" for every time-less appointment until this flag gave it the distinction.
+  it('should_mark_a_time_less_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(true)
+  })
+
+  it('should_not_mark_a_timed_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_not_mark_a_midnight_appointment_as_all_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '00:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].allDay).toBe(false)
+  })
+
+  it('should_sort_a_time_less_appointment_ahead_of_a_timed_item_on_the_same_day', async () => {
+    const allDay = createMockHorseExpense({ id: 'all-day', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    const timed = createMockHorseExpense({ id: 'timed', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [timed, allDay] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['all-day', 'timed'])
   })
 
   it('should_use_injected_client_when_provided', async () => {

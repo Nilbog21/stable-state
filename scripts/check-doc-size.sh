@@ -33,7 +33,15 @@ BUDGETS=(
   # `horse_documents` rider cell has to name the two new policies it backs — two genuinely new
   # index entries, the legitimate-raise case. The file was at 41 characters of headroom, so no trim
   # was available; both entries are one line, and every word of rationale is in docs/architecture/rls.md.
-  "ARCHITECTURE.md:21150"
+  # Raised from 21150 by #1640, which made a patch's migrations one file instead of the feature
+  # split: 21066 -> 21416. Two one-line exception notes on an existing rule -- one in RLS
+  # conventions, one in Feature anatomy -- each naming the branch kind the rule does not hold for.
+  # A rule that grew a second case has to say so at both sites that state it, or the numbered list
+  # keeps reading as unconditional; that is the new-entry case, not elaboration of an existing one.
+  # The file was at 84 characters of headroom, so no trim was available. The rule itself and all of
+  # its rationale are in CLAUDE.md's Patch Workflow, whose paragraph this same PR trimmed from 788
+  # characters to 253 to stay inside its own budget rather than raise it.
+  "ARCHITECTURE.md:21500"
   # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
   # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
   # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was

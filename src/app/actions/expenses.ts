@@ -57,6 +57,7 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
   const expenseTime = (formData.get('expense_time') as string | null)?.trim() || null
   const notes = (formData.get('notes') as string | null)?.trim() || null
   const appliesToAllHorses = formData.get('applies_to_all_horses') === 'true'
+  const showsOnCalendar = formData.get('shows_on_calendar') === 'true'
   const horseIds = appliesToAllHorses ? undefined : (formData.getAll('horse_id') as string[])
 
   const paymentTypeRaw = (formData.get('payment_type') as string | null)?.trim() || null
@@ -82,6 +83,7 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
       horseIds,
       paymentType,
       occurredAt,
+      showsOnCalendar,
     },
   }
 }

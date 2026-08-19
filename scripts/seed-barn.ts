@@ -262,6 +262,7 @@ export function getPaymentType(i: number, isPast: boolean): string | null {
 export type ExpenseSeed = {
   daysOffset: number
   time: string | null
+  showsOnCalendar: boolean
   amount: number | null
   recipient: string
   expenseType: string
@@ -327,25 +328,36 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
       Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) /
       86400000
   )
+  // #1640: showsOnCalendar mirrors what the migration's own backfill produces — true for any
+  // timed appointment, past ones included, false for the rest — with two rows added below that
+  // make each side of the new flag manually visible.
   const seeds: ExpenseSeed[] = [
-    { daysOffset: barnCreationMonthOffset, time: null, amount: 150, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 0 },
-    { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
-    { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
-    { daysOffset: -60, time: null, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
-    { daysOffset: -47, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
-    { daysOffset: -40, time: null, amount: 300, recipient: 'Tractor Supply Co.', expenseType: 'Feed', appliesToAllHorses: true },
-    { daysOffset: -30, time: null, amount: 120, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
-    { daysOffset: -19, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 2 },
-    { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
-    { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
-    { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
+    { daysOffset: barnCreationMonthOffset, time: null, showsOnCalendar: false, amount: 150, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: -80, time: null, showsOnCalendar: false, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
+    { daysOffset: -75, time: null, showsOnCalendar: false, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: -60, time: null, showsOnCalendar: false, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
+    { daysOffset: -47, time: null, showsOnCalendar: false, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: -40, time: null, showsOnCalendar: false, amount: 300, recipient: 'Tractor Supply Co.', expenseType: 'Feed', appliesToAllHorses: true },
+    { daysOffset: -30, time: null, showsOnCalendar: false, amount: 120, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: -19, time: null, showsOnCalendar: false, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 2 },
+    { daysOffset: -10, time: null, showsOnCalendar: false, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
+    { daysOffset: -5, time: null, showsOnCalendar: false, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: -3, time: null, showsOnCalendar: false, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
     // #872: past due (date+time already passed, amount still null) for Outstanding-resolve testing
-    { daysOffset: -2, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
-    { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
-    { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: -2, time: '09:00:00', showsOnCalendar: true, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: todayOffset, time: todayTime, showsOnCalendar: true, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: 2, time: '14:00:00', showsOnCalendar: true, amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
     // #950: tomorrow, date-only (no time) and still unpriced — verifies a date-only planned
-    // expense correctly stays off the dashboard's timed Barn Schedule widget
-    { daysOffset: 1, time: null, amount: null, recipient: 'Big Sky Feed Co.', expenseType: 'Feed', appliesToAllHorses: true },
+    // expense correctly stays off the dashboard's timed Barn Schedule widget. #1640 kept it
+    // unticked, so what it now proves is that an *unticked* row stays off — the same
+    // assertion, restated in the vocabulary that replaced the proxy rule.
+    { daysOffset: 1, time: null, showsOnCalendar: false, amount: null, recipient: 'Big Sky Feed Co.', expenseType: 'Feed', appliesToAllHorses: true },
+    // #1640: the two branches the flag opened, one row each. A ticked appointment with no time
+    // is the case that was invisible everywhere before — an all-day farrier day on the
+    // dashboard and a VALUE=DATE VEVENT in the feed. The unticked bill beside it is what must
+    // stay off both.
+    { daysOffset: 3, time: null, showsOnCalendar: true, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 2 },
+    { daysOffset: 4, time: null, showsOnCalendar: false, amount: 480, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
   ]
   // #872: give priced expenses payment-type variety (cycling through PAYMENT_TYPES, same
   // helper lessons/agreement charges already use) so the ledger's collected/uncollected
@@ -932,6 +944,7 @@ export async function seedBarn(
     await createExpense(barnId, {
       expenseDate: expenseDateFor(now, seed.daysOffset),
       expenseTime: seed.time,
+      showsOnCalendar: seed.showsOnCalendar,
       amount: seed.amount,
       recipient: seed.recipient,
       expenseType: seed.expenseType,

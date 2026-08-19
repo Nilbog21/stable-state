@@ -19,3 +19,6 @@ This section is manager-only UI, so `attachCosts` always resolves real costs for
 `getExpensesByIds(barnId, ids)` (#1015 — empty-array short-circuit, else scoped `.in('id', ids)` fetch through the same `hydrate` helper `getExpensesByBarn` uses;
 hydrates `getScheduleForRange`'s bare appointment ids into display data for the dashboard's Day view — this is the trainer dashboard's hydration path too, not just the manager's, so it goes through the same role-blind `attachCosts`).
 The private `attachHorseNames` sorts each appointment's `horse_ids`/`horse_names` alphabetically by name (#1286), as id/name pairs so the two arrays stay aligned — `appointment_horses` carries only `horse_id`, so the junction query can't do it
+
+**#1640 update**: `ExpenseInput` gained `showsOnCalendar?: boolean`, forwarded by `createExpense`/`updateExpense` as `p_shows_on_calendar` and defaulted to `false` at the DAL boundary rather than left to the RPC's own default — so a caller that omits it gets the same answer whichever layer is reading.
+`Appointment` gained the matching `shows_on_calendar: boolean` (see [`../schema.md`](../schema.md)'s `appointments` row).

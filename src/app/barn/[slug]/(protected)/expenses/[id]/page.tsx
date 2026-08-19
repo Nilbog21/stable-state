@@ -70,6 +70,7 @@ export default async function EditExpensePage({
           appliesToAllHorses: expense.applies_to_all_horses,
           horseIds: expense.horse_ids,
           paymentType: expense.payment_type,
+          showsOnCalendar: expense.shows_on_calendar,
         }}
         submitLabel="Save Changes"
         onSave={save}

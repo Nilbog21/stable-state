@@ -1,4 +1,4 @@
-import type { Agreement, Appointment, AgreementCharge, AgreementChargeRow, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
+import type { Agreement, Appointment, AgreementCharge, AgreementChargeRow, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduleItem } from '@/lib/db/types'
 import { calendarDate } from '@/lib/local-day'
 
 export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
@@ -13,6 +13,7 @@ export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): S
     exertionByHorseId: {},
     appliesToAllHorses: false,
     label: null,
+    allDay: false,
     ...overrides,
   }
 }
@@ -284,6 +285,7 @@ export function createMockAppointment(overrides: Partial<Appointment> = {}): App
     expense_type: 'Veterinary',
     notes: null,
     applies_to_all_horses: false,
+    shows_on_calendar: false,
     created_at: '',
     updated_at: '',
     ...overrides,
@@ -308,12 +310,14 @@ export function createMockExpenseWithHorses(overrides: Partial<ExpenseWithHorses
   }
 }
 
-// Builds a ScheduledAppointment (expense_time preset to 10:00) for the dashboard card/sections tests.
-export function makeExpense(overrides: Partial<ScheduledAppointment> = {}): ScheduledAppointment {
+// Builds an appointment with expense_time preset to 10:00 for the dashboard card/sections
+// tests. It returned a `ScheduledAppointment` until #1640 retired that type: its
+// `expense_time: string` narrowing only ever encoded the proxy rule shows_on_calendar replaced.
+export function makeExpense(overrides: Partial<ExpenseWithHorses> = {}): ExpenseWithHorses {
   return {
     ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
     ...overrides,
-  } as ScheduledAppointment
+  }
 }
 
 export function createMockLessonTier(overrides: Partial<LessonTier> = {}): LessonTier {

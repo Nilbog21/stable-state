@@ -831,7 +831,10 @@ async function syncCancellationFee(
 export type ExpenseOptions = When & {
   recipient: string
   expenseType?: string
-  /** Barn-local HH:MM. Omit for a date-only planned expense, which the dashboard excludes. */
+  /**
+   * Barn-local HH:MM. Omit for a date-only planned expense, which the dashboard excludes
+   * unless `showsOnCalendar` is passed `true` — see that field for the all-day case.
+   */
   time?: string
   amount?: number
   /**
@@ -843,6 +846,14 @@ export type ExpenseOptions = When & {
   horseIds?: string[]
   /** The one appointment field a trainer can only see on the detail page, not the card (#1148). */
   notes?: string
+  /**
+   * #1640 — whether the appointment reaches the dashboard, the month calendar and the `.ics`
+   * feed. Defaults to "ticked iff a time was given", which is both the migration's backfill
+   * rule and the `expense_time IS NOT NULL` proxy the flag replaced — so every fixture written
+   * before the flag existed keeps its old visibility. Pass `true` with no `time` for the
+   * all-day case, which nothing could express before.
+   */
+  showsOnCalendar?: boolean
 }
 
 /**
@@ -874,6 +885,7 @@ export async function addExpense(
       notes: opts.notes,
       appliesToAllHorses: !opts.horseIds,
       horseIds: opts.horseIds,
+      showsOnCalendar: opts.showsOnCalendar ?? opts.time !== undefined,
     },
     supabase
   )

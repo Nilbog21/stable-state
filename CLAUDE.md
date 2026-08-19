@@ -68,6 +68,8 @@ Everything from the pre-release checklist audit through cutting the next release
 
 Patches land on `main` without waiting for the next release: branched off `main` HEAD (same `{issue-number}-{slug}` naming as features), labelled `patch-N` for the release series being patched, targeting `main` directly.
 
+**A patch's migrations are one file.** Schema/RPC/RLS go in one `{timestamp}_{issue-number}_{short-description}.sql`, under `-- 1. Schema` / `-- 2. Functions` / `-- 3. Grants` banners. Feature migrations stay split (`ARCHITECTURE.md`'s Feature anatomy).
+
 Close-out — tagging, `CHANGELOG.md`, picking the patch up on the next release branch, and when to run the post-release checklist — is [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)'s Patches section.
 
 ## Workflow Skills

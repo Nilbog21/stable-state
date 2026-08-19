@@ -204,7 +204,7 @@ export function MonthCalendarPicker({
               <ul className="space-y-1">
                 {popupItems.map((item) => (
                   <li key={`${item.itemType}-${item.id}`} className="flex justify-between gap-3 text-zinc-700 dark:text-zinc-300">
-                    <span>{formatItemTime(item.start)}</span>
+                    <span>{item.allDay ? 'All day' : formatItemTime(item.start)}</span>
                     <span className="text-right">{describeItem?.(item)}</span>
                   </li>
                 ))}

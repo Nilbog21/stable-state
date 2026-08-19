@@ -85,6 +85,7 @@ async function run() {
   const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length
   const barnWideExpenseCount = expenseSeeds.filter((s) => s.appliesToAllHorses).length
   const plannedExpenseCount = expenseSeeds.filter((s) => s.amount === null).length
+  const calendarExpenseCount = expenseSeeds.filter((s) => s.showsOnCalendar).length
 
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
@@ -97,7 +98,7 @@ async function run() {
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 12} (${groupCount} group, ${lessonDates.length - groupCount + 5} normal, plus 1 exhaustion top-up for Clover, 2 for ${DEV_RETIRED_HORSE}, and 4 for ${DEV_CALENDAR_BAND_HORSE}; 9 across prior 3 months, 12 older than 1 week, 11 within past week, 2 today, 6 next week — the +5 from #950's seed additions) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
-  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing and 1 date-only for tomorrow)`)
+  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing and 1 date-only for tomorrow; ${calendarExpenseCount} ticked shows_on_calendar, of which 1 carries no time — the all-day case)`)
   console.log(`  Seed additions (#950): 1 Custom-tier lesson; ${DEV_TRAINER_4.email} (${DEV_TRAINER_4.firstName} ${DEV_TRAINER_4.lastName}, 4th trainer) with a single $0 comped/paid lesson; 3 Morgan-instructed lessons (today, tomorrow, 10 days ago — the 10-days-ago one also carries horse/rider/private notes)`)
 }
 

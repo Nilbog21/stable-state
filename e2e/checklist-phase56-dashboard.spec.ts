@@ -74,6 +74,9 @@ const FRIDAY = '2031-03-07'
 const EMPTY_DAY = '2031-04-09'
 
 const APPOINTMENT_RECIPIENT = 'Meadowbrook Vet'
+/** #1640's two new branches. Distinct recipients, so the existing count-of-1 read above is untouched. */
+const ALL_DAY_RECIPIENT = 'Ironworks Farrier'
+const UNLISTED_RECIPIENT = 'Barn Insurance Co.'
 const OPEN_EVENT_TITLE = 'Barn Open House'
 const STAFF_EVENT_TITLE = 'Staff Planning Session'
 
@@ -179,6 +182,28 @@ const barn = withBarn('phase56-dashboard', async ({ supabase, barn, members }) =
     expenseType: 'Vet',
     amount: 212.5,
     horseIds: [apollo.id],
+  })
+
+  // #1640: ticked for the calendar and carrying no time — the case that was invisible on every
+  // surface before, because getScheduleForRange's proxy rule dropped any appointment with a
+  // null expense_time. Costless, so it clears the dashboard's "planned expenses only" filter
+  // for the manager as well as the trainer.
+  await addExpense(supabase, barn, {
+    at: barnNoon(BUSY_DAY),
+    showsOnCalendar: true,
+    recipient: ALL_DAY_RECIPIENT,
+    expenseType: 'Farrier',
+    horseIds: [apollo.id],
+  })
+
+  // The control the flag exists for: same day, same table, unticked. Also costless, so nothing
+  // but shows_on_calendar can be what keeps it off the calendar — an amount would let the
+  // "planned expenses only" filter take the credit for excluding it.
+  await addExpense(supabase, barn, {
+    at: barnNoon(BUSY_DAY),
+    showsOnCalendar: false,
+    recipient: UNLISTED_RECIPIENT,
+    expenseType: 'Insurance',
   })
 
   // The rider's `visible_to_roles` pair. The all-roles event is the control: without it, "the
@@ -310,6 +335,37 @@ test('trainer_dashboard_calendar_shows_the_appointment_alongside_their_own_lesso
   // count() is a one-shot read with no auto-wait; the appointment card settles the page.
   await appointmentText.waitFor()
   expect([await appointmentText.count(), await ownLessons.count()]).toEqual([1, 2])
+})
+
+// ---------------------------------------------------------------------------
+// #1640 — the shows_on_calendar flag on the dashboard
+// ---------------------------------------------------------------------------
+//
+// The pair below is the whole point of replacing the `expense_time IS NOT NULL` proxy: one
+// time-less appointment that must now appear, and one that must still not. Both are costless
+// and on the same day, so shows_on_calendar is the only variable between them — the "planned
+// expenses only" filter and the day bucketing are held constant and cannot account for either
+// result.
+
+test('trainer_dashboard_shows_a_ticked_appointment_that_carries_no_time @trainer', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?date=${BUSY_DAY}`)
+  await expect(calendarSection(page).getByText(ALL_DAY_RECIPIENT, { exact: true })).toBeVisible()
+})
+
+// "All day" rather than formatExpenseTime's "—": on a calendar card a bare dash reads as
+// missing data, and this is the one card that legitimately has no time to show.
+test('trainer_dashboard_labels_a_time_less_appointment_all_day @trainer', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?date=${BUSY_DAY}`)
+  const card = calendarSection(page).getByRole('link').filter({ hasText: ALL_DAY_RECIPIENT })
+  await expect(card.getByText('All day', { exact: true })).toBeVisible()
+})
+
+test('trainer_dashboard_hides_an_appointment_that_is_not_ticked_for_the_calendar @trainer', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?date=${BUSY_DAY}`)
+  // Settle on a card that IS expected before reading a count of zero — an unsettled page
+  // returns 0 for everything and would pass this for the wrong reason.
+  await calendarSection(page).getByText(ALL_DAY_RECIPIENT, { exact: true }).waitFor()
+  expect(await calendarSection(page).getByText(UNLISTED_RECIPIENT, { exact: true }).count()).toBe(0)
 })
 
 // "A tappable link, not plain text" is exactly what getByRole('link') decides: a card rendered

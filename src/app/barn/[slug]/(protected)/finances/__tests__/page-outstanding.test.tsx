@@ -85,7 +85,7 @@ const OUTSTANDING_LESSON = {
 const OUTSTANDING_EXPENSE = {
   id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null,
   amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null,
-  applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '',
+  applies_to_all_horses: false, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '',
 }
 
 describe('FinancesPage', () => {
@@ -341,7 +341,7 @@ describe('FinancesPage', () => {
 
   it('should_show_outstanding_expenses_section_when_outstanding_expenses_exist', async () => {
     vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -350,7 +350,7 @@ describe('FinancesPage', () => {
 
   it('should_render_the_recipient_for_an_outstanding_expense', async () => {
     vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -359,7 +359,7 @@ describe('FinancesPage', () => {
 
   it('should_link_an_outstanding_expense_to_its_edit_page', async () => {
     vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -375,8 +375,8 @@ describe('FinancesPage', () => {
 
   it('should_sum_only_known_amounts_in_the_outstanding_expenses_total', async () => {
     vi.mocked(getOutstandingExpenses).mockResolvedValue([
-      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
-      { id: 'expense-2', barn_id: 'barn-1', expense_date: calendarDate('2026-05-02'), expense_time: null, amount: 120, recipient: 'Feed Co', expense_type: 'Feed', notes: null, applies_to_all_horses: true, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: calendarDate('2026-05-01'), expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-2', barn_id: 'barn-1', expense_date: calendarDate('2026-05-02'), expense_time: null, amount: 120, recipient: 'Feed Co', expense_type: 'Feed', notes: null, applies_to_all_horses: true, shows_on_calendar: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

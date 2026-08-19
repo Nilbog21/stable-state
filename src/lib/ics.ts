@@ -1,13 +1,19 @@
 /**
  * RFC 5545 renderer behind the `/calendar.ics` feed: `buildIcsFeed` (the sole export)
  * renders a barn name plus already-fetched `CalendarFeedItem[]` into a VCALENDAR string —
- * UTC `DTSTART`/`DTEND` (end = start + `durationMinutes`), a per-item `UID`, RFC-escaped
- * text (`escapeIcsText` normalizes CRLF/bare-CR line endings first), and 75-octet
- * content-line folding that never splits a UTF-16 surrogate pair. Pure string building —
- * the fetch and token check live in `calendar-feed.ts:getCalendarFeedData`, and
- * `src/app/calendar.ics/route.ts` composes the two.
+ * a per-item `UID`, RFC-escaped text (`escapeIcsText` normalizes CRLF/bare-CR line endings
+ * first), and 75-octet content-line folding that never splits a UTF-16 surrogate pair.
+ *
+ * Two date renderings, chosen per item by `allDay` (#1640): a timed item emits UTC
+ * `DTSTART`/`DTEND` with end = start + `durationMinutes`; an all-day item emits
+ * `DTSTART;VALUE=DATE`/`DTEND;VALUE=DATE` straight from the date digits, with the exclusive
+ * end one day on — never parsed to a `Date`, which would shift the day near a zone boundary.
+ *
+ * Pure string building — the fetch and token check live in
+ * `calendar-feed.ts:getCalendarFeedData`, and `src/app/calendar.ics/route.ts` composes the two.
  */
 import type { CalendarFeedItem } from './db/types'
+import { addDays, calendarDate } from './local-day'
 
 const CRLF = '\r\n'
 
@@ -18,6 +24,15 @@ function pad(n: number): string {
 function toIcsDateTime(instant: string | Date): string {
   const d = typeof instant === 'string' ? new Date(instant) : instant
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
+}
+
+// RFC 5545 §3.3.4: a DATE value is the bare "YYYYMMDD" digits, no time and no Z. Built by
+// stripping the hyphens rather than by formatting a Date — parsing the day into an instant and
+// reading it back is exactly the round trip that shifts the day near a zone boundary, which is
+// why the RPC hands these digits straight through (#1640). `addDays` is UTC-anchored string
+// arithmetic for the same reason.
+function toIcsDate(day: string): string {
+  return day.replace(/-/g, '')
 }
 
 function escapeIcsText(text: string): string {
@@ -55,14 +70,21 @@ function foldLine(line: string): string {
 }
 
 function buildEventLines(item: CalendarFeedItem, dtstamp: string): string[] {
-  const dtstart = toIcsDateTime(item.startsAt)
-  const dtend = toIcsDateTime(new Date(new Date(item.startsAt).getTime() + item.durationMinutes * 60_000))
+  // DTEND is exclusive for an all-day event, so a one-day item ends on the following day.
+  const dateLines = item.allDay
+    ? [
+        `DTSTART;VALUE=DATE:${toIcsDate(item.startsAt)}`,
+        `DTEND;VALUE=DATE:${toIcsDate(addDays(calendarDate(item.startsAt), 1))}`,
+      ]
+    : [
+        `DTSTART:${toIcsDateTime(item.startsAt)}`,
+        `DTEND:${toIcsDateTime(new Date(new Date(item.startsAt).getTime() + item.durationMinutes * 60_000))}`,
+      ]
   const lines = [
     'BEGIN:VEVENT',
     `UID:${item.itemType}-${item.id}@stablestate.app`,
     `DTSTAMP:${dtstamp}`,
-    `DTSTART:${dtstart}`,
-    `DTEND:${dtend}`,
+    ...dateLines,
     `SUMMARY:${escapeIcsText(item.title)}`,
   ]
   if (item.notes) lines.push(`DESCRIPTION:${escapeIcsText(item.notes)}`)

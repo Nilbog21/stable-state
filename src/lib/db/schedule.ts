@@ -37,6 +37,7 @@ interface ScheduleExpenseRow {
   horse_ids: string[]
   applies_to_all_horses?: boolean
   label?: string | null
+  all_day?: boolean // see ScheduleItem.allDay
 }
 
 interface ScheduleEventRow {
@@ -125,6 +126,7 @@ export function mergeScheduleItems(
     exertionByHorseId: l.exertion_by_horse_id ?? {},
     appliesToAllHorses: false,
     label: null,
+    allDay: false,
   }))
   const expenseItems: ScheduleItem[] = expenses.map((e) => ({
     id: e.id,
@@ -137,6 +139,7 @@ export function mergeScheduleItems(
     exertionByHorseId: {},
     appliesToAllHorses: e.applies_to_all_horses ?? false,
     label: e.label ?? null,
+    allDay: e.all_day ?? false,
   }))
   const eventItems: ScheduleItem[] = events.map((e) => ({
     id: e.id,
@@ -149,6 +152,7 @@ export function mergeScheduleItems(
     exertionByHorseId: {},
     appliesToAllHorses: false,
     label: e.label ?? null,
+    allDay: false,
   }))
   // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
   // with a created_at tiebreaker; ScheduleItem carries no created_at, so id is the
@@ -285,14 +289,23 @@ export async function getScheduleForRange(
     .from('appointments')
     .select('id, expense_date, expense_time, expense_type, recipient, applies_to_all_horses')
     .eq('barn_id', barnId)
-    .not('expense_time', 'is', null)
+    // #1640: the union of the retired `expense_time IS NOT NULL` proxy and the new flag, not
+    // the flag alone. This read answers "is anything booked?" for the #1019 month conflict
+    // calendar as well as "what should the dashboard show?", and narrowing it to the flag drops
+    // an unticked *timed* appointment out of double-booking detection — reachable, since setting
+    // a time auto-ticks the box and a manual untick then sticks. The dashboard applies the flag
+    // itself, on the hydrated rows, so display stays ticked-only.
+    .or('shows_on_calendar.eq.true,expense_time.not.is.null')
     .gte('expense_date', fromWall.slice(0, 10))
     .lte('expense_date', toWall.slice(0, 10))
   if (expensesError) throw expensesError
 
+  // #1640: shows_on_calendar replaced the `expense_time IS NOT NULL` proxy this query used to
+  // stand in for "is this a visit or just a bill?". A ticked appointment with no time is an
+  // all-day entry, and starts at midnight of its own day so it sorts ahead of everything timed
+  // on that day.
   const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string; applies_to_all_horses: boolean }[])
-    .filter((e) => e.expense_time !== null)
-    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses }))
+    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time ?? '00:00:00'}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses, allDay: e.expense_time === null }))
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
 
   const expenseIds = expenseCandidates.map((e) => e.id)
@@ -319,6 +332,7 @@ export async function getScheduleForRange(
     horse_ids: expenseHorseIdsByExpenseId.get(e.id) ?? [],
     applies_to_all_horses: e.appliesToAllHorses,
     label: e.label,
+    all_day: e.allDay,
   }))
 
   // event_at, like lesson_at, is a true UTC instant — same real-instant bound as lessons,

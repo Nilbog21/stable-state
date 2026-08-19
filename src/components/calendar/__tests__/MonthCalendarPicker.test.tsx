@@ -301,6 +301,27 @@ describe('MonthCalendarPicker — paging away from an open panel', () => {
   })
 })
 
+describe('MonthCalendarPicker — all-day items', () => {
+  // #1640 follow-up: a time-less appointment starts at midnight so it sorts first, but rendering
+  // that start read as a literal "12:00 AM" on the Month view. `allDay` is the only thing that
+  // separates it from an appointment genuinely booked at midnight.
+  it('should_render_All_day_instead_of_a_time_for_an_all_day_item', () => {
+    renderPicker({ items: [createMockScheduleItem({ start: '2026-03-10T00:00:00', allDay: true })] })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.getByText('All day')).toBeDefined()
+    expect(screen.queryByText('12:00 AM')).toBeNull()
+  })
+
+  it('should_still_render_the_clock_time_for_a_midnight_item_that_is_not_all_day', () => {
+    renderPicker({ items: [createMockScheduleItem({ start: '2026-03-10T00:00:00', allDay: false })] })
+    fireEvent.click(screen.getByRole('button', { name: '2026-03-10' }))
+
+    expect(screen.getByText('12:00 AM')).toBeDefined()
+    expect(screen.queryByText('All day')).toBeNull()
+  })
+})
+
 describe('MonthCalendarPicker — renderDayPanel', () => {
   it('should_render_the_supplied_panel_instead_of_the_built_in_item_list', () => {
     renderPicker({
