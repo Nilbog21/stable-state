@@ -318,6 +318,15 @@ test('rider_profile_nav_carries_the_same_four_link_set_as_a_barn_page @rider', a
  *
  * "Copied!" is the sync point for the clipboard write, because it is set only after `writeText`
  * RESOLVES — the app's own signal that the clipboard is populated (e2e/CLAUDE.md fact 8).
+ *
+ * `Get my calendar link` is clicked CONDITIONALLY, the same branch
+ * checklist-phase4-calendar-feed.spec.ts's `copyFreshCalendarLink` carries. `calendar_feed_token`
+ * persists on the membership, so the second call for a given login finds the token already minted
+ * and the section rendering `Copy Link`/`Regenerate` in that button's place — an unconditional
+ * click then waits out the whole test budget on a control that will never reappear. #1640 added
+ * the second calendar-feed test per project to this file, which is what first made that reachable.
+ * The guard is the SECTION heading rather than either button, because `count()` does not retry and
+ * a read landing before render returns 0; the heading renders whichever branch is showing.
  */
 async function copyCalendarFeedUrl(
   page: Page,
@@ -328,7 +337,9 @@ async function copyCalendarFeedUrl(
   await openAvatarMenu(page)
   await closeAvatarMenu(page)
 
-  await page.getByRole('button', { name: 'Get my calendar link', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Calendar Feed', exact: true })).toBeVisible()
+  const getLink = page.getByRole('button', { name: 'Get my calendar link', exact: true })
+  if (await getLink.count()) await getLink.click()
   await page.getByRole('button', { name: 'Copy Link', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Copied!', exact: true })).toBeVisible()
   return page.evaluate(() => navigator.clipboard.readText())
