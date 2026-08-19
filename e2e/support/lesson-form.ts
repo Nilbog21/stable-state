@@ -19,7 +19,7 @@ import type { Horse } from '@/lib/db/types'
  * `BARRIER_TIME` and computes the ±3-day exertion window from that hour — so changing `10` breaks
  * them. The `:37` is inert since #1578 and kept only to avoid a pointless churn across those
  * files: with the Start Time field opening empty, the create form server-renders no `lesson_at`
- * input at all (`LessonStartTime.tsx` gates it on `combinedValue`), so the barrier below cannot
+ * input at all (`StartTimeField.tsx` gates it on `combinedValue`), so the barrier below cannot
  * pre-match at any hour and any time would do.
  */
 export const BARRIER_TIME = '10:37'
@@ -42,7 +42,7 @@ export function editPath(barn: BarnHandle, lessonId: string): string {
  * it would race hydration — a click dispatched before React is listening is simply lost and
  * nothing replays it (e2e/CLAUDE.md facts 9 and 10). The barrier therefore waits on the hidden
  * `lesson_at` input carrying the combination of the barn's today and the time just entered,
- * which only client-side `LessonStartTime` can write.
+ * which only client-side `StartTimeField` can write.
  *
  * Since #1578 that input does not exist at all until a time is entered, so the barrier is
  * unambiguous by construction: there is no server-rendered value it could match against.

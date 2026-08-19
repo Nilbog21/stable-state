@@ -280,7 +280,7 @@ function cancellationNotesField(page: Page): Locator {
 // On `waitForEditFormHydrated`, imported from `./support/lesson-pages`:
 //
 // Load-bearing for the save below, not a nicety: `lesson_at` is assembled client-side by
-// `LessonStartTime`'s mount effect, so a submit dispatched before hydration posts no date at all.
+// `StartTimeField`'s mount effect, so a submit dispatched before hydration posts no date at all.
 // Since #1578 the create form does not even server-render the hidden input, though this page is
 // the EDIT form, where the mount effect has a seeded `initialTime` to combine and the timing is
 // what matters rather than the presence.

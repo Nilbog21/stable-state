@@ -320,7 +320,7 @@ function barnDayOffset(delta: number): CalendarDate {
  * waiting on `#lesson-start-time` to merely *exist* proves nothing, since `dayPanelAlwaysOpen` puts
  * it in the server-rendered HTML. The barrier is the hidden `lesson_at` input carrying the
  * combination of the barn's today and the time just filled, which only client-side
- * `LessonStartTime` can write — and since #1578 that input is not server-rendered at all, because
+ * `StartTimeField` can write — and since #1578 that input is not server-rendered at all, because
  * the Start Time field opens empty and the hidden input is gated on the combination.
  *
  * `test.slow()` rather than a number on the wait: every `waitFor*` is unbounded already, so a
@@ -420,7 +420,7 @@ function bars(page: Page): Locator {
  *
  * A bar *count* cannot do this, and that is the whole reason this exists. `pickDay` settles on the
  * calendar's own day-panel heading, but `lessonAt` is not updated in that commit — it is written
- * one commit later by `LessonStartTime`'s `onChange` effect, and `exhaustionByHorseId` is keyed on
+ * one commit later by `StartTimeField`'s `onChange` effect, and `exhaustionByHorseId` is keyed on
  * `lessonAt`, so until the effect flushes the *previous* instant's projection is still on screen.
  * Three bars render in every future window this file selects, so `toHaveCount(3)` is satisfied by
  * the stale render and by the fresh one alike — a shared signal, which is exactly what fact 11's

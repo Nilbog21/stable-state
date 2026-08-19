@@ -27,13 +27,13 @@ Edit Tier page; shared `TierForm` component; Instructor Cut field pre-filled fro
 
 **Roles:** manager
 
-New Event page (#1014); shared `EventForm` component — title, `DateHourPicker` (reused as-is from `lessons/DateHourPicker.tsx` via its `onChange` prop into a locally-named `event_at` hidden input), notes, and a three-checkbox `visible_to_roles` selector defaulting all-checked; on save redirects to settings
+New Event page (#1014); shared `EventForm` component — title, the month calendar, notes, and a three-checkbox `visible_to_roles` selector defaulting all-checked; on save redirects to settings. Guarded by `requireMembership(slug, ['manager'])` since #1645, which replaced the hand-rolled `getAuthenticatedUser` + `getUserMembership` + role check this page predated the guard with — so a wrong-role manager now gets `notFound()` rather than a redirect to login, per the documented convention. The date/time half is `MonthCalendarPicker` + `StartTimeField` (#1645), the same pair the lesson form uses: a `dayPanelAlwaysOpen` day panel listing that day's lessons, appointments and events (`time — description`, lessons as a bare `Lesson` since only appointments and events carry a server-built label), tinted flat by `browseDayDecorations` — the dashboard's model, not `computeDayDecorations`, which has no horse or rider selection to derive anything from here and would return a blank grid. The page binds `getScheduleRangeForBarn`, which the form calls once per displayed month over a range widened to the whole 42-cell grid **and** stretched to reach the selected day: the always-open panel cannot close on month-page, so it owes that guarantee itself (#1580). `DateHourPicker` — a native date box plus a whole-hour `<select>`, of which this was the last consumer — was deleted with it; its hour-only round trip silently truncated any event carrying non-zero minutes on every save, the bug #1021 had already fixed for lessons
 
 ## `/barn/[slug]/settings/events/[id]`
 
 **Roles:** manager
 
-Edit Event page (#1014); shared `EventForm` component pre-filled from the event row, checkboxes pre-checked per `visible_to_roles`; a Delete link/button navigates to the delete-confirm page rather than deactivating in place (no soft-delete concept for events, unlike Lesson Tiers)
+Edit Event page (#1014); shared `EventForm` component pre-filled from the event row, checkboxes pre-checked per `visible_to_roles`; a Delete link/button navigates to the delete-confirm page rather than deactivating in place (no soft-delete concept for events, unlike Lesson Tiers). Same guard, calendar, day panel and schedule fetch as the New Event page above (#1645) — the calendar opens on the event's own day and the Start Time field seeds from the stored wall clock's `.slice(11, 16)`, minutes included
 
 ## `/barn/[slug]/settings/events/[id]/delete`
 

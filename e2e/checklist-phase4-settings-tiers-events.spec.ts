@@ -19,8 +19,10 @@ import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
 import { settledTextContents } from './support/read'
 import { addBarnEvent, addHorse, addTier, updateBarnSettings } from './support/fixtures'
-import type { LessonTier } from '@/lib/db/types'
-import { calendarDate } from '@/lib/local-day'
+import { hydrateByDriving } from './support/hydration'
+import type { CalendarDate, LessonTier } from '@/lib/db/types'
+import { addDays, calendarDate } from '@/lib/local-day'
+import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 
 // ---------------------------------------------------------------------------
 // Seed inputs and the display forms they are expected to produce
@@ -74,17 +76,25 @@ const WINTER_OPTION = 'Winter Intensive - $80'
 const CUSTOM_OPTION = 'Custom'
 
 // The event the Barn Events lines create through the UI, from "Create an event with a title,
-// date/hour, and notes" through "the event no longer appears". Fixed 2030 wall clock, entered in the
-// barn's own frame and displayed in it, so the expected string holds whatever zone the barn
-// is in (#1222).
+// date and start time, and notes" through "the event no longer appears". Its wall clock is
+// entered in the barn's own frame and displayed in it, so the expected string holds whatever zone
+// the barn is in (#1222).
+//
+// ITS DAY IS BARN-RELATIVE since #1645, where it had been a fixed 2030-05-14. The form's date
+// field is now a month grid, and there is no way to reach a day ~45 months out except by clicking
+// the pager 45 times. Three days ahead is at most one page forward, which is the bound
+// `pickCalendarDay` below is written to.
 const NEW_EVENT = {
   title: 'Spring Show Day',
-  date: calendarDate('2030-05-14'),
-  hour: '14',
+  time: '14:00',
   notes: 'Bring your own tack.',
 }
-const NEW_EVENT_DISPLAY_DATE = 'May 14, 2030, 2:00 PM'
 const NEW_EVENT_VISIBLE_TO = 'manager, trainer, rider'
+
+/** `NEW_EVENT`'s day, and the Barn Events row's rendered date — both set from the barn's own
+ *  today in the seed callback below. */
+let newEventDay: CalendarDate
+let newEventDisplayDate: string
 
 /**
  * The survivor. "**Confirm Delete** → the event no longer appears in the Barn Events list"
@@ -123,6 +133,20 @@ const barn = withBarn('settings-tiers-events', async ({ supabase, barn: seededBa
     title: SURVIVING_EVENT.title,
     visibleToRoles: ['manager'],
   })
+
+  // Both derived from the barn's own today, never the host's (#1222). The display string is
+  // reimplemented here from the wall clock rather than borrowed from `format-date.ts`, so the
+  // "list entry shows the correct date" item compares the row against an independent answer
+  // instead of against the renderer that produced it.
+  newEventDay = addDays(calendarDate(barnToday(seededBarn.timezone)), 3)
+  newEventDisplayDate = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(`${newEventDay}T${NEW_EVENT.time}:00Z`))
 })
 
 // ---------------------------------------------------------------------------
@@ -223,6 +247,74 @@ async function openEventEdit(page: Page, title: string) {
 function roleCheckbox(page: Page, role: string) {
   return page.locator(`input[name="visible_to_roles"][value="${role}"]`)
 }
+
+/**
+ * Opens Add Event and blocks until React has taken the form over (#1645).
+ *
+ * `openNewLessonForm`'s barrier, applied to the form that now shares its shape. Waiting for
+ * `#event-start-time` to appear would prove nothing — the day panel is `dayPanelAlwaysOpen`, so
+ * that input is in the SERVER-rendered HTML and the day-cell click below would race hydration,
+ * where a lost click is simply lost (e2e/CLAUDE.md facts 9 and 10). The barrier waits instead on
+ * the hidden `event_at` input carrying the barn's today combined with the time just entered,
+ * which only client-side `StartTimeField` can write — and which does not exist at all until a
+ * time is entered, so it cannot pre-match a server-rendered value.
+ */
+async function openNewEventForm(page: Page): Promise<void> {
+  test.slow()
+  const timezone = barn.data.barn.timezone
+  await page.goto(`/barn/${barn.slug}/settings/events/new`)
+  await page.getByRole('heading', { level: 1, name: 'New Event' }).waitFor()
+
+  const expected = wallClockToInstant(`${barnToday(timezone)}T${NEW_EVENT.time}:00`, timezone).toISOString()
+  await hydrateByDriving(
+    () => page.locator('#event-start-time').fill(NEW_EVENT.time),
+    () =>
+      page.evaluate((want) => {
+        const el = document.querySelector('input[name="event_at"]')
+        return el instanceof HTMLInputElement && el.value === want
+      }, expected)
+  )
+}
+
+/**
+ * Pages the month grid to the month holding `day`, then taps it. Copied from
+ * `checklist-phase4-barn-timezone.spec.ts`'s helper of the same name, bound the same way: the
+ * only day this file picks is 3 ahead of the barn's today, so one page forward is the most that
+ * is ever needed.
+ */
+async function pickCalendarDay(page: Page, day: string): Promise<void> {
+  const monthHeading = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${day}T00:00:00Z`))
+  for (let i = 0; i < 2 && !(await page.getByText(monthHeading, { exact: true }).isVisible()); i++) {
+    await page.getByRole('button', { name: 'Next month', exact: true }).click()
+  }
+  await expect(page.getByText(monthHeading, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: day, exact: true }).click()
+}
+
+/**
+ * The day panel's schedule lines, scoped to the panel itself.
+ *
+ * `checklist-phase3-calendar-panel.spec.ts`'s `dayPanel`/`dayPanelItems`, verbatim and for its
+ * reason: stated in DOM terms rather than by class, because `MonthCalendarPicker`'s bordered box
+ * holds exactly three children in order — the month-nav header, the 7-column grid, and the panel
+ * — so from the Previous-month button inside that header, the panel is the parent's second
+ * following sibling.
+ */
+function dayPanelItems(page: Page): Locator {
+  return page
+    .locator('button[aria-label="Previous month"]')
+    .locator('xpath=../following-sibling::div[2]')
+    .locator('li')
+}
+
+/**
+ * The day panel's schedule read is a Server Action fired after hydration, so it lands well after
+ * the page does. `checklist-phase3-calendar-panel.spec.ts`'s budget and its reasoning: expect's
+ * own 5s default is not raised by `test.slow()`, so a number here *loosens* rather than tightens
+ * (fact 1), and 30s absorbs a cold route compile under full-suite worker contention.
+ */
+const SCHEDULE_FETCH_BUDGET = 30_000
 
 /**
  * Submits a form by its Save button. focus()+Enter, per #501/`04c64505`.
@@ -384,10 +476,9 @@ test.describe.serial('Manage Barn — Barn Events', () => {
   })
 
   test('creating_a_barn_event_lists_it_under_its_title @manager', async ({ page }) => {
-    await page.goto(`/barn/${barn.slug}/settings/events/new`)
+    await openNewEventForm(page)
     await page.locator('#event-title').fill(NEW_EVENT.title)
-    await page.locator('#dh-date').fill(NEW_EVENT.date)
-    await page.locator('#dh-hour').selectOption(NEW_EVENT.hour)
+    await pickCalendarDay(page, newEventDay)
     await page.locator('#event-notes').fill(NEW_EVENT.notes)
     await save(page, 'events')
 
@@ -398,7 +489,24 @@ test.describe.serial('Manage Barn — Barn Events', () => {
     const section = await openSection(page, 'Barn Events')
     const row = eventRow(page, section, NEW_EVENT.title)
 
-    await expect(row.locator('td').nth(1)).toHaveText(NEW_EVENT_DISPLAY_DATE)
+    await expect(row.locator('td').nth(1)).toHaveText(newEventDisplayDate)
+  })
+
+  // #1645 — the day panel the month grid opens under itself, on the form where a manager is
+  // actually deciding a day. Asserted on the *edit* form of the event just created: its panel
+  // opens on that event's own day from first render, so the schedule under test needs no paging
+  // to reach, and the event itself is a row the barn is known to hold on that day.
+  //
+  // Deliberately says nothing about which *appointments* land on a day — #1640 is changing which
+  // ones `getScheduleForRange` surfaces, and a line pinning that would have to be rewritten there.
+  test('the_edit_event_day_panel_lists_that_days_event @manager', async ({ page }) => {
+    await openEventEdit(page, NEW_EVENT.title)
+
+    // The whole panel as one array, so an extra line fails rather than being ignored, and an
+    // empty panel reads `[]` rather than passing on nothing.
+    await expect(dayPanelItems(page)).toHaveText([`2:00 PM${NEW_EVENT.title}`], {
+      timeout: SCHEDULE_FETCH_BUDGET,
+    })
   })
 
   test('barn_event_list_entry_shows_its_visible_to_roles @manager', async ({ page }) => {

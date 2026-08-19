@@ -22,7 +22,7 @@
 //
 // The subtree globs are deliberately whole subtrees rather than `new/**`. A `/**` glob is a
 // literal string PREFIX (docs/scripts/suite.md), and the components these tests actually assert on
-// — `lessons/LessonStartTime.tsx`, `lessons/LessonForm.tsx`, `lessons/LessonListItem.tsx`,
+// — `calendar/StartTimeField.tsx`, `lessons/LessonForm.tsx`, `lessons/LessonListItem.tsx`,
 // `expenses/ExpenseForm.tsx` — sit one level ABOVE `new/`. `select-specs.sh --lint` passes
 // either way, because `new/**` matches `new/page.tsx`; it just silently fails to select this
 // spec when the form components themselves change, which is the only case that matters
@@ -174,8 +174,9 @@ const NEW_LESSON_DAY = shiftDay(BARN_TODAY, 3)
  */
 const BARN_HOUR = 16
 // The same 4 PM as an "HH:MM" wall clock, which is what #1021's minute-granular Start Time field
-// reads and writes. `BARN_HOUR` survives alongside it for the Add Event form, which still uses
-// the whole-hour `DateHourPicker`.
+// reads and writes — on the Add Event form too since #1645, which put it on the same shared
+// `StartTimeField` and deleted the whole-hour `DateHourPicker` outright. `BARN_HOUR` survives
+// alongside it as the number the wall-clock strings below are composed from.
 const BARN_TIME = `${BARN_HOUR}:00`
 const BARN_HOUR_DISPLAY = '4:00 PM'
 const LESSON_WALL_CLOCK = `${LESSON_DAY}T${BARN_HOUR}:00:00`
@@ -256,7 +257,7 @@ const RIDER_NAME = `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}`
  * React and Next's router run on, whereas `setFixedTime` fakes `Date` alone and leaves them
  * ticking. #1204 measured `setFixedTime` safe on `/lessons/new` specifically, off the browser-clock
  * defaults that page computed in `useState` initialisers. #1578 moved one of the two: the create
- * form's **Start Time** field no longer derives anything from the clock (`LessonStartTime` seeds
+ * form's **Start Time** field no longer derives anything from the clock (`StartTimeField` seeds
  * `initialTime ?? ''`), but `LessonForm` reads it in two places of its own — `lessonDate`, which
  * still seeds from `barnToday(timezone)`, and `estimateAt`'s hour, which stands in for an unentered
  * start time. The date pre-fill item below is written against the first; nothing in this file
@@ -597,7 +598,7 @@ async function pickerFieldIs(
 }
 
 /**
- * Blocks until React has hydrated `LessonStartTime` and taken over its state.
+ * Blocks until React has hydrated `StartTimeField` and taken over its state.
  *
  * A precondition that throws, not an assertion — and it is not optional. Waiting for
  * `#lesson-start-time` to appear proves nothing about hydration: that element is in the
@@ -706,7 +707,7 @@ test.describe("A 4:00 PM lesson renders in the barn's zone", () => {
     // (see assertPinArithmetic).
     //
     // This carried a vacuity caveat until #1578, and it is now resolved rather than merely
-    // narrowed: `LessonStartTime` used to fall back to the barn's current hour at :00 when
+    // narrowed: `StartTimeField` used to fall back to the barn's current hour at :00 when
     // `initialTime` was absent, so a form that dropped the prop entirely agreed with '16:00'
     // during the 16:00-16:59 barn-local hour — 1-in-24, and reading as a flake rather than as
     // vacuity. The field now opens EMPTY with no prop, so that form fails this at every hour.
@@ -1024,10 +1025,15 @@ test.describe.serial("A barn event's time renders in the barn's zone", () => {
   test('barn_event_row_on_manage_barn_shows_the_barn_local_four_pm @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/settings/events/new`)
     await page.locator('#event-title').fill(EVENT_TITLE)
-    // EventForm is `DateHourPicker`'s only consumer since #1021, and it has always used the
-    // plain native date input and whole-hour select asserted here.
-    await page.locator('#dh-date').fill(EVENT_DAY)
-    await page.locator('#dh-hour').selectOption(String(BARN_HOUR))
+    // The Add Event form is the month grid plus `StartTimeField` since #1645, the same pair the
+    // lesson form uses — so it needs the same hydration barrier before a day cell is clicked, for
+    // `hydrateByChangingTime`'s reason. Entering the time IS the barrier here: the wait is on the
+    // hidden `event_at` input carrying it, which only client-side React can write.
+    await hydrateByDriving(
+      () => page.locator('#event-start-time').fill(BARN_TIME),
+      () => pickerFieldIs(page, 'event_at', 11, 16, BARN_TIME)
+    )
+    await pickCalendarDay(page, EVENT_DAY)
     await submitForm(page, 'Save', new RegExp(`/barn/${barn.slug}/settings\\?saved=events$`))
 
     await requireEventStoredBarnLocal()

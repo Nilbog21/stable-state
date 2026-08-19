@@ -1,9 +1,12 @@
 'use client'
 
-import { useActionState, useState } from 'react'
-import type { BarnEvent, Role } from '@/lib/db/types'
-import { DateHourPicker } from '../../lessons/DateHourPicker'
-import { instantToLocalWallClock } from '@/lib/barn-timezone'
+import { useActionState, useEffect, useState } from 'react'
+import type { BarnEvent, Role, ScheduleItem } from '@/lib/db/types'
+import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { StartTimeField } from '@/components/calendar/StartTimeField'
+import { browseDayDecorations, getMonthGrid } from '@/lib/month-calendar'
+import { addDays, calendarDate } from '@/lib/local-day'
+import { barnToday, instantToLocalWallClock } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
@@ -15,23 +18,62 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type EventFormProps = {
   mode: 'new' | 'edit'
-  /** `barns.timezone` — the frame the event's date/hour are entered and decoded in (#1222). */
+  /** `barns.timezone` — the frame the event's date/time are entered and decoded in (#1222). */
   timezone: string
   initialEvent?: BarnEvent
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   deleteHref?: string
+  /** One read per displayed month, feeding both the grid's tint and the day panel's list. */
+  getScheduleRange: (fromDate: string, toDate: string) => Promise<ScheduleItem[]>
 }
 
-export function EventForm({ mode, timezone, initialEvent, action, deleteHref }: EventFormProps) {
+export function EventForm({ mode, timezone, initialEvent, action, deleteHref, getScheduleRange }: EventFormProps) {
   const [title, setTitle] = useState(initialEvent?.title ?? '')
-  const [eventAt, setEventAt] = useState('')
-  // Decoding a stored instant back to form values is barn-local, same as entering one.
+  // Decoding a stored instant back to form values is barn-local, same as entering one. `''` on
+  // the create form, which makes both slices below empty — the date falls back to the barn's
+  // today, and the Start Time field opens empty (#1578).
   const eventWallClock = initialEvent ? instantToLocalWallClock(new Date(initialEvent.event_at.at), timezone) : ''
+  const [eventDate, setEventDate] = useState(eventWallClock.slice(0, 10) || String(barnToday(timezone)))
+  const [calendarMonth, setCalendarMonth] = useState(eventDate.slice(0, 7))
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
   const [state, formAction] = useActionState(action, { error: null })
-  // Armed only by bubbled field changes — DateHourPicker's onChange also fires from a
-  // mount-time effect, so latching there would flag a pristine edit form as dirty.
   const [dirty, setDirty] = useState(false)
   useUnsavedChangesGuard(dirty)
+
+  // The always-open day panel's #1580 duty: a panel that cannot close cannot use closing to
+  // avoid outliving its data, so the range is always stretched to reach the selected day as well
+  // as the whole 42-cell grid — otherwise paging one month leaves the panel's heading on the
+  // selected day above a silently empty body. No exertion widening, unlike `LessonForm`: a barn
+  // event has no heatmap to compute, only the flat tint below. `to` is exclusive.
+  useEffect(() => {
+    const grid = getMonthGrid(calendarMonth)
+    const selected = calendarDate(eventDate)
+    // ISO dates sort lexicographically, so this is min/max with no branch to cover.
+    const from = [grid[0], selected].sort()[0]
+    const to = [addDays(grid[41], 1), addDays(selected, 1)].sort()[1]
+    let cancelled = false
+    getScheduleRange(from, to).then((items) => {
+      if (!cancelled) setScheduleItems(items)
+    })
+    return () => { cancelled = true }
+  }, [calendarMonth, eventDate, getScheduleRange])
+
+  // The dashboard's flat "something is on this day" tint, unchanged. `computeDayDecorations` is
+  // the wrong model here — its answers are all derived from a form's horse/rider selection, and
+  // this form has neither, so it would return a blank grid.
+  const dayDecorations = browseDayDecorations(
+    getMonthGrid(calendarMonth).map((date) => ({
+      date,
+      items: scheduleItems.filter((item) => item.start.slice(0, 10) === date),
+    }))
+  )
+
+  // Appointments and events carry a server-built label; lessons don't. Naming a lesson's horses
+  // would cost both event pages a `getHorsesByBarn` purely for a caption, and the signal that
+  // matters when placing a barn-wide event is that the slot is busy.
+  function describeScheduleItem(scheduleItem: ScheduleItem): string {
+    return scheduleItem.label ?? 'Lesson'
+  }
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -66,13 +108,29 @@ export function EventForm({ mode, timezone, initialEvent, action, deleteHref }: 
           />
         </div>
 
-        <DateHourPicker
-          timezone={timezone}
-          initialDate={mode === 'edit' && initialEvent ? eventWallClock.slice(0, 10) : undefined}
-          initialHour={mode === 'edit' && initialEvent ? Number(eventWallClock.slice(11, 13)) : undefined}
-          onChange={setEventAt}
+        {/* A day cell is a `<button>`, so tapping one fires no bubbling `change` for the form's
+            own `onChange` to catch — the guard has to be armed here. The Start Time field still
+            arms it through the form. */}
+        <MonthCalendarPicker
+          value={eventDate}
+          onChange={(date) => { setEventDate(date); setDirty(true) }}
+          month={calendarMonth}
+          onMonthChange={setCalendarMonth}
+          decorations={dayDecorations}
+          items={scheduleItems}
+          describeItem={describeScheduleItem}
+          label="Date"
+          dayPanelAlwaysOpen
+          dayPanel={
+            <StartTimeField
+              timezone={timezone}
+              date={eventDate}
+              initialTime={eventWallClock.slice(11, 16)}
+              id="event-start-time"
+              name="event_at"
+            />
+          }
         />
-        <input type="hidden" name="event_at" value={eventAt} />
 
         <div>
           <label
