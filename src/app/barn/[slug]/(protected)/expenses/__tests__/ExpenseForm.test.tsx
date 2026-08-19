@@ -372,6 +372,26 @@ describe('ExpenseForm', () => {
     expect(fd.get('expense_time')).toBe('14:30')
   })
 
+  // #1646 -- the AM/PM warning under the Time field. Its window and copy are `AmPmWarning`'s
+  // own tests; these three pin that this form renders it, that it is driven by the live field
+  // rather than the seeded value, and that it stays out of the way while the optional time is
+  // empty (which is every new expense's opening state).
+  it('should_not_warn_about_am_pm_while_the_optional_time_is_empty', () => {
+    renderForm()
+    expect(screen.queryByText(/Check AM\/PM/)).toBeNull()
+  })
+
+  it('should_warn_about_am_pm_when_an_off_hours_time_is_entered', () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '20:00' } })
+    expect(screen.getByText(/Check AM\/PM/)).toBeDefined()
+  })
+
+  it('should_warn_about_am_pm_when_an_off_hours_time_is_seeded_from_an_existing_expense', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: '06:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] } })
+    expect(screen.getByText(/Check AM\/PM/)).toBeDefined()
+  })
+
   // #1640 -- "Show on barn calendar" is the flag that replaced the expense_time IS NOT NULL
   // proxy rule. Unlike Time it renders on past dates too: a past appointment can still be
   // worth a calendar entry, and hiding the control would strand a ticked row with no way to

@@ -210,4 +210,22 @@ describe('StartTimeField', () => {
 
     expect(screen.getByLabelText('Start Time').getAttribute('id')).toBe('event-start-time')
   })
+
+  // #1646. The warning lives *inside* this component rather than beside it at each call site,
+  // so the lesson and barn-event forms both get it without either one wiring it up, and a
+  // future consumer can't forget it. Its own window and copy are `AmPmWarning`'s tests; these
+  // two only pin that this field renders it and hands it the live value.
+  it('should_warn_about_am_pm_when_the_time_falls_in_the_off_hours_window', () => {
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="20:00" />)
+
+    expect(screen.getByText(/Check AM\/PM/)).toBeDefined()
+  })
+
+  it('should_not_warn_about_am_pm_once_the_time_is_edited_into_barn_hours', () => {
+    render(<StartTimeField {...ids} timezone="America/New_York" date="2026-06-01" initialTime="20:00" />)
+
+    fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '09:00' } })
+
+    expect(screen.queryByText(/Check AM\/PM/)).toBeNull()
+  })
 })
