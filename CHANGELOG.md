@@ -7,6 +7,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 ## v4.0.0 — August 2026
 
 ### Later updates
+- **v4.0.5 — August 2026.** Picking a time between 8 PM and 8 AM now shows a reminder underneath the field spelling out both readings — "Check AM/PM — this is 8:00 PM, not 8:00 AM." — so an accidental AM/PM flip on a phone is caught before you save. It appears on lesson, event and appointment times, and never blocks saving a genuine early-morning or evening entry.
 - **v4.0.4 — August 2026.** Accepting an invitation after trying the demo now works correctly — your place at the barn is attached to you, not to the demo account — and the invite page shows which account you are about to join as.
 - **v4.0.3 — August 2026.** Vet and farrier visits now appear in your subscribed calendar alongside lessons and barn events. A "Show on barn calendar" checkbox on each appointment decides what appears, so bills like insurance and feed stay off it.
 - **v4.0.2 — August 2026.** Barn events now use the same month calendar as the lesson and appointment forms — busy days are highlighted, and picking a day shows what is already on it. Start times are no longer limited to the top of the hour, and an event set for 6:30 stays at 6:30 when you edit it.
