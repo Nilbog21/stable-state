@@ -1,5 +1,10 @@
 // covers: src/app/barn/[slug]/(protected)/settings/**
 // covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/components/calendar/StartTimeField.tsx
+// covers: src/lib/month-calendar.ts
+// covers: src/app/actions/lessons.ts
+// covers: src/lib/db/schedule.ts
 //
 // Manage Barn's two sub-page CRUD flows (checklists/pre-release/phase-4-manager-verification.md
 // the tier block from "change its price → an amber warning" through "**Reactivate** it", and the

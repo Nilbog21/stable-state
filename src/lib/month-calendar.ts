@@ -7,14 +7,17 @@ import type { CalendarDate, ScheduleItem } from '@/lib/db/types'
  * No React, no Supabase — a calendar cell's appearance is always derived here, never in the
  * component, so a caller can re-tint the grid without another round trip.
  *
- * Two decoration models, because the callers ask different questions:
+ * Two decoration models, because the callers ask different questions — which is not the same
+ * split as form-vs-dashboard:
  *
- * - `computeDayDecorations` — *picking* a day in a form (#1019). Derived from one
- *   already-fetched `ScheduleItem[]` plus the form's current horse/rider selection, so
- *   changing the selection re-renders immediately. Its three signals are described below.
- * - `browseDayDecorations` — *browsing* a month on the dashboard (#1558). A flat
- *   "something is on this day" tint and nothing else; see its own doc comment for why the
- *   form model's answers are wrong here.
+ * - `computeDayDecorations` — the caller has a horse/rider selection to answer *about* (#1019).
+ *   Derived from one already-fetched `ScheduleItem[]` plus that selection, so changing it
+ *   re-renders immediately. Its three signals are described below.
+ * - `browseDayDecorations` — the caller has no selection. A flat "something is on this day" tint
+ *   and nothing else; see its own doc comment for why the other model's answers are wrong here.
+ *   The dashboard (#1558) because it is browsing rather than picking, and `EventForm` (#1645)
+ *   because a barn event names no horse or rider at all — with no selection to key off, the
+ *   other model returns `scheduled: false` for every day and the grid comes up blank.
  *
  * `getMonthGrid` serves both, and the dashboard page directly — the range it fetches has to
  * match the grid the picker will draw.
@@ -123,19 +126,22 @@ function worstBand(
   return worst
 }
 
-/** Decorations for *browsing* a month rather than picking a day in one (#1558's dashboard):
- *  a flat "something is on this day" tint and nothing else. Deliberately not
- *  `computeDayDecorations` with empty options — that function's whole model is a form's
- *  current selection, and two of its answers are wrong here. `past` stays false because a
- *  dashboard browses history and `past` wins the tint precedence outright, so a past day
- *  would go blank exactly when the user paged back to look at it; `scheduled` keys off any
- *  item at all rather than off a selected rider's. `band`/`conflict` are selection concepts
- *  with no meaning outside a form.
+/** Decorations for a caller with no horse/rider selection to answer about — #1558's dashboard,
+ *  browsing a month rather than picking a day in one, and #1645's `EventForm`, picking a day for
+ *  an event that names nobody: a flat "something is on this day" tint and nothing else.
+ *  Deliberately not `computeDayDecorations` with empty options — that function's whole model is a
+ *  form's current selection, and two of its answers are wrong here. `past` stays false because
+ *  `past` wins the tint precedence outright, so a past day would go blank exactly when the user
+ *  paged back to look at it (the dashboard) or reached back to place something on it (`EventForm`,
+ *  where past days stay selectable); `scheduled` keys off any item at all rather than off a
+ *  selected rider's. `band`/`conflict` are selection concepts with no meaning to either caller.
  *
- *  Takes the *grouped display* items, not the raw `ScheduleItem`s the rest of this module
- *  deals in, so the tint and the day panel can never disagree: the dashboard drops priced
- *  appointments (page.tsx's `amount === null` filter) after grouping, and keying the tint off
- *  the pre-filter list would tint days whose panel then opens empty. */
+ *  Generic in the item type, and each caller passes whatever list its own day panel renders, so
+ *  the tint and the panel can never disagree: the dashboard passes its *grouped display* items
+ *  because it drops priced appointments (page.tsx's `amount === null` filter) after grouping, and
+ *  keying the tint off the pre-filter list would tint days whose panel then opens empty;
+ *  `EventForm` filters the raw `ScheduleItem`s it also feeds the picker. Only `items.length` is
+ *  ever read. */
 export function browseDayDecorations<T>(days: { date: CalendarDate; items: T[] }[]): Record<string, DayDecoration> {
   return Object.fromEntries(
     days.map(({ date, items }) => [date, { past: false, band: null, scheduled: items.length > 0, conflict: false }])

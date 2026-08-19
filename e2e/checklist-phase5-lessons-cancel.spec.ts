@@ -1,4 +1,5 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/components/calendar/StartTimeField.tsx
 // covers: src/app/actions/lessons.ts
 // covers: src/app/actions/lesson-cancellation.ts
 // covers: src/components/ExhaustionBar.tsx

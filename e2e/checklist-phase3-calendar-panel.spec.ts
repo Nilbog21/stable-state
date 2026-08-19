@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/calendar/MonthCalendarPicker.tsx
+// covers: src/components/calendar/StartTimeField.tsx
 // covers: src/components/ExhaustionBar.tsx
 // covers: src/lib/month-calendar.ts
 // covers: src/lib/band-colors.ts
