@@ -118,7 +118,7 @@ GRANT EXECUTE ON FUNCTION public.auth_profile_is_demo(uuid) TO authenticated;
 -- via a SECURITY DEFINER read, the same shape `profiles_manager_update` already uses with
 -- `auth_get_profile_immutable_fields`.
 --
--- ponytail: `profiles_manager_update` is deliberately left alone. It gates on
+-- `profiles_manager_update` is deliberately left alone. It gates on
 -- `is_managed = true`, so it can only ever see an unclaimed stub — never the demo profile, which
 -- `claim_managed_member` would have cleared `is_managed` on. Pin it too if a future policy ever
 -- lets a manager write a claimed row.
@@ -140,7 +140,7 @@ CREATE POLICY profiles_own_update ON public.profiles
 -- `barn_memberships.profile_id` references first (that FK has no CASCADE), which is what made
 -- the chain reachable rather than blocked by a constraint error.
 --
--- ponytail: the DELETE is the only half that needs closing. `profiles_user_id_unique` means the
+-- The DELETE is the only half that needs closing. `profiles_user_id_unique` means the
 -- replacement row cannot be inserted while the original is still there, so `profiles_own_insert`
 -- stays as it is and `barn_memberships_write_own` keeps its `FOR ALL` breadth — a member removing
 -- themselves from a barn is a supported thing to do, and it is only load-bearing here as a step
