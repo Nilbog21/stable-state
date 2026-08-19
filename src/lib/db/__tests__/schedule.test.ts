@@ -447,14 +447,14 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
-  // expenses query: select → eq(barn_id) → not(expense_time) → gte(expense_date) → lte(expense_date) → resolves
+  // expenses query: select → eq(barn_id) → eq(shows_on_calendar) → gte(expense_date) → lte(expense_date) → resolves
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLte = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lte: mockLte })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockEqFlag = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ eq: mockEqFlag })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockNot, mockGte, mockLte }
+    return { select: mockSelect, mockEq, mockEqFlag, mockGte, mockLte }
   }
 
   // appointment_horses junction: select → eq(barn_id) → in(appointment_id) → resolves
@@ -573,8 +573,10 @@ describe('getScheduleForRange', () => {
     expect(mockIs).toHaveBeenCalledWith('cancelled_at', null)
   })
 
-  it('should_exclude_expenses_with_null_expense_time_at_the_query_level', async () => {
-    const { select, mockNot } = makeExpensesChain([])
+  // #1640: shows_on_calendar replaced the expense_time IS NOT NULL proxy rule — one flag now
+  // governs the dashboard, the month calendar and the .ics feed alike.
+  it('should_filter_expenses_on_shows_on_calendar_at_the_query_level', async () => {
+    const { select, mockEqFlag } = makeExpensesChain([])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'appointments') return { select }
       return makeFrom()(table)
@@ -583,7 +585,35 @@ describe('getScheduleForRange', () => {
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
-    expect(mockNot).toHaveBeenCalledWith('expense_time', 'is', null)
+    expect(mockEqFlag).toHaveBeenCalledWith('shows_on_calendar', true)
+  })
+
+  it('should_include_a_ticked_appointment_that_carries_no_time', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1'])
+  })
+
+  it('should_start_a_time_less_appointment_at_midnight_of_its_own_day', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].start).toBe('2026-07-03T00:00:00')
+  })
+
+  it('should_sort_a_time_less_appointment_ahead_of_a_timed_item_on_the_same_day', async () => {
+    const allDay = createMockHorseExpense({ id: 'all-day', expense_date: calendarDate('2026-07-03'), expense_time: null })
+    const timed = createMockHorseExpense({ id: 'timed', expense_date: calendarDate('2026-07-03'), expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [timed, allDay] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['all-day', 'timed'])
   })
 
   it('should_use_injected_client_when_provided', async () => {

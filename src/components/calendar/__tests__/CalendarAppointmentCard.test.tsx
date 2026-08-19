@@ -18,6 +18,14 @@ describe('CalendarAppointmentCard', () => {
     expect(screen.getByText(formatExpenseTime('14:00:00'))).toBeDefined()
   })
 
+  // #1640: shows_on_calendar replaced the expense_time IS NOT NULL proxy rule, so a ticked
+  // time-less appointment reaches this card for the first time. "All day" rather than
+  // formatExpenseTime's "—", which on a calendar card reads as missing data.
+  it('should_render_all_day_when_the_appointment_carries_no_time', () => {
+    render(<CalendarAppointmentCard appointment={makeExpense({ expense_date: calendarDate('2026-07-15'), expense_time: null })} slug="green-acres" />)
+    expect(screen.getByText('All day')).toBeDefined()
+  })
+
   it('should_render_recipient', () => {
     render(<CalendarAppointmentCard appointment={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" />)
     expect(screen.getByText('Dr. Smith')).toBeDefined()

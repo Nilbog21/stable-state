@@ -372,6 +372,80 @@ describe('ExpenseForm', () => {
     expect(fd.get('expense_time')).toBe('14:30')
   })
 
+  // #1640 -- "Show on barn calendar" is the flag that replaced the expense_time IS NOT NULL
+  // proxy rule. Unlike Time it renders on past dates too: a past appointment can still be
+  // worth a calendar entry, and hiding the control would strand a ticked row with no way to
+  // untick it.
+  it('should_render_the_calendar_checkbox_on_a_past_date', () => {
+    renderForm({ defaultDate: calendarDate('2026-07-03') })
+    expect(screen.getByRole('checkbox', { name: /show on barn calendar/i })).toBeDefined()
+  })
+
+  it('should_leave_the_calendar_checkbox_unticked_by_default', () => {
+    renderForm()
+    expect((screen.getByRole('checkbox', { name: /show on barn calendar/i }) as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('should_seed_the_calendar_checkbox_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [], showsOnCalendar: true } })
+    expect((screen.getByRole('checkbox', { name: /show on barn calendar/i }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_submit_shows_on_calendar_when_ticked', () => {
+    const { container } = renderForm()
+    fireEvent.click(screen.getByRole('checkbox', { name: /show on barn calendar/i }))
+    expect(new FormData(container.querySelector('form')!).get('shows_on_calendar')).toBe('true')
+  })
+
+  it('should_omit_shows_on_calendar_from_form_data_when_unticked', () => {
+    const { container } = renderForm()
+    expect(new FormData(container.querySelector('form')!).get('shows_on_calendar')).toBeNull()
+  })
+
+  it('should_tick_the_calendar_checkbox_when_a_time_is_first_set', () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '09:15' } })
+    expect((screen.getByRole('checkbox', { name: /show on barn calendar/i }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_flash_the_calendar_checkbox_when_it_auto_ticks', () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '09:15' } })
+    expect(screen.getByRole('checkbox', { name: /show on barn calendar/i }).className).toContain('ring-2')
+  })
+
+  it('should_clear_the_calendar_flash_after_the_timeout_elapses', () => {
+    renderForm()
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '09:15' } })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    expect(screen.getByRole('checkbox', { name: /show on barn calendar/i }).className).not.toContain('ring-2')
+  })
+
+  it('should_not_flash_the_calendar_checkbox_when_it_is_already_ticked', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [], showsOnCalendar: true } })
+    fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '09:15' } })
+    expect(screen.getByRole('checkbox', { name: /show on barn calendar/i }).className).not.toContain('ring-2')
+  })
+
+  it('should_leave_the_calendar_checkbox_ticked_when_the_time_is_cleared', () => {
+    renderForm()
+    const timeInput = screen.getByLabelText(/time/i)
+    fireEvent.change(timeInput, { target: { value: '09:15' } })
+    fireEvent.change(timeInput, { target: { value: '' } })
+    expect((screen.getByRole('checkbox', { name: /show on barn calendar/i }) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_keep_a_manual_untick_when_the_time_is_edited_again', () => {
+    renderForm()
+    const timeInput = screen.getByLabelText(/time/i)
+    fireEvent.change(timeInput, { target: { value: '09:15' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /show on barn calendar/i }))
+    fireEvent.change(timeInput, { target: { value: '10:30' } })
+    expect((screen.getByRole('checkbox', { name: /show on barn calendar/i }) as HTMLInputElement).checked).toBe(false)
+  })
+
   it('should_render_payment_type_select', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: 42.5, notes: null, appliesToAllHorses: false, horseIds: [] } })
     expect(screen.getByLabelText(/payment type/i)).toBeDefined()

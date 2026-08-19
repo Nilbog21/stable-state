@@ -182,6 +182,16 @@ describe('createExpenseAction', () => {
     expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ notes: 'Regular trim' }))
   })
 
+  it('should_set_showsOnCalendar_true_when_the_calendar_checkbox_is_ticked', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, shows_on_calendar: 'true' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ showsOnCalendar: true }))
+  })
+
+  it('should_set_showsOnCalendar_false_when_the_calendar_checkbox_is_absent', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData(baseFields))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ showsOnCalendar: false }))
+  })
+
   it('should_set_appliesToAllHorses_true_and_omit_horseIds_when_entire_barn_checked', async () => {
     await createExpenseAction(
       'barn-slug',

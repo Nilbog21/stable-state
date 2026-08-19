@@ -149,6 +149,53 @@ describe('buildIcsFeed', () => {
     expect(unfolded).toContain(`SUMMARY:${title}`)
   })
 
+  // #1640: an appointment with no time is an all-day VEVENT. `startsAt` carries the raw
+  // "YYYY-MM-DD" digits rather than an instant — round-tripping through a Date and back
+  // would shift the day for any subscriber whose zone sits either side of UTC midnight.
+  const allDayItem: CalendarFeedItem[] = [
+    { itemType: 'appointment', id: 'a-1', title: 'Farrier — Dr. Hoof', startsAt: '2026-08-01', allDay: true, durationMinutes: 0, notes: null },
+  ]
+
+  it('should_render_an_all_day_item_with_a_date_valued_dtstart', () => {
+    const result = buildIcsFeed('Sunny Acres', allDayItem)
+    expect(result).toContain('DTSTART;VALUE=DATE:20260801')
+  })
+
+  it('should_render_an_all_day_item_with_a_dtend_on_the_following_day', () => {
+    const result = buildIcsFeed('Sunny Acres', allDayItem)
+    expect(result).toContain('DTEND;VALUE=DATE:20260802')
+  })
+
+  it('should_not_render_a_datetime_dtstart_for_an_all_day_item', () => {
+    const result = buildIcsFeed('Sunny Acres', allDayItem)
+    expect(result).not.toContain('DTSTART:')
+  })
+
+  it('should_roll_an_all_day_dtend_over_a_month_boundary', () => {
+    const items: CalendarFeedItem[] = [{ ...allDayItem[0], startsAt: '2026-01-31' }]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).toContain('DTEND;VALUE=DATE:20260201')
+  })
+
+  it('should_roll_an_all_day_dtend_over_a_year_boundary', () => {
+    const items: CalendarFeedItem[] = [{ ...allDayItem[0], startsAt: '2026-12-31' }]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).toContain('DTEND;VALUE=DATE:20270101')
+  })
+
+  it('should_render_an_all_day_item_with_an_appointment_uid', () => {
+    const result = buildIcsFeed('Sunny Acres', allDayItem)
+    expect(result).toContain('UID:appointment-a-1@stablestate.app')
+  })
+
+  it('should_render_a_timed_appointment_with_a_datetime_dtstart', () => {
+    const items: CalendarFeedItem[] = [
+      { itemType: 'appointment', id: 'a-2', title: 'Veterinary — Riverside Vet', startsAt: '2026-08-01T14:00:00Z', allDay: false, durationMinutes: 0, notes: null },
+    ]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).toContain('DTSTART:20260801T140000Z')
+  })
+
   it('should_render_multiple_items_as_separate_vevents', () => {
     const items: CalendarFeedItem[] = [
       { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
