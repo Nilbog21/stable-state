@@ -120,15 +120,15 @@ In the **By Instructor** tab, tap any trainer name to open a drill-down page lis
 
 In the **By Paid To** tab, tap any recipient name to open a drill-down page listing every expense paid to that recipient for the selected month — expense date (linked to the expense's edit page), Type (the expense's category), and Amount. The **Total** at the bottom matches that recipient's total shown in the By Paid To summary.
 
-## Settings
+## Manage Barn
 
-Each part of Settings is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed. When you save a section, the page stays on that section with it still open and a green **Saved** badge next to its heading, so you can see the change landed. The same holds for the pages a section sends you to: add a tier or an event, and you come back with that section open and the new row in front of you.
+Each part of Manage Barn is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed. When you save a section, the page stays on that section with it still open and a green **Saved** badge next to its heading, so you can see the change landed. The same holds for the pages a section sends you to: add a tier or an event, and you come back with that section open and the new row in front of you.
 
-Go to **Settings** to set the barn's **Default Instructor Cut** — a flat amount used only to pre-fill a new lesson tier's own cut, and to set the instructor take for a Custom (untiered) lesson. Changing it never affects past lessons or tiers already created.
+Go to **Manage Barn** to set the barn's **Default Instructor Cut** — a flat amount used only to pre-fill a new lesson tier's own cut, and to set the instructor take for a Custom (untiered) lesson. Changing it never affects past lessons or tiers already created.
 
-Go to **Settings** to set the **Barn Timezone**. This is the clock the whole app runs on: every lesson time, appointment time and date it shows you is in this zone, and so is every date you pick on a form. Set it once to wherever the barn actually is and it won't need touching again.
+Go to **Manage Barn** to set the **Barn Timezone**. This is the clock the whole app runs on: every lesson time, appointment time and date it shows you is in this zone, and so is every date you pick on a form. Set it once to wherever the barn actually is and it won't need touching again.
 
-Go to **Settings** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price or instructor cut, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Changing the price or the instructor cut shows an amber warning noting the change won't affect past lessons — only lessons booked after the change use it. Tap **Add Tier** in the section header (top right) to create a new tier, which pre-fills its instructor cut from the barn's Default Instructor Cut. A name, a price, and an instructor cut are all required — enter `0` for a free tier or a $0 cut.
+Go to **Manage Barn** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price or instructor cut, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Changing the price or the instructor cut shows an amber warning noting the change won't affect past lessons — only lessons booked after the change use it. Tap **Add Tier** in the section header (top right) to create a new tier, which pre-fills its instructor cut from the barn's Default Instructor Cut. A name, a price, and an instructor cut are all required — enter `0` for a free tier or a $0 cut.
 
 **Default Board Fee** — Set the monthly fee suggested when creating a new boarding agreement. Changing this only affects boarding agreements created afterward — existing boarders are unaffected.
 
@@ -161,7 +161,7 @@ You will receive notifications for situations that need attention. Tap the bell 
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
 - **Outstanding expenses** — one or more expenses are past their scheduled date and still need an amount entered, a payment type picked, or both. Tap the notification to go to Finances. This is checked and updated once nightly, so it may take up to a day to clear after you resolve them.
-- **New lesson(s) scheduled nearby** — if you instruct lessons yourself, another instructor booked a lesson within the barn's schedule-buffer window (set in Settings) of one of yours. Tap the notification to review the schedule.
+- **New lesson(s) scheduled nearby** — if you instruct lessons yourself, another instructor booked a lesson within the barn's schedule-buffer window (set in Manage Barn) of one of yours. Tap the notification to review the schedule.
 - **Recurring lesson generated with an unavailable horse** — if you instruct lessons yourself, the nightly job generated the next occurrence of one of your recurring series, but the horse assigned to it is currently marked unavailable or inactive. Tap the notification to review the lesson and reassign the horse if needed.
 
 ## If something goes wrong
