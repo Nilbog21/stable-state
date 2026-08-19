@@ -8,15 +8,11 @@
 ALTER TABLE public.appointments
   ADD COLUMN shows_on_calendar BOOLEAN NOT NULL DEFAULT false;
 
--- Backfill preserves current dashboard behaviour exactly: a timed *future* appointment is
--- what the proxy rule was admitting, so those rows come out ticked and everything else does
--- not. "Future" resolves through barns.timezone rather than the session zone -- expense_date
--- and expense_time are barn-local wall-clock digits with no zone of their own, so casting
--- them straight to timestamptz would compare them in UTC and misjudge every appointment
--- within a barn's own UTC offset of now.
-UPDATE public.appointments a
+-- Backfill is the retired proxy rule verbatim, so no appointment that was on a calendar the
+-- day before this deploys is off one the day after. Deliberately *not* narrowed to future
+-- rows: the dashboard takes an unrestricted `date` param with an always-enabled Previous
+-- link, so a past timed appointment still renders on its own historical day, and a
+-- future-only backfill would have hidden every one of them permanently.
+UPDATE public.appointments
 SET shows_on_calendar = true
-FROM public.barns b
-WHERE b.id = a.barn_id
-  AND a.expense_time IS NOT NULL
-  AND (a.expense_date + a.expense_time) AT TIME ZONE b.timezone > now();
+WHERE expense_time IS NOT NULL;

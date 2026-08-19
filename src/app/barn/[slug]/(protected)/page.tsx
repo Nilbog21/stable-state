@@ -100,7 +100,12 @@ export default async function BarnDashboardPage({
       // sees just the unpriced ones. That asymmetry is the model's point, not a leak: a
       // calendar has no business filtering by cost, and the figure a trainer can't read is
       // exactly the one the split removed from their reach.
-      const expenses = expensesRaw.filter((expense) => expense.amount === null)
+      //
+      // #1640 added the shows_on_calendar half. getScheduleForRange deliberately returns
+      // unticked *timed* appointments as well, so the #1019 month conflict calendar keeps
+      // seeing them; the dashboard is the surface that must not, so the flag is applied here
+      // rather than in the query.
+      const expenses = expensesRaw.filter((expense) => expense.amount === null && expense.shows_on_calendar)
 
       if (view === 'month') {
         monthDays = groupScheduleItemsByDay(monthDates, scopedItems, lessons, expenses, events)

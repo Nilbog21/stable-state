@@ -285,15 +285,21 @@ export async function getScheduleForRange(
     .from('appointments')
     .select('id, expense_date, expense_time, expense_type, recipient, applies_to_all_horses')
     .eq('barn_id', barnId)
-    .eq('shows_on_calendar', true)
+    // #1640: the union of the retired `expense_time IS NOT NULL` proxy and the new flag, not
+    // the flag alone. This read answers "is anything booked?" for the #1019 month conflict
+    // calendar as well as "what should the dashboard show?", and narrowing it to the flag drops
+    // an unticked *timed* appointment out of double-booking detection — reachable, since setting
+    // a time auto-ticks the box and a manual untick then sticks. The dashboard applies the flag
+    // itself, on the hydrated rows, so display stays ticked-only.
+    .or('shows_on_calendar.eq.true,expense_time.not.is.null')
     .gte('expense_date', fromWall.slice(0, 10))
     .lte('expense_date', toWall.slice(0, 10))
   if (expensesError) throw expensesError
 
-  // #1640: shows_on_calendar above replaced the `expense_time IS NOT NULL` proxy this query
-  // used to stand in for "is this a visit or just a bill?". A ticked appointment with no time
-  // is an all-day entry, and starts at midnight of its own day so it sorts ahead of everything
-  // timed on that day.
+  // #1640: shows_on_calendar replaced the `expense_time IS NOT NULL` proxy this query used to
+  // stand in for "is this a visit or just a bill?". A ticked appointment with no time is an
+  // all-day entry, and starts at midnight of its own day so it sorts ahead of everything timed
+  // on that day.
   const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string; applies_to_all_horses: boolean }[])
     .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time ?? '00:00:00'}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses }))
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
