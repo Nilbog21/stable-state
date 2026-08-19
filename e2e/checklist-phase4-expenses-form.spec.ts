@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
 // covers: src/components/calendar/**
+// covers: src/components/AmPmWarning.tsx
 // covers: src/components/ui/date-nav.ts
 //
 // The manager's expense form and both delete confirmations: recipient-driven expense-type
@@ -1513,4 +1514,31 @@ test.describe.serial('deleting an expense that has an amount', () => {
 
     await expect(unattributedRowCells(page)).toHaveText(UNATTRIBUTED_ROW_WITH_KEEPER)
   })
+})
+
+// ---------------------------------------------------------------------------
+// The AM/PM warning under the Time field
+// ---------------------------------------------------------------------------
+
+/**
+ * "#1646 — set the expense Time to 6:30 AM: an amber line under the field reads
+ * `Check AM/PM — this is 6:30 AM, not 6:30 PM.`"
+ *
+ * The rule — the 8 PM–8 AM window, its four boundary minutes, the 12-hour rendering, the
+ * silence while the optional time is empty — is `AmPmWarning.test.tsx`'s, in-process and free.
+ * This test exists for the one thing no unit test reaches: that the warning is wired under the
+ * *real* `#expense-time` field, which unlike the lesson form's start time is optional and is
+ * removed outright on a past date.
+ *
+ * `hydrateExpenseForm` first for the same reason every `fill` in this file needs it: an
+ * unhydrated `fill` writes the DOM value and is then discarded by React's first render (fact
+ * 10), which here would show no warning and read as a wiring regression.
+ */
+test('an_off_hours_expense_time_warns_that_the_am_pm_may_be_inverted @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+
+  await page.locator('#expense-time').fill('06:30')
+
+  await expect(page.getByText('Check AM/PM — this is 6:30 AM, not 6:30 PM.')).toBeVisible()
 })
