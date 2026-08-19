@@ -303,13 +303,30 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getScheduleForRange).mockResolvedValue([expenseItem])
     vi.mocked(scopeScheduleItemsForRole).mockReturnValue([expenseItem])
     vi.mocked(getExpensesByIds).mockResolvedValue([
-      createMockExpenseWithHorses({ id: 'expense-1', amount: null }),
+      createMockExpenseWithHorses({ id: 'expense-1', amount: null, shows_on_calendar: true }),
     ])
 
     const jsx = await renderPage()
     render(jsx)
 
     expect(screen.getByTestId('calendar-day-view').getAttribute('data-item-count')).toBe('1')
+  })
+
+  // #1640: getScheduleForRange deliberately hands back unticked *timed* appointments too, so the
+  // month conflict calendar keeps seeing them (#1019). This is the sibling filter that keeps them
+  // off the dashboard, applied here rather than in the query for exactly that reason.
+  it('should_exclude_an_unticked_appointment_from_the_day_view', async () => {
+    const expenseItem: ScheduleItem = createMockScheduleItem({ id: 'expense-1', itemType: 'expense', durationMinutes: 0 })
+    vi.mocked(getScheduleForRange).mockResolvedValue([expenseItem])
+    vi.mocked(scopeScheduleItemsForRole).mockReturnValue([expenseItem])
+    vi.mocked(getExpensesByIds).mockResolvedValue([
+      createMockExpenseWithHorses({ id: 'expense-1', amount: null, shows_on_calendar: false }),
+    ])
+
+    const jsx = await renderPage()
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-day-view').getAttribute('data-item-count')).toBe('0')
   })
 
   it('should_pass_lesson_item_count_to_calendar_day_view', async () => {

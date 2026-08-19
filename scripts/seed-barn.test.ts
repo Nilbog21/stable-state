@@ -280,14 +280,17 @@ describe('buildExpenseSeeds', () => {
     expect(seeds.filter((s) => s.daysOffset > 0 && s.time === null && s.showsOnCalendar)).toHaveLength(1)
   })
 
-  it('should_tick_every_future_dated_timed_expense', () => {
+  // #1640: the backfill ticks every timed row, past ones included -- the pre-PR calendar
+  // rendered a past timed appointment on its own historical day, so a future-only backfill
+  // would have hidden it permanently. The seed mirrors the backfill rule exactly.
+  it('should_tick_every_timed_expense', () => {
     const seeds = buildExpenseSeeds(NOW)
-    expect(seeds.filter((s) => s.daysOffset > 0 && s.time !== null).every((s) => s.showsOnCalendar)).toBe(true)
+    expect(seeds.filter((s) => s.time !== null).every((s) => s.showsOnCalendar)).toBe(true)
   })
 
-  it('should_leave_every_past_dated_expense_unticked', () => {
+  it('should_leave_every_past_dated_date_only_expense_unticked', () => {
     const seeds = buildExpenseSeeds(NOW)
-    expect(seeds.filter((s) => s.daysOffset < 0).every((s) => !s.showsOnCalendar)).toBe(true)
+    expect(seeds.filter((s) => s.daysOffset < 0 && s.time === null).every((s) => !s.showsOnCalendar)).toBe(true)
   })
 
   it('should_leave_the_future_date_only_expense_unpriced', () => {

@@ -447,14 +447,14 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
-  // expenses query: select → eq(barn_id) → eq(shows_on_calendar) → gte(expense_date) → lte(expense_date) → resolves
+  // expenses query: select → eq(barn_id) → or(shows_on_calendar/expense_time) → gte(expense_date) → lte(expense_date) → resolves
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLte = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lte: mockLte })
-    const mockEqFlag = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ eq: mockEqFlag })
+    const mockOr = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ or: mockOr })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockEqFlag, mockGte, mockLte }
+    return { select: mockSelect, mockEq, mockOr, mockGte, mockLte }
   }
 
   // appointment_horses junction: select → eq(barn_id) → in(appointment_id) → resolves
@@ -573,10 +573,13 @@ describe('getScheduleForRange', () => {
     expect(mockIs).toHaveBeenCalledWith('cancelled_at', null)
   })
 
-  // #1640: shows_on_calendar replaced the expense_time IS NOT NULL proxy rule — one flag now
-  // governs the dashboard, the month calendar and the .ics feed alike.
-  it('should_filter_expenses_on_shows_on_calendar_at_the_query_level', async () => {
-    const { select, mockEqFlag } = makeExpensesChain([])
+  // #1640: this query answers "is anything booked?" — the #1019 month conflict calendar reads it
+  // as well as the dashboard — so it returns the union of the old expense_time proxy and the new
+  // flag. Narrowing it to the flag alone drops an unticked *timed* appointment out of
+  // double-booking detection, which is #1019's whole purpose. Which of these rows a calendar
+  // then *displays* is the dashboard's own shows_on_calendar filter, not this one's.
+  it('should_return_appointments_that_are_ticked_or_timed', async () => {
+    const { select, mockOr } = makeExpensesChain([])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'appointments') return { select }
       return makeFrom()(table)
@@ -585,7 +588,18 @@ describe('getScheduleForRange', () => {
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
-    expect(mockEqFlag).toHaveBeenCalledWith('shows_on_calendar', true)
+    expect(mockOr).toHaveBeenCalledWith('shows_on_calendar.eq.true,expense_time.not.is.null')
+  })
+
+  // The conflict-dot claim in behavioural form: no JS-side mirror of the flag may creep back in
+  // beside the query clause above, the way the retired expense_time proxy had one.
+  it('should_include_an_unticked_timed_appointment', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: calendarDate('2026-07-03'), expense_time: '14:00:00', shows_on_calendar: false })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1'])
   })
 
   it('should_include_a_ticked_appointment_that_carries_no_time', async () => {
