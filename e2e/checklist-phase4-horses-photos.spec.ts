@@ -323,10 +323,10 @@ test.describe.serial('the horse photo lifecycle', () => {
 
   // The line's "both | edge bars still visible, not cropped off to make a square" is a pixel
   // judgment; the invariant underneath it is geometric and is asserted in full. `natural` proves the
-  // whole 900x260 image is what loaded (nothing cropped on the way in), `height` proves the fixed
-  // h-48 scale, and `width` proves the ratio survived it — a square crop renders 192x192 and fails
-  // on natural and width both. What this cannot see is the image's pixel content; that limit is
-  // stated in the PR body rather than papered over.
+  // whole 900x260 image is what loaded (nothing cropped on the way in), `height` proves the capped
+  // max-h-32 scale, and `width` proves the ratio survived it — a square crop renders 128x128 and
+  // fails on natural and width both. What this cannot see is the image's pixel content; that limit
+  // is stated in the PR body rather than papered over.
   //
   // settledImageGeometry rather than a bare read: naturalWidth is 0 until the image is decoded,
   // and evaluate() waits only for the element to be attached.
