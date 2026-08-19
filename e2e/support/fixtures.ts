@@ -831,7 +831,10 @@ async function syncCancellationFee(
 export type ExpenseOptions = When & {
   recipient: string
   expenseType?: string
-  /** Barn-local HH:MM. Omit for a date-only planned expense, which the dashboard excludes. */
+  /**
+   * Barn-local HH:MM. Omit for a date-only planned expense, which the dashboard excludes
+   * unless `showsOnCalendar` is passed `true` — see that field for the all-day case.
+   */
   time?: string
   amount?: number
   /**

@@ -1,11 +1,16 @@
 /**
  * RFC 5545 renderer behind the `/calendar.ics` feed: `buildIcsFeed` (the sole export)
  * renders a barn name plus already-fetched `CalendarFeedItem[]` into a VCALENDAR string —
- * UTC `DTSTART`/`DTEND` (end = start + `durationMinutes`), a per-item `UID`, RFC-escaped
- * text (`escapeIcsText` normalizes CRLF/bare-CR line endings first), and 75-octet
- * content-line folding that never splits a UTF-16 surrogate pair. Pure string building —
- * the fetch and token check live in `calendar-feed.ts:getCalendarFeedData`, and
- * `src/app/calendar.ics/route.ts` composes the two.
+ * a per-item `UID`, RFC-escaped text (`escapeIcsText` normalizes CRLF/bare-CR line endings
+ * first), and 75-octet content-line folding that never splits a UTF-16 surrogate pair.
+ *
+ * Two date renderings, chosen per item by `allDay` (#1640): a timed item emits UTC
+ * `DTSTART`/`DTEND` with end = start + `durationMinutes`; an all-day item emits
+ * `DTSTART;VALUE=DATE`/`DTEND;VALUE=DATE` straight from the date digits, with the exclusive
+ * end one day on — never parsed to a `Date`, which would shift the day near a zone boundary.
+ *
+ * Pure string building — the fetch and token check live in
+ * `calendar-feed.ts:getCalendarFeedData`, and `src/app/calendar.ics/route.ts` composes the two.
  */
 import type { CalendarFeedItem } from './db/types'
 import { addDays, calendarDate } from './local-day'
