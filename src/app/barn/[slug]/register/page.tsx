@@ -78,7 +78,11 @@ export default async function BarnRegisterPage({
     return <DemoSession slug={slug} token={token} />
   }
 
-  const signedInAs = profile ? `${profile.first_name} ${profile.last_name} (${user.email})` : user.email
+  // `User.email` is optional on Supabase's type, so it is coalesced before it reaches the
+  // template — an email-less session would otherwise render a literal "(undefined)", or an
+  // empty line in the no-profile branch, which is worse than naming nothing at all.
+  const email = user.email ?? 'an account with no email address'
+  const signedInAs = profile ? `${profile.first_name} ${profile.last_name} (${email})` : email
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
@@ -90,9 +94,11 @@ export default async function BarnRegisterPage({
       </p>
       {/* The token is single-use, so this is the last point at which the claimant can see which
           account is about to take the membership — the whole of what #1641 hit on prod. */}
-      {/* The control sits *inside* its own form rather than being associated by `form="id"` —
-          React 19's form association is unreliable with server actions (it silently drops
-          `<select>` values from FormData), and nothing here needs the two to be separate. */}
+      {/* Its own form rather than one shared with Accept Invite below: the two submit to different
+          server actions, and a single form cannot bind both. The control stays a bare-text link
+          rather than `<Button>` — `src/components/ui/CLAUDE.md` leaves bare-text controls as raw
+          Tailwind, and an inline "not you?" aside reads as prose, not as a second page action
+          competing with Accept Invite. */}
       <form
         action={signOutAndReturnToInvite.bind(null, slug, token)}
         className="max-w-sm text-center text-sm text-zinc-500 dark:text-zinc-400"

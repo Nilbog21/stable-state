@@ -131,6 +131,12 @@ describe('BarnRegisterPage signed-in identity', () => {
     expect(screen.getByRole('button', { name: /accept invite/i })).toBeDefined()
   })
 
+  it('should_name_the_account_without_undefined_when_the_session_has_no_email', async () => {
+    setupAuth({ id: 'user-1', email: null })
+    render(await renderPage('green-acres', 'tok-1'))
+    expect(screen.getByText(/no email address/)).toBeDefined()
+  })
+
   it('should_render_the_demo_screen_when_the_session_is_the_demo_account', async () => {
     vi.mocked(getProfileByUserId).mockResolvedValue(createMockProfile({ is_demo: true }))
     render(await renderPage('green-acres', 'tok-1'))

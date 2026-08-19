@@ -4,8 +4,9 @@
 -- `claim_managed_member` is the one chokepoint both claim callers share — `acceptInvite`
 -- (`register/actions.ts`) and `/auth/callback`'s invite-token branch — so the block lives here
 -- rather than being written twice in app code. Body is the release-3 definition
--- (20260716005943_release3_functions.sql) with one added guard, sited next to the sibling
--- `already_member_of_barn` raise it mirrors.
+-- (20260716005943_release3_functions.sql) with one added guard, sited ahead of the token lookup
+-- rather than beside the sibling `already_member_of_barn` raise it otherwise mirrors — see the
+-- guard's own comment for why the ordering matters.
 CREATE OR REPLACE FUNCTION public.claim_managed_member(p_token uuid, p_user_id uuid, p_email text DEFAULT NULL::text) RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
