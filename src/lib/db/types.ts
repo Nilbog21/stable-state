@@ -321,6 +321,12 @@ export interface ScheduleItem {
   /** Display text for expense/event items. `null` for lessons — their callers already
    *  hold horse/rider names and compose their own label from those. */
   label: string | null
+  /** #1640 — a ticked appointment with no `expense_time`. Such an item is given a midnight
+   *  `start` so it sorts ahead of that day's timed items, which makes `start` alone unable to
+   *  tell it apart from one genuinely booked at 12:00 AM; surfaces that carry a clock time
+   *  must read this flag rather than the digits. Always `false` for lesson/event items —
+   *  both are minted from a real instant. */
+  allDay: boolean
 }
 
 export interface BarnEvent {

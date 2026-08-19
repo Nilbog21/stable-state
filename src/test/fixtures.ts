@@ -13,6 +13,7 @@ export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): S
     exertionByHorseId: {},
     appliesToAllHorses: false,
     label: null,
+    allDay: false,
     ...overrides,
   }
 }

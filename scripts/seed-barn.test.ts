@@ -475,6 +475,7 @@ describe('buildCalendarBandLessons', { timeout: 30_000 }, () => {
       exertionByHorseId: { [HORSE_ID]: lesson.exertionLevel },
       appliesToAllHorses: false,
       label: null,
+      allDay: false,
     }))
     const todayStr = calendarDate(today)
     const decorations = computeDayDecorations(getMonthGrid(todayStr.slice(0, 7)), items, {

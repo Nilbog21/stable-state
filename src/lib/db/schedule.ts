@@ -37,6 +37,7 @@ interface ScheduleExpenseRow {
   horse_ids: string[]
   applies_to_all_horses?: boolean
   label?: string | null
+  all_day?: boolean // see ScheduleItem.allDay
 }
 
 interface ScheduleEventRow {
@@ -125,6 +126,7 @@ export function mergeScheduleItems(
     exertionByHorseId: l.exertion_by_horse_id ?? {},
     appliesToAllHorses: false,
     label: null,
+    allDay: false,
   }))
   const expenseItems: ScheduleItem[] = expenses.map((e) => ({
     id: e.id,
@@ -137,6 +139,7 @@ export function mergeScheduleItems(
     exertionByHorseId: {},
     appliesToAllHorses: e.applies_to_all_horses ?? false,
     label: e.label ?? null,
+    allDay: e.all_day ?? false,
   }))
   const eventItems: ScheduleItem[] = events.map((e) => ({
     id: e.id,
@@ -149,6 +152,7 @@ export function mergeScheduleItems(
     exertionByHorseId: {},
     appliesToAllHorses: false,
     label: e.label ?? null,
+    allDay: false,
   }))
   // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
   // with a created_at tiebreaker; ScheduleItem carries no created_at, so id is the
@@ -301,7 +305,7 @@ export async function getScheduleForRange(
   // all-day entry, and starts at midnight of its own day so it sorts ahead of everything timed
   // on that day.
   const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string; applies_to_all_horses: boolean }[])
-    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time ?? '00:00:00'}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses }))
+    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time ?? '00:00:00'}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses, allDay: e.expense_time === null }))
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
 
   const expenseIds = expenseCandidates.map((e) => e.id)
@@ -328,6 +332,7 @@ export async function getScheduleForRange(
     horse_ids: expenseHorseIdsByExpenseId.get(e.id) ?? [],
     applies_to_all_horses: e.appliesToAllHorses,
     label: e.label,
+    all_day: e.allDay,
   }))
 
   // event_at, like lesson_at, is a true UTC instant — same real-instant bound as lessons,
