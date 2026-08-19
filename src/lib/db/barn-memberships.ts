@@ -1,3 +1,9 @@
+/**
+ * Membership CRUD and reads: per-user/per-barn lookups, instructor and active-member
+ * rosters via the shared `joinMembershipsWithProfiles` helper, `setCanInstruct`, and
+ * the cross-barn `getBarnMembershipsForUser` (excludes demo barns, #504 — the sole
+ * source feeding `/` redirect logic, `/barns`, and `BarnSwitcher`).
+ */
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -5,9 +11,10 @@ import type { Barn, BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
-  barnId: string
+  barnId: string,
+  client?: SupabaseClient
 ): Promise<BarnMembership | null> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
     .select('*')
@@ -19,39 +26,22 @@ export async function getUserMembership(
   return data
 }
 
-// No longer called from the app (self-registration is closed, #777) — kept for
-// scripts/reset-db.ts, which still seeds a baseline pending row for testing approve/reject.
-export async function createPendingMembership(
+export async function createActiveMembership(
   userId: string,
-  barnId: string,
-  role: 'trainer' | 'rider',
   profileId: string,
+  barnId: string,
+  role: Role,
   client?: SupabaseClient
 ): Promise<BarnMembership> {
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
-    .insert({ user_id: userId, profile_id: profileId, barn_id: barnId, role, status: 'pending' })
+    .insert({ user_id: userId, profile_id: profileId, barn_id: barnId, role, status: 'active' })
     .select()
     .single()
 
   if (error) throw error
   return data
-}
-
-export async function getPendingMemberships(
-  barnId: string
-): Promise<BarnMembership[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('barn_memberships')
-    .select('*')
-    .eq('barn_id', barnId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-
-  if (error) throw error
-  return data ?? []
 }
 
 export async function getActiveMemberships(
@@ -67,16 +57,6 @@ export async function getActiveMemberships(
 
   if (error) throw error
   return data ?? []
-}
-
-export async function approveMembership(membershipId: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('barn_memberships')
-    .update({ status: 'active' })
-    .eq('id', membershipId)
-
-  if (error) throw error
 }
 
 export async function deleteMembership(membershipId: string): Promise<void> {
@@ -112,9 +92,11 @@ export type ActiveMemberSummaryRow = {
 
 // Reads any active member's row within a barn, including ones the narrow direct-query
 // policies (own-row/manager-full-barn/trainer-reads-riders) don't cover — broadened per
-// #779 via the same column-limited RPC used by getActiveMembersWithProfiles, so this can
-// never surface invite_token either. Kept separate from getMembershipById (used elsewhere
-// by write-gated actions that don't need the broadened read) to keep blast radius minimal.
+// #779 via the same column-limited RPC used by getActiveMembersWithProfiles. invite_token
+// is intentionally still surfaced on the direct-query branch (the member detail page's
+// manager-only ManageMemberSection needs it to render a shareable invite link);
+// calendar_feed_token is a personal bearer credential no caller of this function needs to
+// see for another member, so it's redacted on both branches (#1018).
 export async function getMembershipByIdForBarn(
   membershipId: string,
   barnId: string,
@@ -123,7 +105,7 @@ export async function getMembershipByIdForBarn(
   const supabase = client ?? await createClient()
 
   const direct = await getMembershipById(membershipId, supabase)
-  if (direct) return direct
+  if (direct) return { ...direct, calendar_feed_token: null }
 
   const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
     p_barn_id: barnId,
@@ -142,6 +124,7 @@ export async function getMembershipByIdForBarn(
     status: 'active',
     can_instruct: row.can_instruct,
     invite_token: null,
+    calendar_feed_token: null,
     created_at: row.created_at,
   }
 }
@@ -215,9 +198,11 @@ export async function getActiveMembersWithProfiles(
     inviteToken: m.invite_token,
   }))
 
-  // A caller-supplied client is always a service-role script (reset-db.ts/seed-test-barn.ts)
-  // — service-role already bypasses barn_memberships' RLS on the direct query above, so
-  // there are no narrow-RLS gap rows to backfill; the RPC below is simply never reached
+  // A caller-supplied client is always service-role — the only such caller is seed-barn.ts's
+  // seedBarn(), reached by reset-db.ts and, at app runtime, by /demo's createOrResumeDemoBarn
+  // (seed-test-barn.ts stopped calling this when #1085 rewired it through the e2e fixture
+  // builders) — service-role already bypasses barn_memberships' RLS on the direct query above,
+  // so there are no narrow-RLS gap rows to backfill; the RPC below is simply never reached
   // in that case (#930 added a service_role grant to get_active_barn_member_summaries, but
   // that's for other callers — this early return still skips it here regardless).
   if (client) return direct
@@ -279,7 +264,7 @@ export const getBarnMembershipsForUser = cache(async (
   if (error) throw error
 
   return (data ?? [])
-    .filter(({ barns }) => barns !== null)
+    .filter(({ barns }) => barns !== null && !(barns as Barn).is_demo)
     .map(({ barns, ...membership }) => ({
       barn: barns as Barn,
       membership: membership as BarnMembership,

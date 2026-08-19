@@ -7,9 +7,15 @@ import { ExpenseCard } from './ExpenseCard'
 interface Props {
   expenses: ExpenseWithHorses[]
   slug: string
+  /**
+   * The barn's wall clock, threaded through from the page rather than read here. This is a client
+   * component, so a `new Date()` in its render path would resolve in the *viewer's* zone (#1222) —
+   * and would drift across a re-render besides.
+   */
+  nowWall: string
 }
 
-export function OlderExpensesToggle({ expenses, slug }: Props) {
+export function OlderExpensesToggle({ expenses, slug, nowWall }: Props) {
   const [show, setShow] = useState(false)
 
   if (expenses.length === 0) return null
@@ -29,7 +35,7 @@ export function OlderExpensesToggle({ expenses, slug }: Props) {
       {show && (
         <div className="flex flex-col gap-2">
           {expenses.map((expense) => (
-            <ExpenseCard key={expense.id} expense={expense} slug={slug} />
+            <ExpenseCard key={expense.id} expense={expense} slug={slug} nowWall={nowWall} />
           ))}
         </div>
       )}

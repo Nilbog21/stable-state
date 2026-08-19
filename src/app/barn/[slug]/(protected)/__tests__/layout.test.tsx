@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
 
@@ -153,26 +153,6 @@ describe('ProtectedBarnLayout - auth guard', () => {
     try { await ProtectedBarnLayout({ children, params }) } catch {}
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-  })
-
-  it('should_throw_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      ...mockManagerMembership,
-      status: 'pending',
-    })
-
-    await expect(ProtectedBarnLayout({ children, params })).rejects.toThrow('NEXT_REDIRECT')
-  })
-
-  it('should_redirect_to_pending_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      ...mockManagerMembership,
-      status: 'pending',
-    })
-
-    try { await ProtectedBarnLayout({ children, params }) } catch {}
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
   })
 
   it('should_throw_when_membership_is_not_active', async () => {
@@ -523,15 +503,55 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
   })
 
-  it('should_not_show_barn_switcher_caret_when_second_membership_is_pending', async () => {
-    const pendingMembership = {
+  it('should_not_show_barn_switcher_caret_when_second_membership_is_inactive', async () => {
+    const inactiveMembership = {
       barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
-      membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'pending' as const },
+      membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'inactive' as any },
     }
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, pendingMembership])
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, inactiveMembership])
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
+  })
+})
+
+describe('ProtectedBarnLayout - demo mode', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
+    setupAuth()
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('should_append_demo_suffix_to_barn_name_when_barn_is_demo', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ ...mockBarn, is_demo: true }))
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Green Acres (DEMO)' })).toBeDefined()
+  })
+
+  it('should_hide_profile_link_when_user_email_matches_demo_user_email', async () => {
+    vi.stubEnv('DEMO_USER_EMAIL', 'user@example.com')
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.queryByRole('link', { name: 'Profile' })).toBeNull()
+  })
+
+  it('should_show_profile_link_when_user_email_does_not_match_demo_user_email', async () => {
+    vi.stubEnv('DEMO_USER_EMAIL', 'someone-else@example.com')
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeDefined()
   })
 })
 
@@ -570,7 +590,7 @@ describe('ProtectedBarnLayout - NotificationBell', () => {
   it('should_fetch_notifications_for_user_and_barn', async () => {
     await ProtectedBarnLayout({ children, params })
 
-    expect(getNotifications).toHaveBeenCalledWith('user-1', 'barn-1')
+    expect(getNotifications).toHaveBeenCalledWith('user-1', 'barn-1', 'America/New_York')
   })
 
   it('should_render_notification_bell', async () => {

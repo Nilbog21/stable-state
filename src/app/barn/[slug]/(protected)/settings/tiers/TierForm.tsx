@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import type { LessonTier } from '@/lib/db/types'
 import { DeactivateButton } from '../DeactivateButton'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 type TierFormProps = {
   mode: 'new' | 'edit'
@@ -37,6 +38,8 @@ export function TierForm({
     mode === 'edit' && isActive && Number(price) !== Number(initialPrice)
   const instructorCutChanged =
     mode === 'edit' && isActive && Number(instructorCut) !== Number(initialInstructorCut)
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -46,7 +49,7 @@ export function TierForm({
             {isActive && onDeactivate && <DeactivateButton action={deactivateFormAction} />}
             {!isActive && onActivate && (
               <form action={onActivate}>
-                <Button type="submit" variant="ghost" size="sm">
+                <Button type="submit" variant="secondary" size="sm">
                   Activate
                 </Button>
               </form>
@@ -60,7 +63,7 @@ export function TierForm({
         </div>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="space-y-4" onChange={() => setDirty(true)}>
         {state.error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
             {state.error}

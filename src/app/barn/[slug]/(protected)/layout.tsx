@@ -40,13 +40,12 @@ export default async function ProtectedBarnLayout({
 
   const membership = await getUserMembership(user.id, barn.id)
   if (!membership) redirect(`/barn/${slug}/login`)
-  if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
   const [allMemberships, profileRows, notifications] = await Promise.all([
     getBarnMembershipsForUser(user.id),
     getProfilesByUserIds([user.id]),
-    getNotifications(user.id, barn.id),
+    getNotifications(user.id, barn.id, barn.timezone),
   ])
   const profile = profileRows[0] ?? null
   const initials =
@@ -57,6 +56,7 @@ export default async function ProtectedBarnLayout({
   const activeMemberships = allMemberships.filter((m) => m.membership.status === 'active')
   const activeBarnMemberships = activeMemberships.map((m) => ({ slug: m.barn.slug, name: m.barn.name }))
   const email = user.email ?? ''
+  const isDemoUser = Boolean(process.env.DEMO_USER_EMAIL) && email === process.env.DEMO_USER_EMAIL
 
   const navLinks = buildNavLinks(slug, membership.role)
 
@@ -68,11 +68,18 @@ export default async function ProtectedBarnLayout({
           barnName={barn.name}
           barnSlug={slug}
           activeBarnMemberships={activeBarnMemberships}
+          isDemo={barn.is_demo}
         />
         <DesktopNavLinks navLinks={navLinks} />
         <div className="ml-auto flex items-center gap-2">
           <span className="order-2 md:order-1">
-            <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
+            <UserMenu
+              initials={initials}
+              email={email}
+              fullName={fullName}
+              barnSlug={slug}
+              isDemoUser={isDemoUser}
+            />
           </span>
           <span className="order-1 md:order-2">
             <NotificationBell notifications={notifications} barnSlug={slug} />

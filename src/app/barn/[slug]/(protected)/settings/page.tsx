@@ -3,86 +3,52 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { getPendingMemberships } from '@/lib/db/barn-memberships'
-import { resolveMemberNames } from '@/lib/db/member-names'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
-import { approveMembershipAction, rejectMembershipAction } from '../approvals/actions'
+import { getEventsByBarn } from '@/lib/db/barn-events'
+import { getAllBarnDocuments } from '@/lib/db/document-backup'
+import { formatBarnDateTime } from '@/lib/format-date'
 import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateScheduleBufferMinutesAction,
   updateBarnTimezoneAction,
+  downloadAllDocumentsAction,
+  downloadBarnDataAction,
 } from './actions'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
-import { cardBaseClass } from '@/components/ui/Card'
+import { AccordionSection } from '@/components/ui/AccordionSection'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
-import type { BarnMembership } from '@/lib/db/types'
+import { GuardedForm } from '../NavigationBlocker'
+import { DownloadButton } from './DownloadButton'
+import { sectionDescriptionClass } from '@/components/ui/section-description'
 
-function AccordionSection({
-  title,
-  defaultOpen = false,
-  headerExtra,
-  children,
-}: {
-  title: string
-  defaultOpen?: boolean
-  headerExtra?: React.ReactNode
-  children: React.ReactNode
-}) {
-  return (
-    <div className="mb-6">
-      <details open={defaultOpen} className={`relative ${cardBaseClass}`}>
-        <summary
-          className={`flex min-h-11 cursor-pointer items-center px-4 py-3 ${headerExtra ? 'pr-32' : ''}`}
-        >
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            {title}
-          </h2>
-        </summary>
-        {headerExtra && (
-          <div className="absolute right-4 top-0 flex h-11 items-center">{headerExtra}</div>
-        )}
-        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
-      </details>
-    </div>
-  )
-}
-
-function MemberRow({
-  membership,
-  name,
-  actionSlot,
-}: {
-  membership: BarnMembership
-  name: string
-  actionSlot: React.ReactNode
-}) {
-  return (
-    <tr>
-      <Td>{name}</Td>
-      <Td tone="secondary" className="capitalize">
-        {membership.role}
-      </Td>
-      <Td tone="secondary">
-        <LocalDateTime iso={membership.created_at} options={DATE_ONLY_OPTIONS} />
-      </Td>
-      <TableActions>{actionSlot}</TableActions>
-    </tr>
-  )
-}
+/**
+ * #1557 — one style for every section's description, so the sizes can't drift apart again (two
+ * sections had gone `text-xs`). Each description leads its section — or, in Data Backup's
+ * two-download layout, its own block — above that block's controls.
+ *
+ * The string itself moved to `src/components/ui/section-description.ts` in #1550, when Finances
+ * became a second page needing it. Kept as a local alias so the eight call sites below read the
+ * same as they did.
+ */
+const DESCRIPTION_CLASS = sectionDescriptionClass
 
 export default async function SettingsPage({
   params,
-  searchParams: _searchParams,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
   searchParams: Promise<Record<string, string>>
 }) {
   const { slug } = await params
+  // #1417 — which section a save just landed in (`?saved=`), or should merely reopen
+  // (`?open=`, for a delete). Threaded into every section rather than resolved here so the
+  // deriving stays in one place; `AccordionSection` guards the undefined-matches-undefined case.
+  const { saved, open } = await searchParams
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
@@ -99,12 +65,14 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const [tiers, pending] = await Promise.all([
+  const [tiers, events, barnDocuments] = await Promise.all([
     getAllTiersByBarn(barn.id),
-    getPendingMemberships(barn.id),
+    getEventsByBarn(barn.id, barn.timezone),
+    getAllBarnDocuments(barn.id),
   ])
 
-  const nameMap = await resolveMemberNames(pending.map((m) => m.id), barn.id)
+  const hasDocuments =
+    barnDocuments.horse.length + barnDocuments.trainer.length + barnDocuments.rider.length > 0
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -112,53 +80,11 @@ export default async function SettingsPage({
         Manage Barn
       </h1>
 
-      <AccordionSection title="Pending Requests" defaultOpen={pending.length > 0}>
-        {pending.length === 0 ? (
-          <EmptyState
-            heading="No pending requests"
-            subtext='From the Members page, add a member then share the link from "Copy Invite".'
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Name</Th>
-                  <Th>Role</Th>
-                  <Th>Requested</Th>
-                  <Th align="right">Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map((m) => (
-                  <MemberRow
-                    key={m.id}
-                    membership={m}
-                    name={nameMap.get(m.id) ?? m.id}
-                    actionSlot={
-                      <>
-                        <form action={approveMembershipAction.bind(null, slug, m.id)}>
-                          <Button type="submit" size="sm">
-                            Approve
-                          </Button>
-                        </form>
-                        <form action={rejectMembershipAction.bind(null, slug, m.id)}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            Reject
-                          </Button>
-                        </form>
-                      </>
-                    }
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </AccordionSection>
-
-      <AccordionSection title="Default Instructor Cut">
-        <form action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
+      <AccordionSection title="Default Instructor Cut" slug="instructor-cut" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
+        </p>
+        <GuardedForm action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
               htmlFor="instructor_cut"
@@ -178,26 +104,56 @@ export default async function SettingsPage({
             />
           </div>
           <Button type="submit">Save</Button>
-        </form>
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
-        </p>
+        </GuardedForm>
       </AccordionSection>
 
-      <AccordionSection title="Horse Exhaustion Thresholds">
+      <AccordionSection title="Horse Exhaustion Thresholds" slug="exhaustion-thresholds" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Sets where a horse&apos;s exhaustion bar crosses into the moderate and high bands. Individual horses can override these.
+        </p>
         <ExhaustionThresholdsForm
           barn={barn}
           action={updateExhaustionThresholdsAction.bind(null, slug)}
         />
-        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Default exertion-sum thresholds used when a horse has no per-horse override.
+      </AccordionSection>
+
+      <AccordionSection title="Schedule Buffer" slug="schedule-buffer" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Instructors are notified when another instructor books a lesson within this many minutes of one of their own.
         </p>
+        <GuardedForm action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
+          <div>
+            <label
+              htmlFor="schedule_buffer_minutes"
+              className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300"
+            >
+              Buffer (minutes)
+            </label>
+            <input
+              type="number"
+              id="schedule_buffer_minutes"
+              name="schedule_buffer_minutes"
+              min="0"
+              step="1"
+              required
+              defaultValue={barn.schedule_buffer_minutes}
+              className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            />
+          </div>
+          <Button type="submit">Save</Button>
+        </GuardedForm>
       </AccordionSection>
 
       <AccordionSection
         title="Lesson Tiers"
+        slug="tiers"
+        savedSlug={saved}
+        openSlug={open}
         headerExtra={<Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>}
       >
+        <p className={DESCRIPTION_CLASS}>
+          Named lesson types with a set price, so booking a lesson is a pick rather than a price entry. The default tier is pre-selected on new lessons.
+        </p>
         {tiers.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -215,7 +171,7 @@ export default async function SettingsPage({
                   <tr key={tier.id}>
                     <Td>{tier.name}</Td>
                     <Td tone="secondary">${tier.price}</Td>
-                    <Td>{tier.is_default && <Badge tone="solid">Default</Badge>}</Td>
+                    <Td>{tier.is_default && <Badge tone="gray">Default</Badge>}</Td>
                     <Td>
                       {tier.is_active ? (
                         <span className="text-zinc-700 dark:text-zinc-300">Active</span>
@@ -224,7 +180,7 @@ export default async function SettingsPage({
                       )}
                     </Td>
                     <TableActions>
-                      <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="ghost" size="sm">
+                      <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="secondary" size="sm">
                         Edit
                       </Button>
                     </TableActions>
@@ -242,8 +198,61 @@ export default async function SettingsPage({
         )}
       </AccordionSection>
 
-      <AccordionSection title="Default Board Fee">
-        <form action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+      <AccordionSection
+        title="Barn Events"
+        slug="events"
+        savedSlug={saved}
+        openSlug={open}
+        headerExtra={<Button href={`/barn/${slug}/settings/events/new`}>Add Event</Button>}
+      >
+        <p className={DESCRIPTION_CLASS}>
+          One-off dates on the barn calendar — shows, clinics, meetings, closures. Choose which roles see each one.
+        </p>
+        {events.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Title</Th>
+                  <Th>Date</Th>
+                  <Th>Visible To</Th>
+                  <Th align="right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((event) => (
+                  <tr key={event.id}>
+                    <Td>{event.title}</Td>
+                    <Td tone="secondary">
+                      {formatBarnDateTime(event.event_at)}
+                    </Td>
+                    <Td tone="secondary" className="capitalize">
+                      {event.visible_to_roles.join(', ')}
+                    </Td>
+                    <TableActions>
+                      <Button href={`/barn/${slug}/settings/events/${event.id}`} variant="secondary" size="sm">
+                        Edit
+                      </Button>
+                    </TableActions>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            heading="No events yet"
+            subtext="Barn events you add will appear here."
+            cta={{ label: 'Add Event', href: `/barn/${slug}/settings/events/new` }}
+          />
+        )}
+      </AccordionSection>
+
+      <AccordionSection title="Default Board Fee" slug="board-fee" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Applies to new boarding agreements only — existing boarders are unchanged.
+        </p>
+        <GuardedForm action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
               Monthly fee ($)
@@ -254,19 +263,20 @@ export default async function SettingsPage({
               type="number"
               step="0.01"
               min="0"
+              required
               defaultValue={barn.default_board_fee}
               className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>
           <Button type="submit">Save</Button>
-        </form>
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Applies to new boarding agreements only — existing boarders are unchanged.
-        </p>
+        </GuardedForm>
       </AccordionSection>
 
-      <AccordionSection title="Barn Timezone">
-        <form action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+      <AccordionSection title="Barn Timezone" slug="timezone" savedSlug={saved} openSlug={open}>
+        <p className={DESCRIPTION_CLASS}>
+          Every date and time in the app — lesson times, calendar days, and when charges fall due — is your barn&apos;s local time. This sets which zone that is.
+        </p>
+        <GuardedForm action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
               Timezone
@@ -285,10 +295,32 @@ export default async function SettingsPage({
             </select>
           </div>
           <Button type="submit">Save</Button>
-        </form>
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-          Used to determine when scheduled expenses become past due and which month an expense falls into near month boundaries.
+        </GuardedForm>
+      </AccordionSection>
+
+      {/* #1557 — no `<h3>` per sub-block: each description and its button name already say which
+          of the two downloads it is. The second description carries the `mt-6` the deleted
+          heading held, so the gap between the blocks survives the deletion. */}
+      <AccordionSection title="Data Backup">
+        <p className={DESCRIPTION_CLASS}>
+          {hasDocuments
+            ? 'Downloads every horse, trainer, and rider document as one zip archive, grouped by horse and member.'
+            : 'No documents to download yet.'}
         </p>
+        <DownloadButton
+          action={downloadAllDocumentsAction.bind(null, slug)}
+          disabled={!hasDocuments}
+          label="Download All Documents"
+        />
+
+        <p className={`mt-6 ${DESCRIPTION_CLASS}`}>
+          Downloads a spreadsheet of your horses, lessons, agreements, expenses, transactions, members, and document records — one sheet per record type.
+        </p>
+        <DownloadButton
+          action={downloadBarnDataAction.bind(null, slug)}
+          disabled={false}
+          label="Download Data"
+        />
       </AccordionSection>
     </main>
   )

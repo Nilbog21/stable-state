@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
+import type { MembershipStatus } from '@/lib/db/types'
 
 vi.mock('@/lib/db/auth', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -91,13 +92,13 @@ describe('requireMembership', () => {
   })
 
   it('should_call_notFound_when_membership_is_inactive', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'inactive' as unknown as MembershipStatus }))
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_not_redirect_when_membership_is_inactive', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'inactive' as unknown as MembershipStatus }))
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow()
     expect(mockRedirect).not.toHaveBeenCalled()

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockMembership, makeLessonDetail } from '@/test/fixtures'
+import { createMockLesson, createMockMembership, makeLessonDetail, instant } from '@/test/fixtures'
 import type { PaymentType } from '@/lib/db/types'
 import { makeFormData } from '@/test/utils/forms'
 import { guardAs } from '@/test/mocks/guard'
@@ -341,8 +341,10 @@ function makeLessonDetailWithRiders(
   instructorUserId: string | null = null
 ) {
   const { payment_type = null, ...lessonOverrides } = overrides
+  const lesson = createMockLesson(lessonOverrides)
   return {
-    ...createMockLesson(lessonOverrides),
+    ...lesson,
+    lesson_at: instant(lesson.lesson_at),
     payment_type,
     instructor_name: null,
     instructor_user_id: instructorUserId,
@@ -560,7 +562,8 @@ describe('cancelRiderParticipationAction', () => {
     // dropped the instructor from resolveCancellationRecipients here. This action trusts
     // whatever getLessonById resolves — it has no embed-based lookup of its own — so a
     // non-null instructor_user_id (as getLessonById now correctly returns even for a rider
-    // caller, see lessons.test.ts) is sufficient to prove the instructor gets notified.
+    // caller, see src/lib/db/__tests__/lessons-get-by-id.test.ts) is sufficient to prove
+    // the instructor gets notified.
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(

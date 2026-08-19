@@ -37,6 +37,7 @@ import {
   createMockBarn,
   createMockLessonWithDetails,
   createMockMembership,
+  instant,
 } from '@/test/fixtures'
 
 const mockBarn = createMockBarn({
@@ -45,7 +46,7 @@ const mockBarn = createMockBarn({
 
 const mockLesson = createMockLessonWithDetails({
   fee: 75,
-  lesson_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  lesson_at: instant(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()),
   submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   instructor_name: 'John Doe',
 })
@@ -277,7 +278,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_show_recent_lesson_by_default', async () => {
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    const threeDaysAgo = instant(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString())
     vi.mocked(getLessonsByBarn).mockResolvedValue([createMockLessonWithDetails({
       ...mockLesson,
       id: 'lesson-recent',
@@ -294,7 +295,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_not_show_older_lesson_by_default', async () => {
-    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    const tenDaysAgo = instant(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString())
     vi.mocked(getLessonsByBarn).mockResolvedValue([createMockLessonWithDetails({
       ...mockLesson,
       id: 'lesson-old',
@@ -311,7 +312,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_not_render_recent_list_when_all_lessons_are_older_than_cutoff', async () => {
-    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    const tenDaysAgo = instant(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString())
     vi.mocked(getLessonsByBarn).mockResolvedValue([createMockLessonWithDetails({
       ...mockLesson,
       id: 'lesson-old',
@@ -325,19 +326,19 @@ describe('LessonsPage', () => {
   it('should_call_getLessonsByBarn_with_manager_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'manager')
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'manager', 'America/New_York')
   })
 
   it('should_call_getLessonsByBarn_with_trainer_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'trainer')
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'trainer', 'America/New_York')
   })
 
   it('should_call_getLessonsByBarn_with_rider_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'rider')
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'rider', 'America/New_York')
   })
 
   it('should_show_all_pill_for_rider', async () => {
@@ -392,6 +393,42 @@ describe('LessonsPage', () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const pill = screen.getByRole('link', { name: /my lessons/i })
+    expect(pill.className).toContain('bg-zinc-900')
+  })
+
+  it('should_show_own_lesson_by_default_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const myLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-mine', instructor_id: 'mem-1', horse_names: ['MyHorse'], horse_ids: ['horse-mine'] })
+    const otherLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', instructor_id: 'other-mem', horse_names: ['OtherHorse'], horse_ids: ['horse-other'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([myLesson, otherLesson])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('MyHorse')).toBeDefined()
+  })
+
+  it('should_show_other_instructor_lesson_by_default_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const myLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-mine', instructor_id: 'mem-1', horse_names: ['MyHorse'], horse_ids: ['horse-mine'] })
+    const otherLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', instructor_id: 'other-mem', horse_names: ['OtherHorse'], horse_ids: ['horse-other'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([myLesson, otherLesson])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('OtherHorse')).toBeDefined()
+  })
+
+  it('should_not_mark_my_lessons_pill_active_by_default_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const pill = screen.getByRole('link', { name: /my lessons/i })
+    expect(pill.className).not.toContain('bg-zinc-900')
+  })
+
+  it('should_mark_all_pill_active_by_default_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const pill = screen.getByRole('link', { name: /^all$/i })
     expect(pill.className).toContain('bg-zinc-900')
   })
 

@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { DocumentRemindersSection } from '../DocumentRemindersSection'
 import type { DueDocument } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 afterEach(cleanup)
 
@@ -10,7 +11,7 @@ const pastDueHorseDoc: DueDocument = {
   entity: 'horse',
   recordType: 'coggins',
   fileName: 'coggins.pdf',
-  reminderDate: '2020-01-01',
+  reminderDate: calendarDate('2020-01-01'),
   ownerName: 'Thunderbolt',
   ownerId: 'horse-1',
 }
@@ -18,16 +19,6 @@ const pastDueHorseDoc: DueDocument = {
 describe('DocumentRemindersSection', () => {
   it('should_render_nothing_when_due_documents_is_empty', () => {
     const { container } = render(<DocumentRemindersSection slug="green-acres" dueDocuments={[]} />)
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('should_render_nothing_when_every_document_is_not_yet_due_locally', () => {
-    const { container } = render(
-      <DocumentRemindersSection
-        slug="green-acres"
-        dueDocuments={[{ ...pastDueHorseDoc, reminderDate: '2099-01-01' }]}
-      />
-    )
     expect(container.firstChild).toBeNull()
   })
 

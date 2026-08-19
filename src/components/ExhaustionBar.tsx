@@ -1,10 +1,13 @@
 'use client'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
-import { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'
+import { BAND_LABEL, getExhaustionBand } from '@/lib/exhaustion-band'
+import { BAND_FILL_CLASS } from '@/lib/band-colors'
 import { Button } from '@/components/ui/Button'
+import { formatBarnDate } from '@/lib/format-date'
+import type { Instant } from '@/lib/db/types'
 
 export interface ExhaustionBarRow {
-  lessonAt: string
+  lessonAt: Instant
   exertionLevel: number
 }
 
@@ -12,12 +15,6 @@ interface Props {
   existingRows: ExhaustionBarRow[]
   ghostValue?: number
   thresholds: { high: number; moderate: number }
-}
-
-const BAND_COLOR: Record<ExhaustionBand, string> = {
-  low: 'bg-green-500',
-  moderate: 'bg-orange-500',
-  high: 'bg-red-500',
 }
 
 const GHOST_STRIPE = {
@@ -39,6 +36,17 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
   const combinedPct = (Math.min(combinedTotal, safeHigh) / safeHigh) * 100
   let ghostPct = Math.max(combinedPct - existingPct, 0)
 
+  // Reads the combined total, not the existing one: the band and the fill are already
+  // computed from it, so a caption on `existingTotal` could read "Moderate" above a bar
+  // painted red. The popup below still breaks down the existing lessons alone.
+  //
+  // It renders inside the button rather than above it — the bar is the tap target, and a
+  // caption that looks like part of the control without being tappable is worse than none on
+  // touch. The `aria-label` keeps a copy so the lesson count survives in the accessible name;
+  // staying a superstring of the visible caption is what keeps voice control able to say what
+  // it reads (WCAG 2.5.3), and the label still overrides the contents, so it is announced once.
+  const caption = `${BAND_LABEL[band]} Exhaustion (${combinedTotal})`
+
   const MIN_GHOST_PCT = 8
   if (hasGhost && ghostPct === 0 && existingPct >= 100) {
     ghostPct = MIN_GHOST_PCT
@@ -57,11 +65,12 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
           setOpen((o) => !o)
         }}
         aria-expanded={open}
-        aria-label={`Exhaustion: ${existingTotal} points from ${existingRows.length} lessons`}
+        aria-label={`${caption} from ${existingRows.length} lessons`}
         className="block w-full py-2"
       >
+        <span className="mb-1 block text-left text-xs text-zinc-500 dark:text-zinc-400">{caption}</span>
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-          <div data-testid="exhaustion-bar-solid" className={`h-full ${BAND_COLOR[band]}`} style={{ width: `${existingPct}%` }} />
+          <div data-testid="exhaustion-bar-solid" className={`h-full ${BAND_FILL_CLASS[band]}`} style={{ width: `${existingPct}%` }} />
           {hasGhost && ghostPct > 0 && (
             <div
               data-testid="exhaustion-bar-ghost"
@@ -78,7 +87,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
               {existingTotal} points from {existingRows.length} lessons (±3-day window)
             </span>
             <Button
-              variant="ghost"
+              variant="secondary"
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -96,7 +105,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
             <ul className="space-y-1">
               {existingRows.map((row, i) => (
                 <li key={i} data-testid="exhaustion-bar-row" className="flex justify-between text-zinc-700 dark:text-zinc-300">
-                  <span>{new Date(row.lessonAt).toLocaleDateString()}</span>
+                  <span>{formatBarnDate(row.lessonAt)}</span>
                   <span>{row.exertionLevel}</span>
                 </li>
               ))}

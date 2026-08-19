@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
@@ -18,6 +18,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import OutstandingPage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -62,7 +63,7 @@ describe('OutstandingPage', () => {
 
   it('should_call_getOutstandingCharges_with_user_id_and_role', async () => {
     await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'manager')
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone, mockUser.id, 'manager')
   })
 
   it('should_render_empty_state_when_no_outstanding_items', async () => {
@@ -129,7 +130,7 @@ describe('OutstandingPage', () => {
 
   it('should_render_a_charge_row_with_its_type_and_rider_name', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -139,7 +140,7 @@ describe('OutstandingPage', () => {
 
   it('should_link_a_charge_row_to_its_agreement', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -150,7 +151,7 @@ describe('OutstandingPage', () => {
   it('should_not_link_a_charge_row_for_a_rider', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: riderMembership })
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -164,7 +165,7 @@ describe('OutstandingPage', () => {
       instructor_name: null, rider_names: [], fee: 75,
     }])
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', riderName: 'Dana Rider', fee: 200 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -178,7 +179,7 @@ describe('OutstandingPage', () => {
       instructor_name: null, rider_names: [], fee: 75,
     }])
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'lease', riderName: 'Dana Rider', fee: 200 },
     ])
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -212,20 +213,9 @@ describe('OutstandingPage', () => {
   })
 
   describe('timezone-aware date display', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
-    })
-
     // 2026-05-16T02:00:00Z is 10:00 PM EDT on May 15 — a naive UTC-anchored formatter
     // would show May 16 instead.
-    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+    it('should_display_a_lesson_rows_date_in_the_barns_timezone_not_utc', async () => {
       vi.mocked(getOutstandingLessons).mockResolvedValue([{
         id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-16T02:00:00Z',
         instructor_name: null, rider_names: [], fee: 75,
@@ -235,7 +225,7 @@ describe('OutstandingPage', () => {
       expect(screen.getByText('May 15, 2026')).toBeDefined()
     })
 
-    it('should_display_a_cancellation_fee_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+    it('should_display_a_cancellation_fee_rows_date_in_the_barns_timezone_not_utc', async () => {
       vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
         { id: 'lesson-rider-1', lessonId: 'lesson-2', lessonAt: '2026-05-16T02:00:00Z', instructorName: null, riderName: 'Erin Rider', fee: 50 },
       ])
@@ -244,13 +234,43 @@ describe('OutstandingPage', () => {
       expect(screen.getByText('May 15, 2026')).toBeDefined()
     })
 
-    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_timezone', async () => {
       vi.mocked(getOutstandingCharges).mockResolvedValue([
-        { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+        { id: 'charge-1', agreementId: 'agreement-1', period: calendarDate('2026-05-01'), kind: 'board', riderName: 'Carol Rider', fee: 500 },
       ])
       const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
       expect(screen.getByText('May 1, 2026')).toBeDefined()
+    })
+  })
+
+  // #1555 — the back link's target. `from` is a fixed token rather than a path, so an
+  // unrecognised value can only ever fall back; there is no URL here to validate.
+  describe('back link', () => {
+    const backHref = async (from?: string) => {
+      const jsx = await OutstandingPage({
+        params: Promise.resolve({ slug: 'green-acres' }),
+        searchParams: Promise.resolve({ from }),
+      })
+      render(jsx)
+      return (screen.getByRole('link', { name: '← Back' }) as HTMLAnchorElement).getAttribute('href')
+    }
+
+    it('should_return_to_dashboard_when_from_is_dashboard', async () => {
+      expect(await backHref('dashboard')).toBe('/barn/green-acres')
+    })
+
+    it('should_return_to_finances_for_manager_when_from_absent', async () => {
+      expect(await backHref()).toBe('/barn/green-acres/finances')
+    })
+
+    it('should_return_to_finances_for_manager_when_from_is_unrecognised', async () => {
+      expect(await backHref('https://evil.example')).toBe('/barn/green-acres/finances')
+    })
+
+    it('should_return_to_dashboard_for_rider_when_from_absent', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: riderMembership })
+      expect(await backHref()).toBe('/barn/green-acres')
     })
   })
 })

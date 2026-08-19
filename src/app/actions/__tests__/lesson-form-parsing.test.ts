@@ -74,10 +74,10 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({ error: 'horse required' })
   })
 
-  it('should_return_error_when_both_horse_id_and_new_horse_name_are_provided', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+  it('should_return_error_when_only_a_new_horse_name_is_provided', async () => {
+    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
+    expect(result).toEqual({ error: 'horse required' })
   })
 
   it('should_return_error_when_manager_submits_invalid_instructor_id', async () => {
@@ -109,6 +109,27 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({ error: 'horse not found in this barn' })
   })
 
+  // The three-argument call above is the create path, and its rejection is what keeps #1276's
+  // widening scoped to editing: only a caller that supplies the lesson's already-attached ids
+  // gets them accepted.
+  it('should_accept_a_horse_that_is_attached_to_the_lesson_but_no_longer_active', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'active-horse', name: 'Apple', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+    ])
+    const fd = makeFormData({ fee: '50', horse_id: 'inactive-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership, ['inactive-horse'])
+    expect('data' in result && result.data.horseIds).toEqual(['inactive-horse'])
+  })
+
+  it('should_return_error_when_horse_is_neither_active_nor_attached_to_the_lesson', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'active-horse', name: 'Apple', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+    ])
+    const fd = makeFormData({ fee: '50', horse_id: 'stranger-horse', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership, ['inactive-horse'])
+    expect(result).toEqual({ error: 'horse not found in this barn' })
+  })
+
   it('should_return_error_when_rider_does_not_belong_to_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
       { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
@@ -131,13 +152,11 @@ describe('parseLessonFormData', () => {
   })
 
   it('should_return_parsed_data_on_valid_input', async () => {
-    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo', instructor_cut: '25' })
+    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
     expect(result).toEqual({
       data: {
         horseIds: ['horse-1'],
-        newHorseName: null,
-        newHorseExertionLevel: 3,
         exertionLevels: new Map([['horse-1', 3]]),
         riderIds: ['mem-1'],
         lessonAt: '2026-05-17T10:00',
@@ -147,33 +166,8 @@ describe('parseLessonFormData', () => {
         paymentType: 'venmo',
         tierName: 'Standard',
         instructorId: mockTrainerMembership.id,
-        instructorCut: 25,
       },
     })
-  })
-
-  it('should_default_instructor_cut_to_zero_when_absent', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect('data' in result && result.data.instructorCut).toBe(0)
-  })
-
-  it('should_default_instructor_cut_to_zero_when_non_numeric', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_cut: 'abc' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect('data' in result && result.data.instructorCut).toBe(0)
-  })
-
-  it('should_include_new_horse_name_in_parsed_data', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
-    expect('data' in result && result.data.newHorseName).toBe('Blaze')
-  })
-
-  it('should_include_new_horse_exertion_level_in_parsed_data', async () => {
-    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
-    expect('data' in result && result.data.newHorseExertionLevel).toBe(4)
   })
 
   it('should_return_rider_required_when_both_horse_and_rider_are_missing', async () => {

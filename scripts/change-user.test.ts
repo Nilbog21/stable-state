@@ -1,34 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
-  mustSucceed,
-  isSelfSelect,
   formatProfileLine,
   formatBarnLine,
   mergeMembersWithProfiles,
-  resolveRevertUserId,
+  planUserIdMoves,
+  assertSlugRequiredForProd,
+  isTeardownOwnedBarn,
+  selectableBarns,
 } from './change-user'
-
-describe('mustSucceed', () => {
-  it('should_throw_with_label_and_message_when_result_has_error', () => {
-    expect(() =>
-      mustSucceed({ data: null, error: { message: 'boom' } }, 'test-label')
-    ).toThrow('test-label: boom')
-  })
-
-  it('should_return_data_when_result_has_no_error', () => {
-    expect(mustSucceed({ data: [1, 2, 3], error: null }, 'ok')).toEqual([1, 2, 3])
-  })
-})
-
-describe('isSelfSelect', () => {
-  it('should_return_true_when_emails_match', () => {
-    expect(isSelfSelect('dev@example.com', 'dev@example.com')).toBe(true)
-  })
-
-  it('should_return_false_when_emails_differ', () => {
-    expect(isSelfSelect('dev@example.com', 'other@example.com')).toBe(false)
-  })
-})
 
 describe('formatProfileLine', () => {
   const profile = { first_name: 'Alex', last_name: 'Trainer', email: 'alex@dev.local' }
@@ -43,14 +22,14 @@ describe('formatProfileLine', () => {
 })
 
 describe('formatBarnLine', () => {
-  const barn = { name: 'Willow Creek', slug: 'willow-creek' }
+  const barn = { name: 'Sunny Acres', slug: 'sunny-acres' }
 
   it('should_format_one_based_index_with_name_and_slug', () => {
-    expect(formatBarnLine(barn, 0)).toBe('1. Willow Creek (willow-creek)')
+    expect(formatBarnLine(barn, 0)).toBe('1. Sunny Acres (sunny-acres)')
   })
 
   it('should_increment_index_correctly', () => {
-    expect(formatBarnLine(barn, 1)).toBe('2. Willow Creek (willow-creek)')
+    expect(formatBarnLine(barn, 1)).toBe('2. Sunny Acres (sunny-acres)')
   })
 })
 
@@ -76,12 +55,109 @@ describe('mergeMembersWithProfiles', () => {
   })
 })
 
-describe('resolveRevertUserId', () => {
-  it('should_return_null_when_current_row_is_devs_own_profile', () => {
-    expect(resolveRevertUserId('dev-profile', 'dev-profile', 'dev-user')).toBeNull()
+describe('assertSlugRequiredForProd', () => {
+  it('should_throw_when_allow_prod_true_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, true)).toThrow('CHANGE_USER_BARN_SLUG is required')
   })
 
-  it('should_return_owner_user_id_when_current_row_belongs_to_another_profile', () => {
-    expect(resolveRevertUserId('instructor-profile', 'dev-profile', 'instructor-user')).toBe('instructor-user')
+  it('should_not_throw_when_allow_prod_true_and_slug_present', () => {
+    expect(() => assertSlugRequiredForProd('test-barn', true)).not.toThrow()
+  })
+
+  it('should_not_throw_when_allow_prod_false_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, false)).not.toThrow()
+  })
+})
+
+describe('isTeardownOwnedBarn', () => {
+  it('should_refuse_a_demo_barn', () => {
+    expect(isTeardownOwnedBarn({ is_demo: true, is_test_barn: false })).toBe(true)
+  })
+
+  it('should_refuse_a_test_barn', () => {
+    expect(isTeardownOwnedBarn({ is_demo: false, is_test_barn: true })).toBe(true)
+  })
+
+  it('should_refuse_a_barn_carrying_both_flags', () => {
+    expect(isTeardownOwnedBarn({ is_demo: true, is_test_barn: true })).toBe(true)
+  })
+
+  it('should_admit_a_barn_carrying_neither_flag', () => {
+    expect(isTeardownOwnedBarn({ is_demo: false, is_test_barn: false })).toBe(false)
+  })
+})
+
+describe('selectableBarns', () => {
+  const devBarn = { slug: 'dev-barn', is_demo: false, is_test_barn: false }
+  const demoBarn = { slug: 'demo-a1b2c3d4', is_demo: true, is_test_barn: false }
+  const testBarn = { slug: 'test-barn-pr-99', is_demo: false, is_test_barn: true }
+
+  it('should_drop_demo_and_test_barns', () => {
+    expect(selectableBarns([demoBarn, devBarn, testBarn])).toEqual([devBarn])
+  })
+
+  it('should_preserve_the_order_of_admitted_barns', () => {
+    const other = { slug: 'aardvark-acres', is_demo: false, is_test_barn: false }
+    expect(selectableBarns([devBarn, demoBarn, other])).toEqual([devBarn, other])
+  })
+
+  it('should_return_empty_when_every_barn_is_teardown_owned', () => {
+    expect(selectableBarns([demoBarn, testBarn])).toEqual([])
+  })
+})
+
+describe('planUserIdMoves', () => {
+  const base = {
+    devUserId: 'dev-user',
+    devProfileId: 'dev-profile',
+    target: { membershipId: 'm-target', profileId: 'p-target' },
+    current: { membershipId: 'm-current', profileId: 'p-current' },
+    currentOwnerUserId: 'current-user',
+  }
+
+  it('should_vacate_both_tables_before_taking_over', () => {
+    expect(planUserIdMoves(base).map((m) => `${m.table}:${m.id}`)).toEqual([
+      'barn_memberships:m-current',
+      'profiles:p-current',
+      'barn_memberships:m-target',
+      'profiles:p-target',
+    ])
+  })
+
+  it('should_restore_owner_user_id_on_both_vacated_rows', () => {
+    expect(planUserIdMoves(base).slice(0, 2).map((m) => m.userId)).toEqual(['current-user', 'current-user'])
+  })
+
+  it('should_put_dev_user_id_on_both_target_rows', () => {
+    expect(planUserIdMoves(base).slice(2).map((m) => m.userId)).toEqual(['dev-user', 'dev-user'])
+  })
+
+  it('should_null_vacated_rows_when_current_row_is_devs_own_profile', () => {
+    const moves = planUserIdMoves({
+      ...base,
+      current: { membershipId: 'm-dev', profileId: 'dev-profile' },
+      currentOwnerUserId: 'dev-user',
+    })
+    expect(moves.slice(0, 2).map((m) => m.userId)).toEqual([null, null])
+  })
+
+  it('should_null_vacated_rows_when_owner_has_no_auth_user', () => {
+    const moves = planUserIdMoves({ ...base, currentOwnerUserId: null })
+    expect(moves.slice(0, 2).map((m) => m.userId)).toEqual([null, null])
+  })
+
+  it('should_emit_only_takeover_moves_when_no_row_is_currently_inhabited', () => {
+    expect(planUserIdMoves({ ...base, current: null })).toEqual([
+      { table: 'barn_memberships', id: 'm-target', userId: 'dev-user' },
+      { table: 'profiles', id: 'p-target', userId: 'dev-user' },
+    ])
+  })
+
+  it('should_emit_only_takeover_moves_when_current_row_is_already_the_target', () => {
+    const moves = planUserIdMoves({
+      ...base,
+      current: { membershipId: 'm-target', profileId: 'p-target' },
+    })
+    expect(moves).toHaveLength(2)
   })
 })

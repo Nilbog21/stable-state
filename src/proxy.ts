@@ -2,12 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { applyRememberMe } from '@/lib/supabase/cookie-options'
 
-const BARN_ROUTE = /^\/barn\/([^/]+)\//
+const BARN_ROUTE = /^\/barn\/([^/]+)(\/|$)/
+
+// request.cookies.set() mutates request.headers in place, so headers must be
+// re-read fresh (not from a snapshot taken before a refresh) or a mid-request
+// cookie refresh silently fails to propagate to the downstream render.
+function nextResponseFor(request: NextRequest) {
+  const headers = new Headers(request.headers)
+  headers.set('x-url', request.url)
+  return NextResponse.next({ request: { headers } })
+}
 
 export async function proxy(request: NextRequest) {
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-url', request.url)
-  let response = NextResponse.next({ request: { headers: requestHeaders } })
+  let response = nextResponseFor(request)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,7 +29,7 @@ export async function proxy(request: NextRequest) {
             request.cookies.get('remember_me')?.value ??
             request.cookies.get('remember_me_pref')?.value
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request: { headers: requestHeaders } })
+          response = nextResponseFor(request)
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, applyRememberMe(options, value, remember))
           )
@@ -42,7 +49,6 @@ export async function proxy(request: NextRequest) {
     const exemptPaths = [
       `/barn/${barnSlug}/login`,
       `/barn/${barnSlug}/register`,
-      `/barn/${barnSlug}/pending`,
     ]
     if (exemptPaths.includes(pathname)) {
       return response

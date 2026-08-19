@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 
 function capitalizeRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1)
@@ -21,28 +20,18 @@ export default async function BarnsPage() {
         Select a Barn
       </h1>
       <ul className="space-y-4">
-        {memberships.map(({ barn, membership }) => {
-          const isPending = membership.status === 'pending'
-          const href = isPending ? `/barn/${barn.slug}/pending` : `/barn/${barn.slug}`
-          return (
-            <li key={membership.id}>
-              <Card href={href} className="px-6 py-4">
-                <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                  {barn.name}
-                </span>
-                {isPending ? (
-                  <Badge tone="yellow" className="ml-3">
-                    Pending Approval
-                  </Badge>
-                ) : (
-                  <span className="ml-3 text-sm text-zinc-500 dark:text-zinc-400">
-                    {capitalizeRole(membership.role)}
-                  </span>
-                )}
-              </Card>
-            </li>
-          )
-        })}
+        {memberships.map(({ barn, membership }) => (
+          <li key={membership.id}>
+            <Card href={`/barn/${barn.slug}`} className="px-6 py-4">
+              <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                {barn.name}
+              </span>
+              <span className="ml-3 text-sm text-zinc-500 dark:text-zinc-400">
+                {capitalizeRole(membership.role)}
+              </span>
+            </Card>
+          </li>
+        ))}
       </ul>
     </main>
   )

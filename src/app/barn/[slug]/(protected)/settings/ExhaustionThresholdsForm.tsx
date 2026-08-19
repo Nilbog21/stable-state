@@ -1,7 +1,8 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { Barn } from '@/lib/db/types'
 
 type ExhaustionThresholdsFormProps = {
@@ -10,10 +11,24 @@ type ExhaustionThresholdsFormProps = {
 }
 
 export function ExhaustionThresholdsForm({ barn, action }: ExhaustionThresholdsFormProps) {
-  const [state, formAction] = useActionState(action, { error: null })
+  // `action` goes to the hook unwrapped, or the form loses its progressive enhancement (#1396) —
+  // so the dirty flag is derived from the returned state instead of cleared on the action's
+  // return path. Submit clears it optimistically (as GuardedForm does) and a returned error
+  // re-arms it, because a failed save leaves the fields holding exactly the edits that didn't
+  // land. `pending` spans the gap between the two: onSubmit fires on click, while `state` still
+  // reads as the previous result until the action resolves, so without it nothing is armed for
+  // the whole round trip — the window #1362 built the guard for.
+  const [state, formAction, pending] = useActionState(action, { error: null })
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty || pending || state.error !== null)
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form
+      action={formAction}
+      className="space-y-4"
+      onChange={() => setDirty(true)}
+      onSubmit={() => setDirty(false)}
+    >
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

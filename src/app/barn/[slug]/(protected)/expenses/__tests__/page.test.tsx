@@ -9,13 +9,15 @@ vi.mock('../OlderExpensesToggle', () => ({ OlderExpensesToggle: () => null }))
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpensesByBarn } from '@/lib/db/expenses'
 import ExpensesPage from '../page'
+import { calendarDate } from '@/lib/local-day'
+import type { CalendarDate } from '@/lib/db/types'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
 
-function dateOffsetDays(days: number): string {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+function dateOffsetDays(days: number): CalendarDate {
+  return calendarDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10))
 }
 
 describe('ExpensesPage', () => {
@@ -81,5 +83,27 @@ describe('ExpensesPage', () => {
     const jsx = await ExpensesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByRole('link')).toHaveLength(1)
+  })
+
+  /**
+   * The page is where the barn's wall clock is minted, so it is where the frame can be got wrong
+   * — and the badge is the only observable that reads it. 2026-07-02T01:00Z is 9 PM on the 1st in
+   * the barn's own `America/New_York`, and 6:30 AM on the 2nd in the runner's pinned Asia/Kolkata
+   * (#1221): a page that passed the host's clock, or `Date.now()`, badges this card. Nothing else
+   * in this file distinguishes the two frames.
+   */
+  it('should_not_badge_a_date_only_expense_before_the_barns_own_midnight', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-02T01:00:00Z'))
+    try {
+      vi.mocked(getExpensesByBarn).mockResolvedValue([
+        createMockExpenseWithHorses({ expense_date: calendarDate('2026-07-01'), amount: null, expense_time: null }),
+      ])
+      const jsx = await ExpensesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.queryByText('Past Due')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

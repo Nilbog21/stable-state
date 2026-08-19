@@ -2,6 +2,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getBarnDefaultBoardFee } from '@/lib/db/agreements'
+import { barnToday } from '@/lib/barn-timezone'
 import { createAgreementAction } from '../actions'
 import { AgreementForm } from '../AgreementForm'
 import type { AgreementKind } from '@/lib/db/types'
@@ -39,7 +40,7 @@ export default async function NewAgreementPage({
         kind={kind}
         riders={riders}
         horses={horses}
-        defaultStartDate={new Date().toISOString().slice(0, 10)}
+        defaultStartDate={barnToday(barn.timezone)}
         defaultBoardFee={defaultBoardFee}
         onSave={save}
       />

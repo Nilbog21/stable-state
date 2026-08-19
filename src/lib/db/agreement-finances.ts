@@ -8,10 +8,12 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
 import { getTransactionRows, getOutstandingTransactionRows } from './transactions'
-import type { AgreementKind, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
+import { calendarDate, firstOfMonth } from '../local-day'
+import { barnToday } from '../barn-timezone'
+import type { AgreementKind, CalendarDate, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
 
 export interface ChargeSummaryRow {
-  period: string
+  period: CalendarDate
   fee: number
   payment_type: PaymentType | null
 }
@@ -26,7 +28,18 @@ export async function getChargesForSummary(
 ): Promise<ChargeSummaryRow[]> {
   const rows = await getTransactionRows(barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate }, client)
   return rows.map((row) => ({
-    period: row.occurredAt.slice(0, 10),
+    // #1309: this slice is correct and must stay — do NOT reach for `barnDay(...)` here.
+    // A charge transaction's `occurred_at` is not a real instant: `create_agreement_with_first_charge`
+    // and `generate_agreement_charge` insert it as `v_period::timestamptz`, where `v_period` is
+    // `date_trunc('month', …)::date`. It is the `period` DATE laundered through a cast, landing at
+    // exact UTC midnight on the 1st, so slicing the UTC date back out recovers exactly the DATE
+    // that went in. Decoding it into the barn's zone — every one of which is behind UTC — would
+    // shift every charge to the last day of the *previous* month, for every barn, always.
+    // (Same reason `transactions.ts:getTransactionRows`'s `.gte`/`.lt` window needs no padding
+    // here, unlike `expense-finances.ts`, where `occurred_at` genuinely is a real instant.)
+    // Unlike getPaidCharges below, this reader has no `agreement_charges` round-trip to read the
+    // real column from, and adding one for a barn-wide summary fold isn't worth the query.
+    period: calendarDate(row.occurredAt.slice(0, 10)),
     fee: row.amount,
     payment_type: row.paymentType,
   }))
@@ -35,7 +48,7 @@ export async function getChargesForSummary(
 export interface PaidCharge {
   chargeId: string
   agreementId: string
-  period: string
+  period: CalendarDate
   fee: number
   kind: AgreementKind
   riderId: string | null
@@ -55,15 +68,21 @@ export async function getPaidCharges(
   if (!rows.length) return []
 
   const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId).filter((id): id is string => id !== null))]
-  const agreementIdByChargeId = new Map<string, string>()
+  // #1309: `period` is read off the column rather than re-derived from the transaction's
+  // `occurred_at`. The round-trip below already exists for `agreement_id`, so this costs
+  // nothing — and it removes the trap that produced #1309, where the `occurred_at.slice(0, 10)`
+  // idiom read as a real-instant decode that a later reader would "fix" into `barnDay(...)`.
+  const chargeById = new Map<string, { agreementId: string; period: CalendarDate }>()
   if (chargeIds.length) {
     const { data: chargeRows, error } = await supabase
       .from('agreement_charges')
-      .select('id, agreement_id')
+      .select('id, agreement_id, period')
       .eq('barn_id', barnId)
       .in('id', chargeIds)
     if (error) throw error
-    for (const c of chargeRows ?? []) agreementIdByChargeId.set(c.id, c.agreement_id)
+    for (const c of chargeRows ?? []) {
+      chargeById.set(c.id, { agreementId: c.agreement_id, period: calendarDate(c.period) })
+    }
   }
 
   // agreementChargeId/membershipId/horseId are nullable via ON DELETE SET NULL — no
@@ -73,10 +92,14 @@ export async function getPaidCharges(
   // orphaned-lessonId handling); callers apply their own NO_HORSE_LABEL/NO_RIDER_LABEL.
   return rows.map((row) => {
     const chargeId = row.agreementChargeId ?? row.id
+    const charge = row.agreementChargeId ? chargeById.get(row.agreementChargeId) : undefined
     return {
       chargeId,
-      agreementId: (row.agreementChargeId && agreementIdByChargeId.get(row.agreementChargeId)) ?? chargeId,
-      period: row.occurredAt.slice(0, 10),
+      agreementId: charge?.agreementId ?? chargeId,
+      // Falls back to the transaction's own date when the charge row is gone — same
+      // defensive case the chargeId/agreementId fallbacks above cover, and correct for
+      // the reason getChargesForSummary's identical slice is correct (see its comment).
+      period: charge?.period ?? calendarDate(row.occurredAt.slice(0, 10)),
       fee: row.amount,
       kind: row.kind === 'lease_charge' ? 'lease' : 'board',
       riderId: row.membershipId,
@@ -85,8 +108,12 @@ export async function getPaidCharges(
   })
 }
 
+// `timezone` sits second rather than last because the three arguments after it are optional;
+// same placement as expenses.ts:getOutstandingExpenses, the other outstanding read that needs
+// the barn's own zone.
 export async function getOutstandingCharges(
   barnId: string,
+  timezone: string,
   userId?: string,
   role?: Role,
   client?: SupabaseClient
@@ -94,10 +121,13 @@ export async function getOutstandingCharges(
   if (role === 'trainer') return []
 
   const supabase = client ?? await createClient()
-  const now = new Date()
-  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10)
+  // #1309: the barn's own month, not the server host's. `agreement_charges.period` is a
+  // zoneless calendar date naming a billing month — it carries no zone of its own, so it is
+  // whoever asks "is that month still current?" who has to supply one, and that question is
+  // about the barn's day. Every zone in BARN_TIMEZONES is behind UTC, so answering it on the
+  // host's clock rolled the boundary over 4-10 hours early and briefly showed the
+  // still-current month's charges as overdue.
+  const firstOfCurrentMonth = firstOfMonth(barnToday(timezone))
 
   let riderAgreementIds: string[] | undefined
   if (role === 'rider' && userId) {
@@ -167,7 +197,7 @@ export async function getOutstandingCharges(
   return rows.map((row) => ({
     id: row.id,
     agreementId: row.agreement_id,
-    period: row.period,
+    period: calendarDate(row.period),
     kind: row.agreements.kind,
     riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,
     fee: row.fee,

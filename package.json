@@ -6,18 +6,21 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS=--max-old-space-size=11000 TZ=UTC next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test --pass-with-no-tests"
+    "test:checklist": "bash scripts/run-checklist-suite.sh --interactive",
+    "test:checklist:auto": "bash scripts/run-checklist-suite.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/typography": "^0.5.20",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.1",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",

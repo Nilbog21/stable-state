@@ -2,6 +2,8 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { createExpenseAction } from '@/app/actions/expenses'
+import { getScheduleRangeForBarn } from '@/app/actions/lessons'
+import { barnToday } from '@/lib/barn-timezone'
 import { ExpenseForm } from '../ExpenseForm'
 
 export default async function NewExpensePage({
@@ -19,6 +21,7 @@ export default async function NewExpensePage({
   ])
 
   const save = createExpenseAction.bind(null, slug)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, slug)
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
@@ -30,7 +33,9 @@ export default async function NewExpensePage({
         horses={horses}
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
-        defaultDate={new Date().toISOString().slice(0, 10)}
+        todayStr={barnToday(barn.timezone)}
+        timezone={barn.timezone}
+        getScheduleRange={getScheduleRange}
         onSave={save}
       />
     </main>

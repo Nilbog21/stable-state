@@ -46,6 +46,15 @@ describe('TermsPage', () => {
     )
   })
 
+  it('should_render_back_link_to_barns', async () => {
+    const jsx = await TermsPage()
+    render(jsx)
+
+    expect(
+      (screen.getByRole('link', { name: /back/i }) as HTMLAnchorElement).href
+    ).toContain('/barns')
+  })
+
   it('should_call_notFound_when_terms_file_cannot_be_read', async () => {
     mockReadFileSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')

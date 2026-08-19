@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { Agreement, AgreementKind } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { AgreementFormState } from './actions'
 
 type AgreementFormProps = {
@@ -46,9 +47,11 @@ export function AgreementForm({
     const bAvail = b.is_available === false ? 1 : 0
     return aAvail - bAvail
   })
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
 
   return (
-    <form action={formAction} className="w-full max-w-md space-y-4">
+    <form action={formAction} className="w-full max-w-md space-y-4" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
@@ -108,26 +111,33 @@ export function AgreementForm({
 
       {kind === 'lease' ? (
         <div>
-          <label
-            htmlFor="agreement-cadence"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-          >
-            Cadence
-          </label>
           {isEdit ? (
-            <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-              {initialAgreement ? cadenceLabel[initialAgreement.cadence] : '—'}
-            </p>
+            <>
+              <span className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Cadence
+              </span>
+              <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
+                {initialAgreement ? cadenceLabel[initialAgreement.cadence] : '—'}
+              </p>
+            </>
           ) : (
-            <select
-              id="agreement-cadence"
-              name="cadence"
-              defaultValue="monthly"
-              className="mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            >
-              <option value="one_time">One time</option>
-              <option value="monthly">Monthly</option>
-            </select>
+            <>
+              <label
+                htmlFor="agreement-cadence"
+                className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+              >
+                Cadence
+              </label>
+              <select
+                id="agreement-cadence"
+                name="cadence"
+                defaultValue="monthly"
+                className="mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+              >
+                <option value="one_time">One time</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </>
           )}
         </div>
       ) : (

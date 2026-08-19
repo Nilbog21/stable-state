@@ -6,7 +6,7 @@ import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
-import { formatCurrency } from '@/lib/format-currency'
+import { formatCurrency, formatFee } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
 import { buildReconciliationColumn, deriveNetColumn } from '@/lib/finances-reconciliation'
 import { OutstandingTable } from './OutstandingTable'
@@ -17,6 +17,9 @@ import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
+import { AccordionSection } from '@/components/ui/AccordionSection'
+import { sectionDescriptionClass } from '@/components/ui/section-description'
+import { dateNavButtonClass } from '@/components/ui/date-nav'
 import { EmptyState } from '@/components/EmptyState'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
@@ -36,22 +39,22 @@ export default async function FinancesPage({
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
 
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
-    resolveFinancesMonth(monthQueryParam, barn.created_at, new Date())
+    resolveFinancesMonth(monthQueryParam, barn.created_at, barn.timezone)
 
   const [{ pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
-    getFinancialSummary(barn.id, startDate, endDate),
+    getFinancialSummary(barn.id, startDate, endDate, barn.timezone),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
     getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
-    getOutstandingCharges(barn.id),
+    getOutstandingCharges(barn.id, barn.timezone),
     getOutstandingCancellationFees(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate, barn.timezone),
     getOutstandingExpenses(barn.id, barn.timezone),
     getRecipientExpenseSummary(barn.id, startDate, endDate, barn.timezone),
   ])
 
-  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees, barn.timezone)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
   const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 
@@ -62,7 +65,7 @@ export default async function FinancesPage({
   const totalCut = breakdown.reduce((sum, t) => sum + t.instructorCut, 0)
   const totalExpenses = totalCut + expenseSummary.totalExpenses
   const attributableHorseExpenses = expenseSummary.breakdown.reduce((sum, h) => sum + h.totalExpenses, 0)
-  // An expense whose horse_expenses record was deleted but whose collected transaction
+  // An expense whose appointments record was deleted but whose collected transaction
   // survives (deleteExpense's default) — counted in totalExpenses but absent from every
   // per-horse/per-recipient breakdown. Surfaced as "Unattributed" everywhere instead of
   // silently dropped.
@@ -126,73 +129,98 @@ export default async function FinancesPage({
         Finances
       </h1>
 
-      {outstandingItems.length > 0 && (
-        <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
-          <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding Income
-            <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
-          </p>
-          <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
-            {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-          </p>
-          <div className="mt-4">
-            <OutstandingTable items={outstandingItems} barnSlug={slug} />
-          </div>
-          <div className="mt-3">
-            <Link
-              href={`/barn/${slug}/finances/outstanding`}
-              className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
-              View all outstanding →
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* #1550 — three AccordionSections rather than five flat sibling blocks. Each part now has
+          a boundary, and the manager can put away what they aren't working on. Both Outstanding
+          sections render whatever the data and collapse when they have nothing, so the page keeps
+          one shape; the month pager and the tab pills sit inside Monthly Breakdown, the only
+          section they ever scoped. */}
+      <AccordionSection
+        title="Outstanding Income"
+        hint={outstandingItems.length === 0 ? 'None' : `${outstandingItems.length} unpaid`}
+        defaultOpen={outstandingItems.length > 0}
+      >
+        {/* Prose, not an ⓘ (#1550): a popover asks the reader to know there is something to tap
+            before it will tell them anything, and both of these sections exist to explain a list
+            the reader did not ask for. Same shape and style as Manage Barn's section
+            descriptions (#1557), whose class this now shares. */}
+        <p className={sectionDescriptionClass}>
+          All-time unpaid lessons, leases, and boarding charges — not only the month shown below.
+        </p>
+        {/* No empty-case branch: OutstandingTable returns null at zero items, and the total below
+            renders $0.00 in its own not-amber styling. */}
+        <p className={`text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+          {formatFee(outstandingTotal)}
+        </p>
+        <div className="mt-4">
+          <OutstandingTable items={outstandingItems} barnSlug={slug} />
+        </div>
+        <div className="mt-3">
+          <Link
+            href={`/barn/${slug}/finances/outstanding`}
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          >
+            View all outstanding →
+          </Link>
+        </div>
+      </AccordionSection>
 
-      {outstandingExpenses.length > 0 && (
-        <section className="mb-10 text-amber-700 dark:text-amber-400">
-          <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding Expenses
-            <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
-          </p>
-          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
-            {formatCurrency(outstandingExpensesTotal)}
-          </p>
-          <ul className="mt-4 space-y-1">
-            {outstandingExpenses.map((expense) => (
-              <li key={expense.id}>
-                <Link
-                  href={`/barn/${slug}/expenses/${expense.id}`}
-                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
-                >
-                  {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <AccordionSection
+        title="Outstanding Expenses"
+        hint={outstandingExpenses.length === 0 ? 'None' : `${outstandingExpenses.length} to resolve`}
+        defaultOpen={outstandingExpenses.length > 0}
+      >
+        {/* The "counts only the ones with an amount" half is here rather than left implicit: it is
+            the whole reason this total can read $0.00 with entries listed under it, which reads as
+            a bug until you know why. */}
+        <p className={sectionDescriptionClass}>
+          Expenses past their scheduled time that are still missing an amount, a payment type, or
+          both. The total counts only the ones with an amount.
+        </p>
+        {/* Amber gated on there being an entry, not on the total: an expense with no amount yet
+            still needs attention and contributes $0 to the figure — but an amber $0.00 on a
+            section with nothing in it would be a false alarm. */}
+        <p className={`text-2xl font-bold ${outstandingExpenses.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+          {formatCurrency(outstandingExpensesTotal)}
+        </p>
+        <ul className="mt-4 space-y-1">
+          {outstandingExpenses.map((expense) => (
+            <li key={expense.id}>
+              <Link
+                href={`/barn/${slug}/expenses/${expense.id}`}
+                className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+              >
+                {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </AccordionSection>
 
-      {/* Raw Tailwind, not <Button>/<Pill>: unpadded circular icon-arrow nav
-          control — no Button/Pill variant fits this shape. Deliberately reuses
-          Pill's pillInactive color tokens (border-zinc-300/text-zinc-600/hover
-          states) so it stays visually consistent with Pill if that palette
-          ever changes. */}
+      {/* Always open — unlike the two above it always has content, a table or the EmptyState
+          standing in for one. */}
+      <AccordionSection title="Monthly Breakdown" hint={monthLabel} defaultOpen>
+      {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant this
+          pager, the month calendar picker's arrows and the dashboard's day/week ones all render
+          from (#1394). Its own comment holds why an unpadded circular icon-arrow is a documented
+          Button exception, and why the three copies this replaced could not be left to stay in
+          step by hand. The placeholders take it too — they are `invisible`, so the extra colour
+          tokens change nothing, and a second near-copy of the string is exactly what went stale
+          last time. */}
       <div className="mb-8 flex items-center gap-4">
         {prevUrl ? (
-          <Link href={prevUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={prevUrl} className={dateNavButtonClass}>
             &lt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&lt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&lt;</span>
         )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
         {nextUrl ? (
-          <Link href={nextUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={nextUrl} className={dateNavButtonClass}>
             &gt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&gt;</span>
+          <span aria-hidden="true" className={`invisible ${dateNavButtonClass}`}>&gt;</span>
         )}
       </div>
 
@@ -208,6 +236,10 @@ export default async function FinancesPage({
         </div>
       )}
 
+      {/* Kept, not dropped with the move into the card (#1550 first removed it): the card
+          border wraps the whole of Monthly Breakdown and so separates nothing *within* it, and
+          this rule's job — since #262 put it here and #261 made it unconditional on purpose —
+          is to separate the pager/Pending income above from the tab switcher below. */}
       <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
 
       <div className="mb-6 overflow-x-auto -mx-1">
@@ -291,6 +323,7 @@ export default async function FinancesPage({
           />
         )
       )}
+      </AccordionSection>
     </main>
   )
 }

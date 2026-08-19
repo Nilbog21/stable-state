@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act, waitFor, within } from '@testing-library/react'
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -16,6 +16,9 @@ vi.mock('@/app/actions/expenses', () => ({
 
 import { getMostCommonExpenseTypeAction } from '@/app/actions/expenses'
 import { ExpenseForm } from '../ExpenseForm'
+import { createMockScheduleItem } from '@/test/fixtures'
+import type { ScheduleItem } from '@/lib/db/types'
+import { calendarDate } from '@/lib/local-day'
 
 const horses = [
   { id: 'horse-1', name: 'Apple' },
@@ -38,7 +41,9 @@ function renderForm(overrides: Partial<Parameters<typeof ExpenseForm>[0]> = {}) 
       horses={horses}
       recentRecipients={recentRecipients}
       recentExpenseTypes={recentExpenseTypes}
-      defaultDate="2026-07-04"
+      defaultDate={calendarDate('2026-07-04')}
+      todayStr={calendarDate('2026-07-04')}
+      timezone="America/New_York"
       onSave={onSave}
       {...overrides}
     />
@@ -49,6 +54,14 @@ describe('ExpenseForm', () => {
   it('should_render_recipient_input_as_required', () => {
     renderForm()
     expect((screen.getByLabelText(/recipient/i) as HTMLInputElement).required).toBe(true)
+  })
+
+  // #1224 -- `defaultDate` carries an existing record's own date in edit mode. Omitted (the
+  // new-expense case), the field seeds from `todayStr` — the barn's own day — rather than from
+  // the server host's UTC day, which runs ahead of every barn zone the picker offers.
+  it('should_seed_the_date_field_from_todayStr_when_defaultDate_is_omitted', () => {
+    const { container } = renderForm({ defaultDate: undefined, todayStr: calendarDate('2026-03-01') })
+    expect((container.querySelector('input[name="expense_date"]') as HTMLInputElement).value).toBe('2026-03-01')
   })
 
   it('should_render_recipient_datalist_options_from_recentRecipients', () => {
@@ -87,22 +100,42 @@ describe('ExpenseForm', () => {
     expect((screen.getByLabelText(/date/i) as HTMLInputElement).value).toBe('2026-07-04')
   })
 
+  // The faked clock puts the viewer on 2026-07-04, so a barn already on 2026-07-05 is the
+  // case #1149 is about: the date is past in barn time but not in the viewer's own (#1149).
+  it('should_hide_time_field_when_date_is_past_in_barn_time', () => {
+    renderForm({ todayStr: calendarDate('2026-07-05') })
+    expect(screen.queryByLabelText(/time/i)).toBeNull()
+  })
+
+  it('should_show_time_field_when_date_is_not_yet_past_in_barn_time', () => {
+    renderForm({ todayStr: calendarDate('2026-07-03') })
+    expect(screen.queryByLabelText(/time/i)).not.toBeNull()
+  })
+
   it('should_render_a_checkbox_for_each_horse', () => {
     renderForm()
     expect(screen.getByRole('checkbox', { name: 'Apple' })).toBeDefined()
     expect(screen.getByRole('checkbox', { name: 'Butter' })).toBeDefined()
   })
 
-  it('should_disable_horse_checkboxes_when_entire_barn_is_checked', () => {
+  // Within the group, not merely present somewhere: the control disables every horse checkbox
+  // below it, so sitting outside the group it controls is the thing being fixed.
+  it('should_render_the_barn_wide_checkbox_inside_the_horses_group', () => {
     renderForm()
-    fireEvent.click(screen.getByRole('checkbox', { name: /entire barn/i }))
+    const horsesGroup = screen.getByRole('group', { name: 'Horses' })
+    expect(within(horsesGroup).getByLabelText('All')).toBeDefined()
+  })
+
+  it('should_disable_horse_checkboxes_when_the_barn_wide_box_is_checked', () => {
+    renderForm()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All' }))
     expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).disabled).toBe(true)
   })
 
-  it('should_exclude_horse_id_from_form_data_when_entire_barn_is_checked', () => {
+  it('should_exclude_horse_id_from_form_data_when_the_barn_wide_box_is_checked', () => {
     const { container } = renderForm()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Apple' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /entire barn/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All' }))
     const form = container.querySelector('form')!
     const fd = new FormData(form)
     expect(fd.getAll('horse_id')).toEqual([])
@@ -270,12 +303,12 @@ describe('ExpenseForm', () => {
     expect((screen.getByLabelText(/notes/i) as HTMLTextAreaElement).value).toBe('Regular trim')
   })
 
-  it('should_check_entire_barn_from_initial', () => {
+  it('should_check_the_barn_wide_box_from_initial', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: true, horseIds: [] } })
-    expect((screen.getByRole('checkbox', { name: /entire barn/i }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'All' }) as HTMLInputElement).checked).toBe(true)
   })
 
-  it('should_disable_horse_checkboxes_when_entire_barn_from_initial', () => {
+  it('should_disable_horse_checkboxes_when_barn_wide_from_initial', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: true, horseIds: [] } })
     expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).disabled).toBe(true)
   })
@@ -291,28 +324,28 @@ describe('ExpenseForm', () => {
   })
 
   it('should_show_time_field_when_date_is_today', () => {
-    renderForm({ defaultDate: '2026-07-04' })
+    renderForm({ defaultDate: calendarDate('2026-07-04') })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
 
   it('should_show_time_field_when_date_is_in_the_future', () => {
-    renderForm({ defaultDate: '2026-07-05' })
+    renderForm({ defaultDate: calendarDate('2026-07-05') })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
 
   it('should_hide_time_field_when_date_is_strictly_before_today', () => {
-    renderForm({ defaultDate: '2026-07-03' })
+    renderForm({ defaultDate: calendarDate('2026-07-03') })
     expect(screen.queryByLabelText(/time/i)).toBeNull()
   })
 
   it('should_hide_time_field_after_changing_date_to_the_past', () => {
-    renderForm({ defaultDate: '2026-07-04' })
+    renderForm({ defaultDate: calendarDate('2026-07-04') })
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-03' } })
     expect(screen.queryByLabelText(/time/i)).toBeNull()
   })
 
   it('should_show_time_field_again_after_changing_date_back_to_today', () => {
-    renderForm({ defaultDate: '2026-07-03' })
+    renderForm({ defaultDate: calendarDate('2026-07-03') })
     fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-04' } })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
@@ -331,7 +364,7 @@ describe('ExpenseForm', () => {
 
   it('should_preserve_existing_time_in_form_data_when_editing_a_past_dated_expense', () => {
     const { container } = renderForm({
-      defaultDate: '2026-07-03',
+      defaultDate: calendarDate('2026-07-03'),
       initial: { recipient: '', expenseType: '', expenseTime: '14:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
     })
     const form = container.querySelector('form')!
@@ -386,20 +419,21 @@ describe('ExpenseForm', () => {
     expect(screen.queryByLabelText(/payment type/i)).toBeNull()
   })
 
+  // #1222 -- these used to force process.env.TZ to the barn's zone, which made the host and
+  // the barn agree and hid the fact that the form was reading the host's. The assertions
+  // below always stated the barn-local answer; only the frame producing it has changed.
   describe('occurred_at wiring', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
+    it('should_compute_occurred_at_in_the_barns_timezone_rather_than_the_hosts', () => {
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05'), timezone: 'America/Los_Angeles' })
+      fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 14:30 America/Los_Angeles (PDT, UTC-7) => 21:30 UTC
+      expect(fd.get('occurred_at')).toBe('2026-07-05T21:30:00.000Z')
     })
 
     it('should_include_a_hidden_occurred_at_field_computed_from_date_and_time_as_a_utc_instant', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
@@ -408,7 +442,7 @@ describe('ExpenseForm', () => {
     })
 
     it('should_default_occurred_at_to_midnight_local_when_time_is_blank', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       // midnight America/New_York (EDT, UTC-4) => 04:00 UTC
@@ -417,7 +451,7 @@ describe('ExpenseForm', () => {
 
     it('should_use_midnight_local_occurred_at_for_a_past_dated_expense_with_no_visible_time_field', () => {
       const { container } = renderForm({
-        defaultDate: '2026-07-03',
+        defaultDate: calendarDate('2026-07-03'),
         initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
       })
       const form = container.querySelector('form')!
@@ -431,18 +465,141 @@ describe('ExpenseForm', () => {
       // (UTC-4) dates used elsewhere in this test — catches a hardcoded offset.
       // It's also before the fake "now" (2026-07-04), so no time field is shown —
       // occurred_at falls back to midnight local, same as the blank-time case.
-      const { container } = renderForm({ defaultDate: '2026-01-15' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-01-15') })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBe('2026-01-15T05:00:00.000Z')
     })
 
+    it('should_compute_occurred_at_from_a_stored_time_that_carries_seconds', () => {
+      // `appointments.expense_time` is a Postgres `time`, so the edit page seeds this with
+      // "HH:MM:SS" — the time input only ever produces "HH:MM". Appending seconds blindly
+      // built "…T20:30:00:00", an Invalid Date that threw out of wallClockToInstant and
+      // 500'd the whole edit page.
+      const { container } = renderForm({
+        defaultDate: calendarDate('2026-07-05'),
+        initial: { recipient: '', expenseType: '', expenseTime: '20:30:00', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+      })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 20:30 America/New_York (EDT, UTC-4) => 00:30 UTC the next day
+      expect(fd.get('occurred_at')).toBe('2026-07-06T00:30:00.000Z')
+    })
+
     it('should_omit_the_occurred_at_field_when_date_is_cleared', () => {
-      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const { container } = renderForm({ defaultDate: calendarDate('2026-07-05') })
       fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '' } })
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBeNull()
     })
+  })
+})
+
+// #1020 — the same month conflict calendar the lesson form got in #1019, so a manager booking
+// the farrier can see the horse already has a vet visit or a lesson that day.
+describe('ExpenseForm — conflict calendar', () => {
+  const scheduleItem = (overrides: Partial<ScheduleItem> = {}): ScheduleItem =>
+    createMockScheduleItem({ start: '2026-07-15T09:00:00', ...overrides })
+
+  function renderWithSchedule(items: ScheduleItem[], overrides = {}) {
+    const getScheduleRange = vi.fn().mockResolvedValue(items)
+    const result = renderForm({ getScheduleRange, ...overrides })
+    return { ...result, getScheduleRange }
+  }
+
+  it('should_render_the_month_grid_when_a_schedule_reader_is_supplied', async () => {
+    renderWithSchedule([])
+    expect(await screen.findByLabelText('2026-07-15')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_plain_date_input_without_a_schedule_reader', () => {
+    const { container } = renderForm()
+    expect(container.querySelector('input#expense-date[type="date"]')).toBeTruthy()
+  })
+
+  it('should_flag_a_day_where_the_selected_horse_already_has_an_appointment', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_a_day_whose_only_appointment_belongs_to_another_horse', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_flag_a_booked_day_when_the_barn_wide_box_is_checked', async () => {
+    renderWithSchedule([scheduleItem({ id: 'l1', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('All'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_the_appointment_being_edited_against_itself', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })], {
+      excludeItemId: 'a1',
+    })
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_submit_the_tapped_day_as_expense_date', async () => {
+    const { container } = renderWithSchedule([])
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+    expect(new FormData(container.querySelector('form')!).get('expense_date')).toBe('2026-07-15')
+  })
+
+  it('should_request_one_schedule_read_covering_the_displayed_month_grid', async () => {
+    const { getScheduleRange } = renderWithSchedule([])
+    await screen.findByLabelText('2026-07-15')
+    expect(getScheduleRange).toHaveBeenCalledWith('2026-06-28', '2026-08-09')
+  })
+})
+
+describe('ExpenseForm — tapped day popup', () => {
+  async function openDay(items: ScheduleItem[]) {
+    renderForm({ getScheduleRange: vi.fn().mockResolvedValue(items) })
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+  }
+
+  it('should_show_an_appointments_server_built_label', async () => {
+    await openDay([
+      createMockScheduleItem({
+        id: 'a1',
+        itemType: 'expense',
+        start: '2026-07-15T09:00:00',
+        label: 'Farrier — Dr. Hoof',
+      }),
+    ])
+    expect(screen.getByText('Farrier — Dr. Hoof')).toBeTruthy()
+  })
+
+  it('should_name_a_lessons_horses_since_lessons_carry_no_label', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-1'] }),
+    ])
+    expect(screen.getByText('Lesson — Apple')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_bare_lesson_label_when_it_names_no_horse', async () => {
+    await openDay([createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00' })])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  // A lesson can hold a horse this form doesn't list — an inactive one, say, which the new-expense
+  // page filters out of `horses`. The name lookup misses and that id is dropped, not rendered blank.
+  it('should_drop_a_horse_id_the_form_cannot_name', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-gone'] }),
+    ])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  it('should_report_an_empty_day_as_having_nothing_scheduled', async () => {
+    await openDay([])
+    expect(screen.getByText('Nothing scheduled for this day.')).toBeTruthy()
   })
 })

@@ -6,10 +6,13 @@ vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getMembershipById: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
+vi.mock('@/lib/db/member-horse-privileges', () => ({ getMyHorseDocumentPrivilege: vi.fn() }))
 vi.mock('../actions', () => ({ uploadDocumentAction: vi.fn() }))
+vi.mock('../../../horses/[id]/actions', () => ({ uploadHorsePhotoAction: vi.fn() }))
+vi.mock('../../../members/[membership_id]/actions', () => ({ uploadProfilePhotoAction: vi.fn() }))
 vi.mock('../DocumentUploadForm', () => ({
-  DocumentUploadForm: ({ entity, cancelHref }: { entity: string; cancelHref: string }) => (
-    <div data-testid="document-upload-form" data-cancel-href={cancelHref}>{entity}</div>
+  DocumentUploadForm: ({ entity, cancelHref, photoMode }: { entity: string; cancelHref: string; photoMode?: boolean }) => (
+    <div data-testid="document-upload-form" data-cancel-href={cancelHref} data-photo-mode={photoMode ?? false}>{entity}</div>
   ),
 }))
 
@@ -20,6 +23,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
+import { getMyHorseDocumentPrivilege } from '@/lib/db/member-horse-privileges'
 import NewDocumentPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -33,12 +37,14 @@ const targetTrainerMembership = createMockMembership({ id: 'mem-target-trn', use
 const targetProfile = createMockProfile({ user_id: 'user-target-trn', first_name: 'Bob', last_name: 'Trainer' })
 const targetRiderMembership = createMockMembership({ id: 'mem-target-rdr', user_id: 'user-target-rdr', barn_id: 'barn-1', role: 'rider' })
 
-function makeParams(slug: string, entity?: string, id?: string) {
+function makeParams(slug: string, entity?: string, id?: string, type?: string) {
   return {
     params: Promise.resolve({ slug }),
-    searchParams: Promise.resolve({ entity, id }),
+    searchParams: Promise.resolve({ entity, id, type }),
   }
 }
+
+const horseWithPhoto = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg' })
 
 describe('NewDocumentPage', () => {
   beforeEach(() => {
@@ -46,6 +52,8 @@ describe('NewDocumentPage', () => {
     vi.mocked(getHorseById).mockReset()
     vi.mocked(getMembershipById).mockReset()
     vi.mocked(getProfileById).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('none')
     mockNotFound.mockClear()
 
     vi.mocked(requireMembership).mockResolvedValue({
@@ -82,9 +90,46 @@ describe('NewDocumentPage', () => {
     expect(screen.getByRole('heading', { name: /thunderbolt/i })).toBeDefined()
   })
 
-  it('should_call_requireMembership_with_manager_and_trainer_for_horse_entity', async () => {
+  it('should_call_requireMembership_with_all_three_roles_for_horse_entity', async () => {
     await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_render_form_for_rider_with_write_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
+    render(jsx)
+    expect(getMyHorseDocumentPrivilege).toHaveBeenCalledWith('horse-1', mockBarn.id)
+    expect(screen.getByTestId('document-upload-form').textContent).toBe('horse')
+  })
+
+  it('should_call_notFound_for_rider_with_read_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('read')
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_call_notFound_for_rider_with_no_privilege', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_not_check_privilege_for_manager_on_horse_entity', async () => {
+    await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
+    expect(getMyHorseDocumentPrivilege).not.toHaveBeenCalled()
   })
 
   it('should_render_document_upload_form_with_horse_entity', async () => {
@@ -194,5 +239,134 @@ describe('NewDocumentPage', () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'rider', 'mem-target-rdr'))
     render(jsx)
     expect(screen.getByTestId('document-upload-form').textContent).toBe('rider')
+  })
+
+  it('should_call_requireMembership_with_all_roles_for_photo_type', async () => {
+    await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_call_notFound_for_photo_type_when_caller_is_non_owner_rider', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: 'mem-other' }))
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_render_document_upload_form_for_photo_type_when_caller_is_owner', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: riderMembership.id }))
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form')).toBeDefined()
+  })
+
+  it('should_render_set_photo_heading_when_horse_has_no_photo', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /set photo — thunderbolt/i })).toBeDefined()
+  })
+
+  it('should_render_replace_photo_heading_when_horse_has_a_photo', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /replace photo — thunderbolt/i })).toBeDefined()
+  })
+
+  it('should_render_document_upload_form_in_photo_mode_for_photo_type', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').dataset.photoMode).toBe('true')
+  })
+
+  it('should_render_cancel_link_to_horse_detail_page_for_photo_type', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_call_notFound_for_photo_type_when_horse_does_not_exist', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(null)
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  describe('entity=profile&type=photo', () => {
+    beforeEach(() => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', first_name: 'Rita', last_name: 'Rider', is_managed: true }))
+    })
+
+    it('should_call_notFound_when_target_membership_does_not_exist', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(null)
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_target_membership_is_in_a_different_barn', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue({ ...targetRiderMembership, barn_id: 'barn-other' })
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_target_profile_does_not_exist', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(null)
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_manager_targets_an_unmanaged_profile', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', is_managed: false }))
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_trainer_targets_another_member', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_render_form_for_manager_targeting_managed_profile', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form')).toBeDefined()
+    })
+
+    it('should_render_form_for_self_regardless_of_managed_status', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+      vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-self', is_managed: false }))
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form')).toBeDefined()
+    })
+
+    it('should_render_set_photo_heading_when_profile_has_no_photo', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /set photo — rita rider/i })).toBeDefined()
+    })
+
+    it('should_render_replace_photo_heading_when_profile_has_a_photo', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', first_name: 'Rita', last_name: 'Rider', is_managed: true, photo_path: 'barn-1/profile-photos/profile-target/1.jpg' }))
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /replace photo — rita rider/i })).toBeDefined()
+    })
+
+    it('should_render_document_upload_form_in_photo_mode', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form').dataset.photoMode).toBe('true')
+    })
+
+    it('should_render_cancel_link_to_member_detail_page', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/members/mem-target-rdr')
+    })
   })
 })

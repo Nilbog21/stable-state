@@ -6,7 +6,7 @@ import type { HorseExpense } from '../types'
 // (#865) — amount is stored negative in the ledger (signed convention, matches
 // instructor_payout), so this flips it back to the positive magnitude the raw
 // HorseExpense fixture already uses. `appliesToAllHorses` is a test-only convenience
-// field (not part of TransactionRow) so call sites can build the horse_expenses
+// field (not part of TransactionRow) so call sites can build the appointments
 // follow-up lookup row without re-specifying the value. occurredAt is built at midnight
 // in the fixture's assumed barn timezone (America/New_York, EDT/UTC-4 for the July
 // dates used throughout this file) — mirroring what #955's fixed ExpenseForm wiring
@@ -32,7 +32,7 @@ function mockExpenseTxRow(overrides: Partial<HorseExpense> = {}) {
   }
 }
 
-function makeHorseExpensesLookupChain(data: unknown[] | null, error: Error | null = null) {
+function makeAppointmentLookupChain(data: unknown[] | null, error: Error | null = null) {
   const mockIn = vi.fn().mockResolvedValue({ data, error })
   const mockEq = vi.fn().mockReturnValue({ in: mockIn })
   const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
@@ -52,6 +52,7 @@ vi.mock('../transactions', async (importOriginal) => {
 import { createClient } from '@/lib/supabase/server'
 import { getTransactionRows } from '../transactions'
 import { getExpenseFinancialSummary, getHorseExpenseDetail, getRecipientExpenseSummary, getRecipientExpenseDetail } from '../expense-finances'
+import { calendarDate } from '@/lib/local-day'
 
 describe('getExpenseFinancialSummary', () => {
   beforeEach(() => {
@@ -84,7 +85,7 @@ describe('getExpenseFinancialSummary', () => {
     return { select: mockSelect }
   }
 
-  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+  function appointmentLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
     return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses }
   }
 
@@ -100,9 +101,9 @@ describe('getExpenseFinancialSummary', () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       if (table === 'horses') return makeHorsesChain([], [{ id: 'horse-1', name: 'Thunderbolt' }])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -111,13 +112,13 @@ describe('getExpenseFinancialSummary', () => {
     expect(result.breakdown).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 100 }])
   })
 
-  it('should_skip_expense_horses_query_when_all_expenses_are_barn_wide', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+  it('should_skip_appointment_horses_query_when_all_expenses_are_barn_wide', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const junctionFn = vi.fn()
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       if (table === 'horses') return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
       junctionFn()
       return makeJunctionChain([])
@@ -130,12 +131,12 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_split_barn_wide_expense_across_active_horses', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horseA = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horseB = { id: 'horse-2', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horseA, horseB], [{ id: 'horse-1', name: 'Thunderbolt' }, { id: 'horse-2', name: 'Shadow' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -146,11 +147,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_created_after_expense_date_from_barn_wide_split', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-07-15T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -161,11 +162,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_created_later_same_day_as_expense_from_barn_wide_split', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-07-10T12:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -176,11 +177,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_include_horse_created_before_expense_date_in_barn_wide_split', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-07-01T12:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -191,11 +192,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_deactivated_before_expense_date_from_barn_wide_split', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-06-01T00:00:00Z' }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -206,11 +207,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_include_horse_deactivated_after_expense_date_in_barn_wide_split', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-08-01T00:00:00Z' }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -221,11 +222,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_count_barn_wide_expense_in_total_but_exclude_from_breakdown_when_zero_applicable_horses', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const horse = { id: 'horse-1', created_at: '2026-08-15T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -240,11 +241,11 @@ describe('getExpenseFinancialSummary', () => {
     const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 200, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)])
       if (table === 'horses') return makeHorsesChain([], [{ id: 'horse-1', name: 'A' }, { id: 'horse-2', name: 'B' }])
       return makeJunctionChain([
-        { expense_id: 'expense-a', horse_id: 'horse-1' },
-        { expense_id: 'expense-b', horse_id: 'horse-2' },
+        { appointment_id: 'expense-a', horse_id: 'horse-1' },
+        { appointment_id: 'expense-b', horse_id: 'horse-2' },
       ])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -255,10 +256,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_treat_null_barn_horses_data_as_empty', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain(null)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -272,7 +273,7 @@ describe('getExpenseFinancialSummary', () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       if (table === 'horses') return makeHorsesChain([])
       return makeJunctionChain(null)
     })
@@ -287,9 +288,9 @@ describe('getExpenseFinancialSummary', () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       if (table === 'horses') return makeHorsesChain([], [])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-orphan' }])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-orphan' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -298,11 +299,11 @@ describe('getExpenseFinancialSummary', () => {
     expect(result.breakdown).toEqual([{ horseId: 'horse-orphan', horseName: 'horse-orphan', totalExpenses: 100 }])
   })
 
-  it('should_fall_back_to_not_barn_wide_when_horse_expenses_lookup_has_no_match', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+  it('should_fall_back_to_not_barn_wide_when_appointments_lookup_has_no_match', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([])
+      if (table === 'appointments') return makeAppointmentLookupChain([])
       if (table === 'horses') return makeHorsesChain([{ id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }])
       return makeJunctionChain([])
     })
@@ -313,11 +314,11 @@ describe('getExpenseFinancialSummary', () => {
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
 
-  it('should_treat_null_horse_expenses_lookup_data_as_empty', async () => {
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+  it('should_treat_null_appointments_lookup_data_as_empty', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain(null)
+      if (table === 'appointments') return makeAppointmentLookupChain(null)
       if (table === 'horses') return makeHorsesChain([{ id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }])
       return makeJunctionChain([])
     })
@@ -335,13 +336,13 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_count_an_orphaned_expense_transaction_toward_total_but_exclude_it_from_the_breakdown', async () => {
-    // expenseId is null when the source horse_expenses row was hard-deleted
+    // expenseId is null when the source appointments row was hard-deleted
     // (deleteExpense has no transactions cleanup) after the expense was collected.
     const orphanedRow = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false }), expenseId: null }
     vi.mocked(getTransactionRows).mockResolvedValue([orphanedRow])
-    const horseExpensesFn = vi.fn()
+    const appointmentsFn = vi.fn()
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') { horseExpensesFn(); return makeHorseExpensesLookupChain([]) }
+      if (table === 'appointments') { appointmentsFn(); return makeAppointmentLookupChain([]) }
       if (table === 'horses') return makeHorsesChain([])
       return makeJunctionChain([])
     })
@@ -350,23 +351,23 @@ describe('getExpenseFinancialSummary', () => {
     const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
-    expect(horseExpensesFn).not.toHaveBeenCalled()
+    expect(appointmentsFn).not.toHaveBeenCalled()
   })
 
-  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+  it('should_throw_when_appointments_lookup_query_errors', async () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100 })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain(null, new Error('appointments error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
+    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('appointments error')
   })
 
   it('should_throw_when_horses_query_errors', async () => {
     const row = mockExpenseTxRow({ amount: 100 })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeHorsesChain(null, [], new Error('horses error'))
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -374,11 +375,11 @@ describe('getExpenseFinancialSummary', () => {
     await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horses error')
   })
 
-  it('should_throw_when_expense_horses_query_errors', async () => {
+  it('should_throw_when_appointment_horses_query_errors', async () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       if (table === 'horses') return makeHorsesChain([])
       return makeJunctionChain(null, new Error('junction error'))
     })
@@ -418,7 +419,7 @@ describe('getHorseExpenseDetail', () => {
     return { select: mockSelect }
   }
 
-  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+  function appointmentLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
     return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses }
   }
 
@@ -444,30 +445,30 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_include_row_for_junction_linked_expense', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-10', amount: 100, horseCount: 1, splitAmount: 100 }])
+    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: calendarDate('2026-07-10'), amount: 100, horseCount: 1, splitAmount: 100 }])
   })
 
   it('should_derive_expense_date_from_the_barns_local_wall_clock_not_a_naive_utc_slice', async () => {
     // 2026-08-01T02:00:00Z is 10:00 PM EDT on July 31 — a naive slice(0, 10) of the raw
     // ISO instant would read "2026-08-01" instead, the wrong calendar day.
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-31' }), occurredAt: '2026-08-01T02:00:00+00:00' }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-31') }), occurredAt: '2026-08-01T02:00:00+00:00' }
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -497,30 +498,30 @@ describe('getHorseExpenseDetail', () => {
     // 2026-08-01T02:00:00Z (a July 31 11pm EDT entry) is >= endDate (2026-08-01T00:00Z) —
     // an unpadded range query would miss this row entirely, which is the bug this guards.
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-31' }), occurredAt: '2026-08-01T02:00:00+00:00' }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-31') }), occurredAt: '2026-08-01T02:00:00+00:00' }
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-31', amount: 100, horseCount: 1, splitAmount: 100 }])
+    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: calendarDate('2026-07-31'), amount: 100, horseCount: 1, splitAmount: 100 }])
   })
 
   it('should_exclude_an_expense_whose_decoded_local_date_falls_outside_the_requested_month_despite_being_within_the_padded_query_range', async () => {
     // occurred_at is within the padded query window, but its barn-local date (June 30) is
     // outside the requested July month — must be filtered out despite the mock returning it.
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-06-30' }), occurredAt: '2026-06-30T14:00:00+00:00' }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-06-30') }), occurredAt: '2026-06-30T14:00:00+00:00' }
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -531,11 +532,11 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_treat_null_junction_data_as_empty', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain(null)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -547,12 +548,12 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_exclude_row_when_horse_not_in_junction_for_non_barn_wide_expense', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
-      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-2' }])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
+      return makeJunctionChain([{ appointment_id: 'expense-1', horse_id: 'horse-2' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -563,7 +564,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_include_row_for_barn_wide_expense_when_horse_active_on_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     // the horse lookup and the barn-wide-horses fetch both hit 'horses' but with different select shapes;
     // dispatch by call order since the table name alone can't distinguish them
@@ -574,19 +575,19 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn2 } as any)
 
     const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
-    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-10', amount: 100, horseCount: 1, splitAmount: 100 }])
+    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: calendarDate('2026-07-10'), amount: 100, horseCount: 1, splitAmount: 100 }])
   })
 
   it('should_exclude_row_for_barn_wide_expense_when_horse_deactivated_before_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-06-01T00:00:00Z' }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
@@ -595,7 +596,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -607,7 +608,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_exclude_row_for_barn_wide_expense_when_horse_created_after_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-07-20T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
@@ -616,7 +617,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -629,7 +630,7 @@ describe('getHorseExpenseDetail', () => {
   it('should_compute_horse_count_from_all_applicable_horses_for_barn_wide_row', async () => {
     const horse1 = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horse2 = { id: 'horse-2', name: 'Shadow', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
@@ -638,7 +639,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse1)
         return makeBarnHorsesChain([horse1, horse2])
       }
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -651,7 +652,7 @@ describe('getHorseExpenseDetail', () => {
   it('should_compute_split_amount_as_amount_divided_by_horse_count', async () => {
     const horse1 = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horse2 = { id: 'horse-2', name: 'Shadow', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
@@ -660,7 +661,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse1)
         return makeBarnHorsesChain([horse1, horse2])
       }
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -672,15 +673,15 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_sum_total_from_row_split_amounts', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-05' })
-    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 60, applies_to_all_horses: false, expense_date: '2026-07-15' })
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 100, applies_to_all_horses: false, expense_date: calendarDate('2026-07-05') })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 60, applies_to_all_horses: false, expense_date: calendarDate('2026-07-15') })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)])
       return makeJunctionChain([
-        { expense_id: 'expense-a', horse_id: 'horse-1' },
-        { expense_id: 'expense-b', horse_id: 'horse-1' },
+        { appointment_id: 'expense-a', horse_id: 'horse-1' },
+        { appointment_id: 'expense-b', horse_id: 'horse-1' },
       ])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -708,7 +709,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_throw_when_barn_horses_query_errors', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: calendarDate('2026-07-10') })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
@@ -717,33 +718,33 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain(null, new Error('barn horses error'))
       }
-      return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeAppointmentLookupChain([appointmentLookupRow(row)])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('barn horses error')
   })
 
-  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+  it('should_throw_when_appointments_lookup_query_errors', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      return makeHorseExpensesLookupChain(null, new Error('horse_expenses error'))
+      return makeAppointmentLookupChain(null, new Error('appointments error'))
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('appointments error')
   })
 
-  it('should_throw_when_expense_horses_query_errors', async () => {
+  it('should_throw_when_appointment_horses_query_errors', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      if (table === 'appointments') return makeAppointmentLookupChain([appointmentLookupRow(row)])
       return makeJunctionChain(null, new Error('junction error'))
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -761,7 +762,7 @@ describe('getRecipientExpenseSummary', () => {
   const startDate = new Date('2026-07-01T00:00:00Z')
   const endDate = new Date('2026-08-01T00:00:00Z')
 
-  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+  function appointmentLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
     return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses, recipient: row.recipient, expense_type: row.expenseType }
   }
 
@@ -777,7 +778,7 @@ describe('getRecipientExpenseSummary', () => {
     const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith' })
     const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Dr. Smith' })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
@@ -789,7 +790,7 @@ describe('getRecipientExpenseSummary', () => {
     const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 30, recipient: 'Feed Co' })
     const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 90, recipient: 'Dr. Smith' })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
@@ -800,7 +801,7 @@ describe('getRecipientExpenseSummary', () => {
   it('should_skip_an_orphaned_expense_transaction_with_no_resolvable_recipient', async () => {
     const orphanedRow = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100 }), expenseId: null }
     vi.mocked(getTransactionRows).mockResolvedValue([orphanedRow])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
@@ -814,13 +815,13 @@ describe('getRecipientExpenseSummary', () => {
     await expect(getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
-  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+  it('should_throw_when_appointments_lookup_query_errors', async () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100 })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain(null, new Error('appointments error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
+    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('appointments error')
   })
 })
 
@@ -833,7 +834,7 @@ describe('getRecipientExpenseDetail', () => {
   const startDate = new Date('2026-07-01T00:00:00Z')
   const endDate = new Date('2026-08-01T00:00:00Z')
 
-  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+  function appointmentLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
     return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses, recipient: row.recipient, expense_type: row.expenseType }
   }
 
@@ -846,22 +847,22 @@ describe('getRecipientExpenseDetail', () => {
   })
 
   it('should_filter_rows_to_exact_recipient_match_only', async () => {
-    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_type: 'Veterinary', expense_date: '2026-07-05' })
-    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Feed Co', expense_date: '2026-07-06' })
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_type: 'Veterinary', expense_date: calendarDate('2026-07-05') })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Feed Co', expense_date: calendarDate('2026-07-06') })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
 
-    expect(result.rows).toEqual([{ expenseId: 'expense-a', expenseDate: '2026-07-05', expenseType: 'Veterinary', amount: 50 }])
+    expect(result.rows).toEqual([{ expenseId: 'expense-a', expenseDate: calendarDate('2026-07-05'), expenseType: 'Veterinary', amount: 50 }])
   })
 
   it('should_compute_total_as_sum_of_row_amounts', async () => {
-    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_date: '2026-07-05' })
-    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Dr. Smith', expense_date: '2026-07-15' })
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_date: calendarDate('2026-07-05') })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Dr. Smith', expense_date: calendarDate('2026-07-15') })
     vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([appointmentLookupRow(rowA), appointmentLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
@@ -872,7 +873,7 @@ describe('getRecipientExpenseDetail', () => {
   it('should_return_empty_rows_and_zero_total_when_recipient_has_no_expenses_that_month', async () => {
     const row = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Feed Co' })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(row)]))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain([appointmentLookupRow(row)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
@@ -886,12 +887,12 @@ describe('getRecipientExpenseDetail', () => {
     await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
-  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+  it('should_throw_when_appointments_lookup_query_errors', async () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, recipient: 'Dr. Smith' })
     vi.mocked(getTransactionRows).mockResolvedValue([row])
-    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
+    const fromFn = vi.fn().mockReturnValue(makeAppointmentLookupChain(null, new Error('appointments error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
+    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')).rejects.toThrow('appointments error')
   })
 })

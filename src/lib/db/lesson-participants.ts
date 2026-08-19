@@ -1,8 +1,17 @@
+/**
+ * Lesson participant management over `lesson_horses`/`lesson_riders`: RPC-backed
+ * lesson-with-participants create/update, per-rider and per-horse notes writes (each
+ * deliberately avoiding an implicit `RETURNING *` outside the caller's column grants —
+ * the rider path through the `update_lesson_rider_notes` RPC, the horse path through a
+ * bare update; see `updateLessonHorseNotes`' comment), rider cancellation and
+ * cancellation-fee collection,
+ * `hydrateParticipants`, and a rider's enrolled-lesson ID read.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
 import { resolveHorseNames } from './horses'
-import type { Lesson, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
+import type { Lesson, LessonType, LessonWithDetails, PaymentType } from './types'
 
 interface LessonHorseJunctionRow {
   lesson_id: string
@@ -13,7 +22,8 @@ interface LessonHorseJunctionRow {
 export async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessons: Lesson[],
-  barnId: string
+  barnId: string,
+  timezone: string
 ): Promise<LessonWithDetails[]> {
   if (!lessons.length) return []
   const lessonIds = lessons.map((l) => l.id)
@@ -47,23 +57,35 @@ export async function hydrateParticipants(
   return lessons.map((lesson) => {
     const instructorName = lesson.instructor_id ? membershipMap.get(lesson.instructor_id) ?? null : null
     const horseJunctionRows = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
+    // #1286: both participant lists are rendered as a sequence (LessonListItem,
+    // CalendarLessonCard), and neither junction query can order them — they carry ids only,
+    // with the names resolved above. Sorted alphabetically, matching `getHorsesByBarn`'s
+    // `ORDER BY h.name`. The sort is on the participant objects rather than on the name
+    // arrays, which is what keeps `horse_ids`/`rider_ids`/`rider_cancelled_ats` positionally
+    // aligned with the names derived from them below. The id tiebreak follows `schedule.ts`'s
+    // `a.start … || a.id …` (a #1015 review finding): two participants can share a name, and
+    // the entries tied on it still differ in the id that links them and, for a rider, in
+    // `cancelled_at`.
     const horseParticipants = horseJunctionRows
       .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id), status: lh.horses }))
       .filter((p): p is { id: string; name: string; status: LessonHorseJunctionRow['horses'] } => Boolean(p.name))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
     const horseNames = horseParticipants.map((p) => p.name)
     const horseIdsForLesson = horseParticipants.map((p) => p.id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
       .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id), cancelledAt: lr.cancelled_at ?? null }))
       .filter((p): p is { id: string; name: string; cancelledAt: string | null } => Boolean(p.name))
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIdsForLesson = riderParticipants.map((p) => p.id)
     const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)
     const needsAttention = horseParticipants.some((p) => (p.status ? !p.status.is_active || !p.status.is_available : false))
     return {
       ...lesson,
+      lesson_at: { at: lesson.lesson_at, tz: timezone },
       // #885: lessons.payment_type is no longer trustworthy — getLessonsByBarn overlays the
-      // real value from get_lesson_payment_info after this returns. getUpcomingLessons (the
+      // real value from get_lesson_payment_info after this returns. getLessonsByIds (the
       // other caller) doesn't render payment_type at all, so the default is never seen there.
       payment_type: null,
       instructor_name: instructorName,
@@ -91,11 +113,12 @@ export async function createLessonWithParticipants(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
-  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
-  instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
+  // p_instructor_cut is deliberately unpassed (#1154): the RPC ignores it and re-derives the
+  // cut server-side (#776), and its DEFAULT 0 lets us stop sending it without a signature
+  // change. Why the signature itself stays: docs/architecture/rpc/lessons.md.
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
     p_barn_id: params.barnId,
     p_instructor_id: params.instructorId,
@@ -108,7 +131,6 @@ export async function createLessonWithParticipants(params: {
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
     p_payment_type: params.paymentType ?? null,
-    p_instructor_cut: params.instructorCut ?? 0,
   })
   if (error) throw error
   return data as Lesson
@@ -127,10 +149,9 @@ export async function updateLessonWithParticipants(params: {
   horseIds: string[]
   exertionLevels: number[]
   riderIds: string[]
-  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
-  instructorCut: number
 }): Promise<Lesson> {
   const supabase = await createClient()
+  // p_instructor_cut deliberately unpassed — see createLessonWithParticipants above.
   const { data, error } = await supabase.rpc('update_lesson_with_participants', {
     p_lesson_id: params.lessonId,
     p_barn_id: params.barnId,
@@ -144,7 +165,6 @@ export async function updateLessonWithParticipants(params: {
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
     p_rider_ids: params.riderIds,
-    p_instructor_cut: params.instructorCut,
   })
   if (error) throw error
   return data as Lesson
@@ -156,19 +176,17 @@ export async function updateLessonRiderNotes(
   barnId: string,
   riderNotes: string | null,
   privateNotes: string | null
-): Promise<LessonRider> {
+): Promise<void> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('lesson_riders')
-    .update({ rider_notes: riderNotes, private_notes: privateNotes })
-    .eq('lesson_id', lessonId)
-    .eq('rider_id', riderId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
+  const { error } = await supabase.rpc('update_lesson_rider_notes', {
+    p_lesson_id: lessonId,
+    p_rider_id: riderId,
+    p_barn_id: barnId,
+    p_rider_notes: riderNotes,
+    p_private_notes: privateNotes,
+  })
 
   if (error) throw error
-  return data
 }
 
 // #1082: deliberately no `.select()` — PostgREST turns a bare `.select()` into an implicit

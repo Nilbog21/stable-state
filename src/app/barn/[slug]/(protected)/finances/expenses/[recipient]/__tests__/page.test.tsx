@@ -13,8 +13,9 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 import { requireMembership } from '@/lib/auth/guard'
 import { getRecipientExpenseDetail } from '@/lib/db/expense-finances'
 import RecipientExpensePage from '../page'
+import { calendarDate } from '@/lib/local-day'
 
-const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
+const mockBarn = createMockBarn({ created_at: '2026-01-01T12:00:00Z' })
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ role: 'manager' })
 
@@ -62,7 +63,7 @@ describe('RecipientExpensePage', () => {
 
   it('should_render_expense_date_in_table', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 }],
       total: 100,
     })
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
@@ -72,7 +73,7 @@ describe('RecipientExpensePage', () => {
 
   it('should_render_expense_type', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 }],
       total: 100,
     })
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
@@ -82,7 +83,7 @@ describe('RecipientExpensePage', () => {
 
   it('should_render_amount_in_table', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 }],
       total: 100,
     })
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
@@ -92,7 +93,7 @@ describe('RecipientExpensePage', () => {
 
   it('should_link_date_to_expense_detail', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 }],
       total: 100,
     })
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
@@ -103,7 +104,7 @@ describe('RecipientExpensePage', () => {
 
   it('should_render_total_row', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
-      rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 }],
+      rows: [{ expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 }],
       total: 100,
     })
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
@@ -114,8 +115,8 @@ describe('RecipientExpensePage', () => {
   it('should_accumulate_total_across_multiple_expenses', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
       rows: [
-        { expenseId: 'expense-1', expenseDate: '2026-05-10', expenseType: 'Veterinary', amount: 100 },
-        { expenseId: 'expense-2', expenseDate: '2026-05-15', expenseType: 'Feed', amount: 60 },
+        { expenseId: 'expense-1', expenseDate: calendarDate('2026-05-10'), expenseType: 'Veterinary', amount: 100 },
+        { expenseId: 'expense-2', expenseDate: calendarDate('2026-05-15'), expenseType: 'Feed', amount: 60 },
       ],
       total: 160,
     })
@@ -147,8 +148,8 @@ describe('RecipientExpensePage', () => {
   it('should_render_rows_in_date_ascending_order', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
       rows: [
-        { expenseId: 'expense-1', expenseDate: '2026-05-20', expenseType: 'Veterinary', amount: 100 },
-        { expenseId: 'expense-2', expenseDate: '2026-05-05', expenseType: 'Feed', amount: 40 },
+        { expenseId: 'expense-1', expenseDate: calendarDate('2026-05-20'), expenseType: 'Veterinary', amount: 100 },
+        { expenseId: 'expense-2', expenseDate: calendarDate('2026-05-05'), expenseType: 'Feed', amount: 40 },
       ],
       total: 140,
     })

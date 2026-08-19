@@ -1,3 +1,11 @@
+/**
+ * Membership-id → display-name resolution (`resolveMemberNames`, the module's one
+ * export) via a three-step RLS-aware fallback: the direct `joinMembershipsWithProfiles`
+ * read, then the column-limited `get_instructor_membership_names` RPC (#739 follow-up),
+ * then `get_active_barn_member_summaries` plus `fetchProfilesById` (#779) — each step
+ * covering only ids the previous step's RLS scope couldn't see, none of them exposing
+ * `invite_token`. Ids no step can see are simply absent from the returned map.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
@@ -21,10 +29,12 @@ export async function resolveMemberNames(
 
   const nameMap = new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
 
-  // Rows the caller isn't the instructor of (or enrolled under) never come back from the
-  // query above — barn_memberships RLS only covers own-row + trainer-reads-riders. Resolve
-  // those via a column-limited RPC instead of a broad row-level policy, so the fetch can't
-  // also expose invite_token (see get_instructor_membership_names, #739 follow-up).
+  // The query above returns only the rows the caller's barn_memberships SELECT policies
+  // cover: own row, the whole barn for a manager, the barn's active rider rows for a
+  // trainer. Anything outside that scope — e.g. a rider resolving their lesson's
+  // instructor — stays unresolved here. Resolve those via a column-limited RPC instead of
+  // a broad row-level policy, so the fetch can't also expose invite_token (see
+  // get_instructor_membership_names, #739 follow-up).
   const unresolvedIds = membershipIds.filter((id) => !nameMap.has(id))
   if (unresolvedIds.length) {
     const { data: instructorRows, error } = await supabase.rpc('get_instructor_membership_names', {

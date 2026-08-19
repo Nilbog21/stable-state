@@ -42,18 +42,6 @@ const mockActiveMembership = {
   }),
 }
 
-const mockPendingMembership = {
-  barn: createMockBarn({ id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', default_instructor_cut: 25, created_at: '' }),
-  membership: createMockMembership({
-    id: 'mem-2',
-    user_id: 'user-1',
-    barn_id: 'barn-2',
-    role: 'rider' as const,
-    status: 'pending' as const,
-    created_at: '',
-  }),
-}
-
 function setupAuth(user: typeof mockUser | null = mockUser) {
   vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
@@ -96,14 +84,6 @@ describe('BarnsPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
   })
 
-  it('should_not_link_to_pending_page_for_active_membership', async () => {
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    const link = screen.getByRole('link', { name: /green acres/i })
-    expect((link as HTMLAnchorElement).href).not.toContain('/pending')
-  })
-
   it('should_render_capitalized_role_for_manager', async () => {
     const jsx = await BarnsPage()
     render(jsx)
@@ -137,60 +117,5 @@ describe('BarnsPage', () => {
     render(jsx)
 
     expect(screen.getByText('Rider')).toBeDefined()
-  })
-
-  it('should_render_pending_approval_badge_for_pending_membership', async () => {
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockPendingMembership])
-
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    expect(screen.getByText('Pending Approval')).toBeDefined()
-  })
-
-  it('should_render_link_to_pending_page_for_pending_membership', async () => {
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockPendingMembership])
-
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    const link = screen.getByRole('link', { name: /sunset stables/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/sunset-stables/pending')
-  })
-
-  it('should_render_active_barn_name_when_mixed_memberships', async () => {
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-      mockActiveMembership,
-      mockPendingMembership,
-    ])
-
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    expect(screen.getByText('Green Acres')).toBeDefined()
-  })
-
-  it('should_render_pending_barn_name_when_mixed_memberships', async () => {
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-      mockActiveMembership,
-      mockPendingMembership,
-    ])
-
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    expect(screen.getByText('Sunset Stables')).toBeDefined()
-  })
-
-  it('should_render_pending_badge_when_mixed_memberships', async () => {
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-      mockActiveMembership,
-      mockPendingMembership,
-    ])
-
-    const jsx = await BarnsPage()
-    render(jsx)
-
-    expect(screen.getByText('Pending Approval')).toBeDefined()
   })
 })

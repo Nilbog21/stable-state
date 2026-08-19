@@ -1,10 +1,14 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/actions/expenses'
+import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
+import { addDays } from '@/lib/local-day'
+import { wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
-import { localToday } from '@/lib/local-day'
-import type { PaymentType } from '@/lib/db/types'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
+import type { CalendarDate, PaymentType, ScheduleItem } from '@/lib/db/types'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
 
@@ -24,7 +28,25 @@ type ExpenseFormProps = {
   horses: { id: string; name: string }[]
   recentRecipients: string[]
   recentExpenseTypes: string[]
+  /** In edit mode, the record's own `expense_date`. Omitted (the new-expense case), the Date
+   *  field seeds from `todayStr` — see below. */
   defaultDate?: string
+  /** The barn's own calendar day, from `barnToday` (#1149) — required rather than defaulted to
+   *  the viewer's clock, which would put this comparison in the wrong frame for anyone whose
+   *  device timezone differs from the barn's. #1224 made it the new-expense date default too:
+   *  the day being pre-filled is a day of *barn* business, and the alternative it replaced was
+   *  the server host's UTC day, which runs ahead of every zone the barn picker offers. */
+  todayStr: CalendarDate
+  /** The barn's `barns.timezone`. Required, and the frame the entered date and time resolve
+   *  in: they mean that wall clock *at the barn*, same as `DateHourPicker`'s (#1222). */
+  timezone: string
+  /** #1020 — supplied, the Date field becomes the same month conflict calendar the lesson form
+   *  got in #1019; omitted, it stays a plain `<input type="date">`. Injected rather than called
+   *  directly because this is a client component and the DAL is server-only, matching how
+   *  `LessonForm` takes the same action. */
+  getScheduleRange?: (fromDate: string, toDate: string) => Promise<ScheduleItem[]>
+  /** In edit mode, the appointment being edited — it must not conflict with itself. */
+  excludeItemId?: string
   initial?: ExpenseFormInitial
   submitLabel?: string
   onSave: (state: ExpenseFormState, fd: FormData) => Promise<ExpenseFormState>
@@ -33,15 +55,18 @@ type ExpenseFormProps = {
 const inputClassName =
   'mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50'
 
-// Mirrors DateHourPicker's fix: constructing via Date's local (year, month, day, hour,
-// minute) numeric components, then reading the true UTC instant back out via
-// toISOString(), uses the entering user's actual browser timezone — unlike a naive
-// server-side (date + time)::timestamptz cast, which #935's audit found interprets in
-// the session's timezone instead. Time defaults to midnight when blank.
-function computeOccurredAt(expenseDate: string, expenseTime: string): string {
-  const [year, month, day] = expenseDate.split('-').map(Number)
-  const [hour, minute] = expenseTime ? expenseTime.split(':').map(Number) : [0, 0]
-  return new Date(year, month - 1, day, hour, minute).toISOString()
+// The date and time entered here mean that wall clock *at the barn* (#1222), so they
+// resolve through the barn's zone — not the entering user's browser zone, which is what
+// `new Date(year, month - 1, day, hour, minute)` used to read here. `occurred_at` drives
+// barn-local month bucketing in expense-finances.ts, so a manager in another zone entering
+// a late-evening expense on a month boundary was bucketing it into the wrong month. Time
+// defaults to midnight when blank.
+function computeOccurredAt(expenseDate: string, expenseTime: string, timezone: string): string {
+  // Take only hour and minute: the time input produces "HH:MM", but the edit page seeds this
+  // from `appointments.expense_time`, a Postgres `time` that arrives as "HH:MM:SS". Appending
+  // seconds to that built an Invalid Date and threw out of wallClockToInstant.
+  const [hour, minute] = (expenseTime || '00:00').split(':')
+  return wallClockToInstant(`${expenseDate}T${hour}:${minute}:00`, timezone).toISOString()
 }
 
 export function ExpenseForm({
@@ -50,13 +75,17 @@ export function ExpenseForm({
   recentRecipients,
   recentExpenseTypes,
   defaultDate,
+  todayStr,
+  timezone,
+  getScheduleRange,
+  excludeItemId,
   initial,
   submitLabel = 'Add Expense',
   onSave,
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
-  const [expenseDate, setExpenseDate] = useState(defaultDate ?? '')
-  const isPastDate = expenseDate !== '' && expenseDate < localToday()
+  const [expenseDate, setExpenseDate] = useState(defaultDate ?? todayStr)
+  const isPastDate = expenseDate !== '' && expenseDate < todayStr
   const [expenseTime, setExpenseTime] = useState(initial?.expenseTime ?? '')
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')
@@ -66,6 +95,48 @@ export function ExpenseForm({
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
   const [typeFlashing, setTypeFlashing] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState((defaultDate ?? todayStr).slice(0, 7))
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty)
+
+  // One fetch per displayed month, over the grid exactly. LessonForm widens this by 3 days at
+  // each end to feed the ±3-day exertion window; there is no heatmap here, so the plain grid is
+  // all this calendar reads. `to` is exclusive.
+  useEffect(() => {
+    if (!getScheduleRange) return
+    const grid = getMonthGrid(calendarMonth)
+    let cancelled = false
+    getScheduleRange(grid[0], addDays(grid[41], 1)).then((items) => {
+      if (!cancelled) setScheduleItems(items)
+    })
+    return () => { cancelled = true }
+  }, [calendarMonth, getScheduleRange])
+
+  // No exertion bands: an appointment carries no exertion_level, and the thresholds would cost a
+  // second round trip. Empty thresholds make worstBand skip every horse and return null, so
+  // `hour` cannot affect the result either — hence the 0.
+  const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
+    selectedHorseIds: [...checkedHorseIds],
+    selectedRiderIds: [],
+    hour: 0,
+    thresholdsByHorseId: {},
+    todayStr,
+    selectionAppliesToAllHorses: appliesToAllHorses,
+    excludeItemId,
+  })
+
+  const horseNameById = new Map(horses.map((h) => [h.id, h.name]))
+
+  // Appointments and events carry a server-built label; lessons don't, and this form holds no
+  // rider names, so it composes one from the horse names it does have.
+  function describeScheduleItem(scheduleItem: ScheduleItem): string {
+    if (scheduleItem.label) return scheduleItem.label
+    const names = scheduleItem.horseIds
+      .map((id) => horseNameById.get(id))
+      .filter((name): name is string => name !== undefined)
+    return names.length ? `Lesson — ${names.join(', ')}` : 'Lesson'
+  }
 
   async function handleRecipientBlur() {
     const trimmed = recipient.trim()
@@ -80,7 +151,7 @@ export function ExpenseForm({
   }
 
   return (
-    <form action={formAction} className="w-full max-w-md space-y-4">
+    <form action={formAction} className="w-full max-w-md space-y-4" onChange={() => setDirty(true)}>
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
@@ -127,23 +198,82 @@ export function ExpenseForm({
         </datalist>
       </div>
 
-      <div>
-        <label htmlFor="expense-date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Date
+      {/* Above Date, not below it: the calendar's dots are driven by this selection, so a
+        * manager who fills the form top-down has an empty grid until they scroll past the date
+        * they came here to pick. */}
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
+        {/* First row of the group it controls, divided off from the horses below: this is not a
+          * select-all. Ticking every horse writes N horse_id rows; ticking this writes the
+          * applies_to_all_horses flag, so a horse added later is retroactively covered. The
+          * divider is what keeps it from reading as one more horse. */}
+        <label className="flex items-center gap-2 border-b border-zinc-200 pb-3 text-sm text-zinc-900 dark:border-zinc-700 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            name="applies_to_all_horses"
+            value="true"
+            checked={appliesToAllHorses}
+            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          All
         </label>
-        <input
-          id="expense-date"
-          name="expense_date"
-          type="date"
-          required
-          value={expenseDate}
-          onChange={(e) => setExpenseDate(e.target.value)}
-          className={inputClassName}
-        />
-      </div>
+        {horses.map((h) => (
+          <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+            <input
+              type="checkbox"
+              name="horse_id"
+              value={h.id}
+              disabled={appliesToAllHorses}
+              checked={checkedHorseIds.has(h.id)}
+              onChange={(e) => {
+                setCheckedHorseIds((prev) => {
+                  const next = new Set(prev)
+                  if (e.target.checked) next.add(h.id)
+                  else next.delete(h.id)
+                  return next
+                })
+              }}
+              className="rounded border-zinc-300 dark:border-zinc-600"
+            />
+            {h.name}
+          </label>
+        ))}
+      </fieldset>
+
+      {getScheduleRange ? (
+        <>
+          <MonthCalendarPicker
+            value={expenseDate}
+            onChange={(date) => { setExpenseDate(date); setDirty(true) }}
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            decorations={dayDecorations}
+            items={scheduleItems}
+            describeItem={describeScheduleItem}
+            label="Date"
+          />
+          <input type="hidden" name="expense_date" value={expenseDate} />
+        </>
+      ) : (
+        <div>
+          <label htmlFor="expense-date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Date
+          </label>
+          <input
+            id="expense-date"
+            name="expense_date"
+            type="date"
+            required
+            value={expenseDate}
+            onChange={(e) => setExpenseDate(e.target.value)}
+            className={inputClassName}
+          />
+        </div>
+      )}
 
       {expenseDate && (
-        <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime)} />
+        <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime, timezone)} />
       )}
 
       {isPastDate ? (
@@ -201,45 +331,6 @@ export function ExpenseForm({
           </select>
         </div>
       )}
-
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-          <input
-            type="checkbox"
-            name="applies_to_all_horses"
-            value="true"
-            checked={appliesToAllHorses}
-            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
-            className="rounded border-zinc-300 dark:border-zinc-600"
-          />
-          Entire Barn
-        </label>
-
-        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
-          {horses.map((h) => (
-            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-              <input
-                type="checkbox"
-                name="horse_id"
-                value={h.id}
-                disabled={appliesToAllHorses}
-                checked={checkedHorseIds.has(h.id)}
-                onChange={(e) => {
-                  setCheckedHorseIds((prev) => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(h.id)
-                    else next.delete(h.id)
-                    return next
-                  })
-                }}
-                className="rounded border-zinc-300 dark:border-zinc-600"
-              />
-              {h.name}
-            </label>
-          ))}
-        </fieldset>
-      </div>
 
       <div>
         <label htmlFor="expense-notes" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

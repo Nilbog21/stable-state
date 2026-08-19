@@ -3,8 +3,11 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getExpenseById, getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { updateExpenseAction } from '@/app/actions/expenses'
+import { getScheduleRangeForBarn } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
+import { barnToday } from '@/lib/barn-timezone'
 import { ExpenseForm } from '../ExpenseForm'
+import { AppointmentDetail } from './AppointmentDetail'
 
 export default async function EditExpensePage({
   params,
@@ -12,10 +15,17 @@ export default async function EditExpensePage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const { barn } = await requireMembership(slug, ['manager'])
+  // #1148: a trainer reads the same record as an *appointment* — no cost, no edit. Opened up
+  // from manager-only so the dashboard's appointment card has a real destination for them;
+  // /delete and the /expenses list stay manager-only.
+  const { barn, membership } = await requireMembership(slug, ['manager', 'trainer'])
 
   const expense = await getExpenseById(id, barn.id)
   if (!expense) notFound()
+
+  // Returned before the three manager-only form lookups below, which a trainer's view has
+  // no field to put to use.
+  if (membership.role === 'trainer') return <AppointmentDetail appointment={expense} />
 
   const [horses, recentRecipients, recentExpenseTypes] = await Promise.all([
     getHorsesByBarn(barn.id),
@@ -31,6 +41,7 @@ export default async function EditExpensePage({
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const save = updateExpenseAction.bind(null, slug, expense.id)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, slug)
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
@@ -46,6 +57,10 @@ export default async function EditExpensePage({
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={expense.expense_date}
+        todayStr={barnToday(barn.timezone)}
+        timezone={barn.timezone}
+        getScheduleRange={getScheduleRange}
+        excludeItemId={expense.id}
         initial={{
           recipient: expense.recipient,
           expenseType: expense.expense_type,

@@ -1,7 +1,16 @@
+/**
+ * Lease/board agreement and charge CRUD: RPC-backed `createAgreement`
+ * (`create_agreement_with_first_charge`), barn/ID/rider reads, fee update and
+ * `endAgreement`, the pure `getAgreementStatusLabel`, and charge reads/mutations —
+ * `getChargesForAgreement` overlays each charge's `payment_type` from the
+ * `transactions` ledger (#885). Reporting reads live in `agreement-finances.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { barnDay, barnToday } from '@/lib/barn-timezone'
+import { firstOfMonth } from '@/lib/local-day'
 import { getTransactionRows } from './transactions'
-import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, PaymentType } from './types'
+import type { Agreement, AgreementCadence, AgreementCharge, AgreementChargeRow, AgreementKind, PaymentType } from './types'
 import { CHARGE_TRANSACTION_KINDS } from './agreement-finances'
 
 export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | 'is_active'>): string {
@@ -150,7 +159,7 @@ export async function updateCharge(
   chargeId: string,
   barnId: string,
   fee: number
-): Promise<AgreementCharge> {
+): Promise<AgreementChargeRow> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('update_agreement_charge_fee', {
     p_charge_id: chargeId,
@@ -158,14 +167,14 @@ export async function updateCharge(
     p_fee: fee,
   })
   if (error) throw error
-  return data as AgreementCharge
+  return data as AgreementChargeRow
 }
 
 export async function updateChargePaymentType(
   chargeId: string,
   barnId: string,
   paymentType: PaymentType | null
-): Promise<AgreementCharge> {
+): Promise<AgreementChargeRow> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('mark_agreement_charge_paid', {
     p_charge_id: chargeId,
@@ -173,19 +182,21 @@ export async function updateChargePaymentType(
     p_payment_type: paymentType,
   })
   if (error) throw error
-  return data as AgreementCharge
+  return data as AgreementChargeRow
 }
 
+// #1361: `at` is a real instant, so the month it falls in is the *barn's* month, not the
+// server host's. UTC-truncating it filed any charge generated in the last 4-10 hours of the
+// barn's month under the next one — every zone the barn picker offers is behind UTC.
 export async function generateChargeForMonth(
   agreementId: string,
   barnId: string,
-  period: Date,
+  timezone: string,
+  at: Date,
   client?: SupabaseClient
-): Promise<AgreementCharge> {
+): Promise<AgreementChargeRow> {
   const supabase = client ?? await createClient()
-  const periodDate = new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10)
+  const periodDate = firstOfMonth(barnDay(at, timezone))
 
   const { data, error } = await supabase.rpc('generate_agreement_charge', {
     p_agreement_id: agreementId,
@@ -193,7 +204,7 @@ export async function generateChargeForMonth(
     p_period: periodDate,
   })
   if (error) throw error
-  return data as AgreementCharge
+  return data as AgreementChargeRow
 }
 
 export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseClient): Promise<number> {
@@ -216,10 +227,15 @@ export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseCl
 // #831: agreement_charges.payment_type is gone — this reads transactions directly
 // instead (no relay RPC needed, unlike agreement-finances.ts:getOutstandingCharges,
 // since this caller is already manager-only and passes transactions' own RLS).
-export async function getUnpaidAgreementIds(barnId: string, client?: SupabaseClient): Promise<Set<string>> {
+export async function getUnpaidAgreementIds(barnId: string, timezone: string, client?: SupabaseClient): Promise<Set<string>> {
   const supabase = client ?? await createClient()
-  const now = new Date()
-  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+  // #1360: the barn's own month, not the server host's — the same fix #1309 made to
+  // getFinancialSummary/getOutstandingCharges. Every BARN_TIMEZONES zone is behind UTC, so
+  // the host's month rolled over 4-10 hours early and briefly badged the still-current
+  // month's charge as unpaid. A charge transaction's `occurred_at` is the `period` DATE cast
+  // to timestamptz (UTC midnight on the 1st — see agreement-finances.ts:getChargesForSummary),
+  // so the barn-local boundary encodes back to a plain UTC midnight for the `.lt` comparison.
+  const firstOfCurrentMonth = new Date(`${firstOfMonth(barnToday(timezone))}T00:00:00Z`)
 
   const rows = await getTransactionRows(
     barnId, CHARGE_TRANSACTION_KINDS, { endDate: firstOfCurrentMonth, collected: false }, supabase

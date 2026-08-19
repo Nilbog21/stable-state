@@ -97,6 +97,18 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
   })
 
+  it('should_show_demo_unavailable_message_when_error_param_is_demo_unavailable', async () => {
+    const jsx = await LoginPage({ searchParams: Promise.resolve({ error: 'demo_unavailable' }) })
+    render(jsx)
+    expect(screen.getByText(/demo is unavailable/i)).toBeDefined()
+  })
+
+  it('should_not_show_demo_unavailable_message_when_error_param_is_absent', async () => {
+    const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+    render(jsx)
+    expect(screen.queryByText(/demo is unavailable/i)).toBeNull()
+  })
+
   describe('keep me logged in checkbox', () => {
     it('should_render_checkbox_checked_when_no_pref_cookie', async () => {
       const jsx = await LoginPage({ searchParams: Promise.resolve({}) })

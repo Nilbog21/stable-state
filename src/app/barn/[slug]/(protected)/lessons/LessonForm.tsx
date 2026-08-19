@@ -1,26 +1,19 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
-import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
-import { DateHourPicker } from './DateHourPicker'
-import { useNavigationBlocker } from '../NavigationBlocker'
+import type { CalendarDate, Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
+import { LessonStartTime } from './LessonStartTime'
+import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
+import { addDays, calendarDate } from '@/lib/local-day'
+import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 
 type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
 
 const CUSTOM_ID = '__custom__'
-
-function parseInitialDate(lessonAt: string): string {
-  const d = new Date(lessonAt)
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${month}-${day}`
-}
-
-function parseInitialHour(lessonAt: string): number {
-  return new Date(lessonAt).getHours()
-}
 
 export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, fee: string): boolean {
   const feeIsZero = fee !== '' && Number(fee) === 0
@@ -33,11 +26,18 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
   return true
 }
 
-function isPastLessonAt(lessonAt: string): boolean {
+// "Past" is measured against the start of the barn's current hour, not the host's, so a
+// lesson already under way still counts as bookable. #1021 made start times minute-granular,
+// which widens what that lenience covers — anything from :00 of the current hour onward — but
+// does not change the rule or its direction. Truncating a host-zone Date instead lands 30
+// minutes off in any half-hour-offset zone (#1222).
+function isPastLessonAt(lessonAt: string, timezone: string): boolean {
   if (!lessonAt) return false
-  const now = new Date()
-  now.setMinutes(0, 0, 0)
-  return new Date(lessonAt) < now
+  const barnHourStart = wallClockToInstant(
+    `${instantToLocalWallClock(new Date(), timezone).slice(0, 13)}:00:00`,
+    timezone
+  )
+  return new Date(lessonAt) < barnHourStart
 }
 
 export function LessonForm({
@@ -49,10 +49,13 @@ export function LessonForm({
   instructors,
   currentMembershipId,
   tiers,
-  defaultInstructorCut,
+  todayStr,
+  timezone,
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
+  getScheduleRange,
+  thresholdsByHorseId = {},
   hasHorseIssue = false,
 }: {
   mode: 'new' | 'edit'
@@ -63,13 +66,22 @@ export function LessonForm({
   instructors: { membershipId: string; userId: string | null; name: string }[]
   currentMembershipId: string
   tiers: LessonTier[]
-  defaultInstructorCut: number
+  /** The barn's own calendar day ("YYYY-MM-DD"), computed server-side via `barnToday` — the
+   *  month calendar's past-day cutoff, which has to sit in the same frame as every other date
+   *  on that grid (#1149). */
+  todayStr: CalendarDate
+  /** `barns.timezone` — the frame the lesson's date/hour are entered and decoded in (#1222). */
+  timezone: string
   initialLesson?: LessonDetail
   initialNotes?: {
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
   getProjectedExhaustion?: (targetDateIso: string, horseIds: string[]) => Promise<ExhaustionByHorseId>
+  /** #1019 — one read per displayed month, feeding the date field's conflict calendar.
+   *  Omitted (as in existing tests) leaves the plain native date input in place. */
+  getScheduleRange?: (fromDate: string, toDate: string) => Promise<ScheduleItem[]>
+  thresholdsByHorseId?: Record<string, { high: number; moderate: number }>
   hasHorseIssue?: boolean
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
@@ -113,11 +125,6 @@ export function LessonForm({
     mode === 'edit' && initialLesson
       ? String(initialLesson.fee)
       : (initialSelectedTier ? String(initialSelectedTier.price) : '')
-  const initialInstructorCut =
-    mode === 'edit' && initialLesson
-      ? String(initialLesson.instructor_cut)
-      : String(initialSelectedTier ? initialSelectedTier.instructor_cut : defaultInstructorCut)
-
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(initialHorseIds)
@@ -127,28 +134,41 @@ export function LessonForm({
   const [clientError, setClientError] = useState<string | null>(null)
   const [jumping, setJumping] = useState(initialJumping)
   const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
-  const [newHorseName, setNewHorseName] = useState('')
-  const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
   const [fee, setFee] = useState<string>(initialFee)
-  const [instructorCut, setInstructorCut] = useState<string>(initialInstructorCut)
   const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
   const [lessonAt, setLessonAt] = useState('')
+  // Decoding a stored instant back to form values is barn-local, same as entering one.
+  const initialWallClock = initialLesson ? instantToLocalWallClock(new Date(initialLesson.lesson_at.at), timezone) : ''
+  // "HH:MM", not "HH" — slicing to the hour is exactly the truncation #1021 closes: it silently
+  // rewrote a 4:30 lesson to 4:00 on any save, including one that never touched the time.
+  const initialTime = mode === 'edit' && initialLesson ? initialWallClock.slice(11, 16) : undefined
+  // The selected day, owned here now that the calendar and the time field are siblings rather
+  // than one control. `barnToday(timezone)` rather than the `todayStr` prop, preserving
+  // DateHourPicker's default exactly: the two agree in production (the pages compute `todayStr`
+  // with the same call), and switching sources here would only change behaviour in fixtures that
+  // set an inconsistent `todayStr` — not a change #1021 has any reason to make.
+  const [lessonDate, setLessonDate] = useState(
+    mode === 'edit' && initialLesson ? initialWallClock.slice(0, 10) : (() => String(barnToday(timezone)))
+  )
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
+  const [calendarMonth, setCalendarMonth] = useState(
+    (initialLesson ? initialWallClock.slice(0, 10) : todayStr).slice(0, 7)
+  )
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
 
-  const { setDirty, setMessage } = useNavigationBlocker()
   const feeIsZero = fee !== '' && Number(fee) === 0
   const unpaidPastDue =
     mode === 'edit' &&
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
-    new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
+    (initialLesson ? new Date(initialLesson.lesson_at.at) < new Date() : false) &&
     Number(initialLesson?.fee) > 0
   const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
   const feeDirty = fee !== initialFee
-  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds) || newHorseName.trim() !== ''
+  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds)
   const ridersDirty = lessonType === 'normal'
     ? normalRiderId !== initialNormalRiderId
     : !setsEqual(checkedRiderIds, initialRiderIds)
@@ -156,30 +176,84 @@ export function LessonForm({
   const horseIssueWarn = mode === 'edit' && hasHorseIssue
   const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || horseIssueWarn
 
-  useEffect(() => {
-    setDirty(shouldWarn)
-    if (horseIssueWarn) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
-    else if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
-    else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
-    else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
-    return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, horseIssueWarn, setDirty, setMessage])
+  const guardMessage = horseIssueWarn
+    ? 'This lesson has an unresolved horse issue. Leave without addressing it?'
+    : unpaidWarn
+      ? 'This lesson has an unpaid balance. Are you sure you want to leave without recording payment?'
+      : notesDirty
+        ? 'You have unsaved notes. Leave without saving?'
+        : 'You have unsaved changes. Leave without saving?'
+  useUnsavedChangesGuard(shouldWarn, guardMessage)
+
+  // The instant everything that only needs "roughly when" measures against: the real one once a
+  // start time exists, and until then the selected day at the barn's CURRENT hour.
+  //
+  // #1578 emptied the Start Time field, and the bars, the horse picker's least-to-most-worked
+  // sort and the calendar's exertion shading all hung off `lessonAt` alone — so all three went
+  // dark for the whole stretch a manager spends picking horses, which is precisely when they are
+  // read. The estimate is a sound stand-in because every one of those consumers buckets by a
+  // +/-3-day exertion window: shifting the hour moves a 72-hour sum by at most a few points, and
+  // it is replaced by the real instant the moment a time is entered.
+  //
+  // The hour is read through the barn's zone, so a device elsewhere estimates the same day and
+  // hour, and it is deliberately the top of the hour — the same reading `isPastLessonAt`
+  // measures against, so an opening estimate is never its own past lesson, at any hour and
+  // across the boundary between two.
+  //
+  // CREATE ONLY. The edit form is seeded from the stored instant, which `LessonStartTime` reports
+  // on its own mount effect — one render after `lessonAt`'s initial `''`. Estimating into that
+  // render would cost every edit-form open a second round trip, and would flash a past lesson's
+  // bars for one frame before the real instant gates them off again.
+  //
+  // `lessonDate` is guarded for the reason `LessonStartTime` guards its own combination: the
+  // no-calendar branch's native date input is clearable, and an empty half builds an Invalid Date
+  // that throws RangeError out of `wallClockToInstant` *during render*, unmounting the form and
+  // taking every other filled-in field with it.
+  const estimateHour = instantToLocalWallClock(new Date(), timezone).slice(11, 13)
+  const estimateAt = lessonAt
+    ? lessonAt
+    : mode === 'new' && lessonDate
+      ? wallClockToInstant(`${lessonDate}T${estimateHour}:00:00`, timezone).toISOString()
+      : ''
 
   useEffect(() => {
-    if (!shouldWarn) return
-    function handler(e: BeforeUnloadEvent) { e.preventDefault() }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
-  }, [shouldWarn])
-
-  useEffect(() => {
-    if (!lessonAt || !getProjectedExhaustion) return
+    if (!estimateAt || !getProjectedExhaustion) return
     let cancelled = false
-    getProjectedExhaustion(lessonAt, horses.map(h => h.id)).then((result) => {
-      if (!cancelled) setExhaustionData({ lessonAt, data: result })
+    getProjectedExhaustion(estimateAt, horses.map(h => h.id)).then((result) => {
+      if (!cancelled) setExhaustionData({ lessonAt: estimateAt, data: result })
     })
     return () => { cancelled = true }
-  }, [lessonAt, getProjectedExhaustion, horses])
+  }, [estimateAt, getProjectedExhaustion, horses])
+
+  // One fetch per displayed month, widened by the exertion window's 3 days at each end so
+  // the grid's spill-over cells still get a correct ±3-day sum. `to` is exclusive.
+  //
+  // Also always stretched to reach the selected day (#1580). The day panel is always open on this
+  // form and keeps `lessonDate` as its heading however far the grid is paged, so a range covering
+  // only the displayed month would leave that heading over an empty body — and after just one page,
+  // since month M+1's grid reaches back only to ~the 25th of M.
+  //
+  // The stretch cannot move a single day's decoration, only the panel's contents: `windowTotal`
+  // centres ±72h on `${date}T${hour}`, so from the earliest grid day it reaches back at most to
+  // `grid[0] - 3` — exactly the unstretched `from` — and forward at most to `grid[41] + 3`, inside
+  // the unstretched exclusive `to`. Every item the stretch newly admits lies outside both.
+  //
+  // `lessonDate` is in the deps, so a day tap refetches. Not needed — a tapped day is by definition
+  // already on the displayed grid — but the alternative is a ref written purely to satisfy
+  // exhaustive-deps, for one extra read on a form that already fires one per tap.
+  useEffect(() => {
+    if (!getScheduleRange) return
+    const grid = getMonthGrid(calendarMonth)
+    const selected = calendarDate(lessonDate)
+    // ISO dates sort lexicographically, so this is min/max with no branch to cover.
+    const from = [addDays(grid[0], -3), selected].sort()[0]
+    const to = [addDays(grid[41], 4), addDays(selected, 1)].sort()[1]
+    let cancelled = false
+    getScheduleRange(from, to).then((items) => {
+      if (!cancelled) setScheduleItems(items)
+    })
+    return () => { cancelled = true }
+  }, [calendarMonth, lessonDate, getScheduleRange])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return
@@ -192,20 +266,17 @@ export function LessonForm({
       setSelectedId(id)
       setJumping(false)
       setFee('')
-      setInstructorCut(String(defaultInstructorCut))
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const key of next.keys()) next.set(key, 3)
         return next
       })
-      setNewHorseExertionLevel(3)
       flash([...(jumping ? ['jumping'] : []), ...(fee !== '' ? ['fee'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
       if (!tier) return
       setSelectedId(id)
       setFee(String(tier.price))
-      setInstructorCut(String(tier.instructor_cut))
       const affectedKeys: string[] = ['fee']
       if (tier.default_jumping !== null) {
         setJumping(tier.default_jumping)
@@ -218,7 +289,6 @@ export function LessonForm({
           for (const key of next.keys()) next.set(key, lvl)
           return next
         })
-        setNewHorseExertionLevel(lvl)
         affectedKeys.push(...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`))
       }
       flash(affectedKeys)
@@ -235,8 +305,44 @@ export function LessonForm({
 
   const isCustom = selectedId === CUSTOM_ID
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
-  const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
-  const isPastLesson = isPastLessonAt(lessonAt)
+  const exhaustionByHorseId = exhaustionData?.lessonAt === estimateAt ? exhaustionData.data : undefined
+  // The estimate rather than the real instant, so that a past DAY still suppresses the bars while
+  // the time half is empty — the native date input accepts one even though the calendar's past
+  // days are unclickable.
+  const isPastLesson = isPastLessonAt(estimateAt, timezone)
+  const dateLabel = isRecurring ? 'Starting Date' : 'Date'
+
+  const selectedRiderIds = lessonType === 'normal'
+    ? (normalRiderId ? [normalRiderId] : [])
+    : [...checkedRiderIds]
+  // Off `estimateAt`, so the shading agrees with the bars about which instant the form is
+  // currently talking about — before a start time is entered as well as after. Midnight remains
+  // the fallback for the one state that has no instant at all, a cleared date, which also has no
+  // grid worth shading. Deliberately the hour alone, since `computeDayDecorations`' +/-3-day
+  // window buckets by hour and the minutes #1021 added are not wanted here.
+  const selectedHour = estimateAt ? Number(instantToLocalWallClock(new Date(estimateAt), timezone).slice(11, 13)) : 0
+  const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
+    selectedHorseIds: [...checkedHorseIds],
+    selectedRiderIds,
+    hour: selectedHour,
+    thresholdsByHorseId,
+    todayStr,
+    excludeItemId: initialLesson?.id ?? null,
+  })
+
+  const horseNameById = new Map(horses.map(h => [h.id, h.name]))
+  const riderNameById = new Map(riders.map(r => [r.id, r.name]))
+
+  // Expenses and events carry a server-built label; lessons don't, because this form already
+  // holds the horse and rider names their ids resolve to.
+  function describeScheduleItem(scheduleItem: ScheduleItem): string {
+    if (scheduleItem.label) return scheduleItem.label
+    const names = [
+      ...scheduleItem.horseIds.map(id => horseNameById.get(id)),
+      ...scheduleItem.riderIds.map(id => riderNameById.get(id)),
+    ].filter((name): name is string => name !== undefined)
+    return names.length ? `Lesson — ${names.join(', ')}` : 'Lesson'
+  }
 
   function horseTotalExertion(h: Horse): number {
     return (exhaustionByHorseId?.[h.id]?.existingRows ?? []).reduce((sum, row) => sum + row.exertionLevel, 0)
@@ -261,10 +367,6 @@ export function LessonForm({
         }
         return next
       })
-      if (newHorseExertionLevel < 4) {
-        setNewHorseExertionLevel(4)
-        bumped.push('new_horse_exertion')
-      }
       if (bumped.length > 0) flash(bumped)
     }
   }
@@ -284,13 +386,7 @@ export function LessonForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
-    const hasNewHorse = newHorseName.trim() !== ''
-    if (hasNewHorse && checkedHorseIds.size > 0) {
-      e.preventDefault()
-      setClientError('select a horse or add a new one, not both')
-      return
-    }
-    if (lessonType === 'normal' && !hasNewHorse && checkedHorseIds.size !== 1) {
+    if (lessonType === 'normal' && checkedHorseIds.size !== 1) {
       e.preventDefault()
       setClientError('normal lesson requires exactly 1 horse')
       return
@@ -300,7 +396,7 @@ export function LessonForm({
       setClientError('a rider is required')
       return
     }
-    if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
+    if (lessonType === 'group' && checkedHorseIds.size < 1) {
       e.preventDefault()
       setClientError('group lesson requires at least 1 horse')
       return
@@ -344,7 +440,6 @@ export function LessonForm({
           <option value={CUSTOM_ID}>Custom</option>
         </select>
         <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
-        <input type="hidden" name="instructor_cut" value={instructorCut} />
         {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
 
@@ -408,7 +503,18 @@ export function LessonForm({
             'Horse'
           )}
         </legend>
-        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b)).map((h) => {
+        {/* Four keys, and the last two are load-bearing (#1616): two horses in one bucket on equal
+            exertion used to fall through to `Array.sort`'s stability over input order. For the
+            create form that was accidentally alphabetical — `getHorsesByBarn` reads `.order('name')`
+            — and the edit route broke even that, appending `inactiveAssigned` after the ordered
+            list. The tie is also far more common than it looks: `exhaustionByHorseId` is undefined
+            until the projection fetch resolves, so on every first paint *every* horse totals zero
+            and the name key alone decides the order. The id key behind it is what makes the
+            comparator total: `horses.name` carries no per-barn uniqueness constraint, so two horses
+            can share a name and tie on all three keys above. Same `name || id` shape as the six
+            other sorts over named barn rows (`db/expenses.ts`, `db/lesson-participants.ts`,
+            `db/lessons.ts`, `horses/[id]/page.tsx`). */}
+        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).map((h) => {
           const isUnavailable = h.is_available === false
           const exhaustion = exhaustionByHorseId?.[h.id]
           return (
@@ -488,39 +594,6 @@ export function LessonForm({
           </div>
           )
         })}
-        {isManager && (
-          <>
-            <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
-            <div className="flex items-center gap-3">
-              <input
-                id="new_horse_name"
-                type="text"
-                name="new_horse_name"
-                placeholder="Add new horse…"
-                value={newHorseName}
-                onChange={(e) => setNewHorseName(e.target.value)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-              {newHorseName && (
-                <>
-                  <label htmlFor="new_horse_exertion_level" className="text-xs text-zinc-500">Exertion (1–5)</label>
-                  <input
-                    id="new_horse_exertion_level"
-                    type="number"
-                    name="new_horse_exertion_level"
-                    aria-label="Exertion level for new horse"
-                    min="1"
-                    max="5"
-                    value={newHorseExertionLevel}
-                    onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
-                    required
-                    className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('new_horse_exertion') ? 'ring-2 ring-blue-400' : ''}`}
-                  />
-                </>
-              )}
-            </div>
-          </>
-        )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
@@ -583,12 +656,41 @@ export function LessonForm({
         </label>
       )}
 
-      <DateHourPicker
-        initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
-        initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
-        onChange={setLessonAt}
-        dateLabel={isRecurring ? 'Starting Date' : 'Date'}
-      />
+      {/* #1021 — the start time is minute-granular and lives in the calendar's day panel, beside
+          the schedule it has to fit around. Without a schedule reader there is no calendar to
+          host it, so the date falls back to a plain native input and the time field sits beside
+          it; every real caller supplies one. */}
+      {getScheduleRange ? (
+        <MonthCalendarPicker
+          value={lessonDate}
+          onChange={setLessonDate}
+          month={calendarMonth}
+          onMonthChange={setCalendarMonth}
+          decorations={dayDecorations}
+          items={scheduleItems}
+          describeItem={describeScheduleItem}
+          label={dateLabel}
+          dayPanelAlwaysOpen
+          dayPanel={<LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />}
+        />
+      ) : (
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="lesson-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {dateLabel}
+            </label>
+            <input
+              id="lesson-date"
+              type="date"
+              value={lessonDate}
+              onChange={e => setLessonDate(e.target.value)}
+              required
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </div>
+          <LessonStartTime timezone={timezone} date={lessonDate} initialTime={initialTime} onChange={setLessonAt} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

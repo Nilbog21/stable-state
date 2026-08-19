@@ -1,3 +1,12 @@
+/**
+ * Resolves whether the caller may manage another member's documents, shared by the member
+ * detail page, the add-document flow, and their actions: the pure `canManage` (a manager
+ * always; a trainer only on their own page) and the async `resolveManageableTarget`, which
+ * fetches the target membership, requires it to belong to the caller's barn (`Not found`
+ * otherwise), applies `canManage` (`Forbidden`), and maps the target's real DB role onto the
+ * document `entity` discriminator (`'rider'`, else `'trainer'` — a manager target files under
+ * staff) that `documents.ts`'s entity-keyed CRUD dispatches on.
+ */
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import type { Barn, BarnMembership } from '@/lib/db/types'
 

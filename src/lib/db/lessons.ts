@@ -1,6 +1,16 @@
+/**
+ * Lesson CRUD: `createLesson`, RPC-backed cancel/delete/collect-payment mutations,
+ * `updateLesson`, list reads (`getLessonsByBarn`, role-scoped; `getLessonsByIds`, whose
+ * id list the caller has already scoped), and single-lesson hydration (`getLessonById`).
+ * `getLessonsByBarn` and `getLessonById` overlay each returned lesson's `payment_type`
+ * from the `get_lesson_payment_info` RPC (#885) rather than reading the stale `lessons`
+ * column; `getLessonsByIds` deliberately skips the overlay (`payment_type` stays `null` —
+ * its dashboard callers never render it); participant writes live in
+ * `lesson-participants.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
-import { getMembershipByIdForBarn, getUserMembership } from './barn-memberships'
+import { getMembershipByIdForBarn } from './barn-memberships'
 import { resolveMemberNames } from './member-names'
 import { getProfileById } from './profiles'
 import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
@@ -24,11 +34,13 @@ async function fetchPaymentTypes(
 
 // exertion_level has no column-level GRANT restriction on lesson_horses for
 // authenticated (#937 review follow-up), so it can't be trimmed from the select
-// string per role the way private_notes is -- a rider's own session could still
-// read it directly via PostgREST. get_lesson_horse_exertion_levels is a
-// SECURITY DEFINER RPC (manager/trainer-only, same check as
-// get_horse_exertion_summary/get_horse_projected_exhaustion) that's the only
-// way to read it now, at both the app layer and via a direct call.
+// string per role -- a rider's own session could still read it directly via
+// PostgREST. get_lesson_horse_exertion_levels and its #1019 batch sibling
+// get_lesson_horse_exertion_levels_batch (schedule.ts) are SECURITY DEFINER RPCs
+// that are now the only way to read it for a lesson, at both the app layer and via
+// a direct call -- manager/trainer see every row; a rider sees a row only for a
+// horse they hold lesson_read_privileges for (#999; get_horse_exertion_summary,
+// barn-wide, stays manager/trainer-only).
 async function fetchExertionLevels(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessonId: string,
@@ -40,6 +52,32 @@ async function fetchExertionLevels(
   })
   if (error) throw error
   return new Map((data ?? []).map((row: { horse_id: string; exertion_level: number }) => [row.horse_id, row.exertion_level]))
+}
+
+// rider_notes/private_notes have the same RLS gap #937 fixed for exertion_level:
+// lesson_riders' row-level SELECT policies don't restrict columns, so trimming
+// private_notes out of the select string per role (the pre-#999 fix) only closed
+// the app's own code path -- a caller with row visibility could still read every
+// rider's notes directly via PostgREST. get_lesson_rider_notes is the only way to
+// read either column now: manager/trainer get every row's real values; any other
+// caller with lesson visibility (enrolled or privileged rider) gets their own row's
+// rider_notes and NULL for everyone else's, private_notes always NULL.
+async function fetchRiderNotes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessonId: string,
+  barnId: string
+): Promise<Map<string, { rider_notes: string | null; private_notes: string | null }>> {
+  const { data, error } = await supabase.rpc('get_lesson_rider_notes', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+  })
+  if (error) throw error
+  return new Map(
+    (data ?? []).map((row: { rider_id: string; rider_notes: string | null; private_notes: string | null }) => [
+      row.rider_id,
+      { rider_notes: row.rider_notes, private_notes: row.private_notes },
+    ])
+  )
 }
 
 export async function createLesson({
@@ -76,7 +114,8 @@ async function overlayPaymentTypes(
 export async function getLessonsByBarn(
   barnId: string,
   userId: string,
-  role: 'manager' | 'trainer' | 'rider'
+  role: 'manager' | 'trainer' | 'rider',
+  timezone: string
 ): Promise<LessonWithDetails[]> {
   const supabase = await createClient()
 
@@ -91,7 +130,7 @@ export async function getLessonsByBarn(
       .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId)
+    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId, timezone)
     return overlayPaymentTypes(supabase, withDetails, barnId)
   }
 
@@ -101,17 +140,31 @@ export async function getLessonsByBarn(
     .eq('barn_id', barnId)
     .order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-  const withDetails = await hydrateParticipants(supabase, lessons, barnId)
+  const withDetails = await hydrateParticipants(supabase, lessons, barnId, timezone)
   return overlayPaymentTypes(supabase, withDetails, barnId)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
+// Hydrates a set of getScheduleForRange lesson ids into display data. No role param -- RLS
+// still applies to this query independently, and the id list itself is already role-scoped
+// by the caller (scopeScheduleItemsForRole + getScheduleForRange).
+export async function getLessonsByIds(barnId: string, ids: string[], timezone: string): Promise<LessonWithDetails[]> {
+  if (!ids.length) return []
   const supabase = await createClient()
-  const riderSelect = role === 'rider'
-    ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-    : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-  // exertion_level is manager/trainer-only data (ARCHITECTURE.md) and is never selected
-  // here directly for any role -- see fetchExertionLevels above for why.
+  const { data: lessons, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .in('id', ids)
+  if (error) throw error
+  return hydrateParticipants(supabase, lessons ?? [], barnId, timezone)
+}
+
+export async function getLessonById(lessonId: string, barnId: string, _role: Role, timezone: string): Promise<LessonDetail | null> {
+  const supabase = await createClient()
+  // exertion_level and rider_notes/private_notes are never selected here directly for
+  // any role -- both are merged in separately via fetchExertionLevels/fetchRiderNotes
+  // above, the only column-safe way to read them (see those functions' comments for why).
+  const riderSelect = 'rider_id, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
   const horseSelect = 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
@@ -134,8 +187,6 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
   type RawLessonRider = {
     rider_id: string
-    rider_notes: string | null
-    private_notes?: string | null
     cancellation_notes: string | null
     cancelled_at: string | null
     barn_memberships: { user_id: string | null } | null
@@ -143,12 +194,32 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
   const lessonData = data
 
+  // #1286: both embeds below are to-many, and PostgREST leaves a to-many embed's rows in
+  // whatever order the planner produced — so the lesson detail page's horse and rider lists
+  // are sorted here, alphabetically, matching `getHorsesByBarn`'s `ORDER BY h.name`. Not
+  // done with `.order(..., { referencedTable })`: a rider's name lives in `profiles`, which
+  // the `lesson_riders → barn_memberships` embed never reaches (it is resolved by
+  // `resolveMemberNames` below), so only a post-fetch sort can order both lists the same
+  // way. Each sort carries the whole row, so `exertion_level` and the notes stay with their
+  // own horse/rider.
   const rawHorses = lessonData.lesson_horses as RawLessonHorse[]
-  const exertionByHorseId = role === 'rider' ? new Map<string, number>() : await fetchExertionLevels(supabase, lessonId, barnId)
-  const lesson_horses = rawHorses.map((lh) => ({
-    ...lh,
-    exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
-  }))
+  // #999: get_lesson_horse_exertion_levels now filters rows by privilege at the DB
+  // layer (manager/trainer see everything, a rider sees only a horse they hold
+  // lesson_read_privileges for), so this no longer needs its own role branch.
+  const exertionByHorseId = await fetchExertionLevels(supabase, lessonId, barnId)
+  // `horses` is null when the horses RLS policy filtered the joined row out; such a row
+  // sorts on an empty name and id rather than dropping out of the list. The id tiebreak
+  // follows `schedule.ts`'s `a.start … || a.id …` (a #1015 review finding): two horses can
+  // share a name, and their rows carry different `exertion_level` and `horse_notes`, so a
+  // name-only sort would leave which set of notes shows first up to the planner.
+  const horseName = (lh: RawLessonHorse) => lh.horses?.name ?? ''
+  const horseId = (lh: RawLessonHorse) => lh.horses?.id ?? ''
+  const lesson_horses = [...rawHorses]
+    .sort((a, b) => horseName(a).localeCompare(horseName(b)) || horseId(a).localeCompare(horseId(b)))
+    .map((lh) => ({
+      ...lh,
+      exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
+    }))
 
   const rawRiders = lessonData.lesson_riders as RawLessonRider[]
   // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
@@ -170,6 +241,10 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     : null
 
   const membershipMap = await resolveMemberNames(riderMembershipIds, barnId, supabase)
+  // #999 review follow-up: get_lesson_rider_notes now does the manager/trainer-vs-own-row
+  // filtering at the DB layer (same as fetchExertionLevels above), so normalizeLr just
+  // reads its result straight through rather than branching on role/callerMembershipId itself.
+  const riderNotesById = await fetchRiderNotes(supabase, lessonId, barnId)
 
   type NormalizedLr = {
     rider_notes: string | null
@@ -179,43 +254,38 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     barn_membership: { id: string; user_id: string | null; name: string } | null
   }
 
+  // The membership id is the display name's fallback when the rider's profile isn't
+  // readable, so it's also what an unresolved rider sorts on — one expression, shared by
+  // the sort below and the row it builds, so the two can't disagree.
+  const riderName = (lr: RawLessonRider) => membershipMap.get(lr.rider_id) ?? lr.rider_id
+
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
-    rider_notes: lr.rider_notes,
-    private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
+    rider_notes: riderNotesById.get(lr.rider_id)?.rider_notes ?? null,
+    private_notes: riderNotesById.get(lr.rider_id)?.private_notes ?? null,
     cancellation_notes: lr.cancellation_notes ?? null,
     cancelled_at: lr.cancelled_at ?? null,
     barn_membership: {
       id: lr.rider_id,
       user_id: lr.barn_memberships?.user_id ?? null,
-      name: membershipMap.get(lr.rider_id) ?? lr.rider_id,
+      name: riderName(lr),
     },
   })
 
   const paymentMap = await fetchPaymentTypes(supabase, [lessonId], barnId)
 
-  const base = {
+  return {
     ...lessonData,
+    lesson_at: { at: lessonData.lesson_at, tz: timezone },
     lesson_horses,
     payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
     instructor_user_id,
-    lesson_riders: rawRiders.map(normalizeLr) as NormalizedLr[],
-  }
-
-  if (role === 'rider') {
-    return {
-      ...base,
-      lesson_riders: base.lesson_riders.map((lr: NormalizedLr) => ({
-        ...lr,
-        private_notes: null,
-        // Anchored to the caller's own membership ID (a plain, always-present column) rather
-        // than the RLS-gated barn_memberships embed's user_id, so masking doesn't depend on
-        // barn_memberships_read_own continuing to cover the caller's own row.
-        rider_notes: lr.barn_membership?.id === callerMembershipId ? lr.rider_notes : null,
-      })),
-    } as LessonDetail
-  }
-  return base as LessonDetail
+    lesson_riders: [...rawRiders]
+      // Membership-id tiebreak for the same reason as `lesson_horses` above: two riders can
+      // share a name, and their rows carry different notes and cancellation state.
+      .sort((a, b) => riderName(a).localeCompare(riderName(b)) || a.rider_id.localeCompare(b.rider_id))
+      .map(normalizeLr) as NormalizedLr[],
+  } as LessonDetail
 }
 
 export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null, isLate = false): Promise<void> {
@@ -271,41 +341,3 @@ export async function updateLesson(
   return data
 }
 
-export async function getUpcomingLessons(
-  barnId: string,
-  from: string,
-  to: string,
-  userId: string,
-  role: 'manager' | 'trainer' | 'rider'
-): Promise<LessonWithDetails[]> {
-  const supabase = await createClient()
-
-  if (role === 'rider') {
-    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
-    if (!lessonIds.length) return []
-
-    const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
-      .select('*')
-      .in('id', lessonIds)
-      .gte('lesson_at', from)
-      .lt('lesson_at', to)
-      .order('lesson_at', { ascending: true })
-    if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons ?? [], barnId)
-  }
-
-  const callerMembership = await getUserMembership(userId, barnId)
-  if (!callerMembership) return []
-
-  const { data: lessons, error: lessonsError } = await supabase
-    .from('lessons')
-    .select('*')
-    .eq('barn_id', barnId)
-    .eq('instructor_id', callerMembership.id)
-    .gte('lesson_at', from)
-    .lt('lesson_at', to)
-    .order('lesson_at', { ascending: true })
-  if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons, barnId)
-}

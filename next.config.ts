@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     '/barn/[slug]/guide': ['./USER_GUIDE_*.md'],
     '/terms': ['./TERMS_OF_SERVICE.md'],
     '/privacy': ['./PRIVACY_POLICY.md'],
+    '/about': ['./CHANGELOG.md'],
+    '/changelog': ['./CHANGELOG.md'],
   },
   experimental: {
     serverActions: {

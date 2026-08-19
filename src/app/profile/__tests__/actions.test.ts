@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockProfile } from '@/test/fixtures'
+import { createMockProfile, createMockBarn, createMockMembership } from '@/test/fixtures'
 
 vi.mock('@/lib/db/auth', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -10,14 +10,25 @@ vi.mock('@/lib/db/profiles', () => ({
   updateProfile: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/guard', () => ({
+  requireMembership: vi.fn(),
+}))
+
+vi.mock('@/lib/db/calendar-feed', () => ({
+  getOrCreateCalendarFeedToken: vi.fn(),
+  regenerateCalendarFeedToken: vi.fn(),
+}))
+
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
-import { updateProfileAction } from '../actions'
+import { requireMembership } from '@/lib/auth/guard'
+import { getOrCreateCalendarFeedToken, regenerateCalendarFeedToken } from '@/lib/db/calendar-feed'
+import { updateProfileAction, getCalendarFeedLinkAction, regenerateCalendarFeedLinkAction } from '../actions'
 
 const mockProfile = createMockProfile()
 
-function mockAuthUser(userId = 'user-1') {
-  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
+function mockAuthUser(userId = 'user-1', email?: string) {
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId, email } as any)
 }
 
 function mockAuthNoUser() {
@@ -36,6 +47,33 @@ describe('updateProfileAction', () => {
 
   afterEach(() => {
     consoleSpy.mockRestore()
+    delete process.env.DEMO_USER_EMAIL
+  })
+
+  it('should_return_error_when_user_is_demo_user', async () => {
+    process.env.DEMO_USER_EMAIL = 'demo@example.com'
+    mockAuthUser('user-1', 'demo@example.com')
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'demo account cannot be edited' })
+  })
+
+  it('should_not_call_updateProfile_when_user_is_demo_user', async () => {
+    process.env.DEMO_USER_EMAIL = 'demo@example.com'
+    mockAuthUser('user-1', 'demo@example.com')
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(updateProfile).mockResolvedValue(undefined)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    await updateProfileAction(form)
+
+    expect(updateProfile).not.toHaveBeenCalled()
   })
 
   it('should_return_error_when_not_authenticated', async () => {
@@ -269,5 +307,60 @@ describe('updateProfileAction', () => {
       emergency_contact_name: null,
       emergency_contact_phone: null,
     })
+  })
+})
+
+const mockBarn = createMockBarn({ id: 'barn-1', slug: 'sunny-acres' })
+const mockMembership = createMockMembership({ id: 'mem-1', barn_id: 'barn-1' })
+
+describe('getCalendarFeedLinkAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getOrCreateCalendarFeedToken).mockReset()
+  })
+
+  it('should_require_membership_with_all_three_roles', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: {} as any, barn: mockBarn, membership: mockMembership })
+    vi.mocked(getOrCreateCalendarFeedToken).mockResolvedValue('tok-1')
+
+    await getCalendarFeedLinkAction('sunny-acres')
+
+    expect(requireMembership).toHaveBeenCalledWith('sunny-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_return_token_from_dal', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: {} as any, barn: mockBarn, membership: mockMembership })
+    vi.mocked(getOrCreateCalendarFeedToken).mockResolvedValue('tok-1')
+
+    const result = await getCalendarFeedLinkAction('sunny-acres')
+
+    expect(result).toBe('tok-1')
+    expect(getOrCreateCalendarFeedToken).toHaveBeenCalledWith('mem-1', 'barn-1')
+  })
+})
+
+describe('regenerateCalendarFeedLinkAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(regenerateCalendarFeedToken).mockReset()
+  })
+
+  it('should_require_membership_with_all_three_roles', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: {} as any, barn: mockBarn, membership: mockMembership })
+    vi.mocked(regenerateCalendarFeedToken).mockResolvedValue('tok-2')
+
+    await regenerateCalendarFeedLinkAction('sunny-acres')
+
+    expect(requireMembership).toHaveBeenCalledWith('sunny-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_return_new_token_from_dal', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: {} as any, barn: mockBarn, membership: mockMembership })
+    vi.mocked(regenerateCalendarFeedToken).mockResolvedValue('tok-2')
+
+    const result = await regenerateCalendarFeedLinkAction('sunny-acres')
+
+    expect(result).toBe('tok-2')
+    expect(regenerateCalendarFeedToken).toHaveBeenCalledWith('mem-1', 'barn-1')
   })
 })

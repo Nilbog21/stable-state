@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      path: `/barn/${slug}/`,
+      path: `/barn/${slug}`,
       ...(remember === '1' ? { maxAge: REMEMBER_ME_MAX_AGE } : {}),
     })
   }
@@ -87,12 +87,17 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const user = await getAuthenticatedUser()
 
-      if (inviteToken && user) {
+      // barnSlug is required alongside the token, not merely preferred: the only
+      // emitter of `&token=` is actions/auth.ts's signInWithGoogleForBarn, which
+      // always appends it to a `?barn=` URL. A slugless token can't occur, so the
+      // guard folds the branch away rather than leaving a route with no error screen.
+      if (inviteToken && barnSlug && user) {
         try {
           await claimManagedMember(inviteToken, user.id, user.email ?? null)
         } catch {
-          const base = barnSlug ? `${origin}/barn/${barnSlug}/login` : `${origin}/login`
-          return redirect(`${base}?error=invite_claim_failed`)
+          // The register page renders its InvalidInvite screen on `?error=`, ahead of
+          // its own auth check — the login page it used to land on reads no error param.
+          return redirect(`${origin}/barn/${barnSlug}/register?error=invite_claim_failed`)
         }
       }
 
@@ -108,10 +113,6 @@ export async function GET(request: NextRequest) {
 
         if (!membership) {
           return redirect(`${origin}/barn/${barnSlug}/register`)
-        }
-
-        if (membership.status === 'pending') {
-          return redirect(`${origin}/barn/${barnSlug}/pending`)
         }
 
         if (user) {
@@ -138,7 +139,6 @@ export async function GET(request: NextRequest) {
         : []
 
       const active = memberships.filter(m => m.membership.status === 'active')
-      const pending = memberships.filter(m => m.membership.status === 'pending')
 
       if (active.length >= 1 && user) {
         try {
@@ -169,12 +169,6 @@ export async function GET(request: NextRequest) {
           setBarnSession(response, barn.slug, user!.id)
         }
         return response
-      }
-      if (pending.length === 1) {
-        return redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
-      }
-      if (pending.length > 1) {
-        return redirect(`${origin}/barns`)
       }
       return redirect(`${origin}/login?no_barns=true`)
     }

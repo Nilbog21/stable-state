@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createMockAgreement } from '@/test/fixtures'
 import { AgreementForm } from '../AgreementForm'
+import { calendarDate } from '@/lib/local-day'
 
 const riders = [{ id: 'rider-1', name: 'Dana Rider' }]
 const horses = [{ id: 'horse-1', name: 'Apple' }]
@@ -190,7 +191,7 @@ describe('AgreementForm - new mode', () => {
 })
 
 describe('AgreementForm - edit mode', () => {
-  const initialAgreement = createMockAgreement({ fee: 250, start_date: '2026-06-01', cadence: 'monthly' })
+  const initialAgreement = createMockAgreement({ fee: 250, start_date: calendarDate('2026-06-01'), cadence: 'monthly' })
 
   it('should_render_rider_name_as_text_in_edit_mode', () => {
     render(
@@ -246,6 +247,20 @@ describe('AgreementForm - edit mode', () => {
       />
     )
     expect(screen.getByText('Monthly')).toBeDefined()
+  })
+
+  it('should_not_render_a_label_bound_to_the_absent_cadence_select_in_edit_mode', () => {
+    const { container } = render(
+      <AgreementForm
+        mode="edit"
+        kind="lease"
+        initialAgreement={initialAgreement}
+        riderName="Dana Rider"
+        horseName="Apple"
+        onSave={onSave}
+      />
+    )
+    expect(container.querySelector('label[for="agreement-cadence"]')).toBeNull()
   })
 
   it('should_prefill_fee_input_from_initial_agreement_in_edit_mode', () => {

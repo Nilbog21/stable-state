@@ -1,22 +1,35 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getUpcomingLessons } from '@/lib/db/lessons'
-import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
-import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
+import { getScheduleForRange, scopeScheduleItemsForRole } from '@/lib/db/schedule'
+import { getLessonsByIds } from '@/lib/db/lessons'
+import { getExpensesByIds } from '@/lib/db/expenses'
+import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import type { DueDocument, LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
-import { UpcomingLessonsSections } from './UpcomingLessonsSections'
+import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
+import { isValidDateString, addDays, calendarDate, formatCalendarDate, getWeekDates, firstOfMonth } from '@/lib/local-day'
+import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
+import { CalendarDayView } from '@/components/calendar/CalendarDayView'
+import { CalendarWeekView } from '@/components/calendar/CalendarWeekView'
+import { DashboardMonthCalendar } from '@/components/calendar/DashboardMonthCalendar'
+import { getMonthGrid } from '@/lib/month-calendar'
+import type { CalendarDate, DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
+import { Pill } from '@/components/ui/Pill'
+import { dateNavButtonClass } from '@/components/ui/date-nav'
+import { formatBarnTime } from '@/lib/format-date'
 
 export default async function BarnDashboardPage({
   params,
+  searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<{ date?: string; view?: string }>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
@@ -24,72 +37,134 @@ export default async function BarnDashboardPage({
 
   const user = await getAuthenticatedUser()
 
-  let upcomingLessons: LessonWithDetails[] | null = null
-  let upcomingExpenses: ScheduledExpense[] = []
-  let pendingCount = 0
+  let dayItems: DayScheduleDisplayItem[] = []
+  let weekDays: { date: CalendarDate; items: DayScheduleDisplayItem[] }[] = []
   let dueDocuments: DueDocument[] = []
   let unpaidLessonsCount = 0
   let unpaidChargesCount = 0
   let userRole: 'manager' | 'trainer' | 'rider' | null = null
   let membershipId: string | undefined
+  let selectedDate = calendarDate('')
+  let todayStr = calendarDate('')
+  let view: 'day' | 'week' | 'month' = 'day'
+  let weekDates: CalendarDate[] = []
+  let monthDays: { date: CalendarDate; items: DayScheduleDisplayItem[] }[] = []
+  let monthKey = ''
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)
     if (membership?.role) {
       membershipId = membership.id
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
-      const now = new Date()
-      const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const [lessons, pending, due, expenses, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
-        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
-        membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
-        membership.role === 'manager' ? getDueDocuments(barn.id, now.toISOString().slice(0, 10)) : Promise.resolve([]),
-        membership.role === 'manager'
-          ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString(), barn.timezone)
-          : Promise.resolve([]),
+
+      todayStr = barnToday(barn.timezone)
+      const { date: requestedDate, view: requestedView } = await searchParams
+      selectedDate = requestedDate && isValidDateString(requestedDate) ? requestedDate : todayStr
+      view = requestedView === 'week' ? 'week' : requestedView === 'month' ? 'month' : 'day'
+      weekDates = getWeekDates(selectedDate)
+      monthKey = firstOfMonth(selectedDate).slice(0, 7)
+      // The picker's own 42-cell Sunday-start grid, spill-over days included -- the range has to
+      // match what the grid will display, or the leading/trailing days render permanently empty.
+      const monthDates = getMonthGrid(monthKey)
+
+      const rangeStartDate = view === 'month' ? monthDates[0] : view === 'week' ? weekDates[0] : selectedDate
+      const rangeEndDate =
+        view === 'month' ? addDays(monthDates[41], 1) : addDays(rangeStartDate, view === 'week' ? 7 : 1)
+      const rangeStart = wallClockToInstant(`${rangeStartDate}T00:00:00`, barn.timezone).toISOString()
+      const rangeEnd = wallClockToInstant(`${rangeEndDate}T00:00:00`, barn.timezone).toISOString()
+
+      const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
+        getScheduleForRange(barn.id, rangeStart, rangeEnd, barn.timezone),
+        membership.role === 'manager' ? getDueDocuments(barn.id, todayStr) : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),
-        getOutstandingCharges(barn.id, user.id, membership.role),
+        getOutstandingCharges(barn.id, barn.timezone, user.id, membership.role),
       ])
-      upcomingLessons = lessons
-      pendingCount = pending.length
+
+      const scopedItems = scopeScheduleItemsForRole(scheduleItems, membership.role, membership.id)
+      const lessonIds = scopedItems.filter((item) => item.itemType === 'lesson').map((item) => item.id)
+      const expenseIds = scopedItems.filter((item) => item.itemType === 'expense').map((item) => item.id)
+      const eventIds = scopedItems.filter((item) => item.itemType === 'event').map((item) => item.id)
+
+      const [lessons, expensesRaw, events] = await Promise.all([
+        getLessonsByIds(barn.id, lessonIds, barn.timezone),
+        getExpensesByIds(barn.id, expenseIds),
+        getEventsByIds(barn.id, eventIds, barn.timezone),
+      ])
+      // Mirrors the pre-Day-view dashboard: only "planned" expenses (amount IS NULL) are
+      // shown, not every timed appointment getScheduleForRange itself returns.
+      //
+      // #1148 made this filter manager-only in effect rather than by role check. Costs live
+      // on the manager-only appointment_costs table now, so a trainer reads `amount` as null
+      // for every appointment and sees the whole appointment schedule, while a manager still
+      // sees just the unpriced ones. That asymmetry is the model's point, not a leak: a
+      // calendar has no business filtering by cost, and the figure a trainer can't read is
+      // exactly the one the split removed from their reach.
+      const expenses = expensesRaw.filter((expense) => expense.amount === null)
+
+      if (view === 'month') {
+        monthDays = groupScheduleItemsByDay(monthDates, scopedItems, lessons, expenses, events)
+      } else if (view === 'week') {
+        weekDays = groupScheduleItemsByDay(weekDates, scopedItems, lessons, expenses, events)
+      } else {
+        dayItems = mergeDayScheduleDisplayItems(scopedItems, lessons, expenses, events)
+      }
       dueDocuments = due
-      upcomingExpenses = expenses
       unpaidLessonsCount = outstandingLessons.length + outstandingCancellationFees.length
       unpaidChargesCount = outstandingCharges.length
     }
   }
 
-  const hasReminders = pendingCount > 0 || dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
+  const weekIncludesToday = weekDates.includes(todayStr)
+  const isViewingCurrentPeriod = view === 'week' ? weekIncludesToday : selectedDate === todayStr
+  const stepDays = view === 'week' ? 7 : 1
+  const navLabel = view === 'week' ? 'week' : 'day'
+  const viewQuery = view === 'week' ? 'view=week&' : ''
+  const todayHref = `/barn/${slug}${view === 'week' ? '?view=week' : ''}`
+  const currentPeriodLabel = view === 'week' ? 'This Week' : 'Today'
+
+  const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
+  const demoResetAt = barn.is_demo
+    ? new Date(new Date(barn.created_at).getTime() + 7 * 60 * 60 * 1000).toISOString()
+    : null
+  // Same rule the Week view already used: land on today when today is inside the period being
+  // viewed, else on the period's first day -- never on the raw selectedDate, which in Month view
+  // is only the month anchor and may be a day the user never looked at.
+  const monthIncludesToday = todayStr.slice(0, 7) === monthKey
+  const dayPillDate =
+    view === 'month'
+      ? (monthIncludesToday ? todayStr : firstOfMonth(selectedDate))
+      : view === 'week'
+        ? (weekIncludesToday ? todayStr : weekDates[0])
+        : selectedDate
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Dashboard
       </h1>
+      {demoResetAt && (
+        <div className="mb-8 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          This is a demo barn. Data resets at approximately{' '}
+          {formatBarnTime({ at: demoResetAt, tz: barn.timezone })}.
+        </div>
+      )}
       {hasReminders && (
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Reminders
           </h2>
           <div className="space-y-2">
-            {pendingCount > 0 && (
-              <div>
-                <Button href={`/barn/${slug}/settings`} variant="warning">
-                  {pendingCount} pending {pendingCount === 1 ? 'new member request' : 'new member requests'}
-                </Button>
-              </div>
-            )}
             {unpaidLessonsCount > 0 && (
               <div>
-                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
+                <Button href={`/barn/${slug}/finances/outstanding?from=dashboard`} variant="warning">
                   {unpaidLessonsCount} unpaid lesson{unpaidLessonsCount !== 1 ? 's' : ''}
                 </Button>
               </div>
             )}
             {unpaidChargesCount > 0 && (
               <div>
-                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
+                <Button href={`/barn/${slug}/finances/outstanding?from=dashboard`} variant="warning">
                   {unpaidChargesCount} unpaid lease{unpaidChargesCount !== 1 ? 's' : ''}/boarding
                 </Button>
               </div>
@@ -98,14 +173,73 @@ export default async function BarnDashboardPage({
           </div>
         </section>
       )}
-      {upcomingLessons !== null && userRole !== null && (
-        <UpcomingLessonsSections
-          lessons={upcomingLessons}
-          expenses={upcomingExpenses}
-          role={userRole}
-          slug={slug}
-          viewerMembershipId={membershipId}
-        />
+      {userRole !== null && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Calendar
+          </h2>
+          <div className="mb-3 flex gap-2">
+            <Pill href={`/barn/${slug}?date=${dayPillDate}`} active={view === 'day'}>
+              Day
+            </Pill>
+            <Pill href={`/barn/${slug}?view=week&date=${selectedDate}`} active={view === 'week'}>
+              Week
+            </Pill>
+            <Pill href={`/barn/${slug}?view=month&date=${selectedDate}`} active={view === 'month'}>
+              Month
+            </Pill>
+          </div>
+          {/* dateNavButtonClass, not raw Tailwind and not <Button>/<Pill>: the shared constant
+              every date pager renders from (#1394). Its own comment holds why an unpadded circular
+              icon-arrow is a documented Button exception. These two are plain SSR links
+              (?date=...) with no client JS; the class is the only thing they share with the
+              picker's <button>s, and #1015 already asked for that much by hand. */}
+          {view !== 'month' && (
+            <>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <Link
+              href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, -stepDays)}`}
+              aria-label={`Previous ${navLabel}`}
+              className={dateNavButtonClass}
+            >
+              &lt;
+            </Link>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {view === 'week' ? `${formatCalendarDate(weekDates[0])} – ${formatCalendarDate(weekDates[6])}` : formatCalendarDate(selectedDate)}
+              {isViewingCurrentPeriod && ` · ${currentPeriodLabel}`}
+            </h2>
+            <Link
+              href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, stepDays)}`}
+              aria-label={`Next ${navLabel}`}
+              className={dateNavButtonClass}
+            >
+              &gt;
+            </Link>
+          </div>
+          {!isViewingCurrentPeriod && (
+            <div className="mb-4">
+              <Button href={todayHref} variant="primary" size="sm">
+                {currentPeriodLabel}
+              </Button>
+            </div>
+          )}
+            </>
+          )}
+          {view === 'month' ? (
+            <DashboardMonthCalendar
+              slug={slug}
+              month={monthKey}
+              selectedDate={dayPillDate}
+              days={monthDays}
+              role={userRole}
+              viewerMembershipId={membershipId}
+            />
+          ) : view === 'week' ? (
+            <CalendarWeekView days={weekDays} todayStr={todayStr} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+          ) : (
+            <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+          )}
+        </section>
       )}
     </main>
   )

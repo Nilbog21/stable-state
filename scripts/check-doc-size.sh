@@ -4,20 +4,147 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 LIMIT=150000
-MAIN_DOC="ARCHITECTURE.md"
-SUB_DOCS=(docs/architecture/schema.md docs/architecture/dal.md docs/architecture/routes.md docs/architecture/rpc.md)
 
-main_size=$(wc -m < "$MAIN_DOC")
+# Pairwise anchor:sub-doc caps. An auto-loaded doc that delegates detail to sub-docs gets one
+# entry per sub-doc path; that path may be a directory (every *.md beneath it is paired
+# separately) or a single file, so an anchor splitting into loose files carries one row each
+# (e2e/CLAUDE.md, below). This is a backstop against one doc going enormous, not a per-turn diet — the
+# per-file budgets below are what hold the per-turn cost down.
+PAIRS=(
+  "ARCHITECTURE.md:docs/architecture"
+  "e2e/CLAUDE.md:docs/e2e-framework-facts.md"
+  "e2e/CLAUDE.md:docs/e2e-spec-maintenance.md"
+  "scripts/CLAUDE.md:docs/scripts"
+)
+
+# Per-file budgets (#1354): CLAUDE.md/ARCHITECTURE.md auto-load into every session; the
+# scoped CLAUDE.mds load whenever their area is touched. Regrowth is a per-turn tax — fail CI.
+#
+# A budget is set from the file's actual size plus a small margin, and is **lowered** when the
+# file shrinks — banking the slack is how #1354's 14000 (set when the file was 10081) got spent
+# in two days. A raise carries its reason on the line.
+BUDGETS=(
+  # Raised from 20000 by #1511, which moved /overnightRefactor and /overnightRefactorWrapup into
+  # .claude/commands/ and added them to the Workflow skills index: 19937 -> 20257. Two genuinely
+  # new skills entering the index, not elaboration of an existing entry — the raise the e2e/CLAUDE.md
+  # note below calls legitimate. The file was at 63 characters of headroom, so no trim was available.
+  # Raised from 20500 by #1547, which added the `auth_is_horse_owner` RLS helper: 20459 -> 21081.
+  # A new helper always gets its line here (root CLAUDE.md's Architecture Docs rule), and the
+  # `horse_documents` rider cell has to name the two new policies it backs — two genuinely new
+  # index entries, the legitimate-raise case. The file was at 41 characters of headroom, so no trim
+  # was available; both entries are one line, and every word of rationale is in docs/architecture/rls.md.
+  "ARCHITECTURE.md:21150"
+  # Lowered from 12500 by #1468, which moved Schema/RLS/RPC verification and Barn Data Backup to
+  # supabase/CLAUDE.md and Workflow Skills to .claude/commands/CLAUDE.md, and compressed the
+  # sections restating a rule stated in full in the doc they point at: 10009 -> 6237. The 12500 was
+  # #1439's unblock after #1436's Test-First carve-out left release/release-4 red for three merges,
+  # and it promised this trim. Ceiling: never above 10000, the pre-#1439 value.
+  "CLAUDE.md:6500"
+  # Raised from 9300 by #1542: 9287 -> 9834. Three genuinely new scripts entering the index
+  # (check-ceremony-tags, verify-migration-equivalence, and a .test.sh for workflow-context),
+  # plus one line noting why the last isn't an exception to the no-.test.sh-for-shell policy
+  # stated just above it. New index entries, not elaboration of existing ones — the
+  # legitimate-raise case the e2e/CLAUDE.md note below describes. The file was at 13
+  # characters of headroom, so no trim was available; all three scripts' rationale lives in
+  # docs/scripts/checks.md and docs/scripts/workflow.md, and the index entries stay one line
+  # each per #1468's cap.
+  # Raised from 9950 by #1295: 9899 -> 10232. One genuinely new script entering the index
+  # (e2e-slot, the kernel-held suite semaphore), plus the sentence its .test.sh owes the
+  # no-.test.sh-for-shell policy right above — that list is normative, so a wired-in test that
+  # isn't named there reads as one to delete. New index entry, not elaboration of an existing
+  # one — the legitimate-raise case. The file was at 51 characters of headroom, so no trim was
+  # available; the script's whole contract and its two ponytail ceilings are in docs/scripts/suite.md.
+  # Raised from 10300 by #1607: 10294 -> 10666. One genuinely new `.test.sh` entering the
+  # no-.test.sh-for-shell policy's surviving list, plus the clause that list obliges it to carry
+  # (why it isn't an exception). That list is normative — "if a .test.sh isn't wired in, delete
+  # it" — so a wired-in gate missing from it reads as one to delete, which is the same argument
+  # #1295's raise made for e2e-slot and the legitimate-raise case this file describes. The file
+  # was at 6 characters of headroom, so no trim was available; the harness's whole contract, its
+  # seam and its fidelity choices are in docs/scripts/suite.md.
+  #
+  # The raise deliberately does NOT fund index-line elaboration. #1601's own review fixup
+  # (e08fd641) settled that: "the index line is shortened rather than its budget raised — the
+  # rules allow a raise for a new entry, not for elaborating one." A first cut of #1607 spent part
+  # of this raise widening the run-checklist-suite line and that was reverted. The two index lines
+  # that did change (reset-db, setup-demo-user) are corrections of claims the same PR falsified,
+  # not elaborations, and are close to size-neutral.
+  #
+  # Raised from 10700 by #1622: 10666 -> 10892. The same forced-bookkeeping case #1607 and #1295
+  # made, one turn of the same crank — a new `.test.sh` (workflow-ci-wait) entering the normative
+  # surviving list, plus the one clause that list obliges it to carry. The file was at 34
+  # characters of headroom, so no trim was available. The raise funded those two only: a first cut
+  # also widened the workflow-ci-wait index line to mention the anchor, and that was reverted
+  # before review, per the paragraph above. The gate's mechanism, its two deliberate limits and its
+  # harness's seam are all in docs/scripts/workflow.md. The margin left is in line with #1295's 51
+  # and #1511's 63; it is not banked for anything, and a concurrent edit landing on this file re-runs
+  # this gate on the merged tree after its own rebase, which is where a combined total is checked.
+  #
+  # Raised from 10950 by #1618: 10892 -> 10958. That last clause of #1622's is this raise: #1618
+  # was the concurrent edit, and the combined total is what needs the 8 characters. #1618 armed a
+  # third pairwise anchor (scripts/CLAUDE.md + docs/scripts/), and the check-doc-size index line
+  # enumerates the anchors by name — so arming the row falsified that line. Correcting it is the
+  # correction case the paragraph above carves out, not the elaboration it forbids; the precedent
+  # is #1433's 766e471d, a review fixup that had to repair this same line after #1420 added a PAIRS
+  # row without touching it. Nothing here validates its own index entry, so CI cannot see that
+  # staleness and only a raise-or-trim decision keeps the line true. The split itself is NOT what
+  # is funded: re-pointing three links from the pre-split file to the sub-docs cost +28 and stayed
+  # inside the budget it landed on, and took no raise, because path-lengthening is neither a new
+  # entry nor a correction. Only the +38 index-line fix crosses, and only by 8.
+  "scripts/CLAUDE.md:11000"
+  # Lowered from 15500 by #1420, which split the framework facts out to
+  # docs/e2e-framework-facts.md, and again from 7400 by #1433, which split the spec-maintenance
+  # rules out to docs/e2e-spec-maintenance.md; prior raises (#1354 to 14000, #1409 to 15500) each
+  # restored headroom the file spent within days. #1434 then raised it to 6900 for two legitimate
+  # index entries, leaving 32 characters. #1468 lowered it to 6150 by capping every index entry at
+  # one line — headline, [full] link, issue refs — since both sub-docs already carry the
+  # elaboration: 6868 -> 5831. Ceiling: never above 6600, the pre-#1434 value.
+  #
+  # This index is append-only by design (a fact's number is cited from 29 files, so no number ever
+  # moves), so it grows with every fact and no fixed cap survives that: a raise accompanying a
+  # genuinely new fact is legitimate. An entry that elaborates rather than points is not — that is
+  # what spent the last two raises, and it belongs in the sub-doc.
+  "e2e/CLAUDE.md:6150"
+  # Both added by #1468 alongside the sections moved out of root CLAUDE.md, sized the same way.
+  "supabase/CLAUDE.md:2550"
+  ".claude/commands/CLAUDE.md:1450"
+  # Lowered from 8000 by #1468: the file is 5145 and had been banking 2855 (55% slack).
+  # Raised from 5400 by #1550: 5394 -> 5631. Two genuinely new primitives landed concurrently on
+  # either side of the merge — `<Switch>` (#1390) and `sectionDescriptionClass` (#1550) — each one
+  # index entry, not elaboration of an existing one. Both sides were already inside 20 characters
+  # of the cap, so neither could absorb the other. Ceiling: never above 8000, the pre-#1468 value.
+  # Raised from 5700 by #1549, which added the `<Radio>` primitive: 5689 -> 5918. A genuinely new
+  # component entering the catalog, not elaboration of an existing entry — the legitimate-raise
+  # case above. Paid for in part by trimming the Button bullet's state-idiom list, which #1549
+  # collapsed when the Documents column's segmented group became a radio group.
+  "src/components/ui/CLAUDE.md:6000"
+)
 
 fail=0
-for sub in "${SUB_DOCS[@]}"; do
-  sub_size=$(wc -m < "$sub")
-  total=$((main_size + sub_size))
-  if [ "$total" -ge "$LIMIT" ]; then
-    echo "FAIL: $MAIN_DOC ($main_size) + $sub ($sub_size) = $total >= $LIMIT" >&2
+for pair in "${PAIRS[@]}"; do
+  anchor="${pair%:*}"
+  sub_path="${pair#*:}"
+  anchor_size=$(wc -m < "$anchor")
+  while IFS= read -r sub; do
+    sub_size=$(wc -m < "$sub")
+    total=$((anchor_size + sub_size))
+    if [ "$total" -ge "$LIMIT" ]; then
+      echo "FAIL: $anchor ($anchor_size) + $sub ($sub_size) = $total >= $LIMIT" >&2
+      fail=1
+    else
+      echo "OK: $anchor ($anchor_size) + $sub ($sub_size) = $total < $LIMIT"
+    fi
+  done < <(find "$sub_path" -name '*.md' | sort)
+done
+
+for entry in "${BUDGETS[@]}"; do
+  file="${entry%:*}"
+  budget="${entry#*:}"
+  size=$(wc -m < "$file")
+  if [ "$size" -ge "$budget" ]; then
+    echo "FAIL: $file ($size) >= budget $budget" >&2
     fail=1
   else
-    echo "OK: $MAIN_DOC ($main_size) + $sub ($sub_size) = $total < $LIMIT"
+    echo "OK: $file ($size) < budget $budget"
   fi
 done
 

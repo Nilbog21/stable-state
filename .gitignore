@@ -30,12 +30,17 @@ e2e/.auth/
 # misc
 .DS_Store
 *.pem
+*.swp
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+test.log
+# run-checklist-suite.sh's three logs: the run itself, and (#1601) the production build and the
+# server it serves the suite from.
+checklist-*.log
 
 # env files (can opt-in for committing if needed)
 .env*

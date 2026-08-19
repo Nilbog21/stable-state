@@ -3,6 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getLessonById } from '@/lib/db/lessons'
 import { deleteLessonAction } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
+import { GuardedForm } from '../../../NavigationBlocker'
 
 export default async function DeleteLessonPage({
   params,
@@ -10,9 +11,9 @@ export default async function DeleteLessonPage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const { user, barn, membership } = await requireMembership(slug, ['manager'])
+  const { barn, membership } = await requireMembership(slug, ['manager'])
 
-  const lesson = await getLessonById(id, barn.id, membership.role, user.id)
+  const lesson = await getLessonById(id, barn.id, membership.role, barn.timezone)
   if (!lesson) notFound()
 
   const deleteLesson = deleteLessonAction.bind(null, barn.id, slug, lesson.id)
@@ -26,13 +27,13 @@ export default async function DeleteLessonPage({
         This lesson&apos;s ${lesson.fee} fee has already been collected. Deleting the lesson
         cannot be undone.
       </p>
-      <form action={deleteLesson}>
+      <GuardedForm action={deleteLesson}>
         <label className="mb-6 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <input type="checkbox" name="alsoDeleteTransactions" className="mt-1" />
           Also delete the collected ${lesson.fee} fee record from Finances
         </label>
         <Button type="submit" variant="danger">Confirm Delete</Button>
-      </form>
+      </GuardedForm>
     </main>
   )
 }

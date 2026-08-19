@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { CancelLessonFields } from '../CancelLessonFields'
 
@@ -9,8 +10,8 @@ const pickerRiders = [
   { id: 'rider-2', name: 'Bob' },
 ]
 
-const farFutureIso = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
-const withinWindowIso = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+const farFutureIso = instant(new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString())
+const withinWindowIso = instant(new Date(Date.now() + 60 * 60 * 1000).toISOString())
 
 describe('CancelLessonFields', () => {
   it('should_show_rider_radio_for_normal_lesson', () => {

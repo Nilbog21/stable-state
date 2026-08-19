@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockAgreement, createMockAgreementCharge } from '@/test/fixtures'
+import { createMockAgreement, createMockAgreementCharge, createMockAgreementChargeRow } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -26,6 +26,9 @@ import {
 
 const mockAgreement = createMockAgreement()
 const mockCharge = createMockAgreementCharge()
+// #1441: what the three charge-writing RPCs actually return. `getChargesForAgreement` keeps
+// `mockCharge`, since that reader really does overlay `payment_type` back on from `transactions`.
+const mockChargeRow = createMockAgreementChargeRow()
 
 describe('createAgreement', () => {
   beforeEach(() => {
@@ -418,7 +421,7 @@ describe('updateCharge', () => {
   })
 
   it('should_call_the_update_agreement_charge_fee_rpc', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, fee: 300 }, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockChargeRow, fee: 300 }, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateCharge('charge-1', 'barn-1', 300)
@@ -429,13 +432,23 @@ describe('updateCharge', () => {
   })
 
   it('should_return_rpc_data', async () => {
-    const updated = { ...mockCharge, fee: 300 }
+    const updated = { ...mockChargeRow, fee: 300 }
     const mockRpc = vi.fn().mockResolvedValue({ data: updated, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     const result = await updateCharge('charge-1', 'barn-1', 300)
 
     expect(result).toEqual(updated)
+  })
+
+  it('should_not_expose_payment_type_on_the_returned_row', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockChargeRow, fee: 300 }, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await updateCharge('charge-1', 'barn-1', 300)
+
+    // @ts-expect-error #1441: agreement_charges has had no payment_type column since #831
+    expect(result.payment_type).toBeUndefined()
   })
 
   it('should_throw_when_rpc_returns_error', async () => {
@@ -452,7 +465,7 @@ describe('updateChargePaymentType', () => {
   })
 
   it('should_call_the_mark_agreement_charge_paid_rpc', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, payment_type: 'venmo' }, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
@@ -463,7 +476,7 @@ describe('updateChargePaymentType', () => {
   })
 
   it('should_pass_null_payment_type_through_to_the_rpc', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, payment_type: null }, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateChargePaymentType('charge-1', 'barn-1', null)
@@ -474,13 +487,22 @@ describe('updateChargePaymentType', () => {
   })
 
   it('should_return_rpc_data', async () => {
-    const updated = { ...mockCharge, payment_type: 'venmo' }
-    const mockRpc = vi.fn().mockResolvedValue({ data: updated, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     const result = await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
 
-    expect(result).toEqual(updated)
+    expect(result).toEqual(mockChargeRow)
+  })
+
+  it('should_not_expose_payment_type_on_the_returned_row', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
+
+    // @ts-expect-error #1441: agreement_charges has had no payment_type column since #831
+    expect(result.payment_type).toBeUndefined()
   })
 
   it('should_throw_when_rpc_returns_error', async () => {
@@ -497,10 +519,37 @@ describe('generateChargeForMonth', () => {
   })
 
   it('should_call_rpc_with_barn_id_agreement_id_and_normalized_period', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+    await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
+      p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
+    })
+  })
+
+  // #1361: the two boundary cases the UTC truncation got wrong — an instant that has already
+  // rolled into the next month in UTC but is still last month at the barn. Two zones, six
+  // hours apart, so the fix can't be a constant offset.
+  it('should_truncate_to_the_barn_month_when_utc_has_already_rolled_into_the_next_month', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    // 2026-08-01 03:00 UTC is 2026-07-31 23:00 in New York (UTC-4 in August)
+    await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-08-01T03:00:00Z'))
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
+      p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
+    })
+  })
+
+  it('should_truncate_to_the_barn_month_at_a_honolulu_boundary', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    // 2026-08-01 09:00 UTC is 2026-07-31 23:00 in Honolulu (UTC-10, no DST)
+    await generateChargeForMonth('agreement-1', 'barn-1', 'Pacific/Honolulu', new Date('2026-08-01T09:00:00Z'))
 
     expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
       p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
@@ -508,12 +557,22 @@ describe('generateChargeForMonth', () => {
   })
 
   it('should_return_rpc_data', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
 
-    expect(result).toEqual(mockCharge)
+    expect(result).toEqual(mockChargeRow)
+  })
+
+  it('should_not_expose_payment_type_on_the_returned_row', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
+
+    // @ts-expect-error #1441: agreement_charges has had no payment_type column since #831
+    expect(result.payment_type).toBeUndefined()
   })
 
   it('should_throw_when_rpc_returns_error', async () => {
@@ -521,17 +580,17 @@ describe('generateChargeForMonth', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
-      generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+      generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'))
     ).rejects.toThrow('rpc failed')
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockChargeRow, error: null })
     const mockClient = { rpc: mockRpc } as any
 
-    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'), mockClient)
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', 'America/New_York', new Date('2026-07-15T12:00:00Z'), mockClient)
 
-    expect(result).toEqual(mockCharge)
+    expect(result).toEqual(mockChargeRow)
   })
 })
 
@@ -598,7 +657,7 @@ describe('getUnpaidAgreementIds', () => {
     vi.mocked(createClient).mockResolvedValue(mockClient)
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T12:00:00Z'))
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(getTransactionRows).toHaveBeenCalledWith(
       'barn-1', ['lease_charge', 'board_charge'],
       { endDate: new Date(Date.UTC(2026, 6, 1)), collected: false },
@@ -606,16 +665,32 @@ describe('getUnpaidAgreementIds', () => {
     )
   })
 
+  it('should_bound_on_the_barn_month_when_utc_has_already_rolled_over', async () => {
+    // 2026-08-01T02:00Z is still 2026-07-31 21:00 in New York, so July's charge is
+    // current-month and must stay out of the unpaid set.
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+    const mockClient = { from: vi.fn() } as any
+    vi.mocked(createClient).mockResolvedValue(mockClient)
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-01T02:00:00Z'))
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
+    expect(getTransactionRows).toHaveBeenCalledWith(
+      'barn-1', ['lease_charge', 'board_charge'],
+      { endDate: new Date('2026-07-01T00:00:00Z'), collected: false },
+      mockClient
+    )
+  })
+
   it('should_return_empty_set_when_no_unpaid_transactions', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set())
   })
 
   it('should_query_agreement_charges_for_the_returned_charge_ids', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     const { mockEq, mockIn } = makeChargesChain([{ id: 'charge-1', agreement_id: 'agreement-1' }])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     expect(mockIn).toHaveBeenCalledWith('id', ['charge-1'])
   })
@@ -629,7 +704,7 @@ describe('getUnpaidAgreementIds', () => {
       { id: 'charge-1', agreement_id: 'agreement-1' },
       { id: 'charge-2', agreement_id: 'agreement-1' },
     ])
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set(['agreement-1']))
   })
 
@@ -639,40 +714,40 @@ describe('getUnpaidAgreementIds', () => {
       unpaidChargeRow({ id: 'txn-2', agreementChargeId: 'charge-2' }),
     ])
     const { mockIn } = makeChargesChain([{ id: 'charge-2', agreement_id: 'agreement-2' }])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(mockIn).toHaveBeenCalledWith('id', ['charge-2'])
   })
 
   it('should_skip_followup_query_when_there_are_no_unpaid_rows', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
     const { from } = makeChargesChain([])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(from).not.toHaveBeenCalled()
   })
 
   it('should_skip_followup_query_when_every_charge_id_is_null', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow({ agreementChargeId: null })])
     const { from } = makeChargesChain([])
-    await getUnpaidAgreementIds('barn-1')
+    await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(from).not.toHaveBeenCalled()
   })
 
   it('should_return_empty_set_when_followup_data_is_null', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     makeChargesChain(null)
-    const result = await getUnpaidAgreementIds('barn-1')
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York')
     expect(result).toEqual(new Set())
   })
 
   it('should_throw_when_followup_query_errors', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([unpaidChargeRow()])
     makeChargesChain(null, new Error('db error'))
-    await expect(getUnpaidAgreementIds('barn-1')).rejects.toThrow('db error')
+    await expect(getUnpaidAgreementIds('barn-1', 'America/New_York')).rejects.toThrow('db error')
   })
 
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('transactions error'))
-    await expect(getUnpaidAgreementIds('barn-1')).rejects.toThrow('transactions error')
+    await expect(getUnpaidAgreementIds('barn-1', 'America/New_York')).rejects.toThrow('transactions error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
@@ -683,7 +758,7 @@ describe('getUnpaidAgreementIds', () => {
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
 
-    const result = await getUnpaidAgreementIds('barn-1', mockClient)
+    const result = await getUnpaidAgreementIds('barn-1', 'America/New_York', mockClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(result).toEqual(new Set(['agreement-1']))

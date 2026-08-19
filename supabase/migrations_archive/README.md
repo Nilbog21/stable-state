@@ -1,5 +1,20 @@
 # Migration archive
 
+> **Equivalence is now a script, not a procedure.** Each section below records a
+> `migra` run someone performed by hand; #1542 replaced that with
+> `bash scripts/verify-migration-equivalence.sh`, which replays both sets and diffs
+> `pg_dump --schema-only` including every ACL. Use it for the next squash rather than
+> reconstructing the prose — `RELEASE_CEREMONY.md`'s Wrapup 4 criteria own the exact
+> invocation, including which ref to pass, so it is stated once. Its
+> `--self-check` re-derives the first section's verdict below — and, run against
+> #657's squash *as first pushed*, independently finds the 11 missing GRANTs that
+> review caught in `bf620567`. The hand-run recorded here did not.
+>
+> **Read every "verified until empty" below as the hand-run's verdict, not as
+> fact.** Two of the three are known wrong: #657's above, and #972's, which
+> missed `set_instructor_cut`'s dropped REVOKE — #1158 restored it and #1535
+> built a CI gate for it. That is the whole argument for the script.
+
 These 93 files (`20260516000000`–`20260629004605`) are the pre-#657 migration
 history — everything through v2.0.2 (release-2 + patches). They are kept for
 history, not applied by the Supabase CLI (only `supabase/migrations/` is).
@@ -63,3 +78,44 @@ since only their referenced shape — `auth.users`, `auth.uid()`,
 `storage.objects`, `storage.foldername()` — matters for this diff), then
 diffing with `migra --with-privileges` until empty. No prod migration-tracking
 reconciliation was needed — release-3 still hadn't shipped to prod at this point.
+
+That empty diff was wrong. This squash's `CREATE OR REPLACE` of
+`set_instructor_cut` dropped its `REVOKE ... FROM PUBLIC`, leaving PUBLIC
+EXECUTE on a `SECURITY DEFINER` function; #1158 restored it and #1535 added
+`check-function-grants.sh` to catch the class in CI. The `--with-privileges`
+flag was passed and the drop still went unrecorded, which is why
+`verify-migration-equivalence.sh` diffs rendered schema text including ACLs
+rather than trusting a flag someone has to remember.
+
+## Fourth squash (#1629): release-4's own migrations
+
+A further 62 files (`20260722201810`–`20260818012511`) are `release/release-4`'s own migration
+history, added since it branched off `main`. Like #658's set and unlike #657's, they had never
+been applied to prod — they reach it for the first time when release-4 ships — so no prod
+migration-tracking reconciliation was needed. Their net effect is captured by the 4-file set in
+`supabase/migrations/`: `20260818001709_release4_schema.sql`, `..._release4_backfills.sql`,
+`..._release4_functions.sql`, `..._release4_rls.sql` — a delta on top of the untouched baseline
+and release-3 sets, not a from-scratch snapshot.
+
+Three of the 62 carry top-level row-migrating DML, preserved verbatim in
+`..._release4_backfills.sql` alongside the ALTER each one guards: the `DELETE` of leftover
+`pending` memberships before `barn_memberships_status_check` narrows to `'active'` (#1037); the
+`INSERT … SELECT` that carries `amount`/`payment_type` onto `appointment_costs` before
+`appointments` drops them (#1148); and the `UPDATE` that gives every ownerless horse an owner,
+with its `DO $$` guard, before `owning_member_id` goes `NOT NULL` (#1549). Every other DML hit
+across the 62 sits inside a `CREATE FUNCTION` body and flattened normally.
+
+**Equivalence was proven by `bash scripts/verify-migration-equivalence.sh`, not by a hand-run
+`migra`** — the first squash to use the tool the header above points at. `--self-check` passed
+both polarities immediately beforehand, then the run against `origin/release/release-4`'s tip
+reported the two sets identical across 5189 lines of `pg_dump --schema-only` output including
+every ACL.
+
+That is not a formality: the first draft of this squash **dropped a grant**, and the script
+caught it. `get_calendar_feed`'s `REVOKE … FROM PUBLIC` / `GRANT … TO anon, authenticated` pair
+lived in `20260723185601_calendar_feed_rpc.sql`, the migration that first defined the function.
+A later `CREATE OR REPLACE` (`20260805022307`) superseded that body, so flattening to the final
+definition dropped the file — and its grants with it, leaving the app's one anon-reachable
+function (`/calendar.ics`, authorized by feed token alone) unreachable by `anon`. This is the
+same failure mode as #657's 11 missing GRANTs and #972's dropped `set_instructor_cut` REVOKE,
+which are the two entries above that a hand-run `migra` recorded as clean.

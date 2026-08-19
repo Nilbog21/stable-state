@@ -1,10 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getHorsesByBarn } from '@/lib/db/horses'
+import { getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { getActiveMembersWithProfiles, getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
-import { submitLesson, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
+import { submitLesson, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '@/app/actions/lessons'
+import { barnToday } from '@/lib/barn-timezone'
 import { LessonForm } from '../LessonForm'
 
 export default async function LessonNewPage({
@@ -43,6 +44,8 @@ export default async function LessonNewPage({
 
   const submit = submitLesson.bind(null, barn.id, barn.slug)
   const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, null)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, barn.slug)
+  const thresholdsByHorseId = Object.fromEntries(horses.map((h) => [h.id, resolveExhaustionThresholds(h, barn)]))
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
@@ -50,6 +53,7 @@ export default async function LessonNewPage({
         New Lesson
       </h1>
       <LessonForm
+        timezone={barn.timezone}
         mode="new"
         horses={horses}
         riders={riders}
@@ -58,8 +62,10 @@ export default async function LessonNewPage({
         instructors={instructors}
         currentMembershipId={membership?.id ?? ''}
         tiers={tiers}
-        defaultInstructorCut={barn.default_instructor_cut}
+        todayStr={barnToday(barn.timezone)}
         getProjectedExhaustion={getProjectedExhaustion}
+        getScheduleRange={getScheduleRange}
+        thresholdsByHorseId={thresholdsByHorseId}
       />
     </main>
   )

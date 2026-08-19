@@ -1,17 +1,36 @@
+/**
+ * Interactive dev tool (the `change-user.sh`-wrapped half): reassigns the developer's
+ * own auth `user_id` between a barn's members so a local session can act as any one of
+ * them. The move covers **both** columns that carry that identity — `barn_memberships.user_id`
+ * (what `requireMembership` and the barn-scoped RLS policies read) and `profiles.user_id`
+ * (what `profiles_own_*` and the `documents` storage policies read). Moving only the
+ * membership half left the dev in a state no real user occupies, so a manual checklist walk
+ * exercised profile/document behaviour nobody would ever see (#1563).
+ *
+ * Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`, else a numbered prompt over
+ * the barns `selectableBarns` admits). Every barn `isTeardownOwnedBarn` rejects is refused on
+ * both paths independently and regardless of `--allow-prod`, as is any barn the developer holds
+ * no membership row in. Then it lists the barn's active members and vacates the
+ * currently-inhabited rows — restoring their rightful owner's `user_id`, or `null` for the
+ * dev's own rows — before taking over the
+ * selected member's rows. `planUserIdMoves` owns that ordering and its UNIQUE-constraint
+ * rationale. Because `profiles.user_id` is now a column this script *writes*, it can no
+ * longer be read as the answer to "whose auth user is this really?" — `auth.users`, via
+ * `findAuthUserIdsByEmails`, is that source of truth instead.
+ *
+ * Gated by `assertDevProject` unless `CHANGE_USER_ALLOW_PROD` is set, which in turn requires
+ * an explicit barn slug (#986). The pure formatters, the barn-refusal pair and the move planner
+ * are the module's test surface (`change-user.test.ts`).
+ */
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
-import { createClient } from '@supabase/supabase-js'
-import { assertDevProject } from './script-utils'
-
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
-
-export function isSelfSelect(devEmail: string, targetEmail: string): boolean {
-  return devEmail === targetEmail
-}
+import { getBarnBySlug } from '@/lib/db/barns'
+import {
+  mustSucceed,
+  createServiceClient,
+  assertDevProject,
+  findAuthUserIdsByEmails,
+} from './script-utils'
 
 export function formatProfileLine(
   profile: { first_name: string; last_name: string; email: string },
@@ -24,6 +43,28 @@ export function formatBarnLine(barn: { name: string; slug: string }, index: numb
   return `${index + 1}. ${barn.name} (${barn.slug})`
 }
 
+export function assertSlugRequiredForProd(barnSlug: string | undefined, allowProd: boolean): void {
+  if (allowProd && !barnSlug) {
+    throw new Error('CHANGE_USER_BARN_SLUG is required when CHANGE_USER_ALLOW_PROD is true')
+  }
+}
+
+// Both flags mark a barn whose roster an automated teardown owns: `/demo` + the reset-demo cron,
+// and `seed-test-barn` + `teardown-test-barn` + `run-checklist-suite.sh`'s EXIT trap. The developer
+// holds a real membership in both kinds, and a swap nulls their own `profiles.user_id` — which is
+// exactly what `teardownBarnData`'s `user_id IS NULL` delete reaps, taking their profile row and
+// its photo with it. The seeded member they swapped onto is poisoned the other way: it now carries
+// devUserId, so no reap ever clears it and the next seed of that identity dies on
+// `profiles_email_unique` for every visitor, not just this developer (#1587). Nothing is lost by
+// refusing — a test barn's three members *are* the real `E2E_USERS` logins, so log in as one.
+export function isTeardownOwnedBarn(barn: { is_demo: boolean; is_test_barn: boolean }): boolean {
+  return barn.is_demo || barn.is_test_barn
+}
+
+export function selectableBarns<B extends { is_demo: boolean; is_test_barn: boolean }>(barns: B[]): B[] {
+  return barns.filter((b) => !isTeardownOwnedBarn(b))
+}
+
 export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
   memberships: M[],
   profiles: P[]
@@ -32,21 +73,40 @@ export function mergeMembersWithProfiles<M extends { profile_id: string }, P ext
   return memberships.map((m) => profileMap.get(m.profile_id)).filter((p): p is P => p !== undefined)
 }
 
-// Vacating the dev's own row must null it (not restore devUserId) since the target row is about
-// to take devUserId — barn_memberships' UNIQUE(user_id, barn_id) forbids both holding it at once.
-export function resolveRevertUserId(
-  currentRowProfileId: string,
-  devProfileId: string,
-  ownerUserId: string | null
-): string | null {
-  return currentRowProfileId === devProfileId ? null : ownerUserId
+export type UserIdMove = {
+  table: 'barn_memberships' | 'profiles'
+  id: string
+  userId: string | null
 }
 
-async function promptSelection(max: number): Promise<number> {
+// Both columns must be vacated before the takeover writes devUserId: barn_memberships carries
+// UNIQUE(user_id, barn_id) and profiles carries the single-column profiles_user_id_unique, so
+// devUserId cannot sit on two rows of either table at once. Vacating the dev's own rows nulls
+// them rather than restoring devUserId, for the same reason — the target rows are about to take it.
+export function planUserIdMoves(args: {
+  devUserId: string
+  devProfileId: string
+  target: { membershipId: string; profileId: string }
+  current: { membershipId: string; profileId: string } | null
+  currentOwnerUserId: string | null
+}): UserIdMove[] {
+  const { devUserId, devProfileId, target, current, currentOwnerUserId } = args
+  const moves: UserIdMove[] = []
+  if (current && current.membershipId !== target.membershipId) {
+    const revertUserId = current.profileId === devProfileId ? null : currentOwnerUserId
+    moves.push({ table: 'barn_memberships', id: current.membershipId, userId: revertUserId })
+    moves.push({ table: 'profiles', id: current.profileId, userId: revertUserId })
+  }
+  moves.push({ table: 'barn_memberships', id: target.membershipId, userId: devUserId })
+  moves.push({ table: 'profiles', id: target.profileId, userId: devUserId })
+  return moves
+}
+
+async function promptSelection(max: number, label: string): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve, reject) => {
     rl.once('close', () => reject(new Error('input closed before a selection was made')))
-    rl.question(`Select a profile [1-${max}]: `, (answer) => {
+    rl.question(`${label} [1-${max}]: `, (answer) => {
       const n = parseInt(answer, 10)
       if (isNaN(n) || n < 1 || n > max) {
         reject(new Error(`Invalid selection: "${answer}"`))
@@ -58,57 +118,75 @@ async function promptSelection(max: number): Promise<number> {
   })
 }
 
-async function promptConfirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  return new Promise((resolve, reject) => {
-    rl.once('close', () => reject(new Error('input closed before an answer was given')))
-    rl.question(`${question} (y/N): `, (answer) => {
-      resolve(answer.trim().toLowerCase() === 'y')
-      rl.close()
-    })
-  })
-}
-
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEV_EMAIL = process.env.DEV_EMAIL
   const DEV_NAME = process.env.DEV_NAME
+  const BARN_SLUG = process.env.CHANGE_USER_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  assertDevProject(SUPABASE_URL)
+  const allowProd = process.env.CHANGE_USER_ALLOW_PROD === 'true'
+  assertSlugRequiredForProd(BARN_SLUG, allowProd)
+  if (!allowProd) assertDevProject(SUPABASE_URL)
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
-  const barns = mustSucceed(
-    await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
-    'fetch barns'
-  )
-  if (barns.length === 0) {
-    console.error('no barns found')
-    process.exit(1)
+  let barnId: string
+  if (BARN_SLUG) {
+    const barn = await getBarnBySlug(BARN_SLUG, supabase)
+    if (!barn) {
+      console.error(`no barn found for slug "${BARN_SLUG}"`)
+      process.exit(1)
+    }
+    // Deliberately outside the `allowProd` branch above: `--allow-prod` widens which *project*
+    // may be targeted, never which barns within it are safe to inhabit.
+    if (isTeardownOwnedBarn(barn)) {
+      const kind = barn.is_demo ? 'demo barn (is_demo)' : 'test barn (is_test_barn)'
+      console.error(
+        `"${BARN_SLUG}" is a ${kind} — its roster is owned by an automated teardown that would delete your own profile row.\n` +
+          'Use dev-barn, or log in as that barn\'s own manager/trainer/rider instead of swapping into them.'
+      )
+      process.exit(1)
+    }
+    barnId = barn.id
+  } else {
+    const barns = selectableBarns(
+      mustSucceed<{ id: string; name: string; slug: string; is_demo: boolean; is_test_barn: boolean }[]>(
+        await supabase
+          .from('barns')
+          .select('id, name, slug, is_demo, is_test_barn')
+          .order('name', { ascending: true }),
+        'fetch barns'
+      )
+    )
+    if (barns.length === 0) {
+      console.error('no barns available to swap into')
+      process.exit(1)
+    }
+    barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
+    const barnSelection = await promptSelection(barns.length, 'Select a barn')
+    barnId = barns[barnSelection - 1].id
   }
 
-  barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
-  const barnSelection = await promptSelection(barns.length)
-  const barnId: string = barns[barnSelection - 1].id
-
-  const devProfile = mustSucceed<{ id: string; user_id: string | null }>(
-    await supabase.from('profiles').select('id, user_id').eq('email', DEV_EMAIL).single(),
+  const devProfile = mustSucceed<{ id: string }>(
+    await supabase.from('profiles').select('id').eq('email', DEV_EMAIL).single(),
     'fetch dev profile'
   )
 
-  if (!devProfile.user_id) {
+  // Not profiles.user_id: this script moves that column, so while the dev is inhabiting
+  // someone else their own row reads null.
+  const [devAuthUserId] = await findAuthUserIdsByEmails([DEV_EMAIL], supabase)
+
+  if (!devAuthUserId) {
     console.error('sign in to the app first, then run this script')
     process.exit(1)
   }
 
-  const devUserId: string = devProfile.user_id
+  const devUserId: string = devAuthUserId
   const devProfileId: string = devProfile.id
 
   const ownRow = mustSucceed<{ id: string } | null>(
@@ -126,7 +204,7 @@ async function run() {
       .from('barn_memberships')
       .select('profile_id, status')
       .eq('barn_id', barnId)
-      .in('status', ['active', 'pending'])
+      .eq('status', 'active')
       .order('created_at', { ascending: true }),
     'fetch barn memberships'
   )
@@ -149,7 +227,7 @@ async function run() {
     console.log(formatProfileLine(p, i))
   })
 
-  const selection = await promptSelection(profiles.length)
+  const selection = await promptSelection(profiles.length, 'Select a profile')
   const target = profiles[selection - 1] as {
     id: string
     user_id: string | null
@@ -158,57 +236,67 @@ async function run() {
     last_name: string
   }
 
-  if (!target.user_id) {
+  // The dev's own row is exempt: switching back to yourself is a restore, and its user_id is
+  // null precisely because a previous run vacated it.
+  if (!target.user_id && target.id !== devProfileId) {
     console.error(`${target.email} has not signed in yet — cannot switch to this profile`)
     process.exit(1)
   }
 
-  const isSelf = isSelfSelect(DEV_EMAIL, target.email)
-
-  const targetRow = mustSucceed<{ id: string; status: string }>(
+  const targetRow = mustSucceed<{ id: string }>(
     await supabase
       .from('barn_memberships')
-      .select('id, status')
+      .select('id')
       .eq('profile_id', target.id)
       .eq('barn_id', barnId)
       .single(),
     'fetch target membership'
   )
 
-  if (targetRow.status === 'pending') {
-    const label = isSelf ? 'Your own membership in this barn' : `${target.first_name} ${target.last_name}'s membership`
-    const activate = await promptConfirm(`${label} is pending — activate it?`)
-    if (!activate) {
-      console.error('cannot switch to a pending membership without activating it')
-      process.exit(1)
-    }
-    mustSucceed(
-      await supabase.from('barn_memberships').update({ status: 'active' }).eq('id', targetRow.id),
-      'activate target membership'
-    )
-  }
-
   const currentRow = mustSucceed<{ id: string; profile_id: string } | null>(
     await supabase.from('barn_memberships').select('id, profile_id').eq('user_id', devUserId).eq('barn_id', barnId).maybeSingle(),
     'fetch currently inhabited membership'
   )
 
-  if (currentRow && currentRow.id !== targetRow.id) {
-    const ownerProfile = mustSucceed<{ user_id: string | null }>(
-      await supabase.from('profiles').select('user_id').eq('id', currentRow.profile_id).single(),
+  let currentOwnerUserId: string | null = null
+  if (currentRow && currentRow.profile_id !== devProfileId) {
+    const ownerProfile = mustSucceed<{ email: string }>(
+      await supabase.from('profiles').select('email').eq('id', currentRow.profile_id).single(),
       'fetch rightful owner profile'
     )
-    const revertUserId = resolveRevertUserId(currentRow.profile_id, devProfileId, ownerProfile.user_id)
-    mustSucceed(
-      await supabase.from('barn_memberships').update({ user_id: revertUserId }).eq('id', currentRow.id),
-      'revert previous membership'
-    )
+    const [ownerAuthUserId] = await findAuthUserIdsByEmails([ownerProfile.email], supabase)
+    currentOwnerUserId = ownerAuthUserId ?? null
   }
 
-  mustSucceed(
-    await supabase.from('barn_memberships').update({ user_id: devUserId }).eq('id', targetRow.id),
-    'become target membership'
-  )
+  // Both vacates precede both takeovers. Two known ceilings, both acceptable for a dev tool aimed
+  // at a single-barn dev project (dev-barn), neither reachable from one barn:
+  //
+  // 1. The profile vacate is barn-scoped only because it mirrors the membership one, so a dev
+  //    holding memberships in two barns and swapping in both ends up with the columns disagreeing.
+  //    With different target profiles the profiles takeover trips profiles_user_id_unique — but
+  //    only after the membership takeover of the same run has already committed. With one profile
+  //    shared across both barns it writes the value already there and raises nothing at all, and
+  //    reverting one barn then restores that profile while the other barn's membership still holds
+  //    devUserId. Upgrade path: scope both vacates by user_id across barns rather than by the
+  //    selected barn.
+  // 2. PostgREST gives no transaction, so these updates land one at a time and a failure mid-loop
+  //    leaves the two columns torn; the currentRow probe above reads barn_memberships only, so it
+  //    won't see a stale profiles row on the next run. The failing update names its table and id.
+  //    Upgrade path: a SECURITY DEFINER RPC applying the whole plan in one statement.
+  const moves = planUserIdMoves({
+    devUserId,
+    devProfileId,
+    target: { membershipId: targetRow.id, profileId: target.id },
+    current: currentRow ? { membershipId: currentRow.id, profileId: currentRow.profile_id } : null,
+    currentOwnerUserId,
+  })
+
+  for (const move of moves) {
+    mustSucceed(
+      await supabase.from(move.table).update({ user_id: move.userId }).eq('id', move.id),
+      `update ${move.table} ${move.id}`
+    )
+  }
 
   console.log('Refresh your preview page.')
 }

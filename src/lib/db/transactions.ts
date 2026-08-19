@@ -1,3 +1,13 @@
+/**
+ * Single typed reader for the `transactions` ledger (#865): `getTransactionRows`
+ * returns the camelCase-mapped base row set scoped to barn and kinds, with optional
+ * collected/date-range filters and no FK embeds — a caller needing a joined field
+ * resolves it with its own follow-up lookup; `getOutstandingTransactionRows` relays
+ * through the `get_outstanding_transactions` RPC instead of a direct read (direct
+ * `transactions` SELECT is manager-only, #831); `positiveAmount` centralizes the
+ * ledger's sign convention (`instructor_payout`/`expense` stored negative, all other
+ * kinds positive).
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PaymentType, TransactionKind } from './types'
@@ -54,6 +64,16 @@ type RawRow = {
   occurred_at: string
 }
 
+// #1286 sweep: deliberately unordered, because no consumer's rendered order is decided here.
+// `backup.ts`'s All Transactions sheet is the one caller that renders these rows directly,
+// and `addSheet` already re-sorts every sheet descending by its own first column (#1218), so
+// an order imposed here would be discarded. The callers that reshape the rows into an array
+// rather than folding them — `agreement-finances.ts`'s `getChargesForSummary`/`getPaidCharges`
+// and `expense-finances.ts`'s `fetchExpenseTransactionsInRange` — likewise never render in
+// this order: each one's output is re-sorted by date at the page that displays it (see the
+// finances drill-downs' own `sortableDate` sorts) or folded into a total. The rest resolve
+// the rows into a Map or Set, where order is unobservable. Adding an `.order()` here would
+// therefore buy nothing and cost a sort on the barn's whole ledger.
 export async function getTransactionRows(
   barnId: string,
   kinds: readonly TransactionKind[],

@@ -8,27 +8,79 @@ Check Supabase migration status, rename pending migrations to the current timest
    - Migrations that exist **remotely but not locally** (remote-only)
    - Migrations that exist **locally but not remotely** (pending)
 
-3. If there are any **remote-only** migrations (exist in the remote DB but have no corresponding local file), display them clearly as an error and **stop immediately**. Tell the user they need to reconcile the remote-only migrations before proceeding.
+3. If there are any **remote-only** migrations (exist in the remote DB but have no corresponding local file), check the base branch before reporting anything — all worktrees share one dev DB, so the usual cause is that this branch is simply behind its base, not genuine drift.
+
+   Get the base branch:
+   ```
+   git fetch origin && gh pr view --json baseRefName --jq .baseRefName
+   ```
+   If that fails with `no pull requests found for branch ...` (no PR open for this branch yet), ask the user: **"No PR found for this branch — what's the base branch?"** and use their answer. Do not fall back to a guess.
+
+   Then list the base branch's migration files:
+   ```
+   git ls-tree --name-only origin/{base} supabase/migrations/
+   ```
+   `migration list`'s remote-only entries are bare version timestamps (`20260725005002`); `ls-tree` returns full paths (`supabase/migrations/20260725005002_add_thing.sql`). Match on the timestamp prefix.
+
+   - **If every remote-only version is present there:** say so, then ask: **"Type 'merge' to merge `origin/{base}` into this branch, or anything else to abort:"**. On anything other than `merge`, stop. On `merge`:
+     1. `git merge origin/{base}` (a merge, not a rebase, so no force-push is needed).
+     2. Resolve conflicts. Expect them wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/**/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions.
+     3. Commit the merge (`git commit --no-edit`, or `git commit` with the resolved conflicts staged). Don't gate the commit on local `npx vitest run` / `bash scripts/check-coverage.sh` / `npm run lint` runs — CI runs all three on the next push, and for a conflict resolution that wait is cheaper than re-running the suite locally.
+     4. Re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
+   - **If any remote-only version is absent from the base branch:** **stop immediately** and report the two sets separately, so the user can see how much of it a merge would have handled:
+     ```
+     Covered by merging origin/{base}:
+       20260725005002_add_thing.sql
+     Not on {base}:
+       20260725005099_unknown.sql
+     ```
+     Don't call the second set drift outright — the shared dev DB means it has two very different causes, and only the user can say which:
+     - **A sibling worktree's branch that hasn't merged to `{base}` yet.** Benign and common; nothing to repair. `git log --all --oneline -- supabase/migrations/{version}_*.sql` (after a `git fetch origin`) finds the branch that owns it. The fix is to wait for that branch to merge, then re-run this skill.
+     - **Genuine drift** — no branch anywhere owns the file. This is the case `scripts/repair-migration-history.sh` addresses; note it's a runbook hardcoded to one past incident's versions, so it needs editing for the versions at hand rather than running as-is.
 
 4. If there are **no pending** local migrations, report that the remote is already up to date and exit.
 
-5. Rename every pending migration to a fresh timestamp, preserving relative order:
+5. Rename every pending migration to a fresh timestamp, preserving relative order. **This rename is the fix — never reach for `supabase db push --include-all`.** When the CLI reports "local migration files to be inserted before the last migration on remote database" and suggests that flag, it is refusing on purpose; the flag bypasses the check rather than correcting the ordering, so the migration lands in the remote's recorded history out of sequence instead of the rename putting it where it belongs.
    - Get the current epoch seconds: `date +%s`
    - Sort the pending migrations by their current filename (ascending)
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second
-   - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S`
+   - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S` — this is GNU date; the BSD/macOS equivalent is `date -u -r {epoch} +%Y%m%d%H%M%S`
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
+   - After **all** renames are done, sweep the repo for references to each old filename and rewrite it to the new one. A pending migration's header comment often cites a sibling that was renamed in the same batch, and `docs/architecture/**/*.md` cite migration filenames too, so this is repo-wide rather than confined to `supabase/migrations/`:
+     ```
+     git grep -lz --untracked --fixed-strings '{old}' | xargs -0 -r sed -i 's/{old}/{new}/g'
+     ```
+     `--untracked` is load-bearing: the migrations being renamed are pending and usually untracked, so a plain `git grep` would miss exactly the sibling-cites-sibling case this is here to fix. Untracked-but-ignored paths (`node_modules/`, `specs/`) are correctly skipped. `-lz`/`-0` pair a NUL-delimited file list with a NUL-delimited `xargs` so a path containing a space is rewritten rather than silently split into arguments that match nothing. This is GNU sed; the BSD/macOS equivalent needs an explicit empty backup suffix: `sed -i '' 's/{old}/{new}/g'`. Record which files each pass rewrote — step 6 reports them.
 
-6. Display the planned renames clearly:
+     Some of the files this rewrites are migrations that have already been applied. That is fine and is the documented exception to the never-edit-an-applied-migration rule — a header comment is inert (see `supabase/CLAUDE.md`).
+
+6. Display the planned renames clearly, followed by any files the sweep rewrote:
    ```
    Renaming migrations:
      20260623003217_add_function.sql → 20260625002301_add_function.sql
      20260623004100_add_index.sql    → 20260625002302_add_index.sql
+
+   Updated references:
+     docs/architecture/rpc/lessons.md
+     supabase/migrations/20260625002302_add_index.sql
    ```
+   Omit the `Updated references:` block entirely when the sweep rewrote nothing.
 
 7. Ask: **"Type 'sync' to push these migrations to remote, or anything else to abort:"**
 
-8. If the user types `sync`, run `npx supabase db push`.
-   Otherwise abort — do not undo the renames (the user should commit or revert manually).
+8. If the user types `sync`, assert the push target is the dev project and push in one command, so the push cannot run on its own:
+   ```
+   bash scripts/assert-dev-project.sh && bash scripts/e2e-slot.sh --exclusive npx supabase db push
+   ```
+   If the guard aborts, **stop and report what it printed** — do not retry with `--allow-prod` to get past it. That flag exists for the deliberate production push (the same opt-in `seed-account`, `seed-test-barn`, `teardown-test-barn`, and `change-user` already take), and only the developer can say this is one:
+   ```
+   bash scripts/assert-dev-project.sh --allow-prod && bash scripts/e2e-slot.sh --exclusive npx supabase db push
+   ```
 
-**Note:** This skill does not commit the renamed files. The git commit is made by `/reviewIssue` after sync completes, so it carries the correct `[#N]` prefix.
+   `e2e-slot.sh --exclusive` (#1295) takes every e2e slot for the duration, so the push and a checklist-suite run cannot overlap **in either direction**. Only the first direction is obvious; the second is the one that bites, because a suite that starts mid-push reads half-applied schema and fails in ways nobody can diagnose from inside their own issue. It blocks rather than erroring — if it prints that it is waiting, a suite is in flight somewhere on this machine and the push will start when that run finishes. This replaces the orchestrator discipline `/fableFleet` used to carry: the interlock is now kernel-held, so it holds for a push the *user* runs from their own worktree too, which no amount of fleet prose ever could.
+
+   Why this step is guarded when no other step in this skill is: `db push` is the repo's only schema write, and until #1291 it was its only destructive operation with no dev-project check at all — `assertDevProject` covers the seven seed/teardown call sites and none of them touch schema. A wrong push is also not undone, it is *repaired by another migration*, since an applied migration is never edited (`supabase/CLAUDE.md`); and every worktree shares one `.env.local`, so the blast radius is the whole fleet.
+
+   The guard checks two separate things because `db push` selects its target differently from everything else in this repo: the CLI writes to whatever project `npx supabase link` recorded in `supabase/.temp/project-ref`, while the seed/teardown scripts read `.env.local`. Checking only `NEXT_PUBLIC_SUPABASE_URL` against `DEV_SUPABASE_URL` would leave a re-link free to push schema to another project with a dev-pointed `.env.local` sitting right there.
+
+   Otherwise (the user typed anything but `sync`) abort — do not undo the renames; leave them in the working tree for the developer running this skill to commit or revert by hand.

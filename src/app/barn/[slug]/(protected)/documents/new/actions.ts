@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { createDocument } from '@/lib/db/documents'
+import { getMyHorseDocumentPrivilege } from '@/lib/db/member-horse-privileges'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { resolveManageableTarget } from '@/lib/document-target'
@@ -18,8 +19,17 @@ export async function uploadDocumentAction(
 ): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(
     barnSlug,
-    entity === 'horse' ? ['manager', 'trainer'] : ['manager', 'trainer', 'rider']
+    ['manager', 'trainer', 'rider']
   )
+
+  // #1359: for the horse branch a rider needs a 'write' document privilege on
+  // this horse. Error-return rather than notFound(), matching the member
+  // branch's resolveManageableTarget — only a forged or raced request (the
+  // privilege revoked after the form rendered) lands here.
+  if (entity === 'horse' && callerMembership.role === 'rider') {
+    const privilege = await getMyHorseDocumentPrivilege(routeId, barn.id)
+    if (privilege !== 'write') return { error: 'Not authorized' }
+  }
 
   // entity is only trusted to pick the branch below (horse vs. member) — for the
   // trainer/rider branch, the table actually written to is re-derived from the

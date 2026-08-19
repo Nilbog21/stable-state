@@ -42,6 +42,7 @@ import {
   updateChargeFeeAction,
   updateChargePaymentTypeAction,
 } from '../actions'
+import { calendarDate } from '@/lib/local-day'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -67,7 +68,7 @@ describe('createAgreementAction', () => {
         'green-acres',
         'lease',
         noError,
-        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-07-01', cadence: 'monthly' })
+        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: calendarDate('2026-07-01'), cadence: 'monthly' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
 
@@ -80,7 +81,7 @@ describe('createAgreementAction', () => {
         'green-acres',
         'lease',
         noError,
-        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-07-01', cadence: 'one_time' })
+        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: calendarDate('2026-07-01'), cadence: 'one_time' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
 
@@ -127,7 +128,7 @@ describe('createAgreementAction', () => {
         'green-acres',
         'lease',
         noError,
-        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-08-15' })
+        makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: calendarDate('2026-08-15') })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
 

@@ -1,0 +1,6 @@
+# `document-storage.ts`
+
+Shared Supabase Storage helpers: `uploadFile(storagePath, file, contentType, client?, upsert = false)` (`upsert` added #995 so a Data Backup export can overwrite a barn's previous archive at a fixed `backup-archive/` path — both of `settings/actions.ts`'s download actions pass `true`, the #995 documents zip (`downloadAllDocumentsAction`) and the #994 data xlsx (`downloadBarnDataAction`); every other caller omits it and keeps the prior create-only behavior), `downloadFile(storagePath, client?)`
+(#995 — returns the object's `Blob`, used by `document-backup.ts` to read each document's bytes into the zip), `removeFile(storagePath, client?)`
+(`client?` added #1038 so `seed-barn.ts`'s photo seeding can inject a service-role client outside a request scope), `getSignedUrl(storagePath)` (300 s TTL), `validateFile(file, allowedMimeTypes?, allowedExtensions?)`
+(throws on invalid type/extension/size; returns lowercased extension on success; the two allow-list params default to `ALLOWED_MIME_TYPES`/`ALLOWED_EXTENSIONS` — #1002 added them so horse-photo uploads can pass the narrower `PHOTO_MIME_TYPES`/`PHOTO_EXTENSIONS` instead of duplicating the function); exports `ALLOWED_MIME_TYPES`, `ALLOWED_EXTENSIONS`, `MAX_FILE_SIZE`, `PHOTO_MIME_TYPES` (jpeg/png only), `PHOTO_EXTENSIONS` (jpg/jpeg/png only)

@@ -1,11 +1,38 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients, formatNearbyInstructorNotification, getUnreadNotificationCount } from '../notifications'
+
+describe('formatNearbyInstructorNotification', () => {
+  it('should_use_singular_phrasing_when_count_is_one', () => {
+    const { title } = formatNearbyInstructorNotification(1)
+
+    expect(title).toBe('1 new lesson scheduled nearby')
+  })
+
+  it('should_use_plural_phrasing_when_count_is_greater_than_one', () => {
+    const { title } = formatNearbyInstructorNotification(3)
+
+    expect(title).toBe('3 new lessons scheduled nearby')
+  })
+
+  it('should_use_singular_phrasing_in_body_when_count_is_one', () => {
+    const { body } = formatNearbyInstructorNotification(1)
+
+    expect(body).toContain('A lesson was')
+  })
+
+  it('should_use_plural_phrasing_in_body_when_count_is_greater_than_one', () => {
+    const { body } = formatNearbyInstructorNotification(2)
+
+    expect(body).toContain('Lessons were')
+  })
+})
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -48,7 +75,7 @@ describe('createNotification', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'Pending approval' })
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'lesson_cancelled', title: 'Lesson cancelled' })
 
     expect(mockRpc).toHaveBeenCalledWith(
       'create_or_update_notification',
@@ -71,7 +98,7 @@ describe('createNotification', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: null })
     const injectedClient = { rpc: mockRpc } as any
 
-    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'lesson_cancelled', title: 'Lesson cancelled' }, injectedClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
@@ -576,6 +603,48 @@ describe('upsertNotificationsForRecipients', () => {
   })
 })
 
+describe('getUnreadNotificationCount', () => {
+  it('should_call_the_get_unread_notification_title_rpc_with_user_barn_and_type', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null })
+    const client = { rpc: mockRpc } as any
+
+    await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_unread_notification_title', {
+      p_user_id: 'user-1',
+      p_barn_id: 'barn-1',
+      p_type: 'instructor_lesson_nearby',
+    })
+  })
+
+  it('should_parse_the_leading_count_from_the_returned_title', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: '3 new lessons scheduled nearby' })
+    const client = { rpc: mockRpc } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(3)
+  })
+
+  it('should_return_zero_when_no_unread_row_exists', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null })
+    const client = { rpc: mockRpc } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(0)
+  })
+
+  it('should_throw_when_the_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('not_authorized') })
+    const client = { rpc: mockRpc } as any
+
+    await expect(
+      getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+    ).rejects.toThrow('not_authorized')
+  })
+})
+
 describe('getNotifications', () => {
   function makeChain(result: { data: unknown; error: unknown }) {
     const mockLimit = vi.fn().mockResolvedValue(result)
@@ -595,7 +664,7 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockFrom).toHaveBeenCalledWith('notifications')
   })
@@ -604,7 +673,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockSelect } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockSelect).toHaveBeenCalledWith('*')
   })
@@ -613,7 +682,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockEq1 } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-99', 'barn-1')
+    await getNotifications('user-99', 'barn-1', 'America/New_York')
 
     expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-99')
   })
@@ -622,7 +691,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockEq2 } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-42')
+    await getNotifications('user-1', 'barn-42', 'America/New_York')
 
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-42')
   })
@@ -631,7 +700,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockOrder } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false })
   })
@@ -640,7 +709,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockLimit } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockLimit).toHaveBeenCalledWith(20)
   })
@@ -649,7 +718,7 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: null, error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    const result = await getNotifications('user-1', 'barn-1')
+    const result = await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -659,9 +728,9 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: [notif], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    const result = await getNotifications('user-1', 'barn-1')
+    const result = await getNotifications('user-1', 'barn-1', 'America/New_York')
 
-    expect(result).toEqual([notif])
+    expect(result).toEqual([{ ...notif, created_at: instant('2026-01-01T00:00:00Z') }])
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
@@ -669,6 +738,32 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: null, error: dbError })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await expect(getNotifications('user-1', 'barn-1')).rejects.toThrow('select failed')
+    await expect(getNotifications('user-1', 'barn-1', 'America/New_York')).rejects.toThrow('select failed')
+  })
+})
+
+describe('getNotifications instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_brand_created_at_with_the_barns_timezone', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [{ id: 'n-1', created_at: '2026-07-15T20:00:00Z' }], error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const [row] = await getNotifications('user-1', 'barn-1', 'America/New_York')
+
+    expect(row.created_at).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
   })
 })

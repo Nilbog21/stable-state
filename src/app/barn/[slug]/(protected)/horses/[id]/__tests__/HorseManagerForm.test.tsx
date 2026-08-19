@@ -38,13 +38,18 @@ const customThresholdsHorse = createMockHorse({
   exhaustion_threshold_moderate: 2,
   exhaustion_threshold_high: 6,
 })
+const horseWithNotes = createMockHorse({
+  feed_notes: '2 flakes hay AM/PM',
+  medication_notes: 'Bute 1g daily',
+})
+const horseWithRegisteredName = createMockHorse({ registered_name: 'Four-Leaf Clover' })
 
 const mockAction = vi.fn().mockResolvedValue({ error: null })
 
 describe('HorseManagerForm', () => {
-  it('should_render_name_input_prefilled_with_horse_name', () => {
+  it('should_render_barn_name_input_prefilled_with_horse_name', () => {
     render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    expect((screen.getByRole('textbox', { name: /^name$/i }) as HTMLInputElement).value).toBe('Thunderbolt')
+    expect((screen.getByRole('textbox', { name: /^barn name$/i }) as HTMLInputElement).value).toBe('Thunderbolt')
   })
 
   it('should_render_active_pill_button', () => {
@@ -321,7 +326,13 @@ describe('HorseManagerForm', () => {
       fireEvent.submit(checkbox.closest('form')!)
     })
 
-    expect(checkbox.checked).toBe(false)
+    // Re-queried rather than reusing `checkbox`, same as the submitted-thresholds test below.
+    // The saveCount remount that defeats the auto-reset now runs from an effect keyed on the
+    // action's returned state (#1396) rather than inside the action, so it lands one commit
+    // later — after the reset instead of before it. The user-visible outcome is identical, but
+    // the node captured above is detached by then, and a detached node cannot show the desync
+    // this test exists to catch.
+    expect((screen.getByRole('checkbox', { name: /use barn defaults/i }) as HTMLInputElement).checked).toBe(false)
   })
 
   it('should_display_submitted_custom_thresholds_after_save_instead_of_stale_horse_prop_values', async () => {
@@ -341,6 +352,41 @@ describe('HorseManagerForm', () => {
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('8')
   })
 
+  it('should_render_registered_name_input', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect(screen.getByRole('textbox', { name: /registered name/i })).toBeDefined()
+  })
+
+  it('should_prefill_registered_name_input_with_horse_value', () => {
+    render(<HorseManagerForm horse={horseWithRegisteredName} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Four-Leaf Clover')
+  })
+
+  it('should_render_registered_name_input_empty_when_horse_value_is_null', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_update_registered_name_input_on_change', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Blazing Comet' } })
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Blazing Comet')
+  })
+
+  // #1390 moved feed/medication out of this form into the page's own Feed & Medication section
+  // (HorseNotesForm, saved through update_horse_notes). This form must not carry them at all —
+  // it re-sends the stored values through update_horse_details, so a stray field here would
+  // give one column two writers.
+  it('should_not_render_a_feed_notes_field', () => {
+    render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
+    expect(screen.queryByRole('textbox', { name: /feed notes/i })).toBeNull()
+  })
+
+  it('should_not_render_a_medication_notes_field', () => {
+    render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
+    expect(screen.queryByRole('textbox', { name: /medication notes/i })).toBeNull()
+  })
+
   it('should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values', async () => {
     render(<HorseManagerForm horse={customThresholdsHorse} barn={mockBarn} action={mockAction} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /use barn defaults/i }))
@@ -352,4 +398,61 @@ describe('HorseManagerForm', () => {
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('5')
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('11')
   })
+
+  // #1277 — the `horse` prop never changes across these saves, simulating revalidatePath's
+  // refresh not having landed yet. React 19's post-action reset reverts an *uncontrolled* field
+  // to its mount-time defaultValue; a field left holding the page-load value is what lets a
+  // subsequent save silently write that stale value back.
+  describe('field values survive a save', () => {
+    async function save() {
+      await act(async () => {
+        fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+      })
+    }
+
+    it('should_keep_the_saved_barn_name_in_the_input_after_a_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Buttercup' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /barn name/i }) as HTMLInputElement).value).toBe('Buttercup')
+    })
+
+    it('should_keep_the_barn_name_typed_before_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Buttercup' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Daisy' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /barn name/i }) as HTMLInputElement).value).toBe('Daisy')
+    })
+
+    it('should_keep_the_registered_name_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Blazing Comet' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Four-Leaf Clover' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Four-Leaf Clover')
+    })
+
+    // The feed/medication counterparts of this live in HorseNotesForm.test.tsx now.
+
+    it('should_keep_the_unavailability_reason_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={unavailableHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /reason/i }), { target: { value: 'on stall rest' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /reason/i }), { target: { value: 'off work' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /reason/i }) as HTMLTextAreaElement).value).toBe('off work')
+    })
+  })
+
 })

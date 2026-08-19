@@ -1,8 +1,23 @@
+/**
+ * Nightly cron (GHA-only, invoked via `run-cron.sh`; env/client ceremony owned by
+ * `runCronJob`): for every active `lesson_series`, generates the next weekly lesson via
+ * `generateNextLessonForSeries` when the series' latest lesson falls inside the 28-day
+ * horizon, and stops the series via `stopLessonSeries` when its anchor lesson was
+ * hard-deleted (#744) or a rider is no longer an active member. Three batched
+ * notification fan-outs through `upsertNotificationsForRecipients`: series-stopped
+ * (instructor + managers), unavailable/inactive-horse warnings (instructor only), and
+ * nearby-instructor alerts (`getNearbyInstructorMembershipIds`, each recipient's
+ * payload first merged with their existing unread count so a same-day `submitLesson`
+ * upsert isn't overwritten). Per-series errors are counted and logged rather than
+ * aborting the run, surfacing as `hadErrors`. The pure schedule/roster predicates and
+ * formatters are the module's test surface (`generate-recurring-lessons.test.ts`).
+ */
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateNextLessonForSeries, stopLessonSeries } from '@/lib/db/lesson-series'
-import { upsertNotificationsForRecipients } from '@/lib/db/notifications'
+import { upsertNotificationsForRecipients, formatNearbyInstructorNotification, getUnreadNotificationCount } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
+import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
 import { mustSucceed, runCronJob } from './script-utils'
 import type { LessonSeries } from '@/lib/db/types'
 
@@ -68,8 +83,12 @@ function addRecipient(map: Map<string, Recipient>, userId: string | null, barnId
 async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErrors: boolean }> {
   const now = new Date()
 
-  const barns = mustSucceed<{ id: string; slug: string }[]>(await supabase.from('barns').select('id, slug'), 'select barns')
+  const barns = mustSucceed<{ id: string; slug: string; schedule_buffer_minutes: number }[]>(
+    await supabase.from('barns').select('id, slug, schedule_buffer_minutes'),
+    'select barns'
+  )
   const slugByBarnId = new Map(barns.map((b) => [b.id, b.slug]))
+  const bufferMinutesByBarnId = new Map(barns.map((b) => [b.id, b.schedule_buffer_minutes]))
 
   const series = mustSucceed<LessonSeries[]>(
     await supabase.from('lesson_series').select('*').eq('is_active', true),
@@ -103,6 +122,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
   let errorCount = 0
   const seriesStoppedRecipients = new Map<string, Recipient>()
   const horseWarningRecipients = new Map<string, Recipient>()
+  const nearbyInstructorRecipients = new Map<string, Recipient>()
 
   async function stopSeriesAndNotify(s: LessonSeries): Promise<void> {
     await stopLessonSeries(s.id, s.barn_id, supabase)
@@ -139,8 +159,15 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
       }
 
       const nextLessonAt = computeNextLessonAt(latestLessonAt)
-      await generateNextLessonForSeries(s.id, s.barn_id, nextLessonAt, supabase)
+      const newLesson = await generateNextLessonForSeries(s.id, s.barn_id, nextLessonAt, supabase)
       generatedCount++
+
+      const nearbyMembershipIds = await getNearbyInstructorMembershipIds(
+        s.barn_id, newLesson.id, newLesson.lesson_at, s.instructor_id, bufferMinutesByBarnId.get(s.barn_id) ?? 30, supabase
+      )
+      for (const membershipId of nearbyMembershipIds) {
+        addRecipient(nearbyInstructorRecipients, await getMembershipUserId(membershipId), s.barn_id)
+      }
 
       const horses = mustSucceed<{ id: string; is_active: boolean; is_available: boolean }[]>(
         await supabase.from('horses').select('id, is_active, is_available').eq('barn_id', s.barn_id).in('id', s.horse_ids),
@@ -171,6 +198,24 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
     horseWarningRecipients,
     formatHorseUnavailableNotification,
     'recurring_lesson_horse_unavailable',
+    linkForBarn
+  )
+  // Merge in whatever count is already sitting unread on each recipient's row (e.g. from a
+  // same-day submitLesson call) so this run's upsert adds to it instead of overwriting it --
+  // see getUnreadNotificationCount's comment for the collision this closes.
+  for (const recipient of nearbyInstructorRecipients.values()) {
+    try {
+      recipient.payload += await getUnreadNotificationCount(supabase, recipient.userId, recipient.barnId, 'instructor_lesson_nearby')
+    } catch (err) {
+      errorCount++
+      console.error(`Failed to read unread count for recipient ${recipient.userId}:`, (err as Error).message)
+    }
+  }
+  errorCount += await upsertNotificationsForRecipients(
+    supabase,
+    nearbyInstructorRecipients,
+    formatNearbyInstructorNotification,
+    'instructor_lesson_nearby',
     linkForBarn
   )
 

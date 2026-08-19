@@ -1,5 +1,19 @@
 'use server'
 
+/**
+ * Whole-lesson and per-rider cancellation Server Actions (`cancelLessonAction`,
+ * `cancelRiderParticipationAction`), split out of `lessons.ts`. Both re-fetch the
+ * lesson and re-check eligibility server-side (`@/lib/lesson-authorization`'s
+ * `canManageLesson`/`isLessonCancellationEligible`/`isLateCancellation`), with every
+ * ineligible path redirecting rather than erroring; then dispatch to
+ * `cancelLesson`/`cancelRiderParticipation` and notify — recipient user ids resolved
+ * via `resolveCancellationRecipients`, sent through the shared
+ * `notifyCancellationRecipients` helper, whose RPC-backed send adapter keeps cross-user
+ * notification writes RLS-safe on the acting user's session client. A group lesson
+ * submitted with `cancel_type=rider` re-routes from the whole-lesson action to the
+ * per-rider one, and a per-rider cancellation that cascades the whole lesson fires a
+ * second, `lesson_cancelled`-typed notification pass.
+ */
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById } from '@/lib/db/lessons'
 import { cancelRiderParticipation } from '@/lib/db/lesson-participants'
@@ -10,8 +24,9 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { canManageLesson, isLateCancellation, isLessonCancellationEligible } from '@/lib/lesson-authorization'
+import type { Instant } from '@/lib/db/types'
 
-function computeCancellationIsLate(lessonAt: string, formData: FormData, allowInstructorOverride: boolean): boolean {
+function computeCancellationIsLate(lessonAt: Instant, formData: FormData, allowInstructorOverride: boolean): boolean {
   const cancelledByInstructor = allowInstructorOverride && formData.get('cancel_type') === 'instructor'
   return isLateCancellation(lessonAt, cancelledByInstructor)
 }
@@ -58,9 +73,9 @@ export async function cancelLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -116,9 +131,9 @@ export async function cancelRiderParticipationAction(
   riderId: string,
   formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  const { barn, user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return

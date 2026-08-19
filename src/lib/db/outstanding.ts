@@ -11,15 +11,19 @@ import { resolveMemberNames } from './member-names'
 import { getOutstandingLessonRows, getOutstandingCancellationFeeRows, getLessonJunctionRows } from './lesson-finance-queries'
 import type { OutstandingCancellationFee, OutstandingCharge, OutstandingItem, OutstandingLesson, Role } from './types'
 
+// Branding happens here rather than in the three readers: `OutstandingItem` is the display
+// type, and it is the only place the two date frames (lesson instant vs. DATE-only charge
+// period) meet, so it is the only place that needs the barn's zone (#1222).
 export function mergeOutstandingItems(
   lessons: OutstandingLesson[],
   charges: OutstandingCharge[],
-  cancellationFees: OutstandingCancellationFee[] = []
+  cancellationFees: OutstandingCancellationFee[],
+  timezone: string
 ): OutstandingItem[] {
   const lessonItems: OutstandingItem[] = lessons.map((l) => ({
     id: l.id,
     itemType: 'lesson',
-    date: l.lesson_at,
+    date: { at: l.lesson_at, tz: timezone },
     instructorName: l.instructor_name,
     riderNames: l.rider_names,
     fee: l.fee,
@@ -36,13 +40,16 @@ export function mergeOutstandingItems(
   const cancellationFeeItems: OutstandingItem[] = cancellationFees.map((c) => ({
     id: c.id,
     itemType: 'cancellation_fee',
-    date: c.lessonAt,
+    date: { at: c.lessonAt, tz: timezone },
     instructorName: c.instructorName,
     riderNames: [c.riderName],
     fee: c.fee,
     linkId: c.lessonId,
   }))
-  return [...lessonItems, ...chargeItems, ...cancellationFeeItems].sort((a, b) => a.date.localeCompare(b.date))
+  // Both frames sort correctly against each other as strings: an instant's "YYYY-MM-DDT..."
+  // and a period's "YYYY-MM-DD" agree on the date prefix that decides the order.
+  const sortKey = (item: OutstandingItem) => (typeof item.date === 'string' ? item.date : item.date.at)
+  return [...lessonItems, ...chargeItems, ...cancellationFeeItems].sort((a, b) => sortKey(a).localeCompare(sortKey(b)))
 }
 
 export async function getOutstandingLessons(
@@ -68,9 +75,13 @@ export async function getOutstandingLessons(
 
   return outstandingRaw.map((lesson) => {
     const riderJunctionRows = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
+    // #1286: OutstandingTable renders these as a list, and getLessonJunctionRows returns
+    // `rider_id` only — the names are resolved here, so the sort is here too. Alphabetical,
+    // matching `getHorsesByBarn`'s `ORDER BY h.name`.
     const rider_names = riderJunctionRows
       .map((lr) => membershipNameMap.get(lr.rider_id))
       .filter((name): name is string => Boolean(name))
+      .sort((a, b) => a.localeCompare(b))
     return {
       id: lesson.id,
       barn_id: lesson.barn_id,

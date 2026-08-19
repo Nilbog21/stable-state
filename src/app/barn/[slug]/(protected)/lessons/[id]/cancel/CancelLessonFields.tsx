@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { isWithinLateCancellationWindow } from '@/lib/lesson-authorization'
+import type { Instant } from '@/lib/db/types'
 
 interface Rider {
   id: string
@@ -19,7 +20,7 @@ export function CancelLessonFields({
   cancelledByInstructorDefault: boolean
   groupInstructorDescription: string
   pickerRiders: Rider[]
-  lessonAt: string
+  lessonAt: Instant
 }) {
   const [cancelType, setCancelType] = useState<'instructor' | 'rider'>(
     cancelledByInstructorDefault ? 'instructor' : 'rider'

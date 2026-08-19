@@ -1,17 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mustSucceed, runCronJob, assertDevProject } from './script-utils'
+import { runCronJob, assertDevProject } from './script-utils'
 
-describe('mustSucceed', () => {
-  it('should_throw_with_label_and_message_when_result_has_error', () => {
-    expect(() =>
-      mustSucceed({ data: null, error: { message: 'boom' } }, 'test-label')
-    ).toThrow('test-label: boom')
-  })
-
-  it('should_return_data_when_result_has_no_error', () => {
-    expect(mustSucceed({ data: [1, 2, 3], error: null }, 'ok')).toEqual([1, 2, 3])
-  })
-})
+// mustSucceed/createServiceClient/findAuthUserIdsByEmails/findOrCreateAuthUser/
+// teardownBarnData/teardownAllData moved to src/lib/db/service-role.ts (#505) —
+// their tests moved with them to src/lib/db/__tests__/service-role.test.ts.
 
 describe('runCronJob', () => {
   const ORIGINAL_ENV = process.env

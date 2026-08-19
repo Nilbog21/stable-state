@@ -20,11 +20,23 @@ import { proxy, config } from './proxy'
 
 function makeRequest(url: string, cookies: Record<string, string> = {}) {
   const cookieEntries = Object.entries(cookies).map(([name, value]) => ({ name, value }))
+  // Mirrors next/dist/compiled/@edge-runtime/cookies' RequestCookies: set()
+  // mutates the same Headers instance the request was constructed with.
+  const headers = new Headers({
+    cookie: cookieEntries.map(({ name, value }) => `${name}=${value}`).join('; '),
+  })
+  const set = vi.fn((name: string, value: string) => {
+    const existing = cookieEntries.find((c) => c.name === name)
+    if (existing) existing.value = value
+    else cookieEntries.push({ name, value })
+    headers.set('cookie', cookieEntries.map((c) => `${c.name}=${c.value}`).join('; '))
+  })
   return {
     url,
+    headers,
     cookies: {
       getAll: () => cookieEntries,
-      set: vi.fn(),
+      set,
       get: (name: string) => cookieEntries.find((c) => c.name === name),
     },
     nextUrl: new URL(url),
@@ -119,14 +131,29 @@ describe('proxy', () => {
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
 
-    it('should_not_redirect_barn_pending_page_itself', async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } })
+    it('should_redirect_to_barn_login_when_bare_barn_path_has_no_session_cookie', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
 
-      const request = makeRequest('http://localhost:3000/barn/green-acres/pending')
+      const request = makeRequest('http://localhost:3000/barn/green-acres')
+      await proxy(request)
+
+      expect(mockNextResponseRedirect).toHaveBeenCalledWith(
+        expect.objectContaining({ href: expect.stringContaining('/barn/green-acres/login') })
+      )
+    })
+
+    it('should_pass_through_bare_barn_path_when_session_cookie_matches', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+
+      const request = makeRequest(
+        'http://localhost:3000/barn/green-acres',
+        { 'barn_session_green-acres': 'user-1' }
+      )
       await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
+
   })
 
   describe('config', () => {
@@ -170,6 +197,23 @@ describe('proxy', () => {
 
       expect(request.cookies.set).toHaveBeenCalledWith('token', 'xyz')
       expect(mockResponse.cookies.set).toHaveBeenCalledWith('token', 'xyz', { httpOnly: true })
+    })
+
+    it('should_include_refreshed_cookies_in_headers_passed_downstream', async () => {
+      let capturedConfig: any
+      mockCreateServerClient.mockImplementationOnce((_url: string, _key: string, config: any) => {
+        capturedConfig = config
+        return { auth: { getUser: mockGetUser } }
+      })
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+
+      const request = makeRequest('http://localhost:3000/login')
+      await proxy(request)
+
+      capturedConfig.cookies.setAll([{ name: 'sb-token', value: 'refreshed', options: {} }])
+
+      const lastCall = mockNextResponseNext.mock.calls.at(-1)![0]
+      expect(lastCall.request.headers.get('cookie')).toContain('sb-token=refreshed')
     })
 
     async function captureSetAll(cookies: Record<string, string>) {

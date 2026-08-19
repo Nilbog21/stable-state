@@ -1,13 +1,77 @@
 'use server'
 
+/**
+ * Global lesson Server Actions, all guarded by `requireMembership` (manager/trainer):
+ * form submission (`submitLesson` — parse via `./lesson-form-parsing`, then
+ * `createLessonWithParticipants` or, when recurring, `createLessonSeries`, then
+ * best-effort nearby-instructor notification fan-out that must never surface as a
+ * submission error), edit (`updateLessonAction` —
+ * same parse, then the participant update plus a second, deliberately non-atomic phase
+ * saving per-horse/per-rider/cancellation notes), post-creation lifecycle
+ * (`deleteLessonAction` — manager-only; `updatePaymentTypeAction` — a trainer only for
+ * their own lesson; `updateCancellationFeePaymentTypeAction` — manager-only, like the
+ * RPC it wraps; `stopLessonSeriesAction` — a trainer only for their own series), and
+ * the two read-only lookups feeding the lesson form (`getScheduleRangeForBarn` for the
+ * conflict calendar, `getProjectedExhaustionForBarn` for the exhaustion preview).
+ * Whole-lesson and per-rider cancellation live in `lesson-cancellation.ts`.
+ */
 import { requireMembership } from '@/lib/auth/guard'
 import { collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
-import type { PaymentType } from '@/lib/db/types'
-import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
+import { getNearbyInstructorMembershipIds, getScheduleForRange } from '@/lib/db/schedule'
+import { createNotification, formatNearbyInstructorNotification, getUnreadNotificationCount, upsertNotificationsForRecipients } from '@/lib/db/notifications'
+import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Barn, Lesson, NotificationType, PaymentType, ScheduleItem } from '@/lib/db/types'
+import { wallClockToInstant } from '@/lib/barn-timezone'
+import { getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
+import type { ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { parseLessonFormData } from './lesson-form-parsing'
+
+function sendNearbyInstructorNotificationViaRpc(
+  client: SupabaseClient,
+  params: { userId: string; barnId: string; type: NotificationType; title: string; body: string; link: string }
+): Promise<void> {
+  return createNotification(params, client)
+}
+
+// Best-effort courtesy notification -- failures here must never surface as a lesson
+// submission error, since the lesson itself was already created successfully.
+async function notifyNearbyInstructors(barnSlug: string, barn: Barn, lesson: Lesson): Promise<void> {
+  try {
+    const nearbyMembershipIds = await getNearbyInstructorMembershipIds(
+      barn.id, lesson.id, lesson.lesson_at, lesson.instructor_id, barn.schedule_buffer_minutes
+    )
+    if (nearbyMembershipIds.length === 0) return
+
+    const supabase = await createClient()
+    const recipients = new Map<string, { userId: string; barnId: string; payload: number }>()
+    for (const membershipId of nearbyMembershipIds) {
+      try {
+        const membership = await getMembershipByIdForBarn(membershipId, barn.id)
+        if (!membership?.user_id) continue
+        const existingCount = await getUnreadNotificationCount(supabase, membership.user_id, barn.id, 'instructor_lesson_nearby')
+        recipients.set(membership.user_id, { userId: membership.user_id, barnId: barn.id, payload: existingCount + 1 })
+      } catch (err) {
+        console.error(`Failed to resolve nearby-instructor recipient ${membershipId}:`, (err as Error).message)
+      }
+    }
+
+    await upsertNotificationsForRecipients(
+      supabase,
+      recipients,
+      formatNearbyInstructorNotification,
+      'instructor_lesson_nearby',
+      () => `/barn/${barnSlug}/lessons`,
+      sendNearbyInstructorNotificationViaRpc
+    )
+  } catch (err) {
+    console.error('Failed to notify nearby instructors:', (err as Error).message)
+  }
+}
 
 export async function submitLesson(
   barnId: string,
@@ -17,26 +81,17 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const isRecurring = formData.get('is_recurring') === 'true'
 
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const parsed = await parseLessonFormData(formData, barnId, membership)
   if ('error' in parsed) return parsed
 
-  let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
+  const { horseIds, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
+  let lesson: Lesson
   try {
-    if (newHorseName) {
-      if (membership?.role !== 'manager') {
-        return { error: 'not authorized to add horses' }
-      }
-      const horse = await createHorse(barnId, newHorseName)
-      horseIds = [...horseIds, horse.id]
-      exertionLevels.set(horse.id, newHorseExertionLevel)
-    }
-
     const createLesson = isRecurring ? createLessonSeries : createLessonWithParticipants
-    await createLesson({
+    lesson = await createLesson({
       barnId,
       instructorId,
       fee,
@@ -48,11 +103,12 @@ export async function submitLesson(
       jumping,
       tierName,
       paymentType,
-      instructorCut,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
   }
+
+  await notifyNearbyInstructors(barnSlug, barn, lesson)
 
   redirect(`/barn/${barnSlug}/lessons`)
 }
@@ -64,13 +120,18 @@ export async function updateLessonAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const parsed = await parseLessonFormData(formData, barnId, membership)
+  // Fetched up front rather than only for the cancellation check below, because the parser needs
+  // the lesson's current horses too: the edit page re-offers deactivated ones as checked, enabled
+  // options, so they arrive back in the form data and would otherwise be rejected (#1276).
+  const currentLesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
+  const attachedHorseIds = currentLesson?.lesson_horses.flatMap((lh) => lh.horses ? [lh.horses.id] : []) ?? []
+
+  const parsed = await parseLessonFormData(formData, barnId, membership, attachedHorseIds)
   if ('error' in parsed) return parsed
 
-  let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
+  const { horseIds, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
 
@@ -78,18 +139,8 @@ export async function updateLessonAction(
     // Checked before the write, not after: update_lesson_with_participants never touches
     // cancelled_at, so hoisting is behaviour-preserving and stops a rejected save from
     // having already committed participant edits.
-    if (cancellationNotesRaw !== null) {
-      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
-      if (!currentLesson || currentLesson.cancelled_at === null) {
-        return { error: 'lesson is not cancelled' }
-      }
-    }
-
-    if (newHorseName) {
-      if (membership.role !== 'manager') return { error: 'not authorized to add horses' }
-      const horse = await createHorse(barnId, newHorseName)
-      horseIds = [...horseIds, horse.id]
-      exertionLevels.set(horse.id, newHorseExertionLevel)
+    if (cancellationNotesRaw !== null && (!currentLesson || currentLesson.cancelled_at === null)) {
+      return { error: 'lesson is not cancelled' }
     }
 
     await updateLessonWithParticipants({
@@ -105,7 +156,6 @@ export async function updateLessonAction(
       horseIds,
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderIds,
-      instructorCut,
     })
   } catch (err) {
     console.error('Failed to update lesson:', (err as Error).message)
@@ -150,9 +200,9 @@ export async function deleteLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { membership } = await requireMembership(barnSlug, ['manager'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -171,7 +221,7 @@ export async function updatePaymentTypeAction(
   const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
-    const lesson = await getLessonById(lessonId, barn.id, 'trainer')
+    const lesson = await getLessonById(lessonId, barn.id, 'trainer', barn.timezone)
     if (!lesson) return { error: 'lesson not found' }
     if (lesson.instructor_id !== membership.id) return { error: 'not authorized' }
   }
@@ -225,19 +275,50 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
   redirect(redirectPath)
 }
 
+/**
+ * #1019 — one read per displayed month for the lesson form's conflict calendar. The
+ * heatmap/dot/tint model is then recomputed client-side from this payload as the horse and
+ * rider selection changes (see src/lib/month-calendar.ts), rather than re-querying per
+ * selection or calling get_horse_projected_exhaustion once per day cell.
+ *
+ * `fromDate`/`toDate` are "YYYY-MM-DD" barn-local calendar days; `toDate` is exclusive,
+ * matching getScheduleForRange's own half-open range.
+ *
+ * Deliberately does NOT apply scopeScheduleItemsForRole, unlike the dashboard's Day/Week
+ * views: a horse's exhaustion is barn-wide, so narrowing a trainer to their own lessons here
+ * would under-report the load on a horse another instructor is already working. No new lesson
+ * exposure either — `lessons_select_staff` already grants trainers barn-wide lesson SELECT,
+ * which the Lessons list's "All" filter surfaces directly. Expenses did need a new grant:
+ * `trainer_select_appointments`/`trainer_select_appointment_horses` (#1019 review fix), without
+ * which the AC's "a lesson **or expense**" dot could only ever fire on a lesson for a trainer.
+ */
+export async function getScheduleRangeForBarn(
+  barnSlug: string,
+  fromDate: string,
+  toDate: string
+): Promise<ScheduleItem[]> {
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  return getScheduleForRange(
+    barn.id,
+    wallClockToInstant(`${fromDate}T00:00:00`, barn.timezone).toISOString(),
+    wallClockToInstant(`${toDate}T00:00:00`, barn.timezone).toISOString(),
+    barn.timezone
+  )
+}
+
 export async function getProjectedExhaustionForBarn(
   barnSlug: string,
   excludeLessonId: string | null,
   targetDateIso: string,
   horseIds: string[]
-): Promise<Record<string, { existingRows: { lessonAt: string; exertionLevel: number }[]; thresholds: { high: number; moderate: number } }>> {
+): Promise<Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
   const horses = await getHorsesByIds(horseIds, barn.id)
   const targetDate = new Date(targetDateIso)
 
   const entries = await Promise.all(
     horses.map(async (h) => {
-      const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, targetDate, excludeLessonId ?? undefined)
+      const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, targetDate, barn.timezone, excludeLessonId ?? undefined)
       return [h.id, { existingRows, thresholds: resolveExhaustionThresholds(h, barn) }] as const
     })
   )

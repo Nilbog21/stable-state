@@ -1,38 +1,38 @@
 @ARCHITECTURE.md
 @AGENTS.md
 
+> This file and `ARCHITECTURE.md` are auto-loaded into every session — never `Read` either explicitly; you already have them.
+
 ## Testing Conventions
 
-### TDD Workflow
-- Always write failing tests BEFORE implementation
-- Use AAA pattern: Arrange-Act-Assert
-- One assertion per test when possible
-- Test names describe behavior: "should_return_empty_when_no_items"
-
 ### Test-First Rules
-- When I ask for a feature, write tests first
-- Tests should FAIL initially (no implementation exists)
-- Only after tests are written, implement minimal code to pass
+Guideposts, not a gate.
+- Write tests first, confirm they FAIL, then implement the minimum that passes
+- AAA (Arrange-Act-Assert); one assertion per test when possible
+- Test names describe behavior: "should_return_empty_when_no_items"
+- **A test-only PR** — one characterizing shipped behaviour, or reworking existing tests — has no red state to produce, so it skips the failing-tests commit (precedent: `bd4e8a3a`, `c771a7da`). Instead run a **mutation pass** and report the kill count in the PR body: each new or changed assertion must fail when the behaviour it claims is broken. Mutate an *ordered* spec one mutant per run, or re-establish its ordered state in `beforeAll` — a whole-file batch measures the Playwright worker restart, and its survivors are false reassurance (`docs/e2e-framework-facts.md` fact 15)
 
 ### Schema/RLS/RPC verification
-- Migrations have no DAL-layer TDD tests of their own — they're verified by the `Verify Migrations` CI workflow (`.github/workflows/verify-migrations.yml`), which replays every migration from scratch against an ephemeral local Supabase/Postgres instance on any PR touching `supabase/migrations/**`
-- Don't install Docker locally or push to `stable-state-dev` just to check a migration applies cleanly (syntax, ordering, FK/RLS/RPC errors) — let the CI gate catch that. It replays from a clean instance, so it can't catch drift between a migration's assumptions and `stable-state-dev`/prod's actual accumulated schema state (e.g. a renamed constraint) — that class of bug still needs manual dev-DB verification or a repair script (see `scripts/repair-migration-history.sh`)
+How a migration is verified, and why an applied one is never edited: `supabase/CLAUDE.md`.
+
+### E2E spec maintenance
+- Before writing or debugging a spec, read `e2e/CLAUDE.md` — the measured framework facts (timeout tiers, silent-auth request contexts, hydration races) and the spec-maintenance rules (shared-login restore protocol, membership-orphan teardown, settled reads), each of which cost a batch at least one round. Both are indexed there and stated in full in `docs/e2e-framework-facts.md` and `docs/e2e-spec-maintenance.md`
+- A PR that changes UI (removes/renames/restructures a page, component, or user-facing flow) must update any `e2e/` spec covering that UI in the same PR — not as a follow-up. If unsure whether a spec covers the changed UI, grep `e2e/` for the route/selector/text being touched before merging
 
 ## Architecture Docs
 
-Update the architecture docs whenever a migration or role change is committed:
-- Schema change (new/changed table, column, constraint) → `docs/architecture/schema.md`, plus its one-line index entry in `ARCHITECTURE.md`'s DB schema section if a table was added/removed
-- RPC change (new/changed function, grants, `SECURITY DEFINER`/`INVOKER`) → `docs/architecture/rpc.md`, plus its index entry in `ARCHITECTURE.md`'s Supabase RPC section if a function was added/removed
-- Route change (new/changed page, role gating) → `docs/architecture/routes.md`, plus its index entry in `ARCHITECTURE.md`'s Routes section if a route was added/removed
-- DAL change (new/changed function in `src/lib/db/`) → `docs/architecture/dal.md`, plus its index entry in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
-- Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
+Whenever a migration or role change is committed, update the detail file **and** its index entry:
+- schema → `docs/architecture/schema.md`; RPC → `docs/architecture/rpc/`; route → `docs/architecture/routes/`; DAL (`src/lib/db/`) → `docs/architecture/dal/`; a new/changed RLS helper's rationale → `docs/architecture/rls.md`
+- the RPC, route and DAL directories each carry their own index (`docs/architecture/{rpc,routes,dal}.md`); update it, and the matching one-line entry in `ARCHITECTURE.md`, when something is **added or removed**. an added/removed table, and a new/changed RLS helper, always gets its `ARCHITECTURE.md` line
+- a new role or a change to the permissions matrix goes straight to `ARCHITECTURE.md`'s Role system section
+
+## Barn Data Backup
+
+A schema change can silently drop a table or column from `src/lib/db/backup.ts`'s hand-mapped export sheets: `supabase/CLAUDE.md`.
 
 ## Privacy Policy
 
-`PRIVACY_POLICY.md` (repo root, served at `/privacy`) must stay in sync with what the app actually does. Check it whenever a change touches:
-- A new/changed table or column that captures personal or financial data → review "What we collect"
-- A new third-party integration (analytics, email, storage, hosting, CI/backup tooling) → review "Third parties"
-- A new automated data export/backup flow → review "Data retention"
+`PRIVACY_POLICY.md` (repo root, served at `/privacy`) must stay in sync with what the app actually does. Review it whenever a change adds personal or financial data ("What we collect"), a third-party integration — analytics, email, storage, hosting, CI/backup tooling ("Third parties"), or an automated data export/backup flow ("Data retention").
 
 ## User Guides
 
@@ -40,7 +40,11 @@ When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE
 
 ## Pre-Release Checklist
 
-When a PR adds or modifies a UI route, workflow, or user-facing feature, update `PRE_RELEASE_TEST_CHECKLIST.md` — add or adjust a step in the relevant phase: Phase 1 (Setup), Phases 2–4 (Manager), Phase 5 (Trainer), Phase 6 (Rider), or Phase 7 (Multi-barn).
+When a PR adds or modifies a UI route, workflow, or user-facing feature, add or adjust a step in the relevant phase file under `checklists/pre-release/` (#1358 split the phases out of `PRE_RELEASE_TEST_CHECKLIST.md`, which remains the index). The binding conventions are stated in full in that index's header blockquotes: phases are **partitioned by the role doing the asserting**, a line a PR adds is **born automated or justified-manual** (`(e2e: <test name>)` with its spec in the same PR, or `(manual)` with the reason on the line), and **the PR closing #N removes every hedge on #N**.
+
+## Post-Release Checklist
+
+`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod (invocation timing: [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)). It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of the five bars listed in that file's header. A PR adding or modifying a feature that clears one of those bars updates the relevant POST section in the same PR.
 
 ## Working Directory
 
@@ -48,46 +52,24 @@ When a PR adds or modifies a UI route, workflow, or user-facing feature, update 
 
 ## UI Conventions
 
-### Mobile-first
-Mobile is the primary platform. All interactions must work on touch and small screens. Hover-only patterns are not acceptable — native `title` tooltips, CSS `:hover`-only reveals, and similar desktop-only affordances must not be used.
-
-### View switchers
-Use pill-style segmented controls (tab pills) for switching between data views. This is the standard SaaS pattern (Stripe, Linear, GitHub). Do not use tabs, dropdowns, or radio buttons for view-switching.
-
-### Time display
-Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never display 24-hour/military time in the UI. Internal storage and form values remain in 24-hour format.
-
-### Shared UI components
-New UI must use the primitives in `src/components/ui/` — do not hand-roll raw Tailwind for cards, buttons, or table cells.
-
-- `<Card href? className?>` (`Card.tsx`) — browseable item collections (horses, upcoming lessons, members). With `href` it renders as a full-card link with `bg-white`/hover states baked in; without `href` it renders a plain bordered `div` with no background or padding of its own — pass `className` for either variant's padding/spacing needs.
-- `<Button variant? size? loading? href?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions, `warning` for amber attention-badge links (e.g. dashboard Reminders cards, including `DocumentRemindersSection`'s single-line `name — record type — date` entries). `size`: `md` (default) for standalone form/page actions, `sm` for compact table/row actions (Approve/Reject/Remove/Delete/Activate/Deactivate). `loading` disables the button and shows a spinner. With `href` it renders as a styled `Link` instead of a `<button>`. Joined-corner segmented toggles and icon-only/bare-text controls are poor structural fits — leave those as raw Tailwind with a comment explaining why (see `LessonForm.tsx`'s Normal/Group switch or `NotificationBell.tsx`).
-- `<Th>` / `<Td tone?>` / `<TableActions>` (`Table.tsx`) — all data tables. Use `tone="secondary"` on `<Td>` for secondary text cells. `<TableActions>` is a right-aligned `<Td>` for row action buttons.
-- `<Pill href active>` (`Pill.tsx`) — tab-pill view switchers (see "View switchers" above). Always renders as a `Link`; `active` selects the filled vs. outlined style.
-
-Placement rules:
-- "Add" / "Create" buttons go top-right of the section header, next to the section title — never at the bottom of a section.
-- Row actions always go in the rightmost table column (use `<TableActions>`), never in the first column or mixed with data columns.
+- **Mobile-first.** Mobile is the primary platform; every interaction must work on touch and small screens. Hover-only patterns — native `title` tooltips, CSS `:hover`-only reveals — are not acceptable.
+- **View switchers** are pill-style segmented controls (`<Pill>`), the standard SaaS pattern — never tabs, dropdowns, or radio buttons.
+- **Time display** is always 12-hour AM/PM in the UI (e.g. "12:00 AM", "1:00 PM"); internal storage and form values stay 24-hour.
+- **Shared components:** new UI must use the primitives in `src/components/ui/` — the catalog, per-variant rules and placement conventions are in `src/components/ui/CLAUDE.md`.
 
 ## Release Workflow
 
-- Features branch off `release/release-N`
-- Feature PRs target the release branch
+- Features branch off `release/release-N`; feature PRs target the release branch
 - Release merges to `main` via **merge commit only** — never squash or rebase; the release branch is deleted after merge, so squashing would destroy history
-- After integration-bug fixes land and before the release ceremony (tag + branch cleanup + cut next release branch): **migration refactor** — squash whatever migrations the release branch has accumulated since the last squash into a clean consolidated set (mirrors #657/#658), so they merge to `main` already clean instead of carrying iterative "add → fix → fix again" history forward indefinitely
-- `CHANGELOG.md`'s new-version entry and the full documentation review (`ARCHITECTURE.md`/`docs/architecture/*.md`/`README.md`/`USER_GUIDE_*.md`/`PRE_RELEASE_TEST_CHECKLIST.md` cross-checked against the release's closed issues) both land on the release branch **before** the merge-to-main step, as their own PRs — not as separate post-merge follow-ups. Both then ride into `main` on the release's own merge commit (mirrors #978/#979 for release-3)
-- `vN.0.0` tag is created at the merge commit on `main`
-- Release branch is deleted after the tag is confirmed
-- `release/release-(N+1)` is cut from the new `main` HEAD immediately after merge
-- `patch-N` label is created (N = the just-released series) so patches can be tied to that release
+
+Everything from the pre-release checklist audit through cutting the next release branch is an ordered runbook: [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md). Follow it there — don't restate its steps here.
 
 ## Patch Workflow
 
-Patches land on `main` without waiting for the next release.
+Patches land on `main` without waiting for the next release: branched off `main` HEAD (same `{issue-number}-{slug}` naming as features), labelled `patch-N` for the release series being patched, targeting `main` directly.
 
-- Patches branch off `main` HEAD (same branch naming as features: `{issue-number}-{slug}`)
-- PRs use the `patch-N` label (N = the release series being patched, e.g. `patch-2` for v2.0.0)
-- PRs target `main` directly
-- After merge, tag is auto-incremented: `vN.0.1`, `vN.0.2`, etc.
-- `CHANGELOG.md` is updated at tag time (same as release ceremony)
-- `release/release-(N+1)` is rebased onto the new `main` HEAD after merge so it picks up the patch
+Close-out — tagging, `CHANGELOG.md`, picking the patch up on the next release branch, and when to run the post-release checklist — is [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)'s Patches section.
+
+## Workflow Skills
+
+Editing rules for the skills in `.claude/commands/`, and the guard every state-changing step owes: `.claude/commands/CLAUDE.md`.

@@ -4,25 +4,68 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
-## v3.0.4 — July 2026
+## v4.0.0 — August 2026
 
-**Fixed: saving changes to a lesson could report a failure even though part of the change had already been saved.** Editing a lesson that had a horse attached would show "Failed to update lesson", leaving you unsure whether to redo the edit. Your changes now save reliably, and if anything does go wrong the message tells you exactly which part didn't save.
+### Calendar
 
----
+- **The dashboard now has a real calendar.** Day, Week and Month views show lessons, vet and farrier appointments, and barn events together.
+- **Barn events.** Create an event for a show, clinic, closure or anything else, and choose which roles can see it.
+- **Subscribe to your own schedule.** A private link on the Profile page adds your Stable State schedule to Google, Apple or Outlook Calendar, and keeps it up to date. Those apps decide how often they refresh, so a change can take a while to appear in them.
 
-## v3.0.3 — July 2026
+### Lessons & Appointments
 
-**A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
+- **A month calendar on the lesson and appointment forms.** Picking a date shows the days a horse or instructor is already booked, and the days a horse has a vet or farrier appointment.
+- **Color-coded by how tired a horse will be** from the lessons already on the books, so you can see the load before committing to a date.
+- **Selecting a day lists everything on it** — lessons, appointments and events — so conflicts are visible before you save.
+- **Instructors are warned about lessons close to theirs.** Booking a lesson near another instructor's sends them a heads-up — useful when you share an arena. Managers set the buffer (30 minutes by default) in Manage Barn.
 
----
+### Horses
 
-## v3.0.2 — July 2026
+- **Registered name, feed notes and medication notes** on every horse.
+- **Every horse has an owner**, who can be a rider. Owners manage their own horse's documents and notes, and see its upcoming lessons.
+- **Grant a member elevated access to one horse** — a lease customer, for instance — at the manager's discretion.
 
-**A Terms of Service page is now available.** Read it any time from a link on the login page — it covers liability limits, uptime expectations, and account termination rights.
+### Photos
+
+- **Profile photos for members and horses.** Members upload their own; managers and horse owners upload a horse's.
+
+### Backups
+
+- **One-click backups.** Download the whole barn's data as a spreadsheet, or every document as a zip file.
+
+### Finances
+
+- **Collapsible sections** replace one long page.
+- **Drill-down totals match the tab they came from.**
+
+### Timezones
+
+- **Times are barn times.** Every date and time in the app displays in your barn's timezone, on every device, for everyone. A 4:00 PM lesson reads as 4:00 PM whether you're at the barn, at home, or traveling.
+
+### Demo
+
+- **A sample barn anyone can try** from the public site — no signup, and it resets itself.
+
+### Behind the scenes
+
+- **Nearly every screen is now covered by an automated test suite**, run before each release — which should mean fewer bugs reaching the barn.
+
+### Bug fixes
+
+- A lesson whose horse had been made unavailable couldn't be saved (#1276)
+- Cancelling one rider out of a group lesson charged the wrong people (#1278)
+- Managers who don't teach saw an empty Lessons page by default (#1025)
+- Four forms let you navigate away without warning about unsaved changes (#1362)
 
 ---
 
 ## v3.0.0 — July 2026
+
+### Later updates
+
+- **v3.0.4 — July 2026.** **Fixed: saving changes to a lesson could report a failure even though part of the change had already been saved.** Editing a lesson that had a horse attached would show "Failed to update lesson", leaving you unsure whether to redo the edit. Your changes now save reliably, and if anything does go wrong the message tells you exactly which part didn't save.
+- **v3.0.3 — July 2026.** **A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
+- **v3.0.2 — July 2026.** **A Terms of Service page is now available.** Read it any time from a link on the login page — it covers liability limits, uptime expectations, and account termination rights.
 
 ### Leases & Boarding Agreements
 
@@ -113,31 +156,14 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
-## v2.0.4 — July 2026
-
-**Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
-
----
-
-## v2.0.3 — July 2026
-
-**Streamlined behind-the-scenes database setup files.** No user-facing changes.
-
----
-
-## v2.0.2 — June 2026
-
-**Fixed an issue that prevented automated tests from running correctly.** No user-facing changes.
-
----
-
-## v2.0.1 — June 2026
-
-**You can now add riders before they have an account.** On the Members page, use the new **Add Rider** form to create a rider record right away — no sign-in required. Add them to lessons immediately, then share their personal invite link when you're ready. When they tap the link and sign in, their account links automatically and all lesson history carries over. Use **Revoke** to invalidate and regenerate a link if it's shared with the wrong person.
-
----
-
 ## v2.0.0 — June 2026
+
+### Later updates
+
+- **v2.0.4 — July 2026.** **Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
+- **v2.0.3 — July 2026.** **Streamlined behind-the-scenes database setup files.** No user-facing changes.
+- **v2.0.2 — June 2026.** **Fixed an issue that prevented automated tests from running correctly.** No user-facing changes.
+- **v2.0.1 — June 2026.** **You can now add riders before they have an account.** On the Members page, use the new **Add Rider** form to create a rider record right away — no sign-in required. Add them to lessons immediately, then share their personal invite link when you're ready. When they tap the link and sign in, their account links automatically and all lesson history carries over. Use **Revoke** to invalidate and regenerate a link if it's shared with the wrong person.
 
 ### Profile & Contact Info
 

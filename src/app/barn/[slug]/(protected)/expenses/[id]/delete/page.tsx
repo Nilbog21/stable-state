@@ -4,6 +4,7 @@ import { getExpenseById } from '@/lib/db/expenses'
 import { deleteExpenseAction } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
 import { formatExpenseDate, formatExpenseAmount } from '@/lib/format-expense'
+import { GuardedForm } from '../../../NavigationBlocker'
 
 export default async function DeleteExpensePage({
   params,
@@ -27,7 +28,7 @@ export default async function DeleteExpensePage({
         This will permanently delete the {formatExpenseDate(expense.expense_date)} expense to{' '}
         {expense.recipient} ({formatExpenseAmount(expense.amount)}). This cannot be undone.
       </p>
-      <form action={deleteExpense}>
+      <GuardedForm action={deleteExpense}>
         {expense.amount !== null && (
           <label className="mb-6 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
             <input type="checkbox" name="alsoDeleteTransactions" className="mt-1" />
@@ -35,7 +36,7 @@ export default async function DeleteExpensePage({
           </label>
         )}
         <Button type="submit" variant="danger">Confirm Delete</Button>
-      </form>
+      </GuardedForm>
     </main>
   )
 }

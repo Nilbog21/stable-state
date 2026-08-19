@@ -18,7 +18,7 @@ export default async function RecipientExpensePage({
   const { barn } = await requireMembership(slug, ['manager'])
 
   const { month: monthParam } = await searchParams
-  const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
+  const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, barn.timezone)
 
   const { rows, total } = await getRecipientExpenseDetail(barn.id, recipient, startDate, endDate, barn.timezone)
 

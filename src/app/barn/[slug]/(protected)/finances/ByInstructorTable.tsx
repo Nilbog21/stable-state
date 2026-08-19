@@ -1,16 +1,13 @@
 'use client'
 import Link from 'next/link'
-import { Td } from '@/components/ui/Table'
-import { SortableTh } from './SortableTh'
-import { ReconciliationFoot } from './ReconciliationFoot'
-import { useSortableRows } from './useSortableRows'
+import { BreakdownTable } from './BreakdownTable'
 import { formatCurrency } from '@/lib/format-currency'
 import type { TrainerIncomeSummary } from '@/lib/db/types'
 import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
 type SortKey = 'trainerName' | 'grossIncome' | 'instructorCut' | 'totalIncome'
 
-function getValue(row: TrainerIncomeSummary, key: SortKey): string | number {
+function getSortValue(row: TrainerIncomeSummary, key: SortKey): string | number {
   switch (key) {
     case 'trainerName':
       return row.trainerName
@@ -38,48 +35,51 @@ export function ByInstructorTable({
   expenses: ReconciliationColumn
   net: ReconciliationColumn
 }) {
-  const { sorted, sortKey, sortDir, toggleSort } = useSortableRows<TrainerIncomeSummary, SortKey>(rows, getValue, 'trainerName')
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr>
-            <SortableTh sortKey="trainerName" label="Trainer" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="grossIncome" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Lesson fees collected this month, before this instructor's cut" />
-            <SortableTh sortKey="instructorCut" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This instructor's own cut" />
-            <SortableTh sortKey="totalIncome" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Gross minus this instructor's own cut" />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => (
-            <tr key={row.trainerId}>
-              <Td>
-                <Link href={`/barn/${slug}/finances/trainers/${row.trainerId}?month=${monthParam}`} className="underline">
-                  {row.trainerName}
-                </Link>
-              </Td>
-              <Td>{row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'}</Td>
-              <Td>
-                {row.grossIncome != null
-                  ? row.grossIncome - row.totalIncome === 0
-                    ? '—'
-                    : formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true })
-                  : '—'}
-              </Td>
-              <Td>{formatCurrency(row.totalIncome)}</Td>
-            </tr>
-          ))}
-        </tbody>
-        <ReconciliationFoot
-          labelColSpan={1}
-          gross={gross}
-          expenses={expenses}
-          net={net}
-          outsideInfoText="Leases and boarding aren't tied to an instructor (Gross); horse expenses aren't tied to an instructor (Expenses)."
-          unattributedInfoText="A paid lesson with no instructor recorded, an instructor payout whose instructor was removed from the barn, or an expense record whose original entry was deleted after being marked paid."
-        />
-      </table>
-    </div>
+    <BreakdownTable<TrainerIncomeSummary, SortKey>
+      rows={rows}
+      rowKey={(row) => row.trainerId}
+      defaultSortKey="trainerName"
+      getSortValue={getSortValue}
+      gross={gross}
+      expenses={expenses}
+      net={net}
+      outsideInfoText="Leases and boarding aren't tied to an instructor (Gross); horse expenses aren't tied to an instructor (Expenses)."
+      unattributedInfoText="A paid lesson with no instructor recorded, an instructor payout whose instructor was removed from the barn, an instructor payout whose lesson was deleted after being marked paid, or an expense record whose original entry was deleted after being marked paid."
+      columns={[
+        {
+          sortKey: 'trainerName',
+          label: 'Trainer',
+          renderCell: (row) => (
+            <Link href={`/barn/${slug}/finances/trainers/${row.trainerId}?month=${monthParam}`} className="underline">
+              {row.trainerName}
+            </Link>
+          ),
+        },
+        {
+          sortKey: 'grossIncome',
+          label: 'Gross',
+          infoText: "Lesson fees collected this month, before this instructor's cut",
+          renderCell: (row) => (row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'),
+        },
+        {
+          sortKey: 'instructorCut',
+          label: 'Expenses',
+          infoText: "This instructor's own cut",
+          renderCell: (row) =>
+            row.grossIncome != null
+              ? row.grossIncome - row.totalIncome === 0
+                ? '—'
+                : formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true })
+              : '—',
+        },
+        {
+          sortKey: 'totalIncome',
+          label: 'Net',
+          infoText: "Gross minus this instructor's own cut",
+          renderCell: (row) => formatCurrency(row.totalIncome),
+        },
+      ]}
+    />
   )
 }

@@ -1,18 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import { createMockBarn, createMockHorse, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockLessonDetail, createMockMembership, instant } from '@/test/fixtures'
 
 afterEach(cleanup)
 
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/lessons', () => ({ getLessonById: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), getUserMembership: vi.fn(), getActiveMembersWithProfiles: vi.fn() }))
-vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
+vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn(), resolveExhaustionThresholds: vi.fn().mockReturnValue({ high: 11, moderate: 5 }) }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-series', () => ({ getSeriesById: vi.fn() }))
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
-vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}) }))
+vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}), getScheduleRangeForBarn: vi.fn().mockResolvedValue([]) }))
 vi.mock('../../../LessonForm', () => ({
   LessonForm: ({ horses, initialNotes, hasHorseIssue }: { horses: Array<{ id: string; name: string }>, initialNotes?: object, hasHorseIssue?: boolean }) => (
     <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'} data-has-horse-issue={hasHorseIssue ? 'true' : 'false'}>
@@ -39,7 +39,7 @@ const mockBarn = createMockBarn()
 const mockLesson = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
+  lesson_at: instant('2026-05-17T10:00:00Z'),
   submitted_at: '2026-05-17T10:05:00Z',
   lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
 })
@@ -116,14 +116,14 @@ describe('EditLessonPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
-  it('should_call_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+  it('should_call_notFound_when_membership_is_inactive', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_invoke_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+  it('should_invoke_notFound_when_membership_is_inactive', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
@@ -379,7 +379,7 @@ describe('EditLessonPage', () => {
   it('should_show_horse_status_banner_when_future_uncancelled_lesson_has_inactive_horse', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -390,7 +390,7 @@ describe('EditLessonPage', () => {
   it('should_hide_horse_status_banner_when_lesson_is_in_the_past', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2020-01-01T10:00:00Z',
+      lesson_at: instant('2020-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -399,7 +399,7 @@ describe('EditLessonPage', () => {
   })
 
   it('should_hide_horse_status_banner_when_all_horses_active_and_available', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z') })
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText('Needs Attention')).toBeNull()
@@ -408,7 +408,7 @@ describe('EditLessonPage', () => {
   it('should_pass_has_horse_issue_true_when_lesson_needs_attention', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -417,7 +417,7 @@ describe('EditLessonPage', () => {
   })
 
   it('should_pass_has_horse_issue_false_when_lesson_has_no_horse_issue', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z') })
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form').dataset.hasHorseIssue).toBe('false')

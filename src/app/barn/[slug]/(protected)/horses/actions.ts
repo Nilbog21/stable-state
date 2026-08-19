@@ -5,10 +5,10 @@ import { requireMembership } from '@/lib/auth/guard'
 import { createHorse } from '@/lib/db/horses'
 
 export async function addHorseAction(barnSlug: string, formData: FormData): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
   if (!name) return
-  await createHorse(barn.id, name)
+  await createHorse(barn.id, name, membership.id)
   revalidatePath(`/barn/${barnSlug}/horses`)
 }

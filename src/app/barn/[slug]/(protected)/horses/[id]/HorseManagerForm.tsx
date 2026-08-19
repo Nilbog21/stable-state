@@ -1,9 +1,10 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import type { Barn, Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
-import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
+import { SavedIndicator, useSaveFlashOn } from '@/components/ui/SavedIndicator'
+import { useUnsavedChangesGuard } from '../../NavigationBlocker'
 
 type Status = 'active' | 'unavailable' | 'inactive'
 
@@ -12,6 +13,9 @@ function deriveStatus(horse: Horse): Status {
   if (!horse.is_available) return 'unavailable'
   return 'active'
 }
+
+// Module scope so the identity check in the effect below has a stable sentinel to compare against.
+const INITIAL_STATE: { error: string | null } = { error: null }
 
 const PILL_LABELS: { value: Status; label: string }[] = [
   { value: 'active', label: 'Active' },
@@ -29,8 +33,9 @@ export function HorseManagerForm({
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
+  const [name, setName] = useState(horse.name)
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
-  const { show, flash } = useSaveFlash()
+  const [registeredName, setRegisteredName] = useState(horse.registered_name ?? '')
   // React 19 resets the DOM's `checked`/`value` properties on uncontrolled form
   // fields to their mount-time value after a successful form action, without
   // re-syncing controlled props (#762 review) — remounting the inputs on every
@@ -44,28 +49,59 @@ export function HorseManagerForm({
     moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
     high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
   })
+  // Captured at submit time, because the effect below has no FormData to read and the threshold
+  // inputs are uncontrolled — by the time the action resolves React 19 has already reverted them
+  // to their mount-time defaultValue, so the submitted numbers are only legible during onSubmit.
+  const submittedThresholds = useRef(thresholds)
 
-  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
-    const result = await action(prevState, formData)
-    if (!result.error) {
-      flash()
-      setSaveCount(c => c + 1)
-      setThresholds(
-        formData.get('use_barn_defaults') === 'true'
-          ? { moderate: barn.exhaustion_threshold_moderate, high: barn.exhaustion_threshold_high }
-          : { moderate: Number(formData.get('moderate')), high: Number(formData.get('high')) }
-      )
-    }
-    return result
-  }
+  // `action` goes to the hook unwrapped, or the form loses its progressive enhancement (#1396) —
+  // so everything that used to run on the action's return path is driven by the returned state
+  // instead. The discriminator is referential identity, not value: useActionState hands back the
+  // exact object it was seeded with until an action resolves, and every server response
+  // deserializes to a fresh one, so `state !== INITIAL_STATE` means a real result landed and a
+  // repeat save re-fires this.
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
+  const show = useSaveFlashOn(state !== INITIAL_STATE && !state.error ? state : null)
+  // Submit clears the flag optimistically (as GuardedForm does) and a returned error re-arms it,
+  // because a failed save leaves the fields holding exactly the edits that didn't land. `pending`
+  // spans the gap between the two: onSubmit fires on click, while `state` still reads as the
+  // previous result until the action resolves, so without it nothing is armed for the whole
+  // round trip — the window #1362 built the guard for.
+  const [dirty, setDirty] = useState(false)
+  useUnsavedChangesGuard(dirty || pending || state.error !== null)
 
-  const [state, formAction] = useActionState(wrappedAction, { error: null })
+  useEffect(() => {
+    if (state === INITIAL_STATE || state.error) return
+    // The cascading render this rule warns about is the point here: React's post-action reset has
+    // already clobbered the uncontrolled threshold inputs by the time this runs, and remounting
+    // them is what puts the submitted values back. There is no earlier place to do it from — a
+    // continuation on the action's return path would mean wrapping the Server Function, the very
+    // thing #1396 forbids — and it costs one render after a server round-trip.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setSaveCount(c => c + 1)
+    setThresholds(submittedThresholds.current)
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [state])
+
   const [useBarnDefaults, setUseBarnDefaults] = useState(
     horse.exhaustion_threshold_moderate === null && horse.exhaustion_threshold_high === null
   )
 
   return (
-    <form action={formAction} onReset={(e) => e.preventDefault()} className="flex w-full flex-col gap-5">
+    <form
+      action={formAction}
+      onReset={(e) => e.preventDefault()}
+      onChange={() => setDirty(true)}
+      onSubmit={e => {
+        setDirty(false)
+        const submitted = new FormData(e.currentTarget)
+        submittedThresholds.current =
+          submitted.get('use_barn_defaults') === 'true'
+            ? { moderate: barn.exhaustion_threshold_moderate, high: barn.exhaustion_threshold_high }
+            : { moderate: Number(submitted.get('moderate')), high: Number(submitted.get('high')) }
+      }}
+      className="flex w-full flex-col gap-5"
+    >
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
@@ -74,13 +110,32 @@ export function HorseManagerForm({
 
       <div className="flex flex-col gap-1">
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Name
+          Barn Name
         </label>
+        {/* Controlled, like Registered Name below — not `defaultValue`. React 19's post-action
+            form reset reverts an uncontrolled field to its mount-time defaultValue, and a
+            `key={saveCount}` remount wouldn't help here: it re-reads `horse.name`, which is the
+            stale prop the #759 note above already works around for the threshold inputs (#1277). */}
         <input
           id="horse-name"
           name="name"
           type="text"
-          defaultValue={horse.name}
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="horse-registered-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Registered Name
+        </label>
+        <input
+          id="horse-registered-name"
+          name="registered_name"
+          type="text"
+          value={registeredName}
+          onChange={e => setRegisteredName(e.target.value)}
           className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </div>
@@ -97,7 +152,7 @@ export function HorseManagerForm({
               key={value}
               type="button"
               aria-pressed={status === value}
-              onClick={() => setStatus(value)}
+              onClick={() => { setStatus(value); setDirty(true) }}
               className={[
                 'px-4 py-2 text-sm font-medium first:rounded-l-md last:rounded-r-md focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-1',
                 status === value

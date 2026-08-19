@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -26,7 +27,7 @@ vi.mock('@/app/actions/notifications', () => ({
 }))
 
 vi.mock('../NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+  useNavigationBlocker: vi.fn(() => ({ dirty: false, markDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
 }))
 
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
@@ -43,7 +44,7 @@ const unreadNotif: Notification = {
   body: 'You have an outstanding payment.',
   link: '/barn/test/finances',
   read_at: null,
-  created_at: '2026-01-01T00:00:00Z',
+  created_at: instant('2026-01-01T00:00:00Z'),
 }
 
 const readNotif: Notification = {
@@ -72,11 +73,11 @@ describe('NotificationBell', () => {
     mockRefresh.mockReset()
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: false,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
+      clearAllDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: vi.fn(),
       message: '',
-      setMessage: vi.fn(),
       onLeave: null,
       setOnLeave: vi.fn(),
     })
@@ -221,11 +222,11 @@ describe('NotificationBell', () => {
     const mockSetPendingNav = vi.fn()
     vi.mocked(useNavigationBlocker).mockReturnValue({
       dirty: true,
-      setDirty: vi.fn(),
+      markDirty: vi.fn(),
+      clearAllDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
       message: '',
-      setMessage: vi.fn(),
       onLeave: null,
       setOnLeave: vi.fn(),
     })

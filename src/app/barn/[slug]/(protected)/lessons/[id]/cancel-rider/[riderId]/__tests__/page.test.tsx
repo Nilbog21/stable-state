@@ -16,7 +16,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import CancelRiderParticipationPage from '../page'
-import { createMockBarn, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockLessonDetail, createMockMembership, instant } from '@/test/fixtures'
 
 const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 
@@ -25,8 +25,8 @@ const mockManagerMembership = createMockMembership({
   role: 'manager' as const, status: 'active' as const, created_at: '',
 })
 
-const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-const pastIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+const futureIso = instant(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+const pastIso = instant(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
 
 const mockLesson = createMockLessonDetail({
   id: 'lesson-1',
@@ -92,8 +92,8 @@ describe('CancelRiderParticipationPage', () => {
     await expect(CancelRiderParticipationPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_call_notFound_when_membership_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+  it('should_call_notFound_when_membership_inactive', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(CancelRiderParticipationPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })

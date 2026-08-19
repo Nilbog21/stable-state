@@ -24,6 +24,7 @@ import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCom
 import { redirect } from 'next/navigation'
 import { deleteExpenseAction, createExpenseAction, updateExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
 import { createMockHorseExpense } from '@/test/fixtures'
+import { calendarDate } from '@/lib/local-day'
 
 const mockManagerMembership = createMockMembership({ role: 'manager' })
 const mockExpense = createMockExpenseWithHorses()
@@ -75,7 +76,7 @@ describe('createExpenseAction', () => {
   const noError = { error: null }
   const baseFields = {
     recipient: 'Dr. Hoof Farrier',
-    expense_date: '2026-07-10',
+    expense_date: calendarDate('2026-07-10'),
   }
 
   beforeEach(() => {
@@ -240,7 +241,7 @@ describe('updateExpenseAction', () => {
   const noError = { error: null }
   const baseFields = {
     recipient: 'Dr. Hoof Farrier',
-    expense_date: '2026-07-10',
+    expense_date: calendarDate('2026-07-10'),
   }
 
   beforeEach(() => {

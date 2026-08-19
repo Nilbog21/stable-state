@@ -3,11 +3,12 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
-import { getHorsesByBarn } from '@/lib/db/horses'
+import { getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getSeriesById } from '@/lib/db/lesson-series'
-import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
+import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '@/app/actions/lessons'
 import { getHorseAttentionReasons } from '@/lib/lesson-authorization'
+import { barnToday } from '@/lib/barn-timezone'
 import { LessonForm } from '../../LessonForm'
 import { StopSeriesButton } from '../../StopSeriesButton'
 import { HorseStatusBanner } from '../../HorseStatusBanner'
@@ -33,7 +34,7 @@ export default async function EditLessonPage({
   const role = membership.role as 'manager' | 'trainer'
 
   const [lesson, horses, riderMembers, tiers, instructorList] = await Promise.all([
-    getLessonById(id, barn.id, role),
+    getLessonById(id, barn.id, role, barn.timezone),
     getHorsesByBarn(barn.id),
     getActiveMembersWithProfiles(barn.id, 'rider'),
     getAllTiersByBarn(barn.id),
@@ -59,12 +60,21 @@ export default async function EditLessonPage({
       id: lh.horses!.id,
       barn_id: barn.id,
       name: `${lh.horses!.name} (inactive)`,
+      registered_name: null,
       is_active: false,
       is_available: true,
       unavailability_reason: null,
       deactivated_at: null,
       exhaustion_threshold_high: null,
       exhaustion_threshold_moderate: null,
+      feed_notes: null,
+      medication_notes: null,
+      // A display shim for an inactive horse the form still has to offer, not a row: nothing
+      // downstream reads the owner, and the real one was never joined in. Same fabrication as the
+      // empty `created_at`/`updated_at` below — #1549 only changed which literal typechecks.
+      owning_member_id: '',
+      photo_path: null,
+      photo_uploaded_by: null,
       created_at: '',
       updated_at: '',
     }))
@@ -72,6 +82,8 @@ export default async function EditLessonPage({
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
   const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, lesson.id)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, barn.slug)
+  const thresholdsByHorseId = Object.fromEntries(horsesForForm.map((h) => [h.id, resolveExhaustionThresholds(h, barn)]))
 
   const initialNotes = {
     horses: lesson.lesson_horses
@@ -97,6 +109,7 @@ export default async function EditLessonPage({
         </div>
       )}
       <LessonForm
+        timezone={barn.timezone}
         mode="edit"
         initialLesson={lesson}
         horses={horsesForForm}
@@ -105,10 +118,12 @@ export default async function EditLessonPage({
         instructors={instructors}
         currentMembershipId={membership.id}
         tiers={tiers}
-        defaultInstructorCut={barn.default_instructor_cut}
+        todayStr={barnToday(barn.timezone)}
         action={update}
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}
+        getScheduleRange={getScheduleRange}
+        thresholdsByHorseId={thresholdsByHorseId}
         hasHorseIssue={attentionReasons.length > 0}
       />
     </main>

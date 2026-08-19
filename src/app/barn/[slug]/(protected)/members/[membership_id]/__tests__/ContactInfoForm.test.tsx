@@ -107,4 +107,19 @@ describe('ContactInfoForm - submit', () => {
     await waitFor(() => expect(mockAction).toHaveBeenCalled())
     expect(mockRouterRefresh).not.toHaveBeenCalled()
   })
+
+  it('should_show_saved_indicator_after_successful_save', async () => {
+    mockAction.mockResolvedValue({ error: null })
+    render(<ContactInfoForm profile={mockProfile} action={mockAction} />)
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(screen.getByText('✓ Saved')).toBeDefined())
+  })
+
+  it('should_not_show_saved_indicator_when_action_returns_error', async () => {
+    mockAction.mockResolvedValue({ error: 'not_authorized' })
+    render(<ContactInfoForm profile={mockProfile} action={mockAction} />)
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(screen.getByText(/not_authorized/i)).toBeDefined())
+    expect(screen.queryByText('✓ Saved')).toBeNull()
+  })
 })

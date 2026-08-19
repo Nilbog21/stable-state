@@ -6,19 +6,23 @@ interface Props {
   barnName: string
   barnSlug: string
   activeBarnMemberships: { slug: string; name: string }[]
+  isDemo?: boolean
 }
 
-export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Props) {
+const barnNameLinkClass = (isDemo?: boolean) =>
+  isDemo
+    ? 'text-sm font-semibold text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300'
+    : 'text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300'
+
+export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships, isDemo }: Props) {
   const showSwitchBarn = activeBarnMemberships.length > 1
   const { open, setOpen, ref } = useOutsideDismiss(showSwitchBarn)
+  const displayName = isDemo ? `${barnName} (DEMO)` : barnName
 
   if (!showSwitchBarn) {
     return (
-      <BlockingLink
-        href={`/barn/${barnSlug}`}
-        className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-      >
-        {barnName}
+      <BlockingLink href={`/barn/${barnSlug}`} className={barnNameLinkClass(isDemo)}>
+        {displayName}
       </BlockingLink>
     )
   }
@@ -27,10 +31,10 @@ export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Prop
     <div ref={ref} className="relative flex items-center">
       <BlockingLink
         href={`/barn/${barnSlug}`}
-        className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+        className={barnNameLinkClass(isDemo)}
         onClick={() => setOpen(false)}
       >
-        {barnName}
+        {displayName}
       </BlockingLink>
       {/* Raw Tailwind, not <Button>: icon-only unpadded caret trigger — same
           reasoning as NotificationBell's bell trigger. */}

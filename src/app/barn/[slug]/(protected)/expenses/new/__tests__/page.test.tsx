@@ -10,6 +10,11 @@ vi.mock('@/lib/db/expenses', () => ({
   createExpense: vi.fn(),
   getMostCommonTypeForRecipient: vi.fn(),
 }))
+// The form's conflict calendar (#1020) calls this on mount; unmocked it reaches the real DAL
+// and `cookies()` outside a request context.
+vi.mock('@/app/actions/lessons', () => ({
+  getScheduleRangeForBarn: vi.fn().mockResolvedValue([]),
+}))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'
@@ -43,6 +48,21 @@ describe('NewExpensePage', () => {
   it('should_call_requireMembership_with_manager_role', async () => {
     await callPage()
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  // #1224 -- pinned to an instant where the barn's day (America/New_York, the createMockBarn
+  // default) and the server host's UTC day disagree: 03:00Z on the 2nd is still the 1st in New
+  // York. The pre-fill follows the barn.
+  it('should_prefill_the_date_field_with_the_barns_day_not_the_server_hosts_utc_day', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-03-02T03:00:00Z'))
+    try {
+      const jsx = await callPage()
+      const { container } = render(jsx)
+      expect((container.querySelector('input[name="expense_date"]') as HTMLInputElement).value).toBe('2026-03-01')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should_render_add_expense_heading', async () => {

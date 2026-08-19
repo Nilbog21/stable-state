@@ -1,0 +1,280 @@
+You are testing a pull request that has already passed `/reviewIssue`'s automated review — syncing migrations if needed, starting the local dev server, and walking through acceptance-criteria verification before the PR is marked ready to merge. Substantial problems found along the way get deferred instead of fixed on the spot — see Step 4. Both kinds of substantial finding go into the same per-issue work log, `specs/issue-{N}.md` (created by `/beginIssue` on first touch, cleaned up by `/finishIssue`): in-scope fixes go to its `## Open items` section, and findings whose root cause is a separate, pre-existing problem unrelated to this PR go to its `## Follow-ups (needs own issue)` section instead — both survive this issue's own `/finishIssue` cleanup until they're actually resolved or filed.
+
+> **Recommended model: Opus (1M context).** Long QA walkthroughs, and every finding needs a defer-vs-fix-now judgment call. Set with `/model` before invoking.
+
+---
+
+## Step 0 — Worktree and issue/PR detection
+
+**Kill lingering loops:** a `/loop` or `ScheduleWakeup` from earlier work in the session can still be pending when `/testIssue` starts. (Both are Claude Code harness features for scheduling repeat work, not project tooling — nothing in this repo depends on them.) Before anything else, call `ScheduleWakeup` with `stop: true` to cancel it. This is a no-op if none is pending — don't announce it either way, just do it. (`/reviewIssue` is not a source of these: it runs its review agents in the foreground and forbids wrapping that wait in a wakeup poll.)
+
+**Detect worktree, issue, and PR:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
+```
+bash scripts/workflow-context.sh
+```
+
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
+
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
+
+Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, `pr` as `{pr}`, and `base` — `{base}` is used later by Step 4's staleness check and mechanical e2e check.
+
+All subsequent commands must run inside this worktree using absolute paths.
+
+Fetch the PR URL for the printouts below:
+```
+gh pr view --json url -q .url
+```
+
+**If `{base}` is `main` (a `patch-N` issue), say so before going further.** The shared dev Supabase project always sits at the *current release branch's* schema, never prod's — so a patch branch runs `main`'s code against migrations `main` has never seen, and fails locally for reasons that don't exist on prod (#1114 hit `42501` on `lesson_riders` from a release-4 column restriction the patch's code predates). Compare `mcp__supabase__list_migrations` against the branch's own `supabase/migrations/` and tell the user what's ahead. If the dev DB is ahead, a local walkthrough isn't a meaningful gate: the real verification is CI plus unit tests before merge, then a live check on prod once the tag deploys. Ask whether to continue locally anyway or skip straight to Step 5.
+
+**Kick off Step 4's analysis now, in parallel:** fetch `gh issue view {N} --json body` and `gh pr diff`, and derive the ordered acceptance-criteria verification-item list exactly as described in Step 4 below. Do this work alongside Steps 1–3 — it doesn't depend on the preview being live. Hold the result silently; nothing from this gets printed until Step 4 is reached. When Step 4 is reached, use this pre-derived list rather than re-fetching or re-deriving it.
+
+---
+
+## Step 1 — Migration check
+
+Check whether the PR diff includes any files under `supabase/migrations/`:
+```
+gh pr diff --name-only | grep '^supabase/migrations/'
+```
+If it does, set HAS_MIGRATIONS=true.
+
+**If HAS_MIGRATIONS=true:**
+
+Tell the user:
+```
+This PR has migrations. Run `/sync-migrations` now — it will rename the pending
+migration files to the current timestamp and push them to remote.
+
+Type 'synced' when `/sync-migrations` has completed:
+```
+
+Wait for the user to type `synced`.
+
+**Under `/fableFleet` you are not the one who runs it:** end your turn requesting a sync slot from the orchestrator, which holds that lock fleet-wide and runs `/sync-migrations` itself. Resume on its `synced`. The commit-and-push below is still yours.
+
+Then commit the renamed migration files:
+```
+git -C {worktree-path} status --porcelain supabase/migrations/
+```
+Stage all modified/renamed migration files and commit:
+```
+git -C {worktree-path} add supabase/migrations/
+git -C {worktree-path} commit -m "[#{N}] Rename migrations to push timestamp"
+git -C {worktree-path} push
+```
+
+**If HAS_MIGRATIONS=false:** print:
+```
+No migrations touched, so the /sync-migrations step is skipped.
+```
+
+---
+
+## Step 2 — Reset dev DB (optional)
+
+Print, as an FYI — do not wait for a response, this doesn't gate the next step:
+```
+Optional: if you want a clean dev DB with fresh seed data before testing, run
+`bash scripts/reset-db.sh` in another terminal.
+```
+
+**Print it — never run it via the Bash tool**, not even when an acceptance criterion says something like "`./scripts/reset-db.sh` runs to completion without error". It chains into `seed-account.sh`, which prompts for first name, last name, and barn slug via `read`; with no TTY those reads hit EOF and the script aborts under `set -euo pipefail` — but only *after* `reset-db.ts` has already torn down and re-seeded the shared dev DB. You're left with a freshly reset barn nobody has an account in: your own membership never gets seeded, and the invite link for claiming it never prints. The same holds for `change-user.sh`/`seed-account.sh`, and for `.test.sh` files generally — those are the developer's to run. `scripts/run-checklist-suite.sh` is **not** in this class: it's a non-interactive e2e runner, fine to run directly via Bash (backgrounded, waiting on the process), except where Step 4 below explicitly says to print the command for the user instead.
+
+Continue immediately to Step 3.
+
+---
+
+## Step 3 — Start (or reuse) the local dev server
+
+PR previews are no longer auto-deployed on Vercel for issue/patch branches, so testing happens against a local dev server instead. Each worktree has a fixed port — Step 0's `port`.
+
+Check whether a server is already responding on it:
+```
+curl -sf http://localhost:{port} -o /dev/null
+```
+
+**If it responds:** reuse it as-is.
+
+**If not:** start one in the background from the worktree:
+```
+cd {worktree-path} && npm run dev -- -p {port} > /tmp/devserver-{port}.log 2>&1 &
+```
+Then wait for it in one blocking call rather than polling yourself:
+```
+timeout 60 bash -c 'until curl -sf http://localhost:{port} -o /dev/null; do sleep 2; done'
+```
+If that exits non-zero (the server never came up within a minute), print the tail of `/tmp/devserver-{port}.log` and **stop**.
+
+`/tmp/devserver-{port}.log` is the **one** dev-server log path, keyed by port rather than by worktree or skill (#1569). A port has exactly one server, so a per-skill path meant whichever skill didn't start it was tailing a file nobody wrote. Since #1601 the checklist suite is not one of its writers — it serves itself, and its own server logs to `checklist-server.log` in the worktree — which means this file is now written by exactly whoever started the server on this port, and the Step 4 traffic check below reads it uninterrupted for the whole session rather than across a recycle.
+
+(Nice-to-have, not built: the browser tab title reflecting the worktree, e.g. "test-{worktree}" — `next dev` has no flag for this since it's the page's own `<title>` metadata, not a server option. Would need a small conditional in the root layout keyed off an env var if ever wanted.)
+
+Print:
+```
+PR: {PR URL}
+Local server ready: http://localhost:{port}
+```
+
+Set `specs/issue-{N}.md`'s status marker to `testing` — this is the signal `/finishIssue` later trusts to know verification actually started.
+
+This is the point where Step 0's parallel acceptance-criteria analysis becomes visible — proceed directly to Step 4 using its result.
+
+---
+
+## Step 4 — Acceptance-criteria verification
+
+Use the verification-item list already derived back in Step 0. (If for any reason it wasn't prepared — e.g. this step is being resumed standalone — fetch `gh issue view {N} --json body` and `gh pr diff` now and derive it before continuing.)
+
+Derivation rule: from the issue body's acceptance-criteria checklist, identify the items that specifically require **visual or manual verification** — things a human needs to eyeball in the running preview (UI rendering, interactive states, computed values shown on screen) — and skip items that are purely backend/logic and already covered by the automated test suite. Additionally, scan the PR diff for user-facing changes not explicitly called out in the acceptance criteria (new components, changed copy, new UI states, altered layouts) and add those as extra verification items. Combine both into a single ordered list.
+
+If an item recommends running the local checklist e2e suite, the command is `bash scripts/run-checklist-suite.sh` with **no `--base-url`**: since #1601 the suite builds the branch and serves it from its own server on a port it picks itself, so there is nothing worktree-specific left to substitute and the Step 3 dev server is not what it drives. (`npm run test:checklist:auto` is the same command; prefer the explicit path so the `cd {worktree-path} &&` prefix below reads as one line.) Passing `--base-url` now means the opposite — *skip the build and target that origin instead* — so don't add it out of habit.
+
+**Stale-branch check before running the checklist suite:** whenever the checklist suite command above is about to be printed, first run `git -C {worktree-path} fetch origin {base} && git -C {worktree-path} rev-list HEAD..origin/{base} --count`. If the count is nonzero, print a warning before the command: "This branch is {N} commits behind `origin/{base}` — checklist-suite failures may be stale fixes from `{base}` reappearing as noise, not new regressions. Consider `git -C {worktree-path} merge origin/{base}` before trusting the results (a merge, not a rebase, so no force-push is needed)." This is advisory only — print the checklist-suite command either way and let the user decide whether to catch up first. **Under `/fableFleet` it is mandatory instead:** merge `origin/{base}` before the suite runs. Advisory is right for a human weighing their own branch; in the fleet a migration PR merging to base moves the schema under every sibling at once, and nobody is watching yours.
+
+**Mechanical e2e regression check:** independent of whatever the issue's own ACs call for, ask the selector what this diff can plausibly break:
+
+```
+cd {worktree-path} && gh pr diff --name-only | bash scripts/select-specs.sh
+```
+
+Every `e2e/*.spec.ts` declares the source paths it exercises in `// covers:` lines, and the selector intersects those with the diff (`docs/scripts/suite.md` documents the contract; CI lints the declarations). Act on the `mode=` line it prints:
+
+- **`mode=none`** — nothing e2e-relevant changed. Skip this check entirely; don't run the suite "just in case".
+- **`mode=scoped`** — run exactly the specs it lists: `cd {worktree-path} && bash scripts/run-checklist-suite.sh --spec {file}`, repeating `--spec` per reported spec.
+- **`mode=full`** — a shared-infrastructure path changed. Same command with no `--spec` flags.
+
+Don't second-guess the mode by hand-reading the diff — a blast radius the declarations get wrong is fixed by correcting the `covers:` line, not by widening this one run. Apply the same stale-branch check above before running it.
+
+**The verdict is binding.** That cuts the other way too: skipping a full run the selector called for takes a **recorded ruling**, not a hand-read of the diff. The ruling is an entry in `specs/issue-{N}.md`'s `## Accepted deviations` that does both halves — names the path the selector printed as the escalation trigger (since #1550 it prints `mode=full because '<path>' matches always-full glob '<glob>'` on stderr, so there is nothing to reconstruct), and shows `git diff origin/{base}...HEAD -- {path}` is comment- or doc-only. Both halves, or run it. #1550 already skips `*.md`, `*.test.ts`/`*.test.tsx` and `__tests__/` before escalating, so what is left to rule on is a comment-only hunk inside a runtime file — real (#1598's own run escalated on one) and rare enough that writing the ruling down costs less than re-litigating the same challenge every session.
+
+**Launch that command with the Bash tool's `run_in_background`, and read its results from `{worktree-path}/checklist-suite.log`** — not from the tool result. A full suite run can outrun the Bash tool's 600s foreground ceiling, which loses the output entirely; the harness re-invokes you when the process exits, so there's nothing to poll and no interval to tune. The background tool result can also truncate, and since #1356 it doesn't carry the per-test lines at all — the script sends the reporter's `✓`/skipped lines to the log only, leaving stdout with the header, the pass/fail summary counts, and any failures with their errors. Pass the `--spec` flags exactly as above — backgrounding changes how the command is launched, not what it is. Keep the `cd {worktree-path} &&` prefix too: the script writes its log next to whatever repo root it starts in, and every worktree holds a copy of the script, so launching it from another worktree's cwd succeeds silently and leaves you reading a stale log at the path below.
+
+Two things to check in the log before trusting it. **Freshness:** the script truncates the file and writes a `=== run-checklist-suite.sh — barn prefix {prefix} — started {date} ===` header before anything else, so confirm that timestamp belongs to the run you just launched — the path is stable across runs, and a run that died before Playwright started would otherwise leave the *previous* run's results sitting there looking current. **Completion:** the run is done when the log ends with the `=== run-checklist-suite.sh exited {code} — full log: … ===` terminator, which the script's `EXIT` trap writes on every path. Since #1621 that is a guarantee and not just the common case — the trap drains the log writer before appending, so the terminator really is the last line — with two limits. A run **SIGKILLed** outright has no terminator at all, because no trap runs; that is the state to suspect if the line never appears rather than a run still going. And if the log ends with a `WARNING: the log writer did not drain …` line above the terminator, the run completed and its verdict is good, but the log is missing its tail — re-run the failing specs rather than reading detail that isn't there. Don't infer completion from Playwright's summary output instead — an early bail (bad flag, failed seed, unreadable `.env.local`) kills the script under `set -e` before Playwright writes a line, and the terminator is the only thing present on those paths.
+
+**Read the log's per-test detail only when the run failed.** On a green run the terminator's `exited 0` is the whole verdict — every `✓` line under it says the same thing at ~10× the token cost, which is the expense #1356 removed from stdout and which re-reading the log would put straight back. `grep`/`tail` the log rather than reading it whole when a failure needs chasing.
+
+If the user has already run the suite in their own terminal, read that same log file rather than asking them to paste anything — it's the same file either way.
+
+**Who waits, and who doesn't.** A `mode=scoped` run and a single-spec run are minutes: wait for the terminator before moving on, and settle the verdict here. A `mode=full` run is **launch-and-continue** — launch it, write the pending marker below, and carry straight on to the remaining verification items, Step 5's `gh pr ready`, and the end of your turn, with the run still cooking. Do not wait for it, and do not end your turn purely to wait for it (`/fableFleet` Step 3 measured that wakeup never arriving, three-for-three). The run's *coverage* was never the thing worth the developer's time standing still; its verdict is collected at `/finishIssue` Step 2.5, which will not merge without it. If both this mechanical check and an acceptance-criteria item call for a full run, that is **one** launch answering both, not two.
+
+**The pending marker.** Launch the run first, then read its **barn prefix** back out of the header the script writes before anything else, and record that together with the HEAD you launched against:
+```
+cd {worktree-path} && timeout 30 bash -c 'until grep -q "barn prefix" checklist-suite.log 2>/dev/null; do sleep 1; done' && grep -m1 -o 'barn prefix e2e-[0-9]*-[0-9]*' {worktree-path}/checklist-suite.log
+```
+Write it as one line directly beneath `specs/issue-{N}.md`'s status marker, **replacing any marker already sitting there** — a prior round's, left standing by a verdict that has since been dispositioned. Two markers is an ambiguity the gate has no rule for:
+```
+<!-- pending_suite_run: prefix e2e-{epoch}-{random} — sha {short-sha} -->
+```
+The prefix is what gets recorded, rather than a launch timestamp, because it names the run **exactly**: Step 2.5 requires the log's header to still carry this prefix, which is what catches a *later* run in this worktree having truncated the log out from under the gate. A timestamp could only ever catch a log older than the marker; a newer one that silently replaced it would pass every other check, and that is the case that matters.
+
+It is deliberately *not* the status marker: Step 5 still sets `status: ready` with the run in flight, and `/continueIssue`'s `ready → /finishIssue` routing is unchanged. The marker and the log it stands for are **per-worktree by design** — `specs/` is gitignored and `checklist-suite.log` sits at that worktree's root — and the gate is sound only because the worktree that launched the run is the one that reads it. Neither belongs in a committed file.
+
+**Never launch a suite run in a worktree while one is already in flight there.** `run-checklist-suite.sh` truncates `checklist-suite.log` before it acquires its `e2e-slot.sh` slot, so a second launch does not queue politely behind the first — it destroys that run's evidence at once and then interleaves with it in the same file. The invariant is **per-worktree, not a count of callers**: `/beginIssue`'s single-spec loop, `/reviewIssue`'s scoped reconcile run, `/runChecklist` Step 0.5 and `/overnightRefactor` Step 1d all launch this same script, and `/fableFleet` Step 5 names runs none of them can see. What this step guarantees is narrower, and is all the gate needs: inside one issue's chain a `mode=full` run is launched here and collected at `/finishIssue` Step 2.5, with nothing in between launching another in this worktree — which is why `/reviewIssue`'s reconcile check leaves a `mode=full` verdict to this step, and why an inline minor fix below does not relaunch (Step 2.5 re-checks the diff since the marker's sha). A run launched into the same worktree from *outside* that chain invalidates the pending verdict; the recorded prefix is what makes that visible instead of silent.
+
+For a run you waited on: if it passes, just note in the printed summary that it ran clean — no user prompt needed; if it fails, treat each failure like a reported problem in the loop below: classify minor/substantial and in-scope/out-of-scope using the same rules, using the failure output as the finding description instead of a user's freeform report. A launched-and-continued full run has no verdict to report here — `/finishIssue` Step 2.5 puts a red one through that same classification.
+
+**Check for carried-over deferred items:** read `specs/issue-{N}.md`'s `## Open items` section (see the format in "Deferring a substantial fix" below) and prepend its entries to the verification-item list, each phrased as a re-check of the original finding (e.g. "Re-check: {problem description}"). This is what makes the section rolling — a prior round's unresolved concerns get re-verified this round before any new ones are found.
+
+**Do not print this list up front.**
+
+For each item, one at a time:
+
+1. Print a short, specific prompt describing exactly what to check and where. When the check involves visiting a page, include the full URL (`http://localhost:{port}{path}`, using Step 0's `port`), not just the page name — e.g. "Visit http://localhost:{port}/barn/{slug}/settings/tiers — edit a tier's price and confirm the amber warning appears when the price changes and disappears when it matches the original." Print this as plain text, never via `AskUserQuestion` — its selection UI doesn't let the user click the URL, and these prompts always need a live browser check, not a choice among fixed options.
+2. Wait for the user's freeform response.
+3. **If the user confirms it's correct:** if this item came from the carried-over deferred list, remove its entry from `specs/issue-{N}.md` (it's resolved). Move to the next item. Treat a bare `c` or `y` (case-insensitive) as confirmation, same as an explicit "yes"/"confirmed"/"looks good".
+4. **If the user reports a problem:** first check they were actually looking at this worktree's server, *then* classify it.
+
+   **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/devserver-{port}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — several worktrees are typically running dev servers at once, and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (Since #1569 every writer of a server on this port — Step 3 and `/runChecklist` — writes this one file, so it's normally live even when Step 3 reused a server it didn't start. The checklist suite stopped being a writer in #1601, when it started serving itself; that removes an interleaving, not a source. If the file is missing anyway, say the check was inconclusive and fall through to normal diagnosis.)
+
+   **Notification check?** If the item involves a notification whose recipient is someone *other* than the persona currently being impersonated, don't expect it in that person's bell at all — verify the row directly with `mcp__supabase__execute_sql` against `notifications` (correct `user_id`, title, body, link). `change-user.ts` keeps exactly one physical auth account: switching to a persona rewrites their `barn_memberships.user_id` to the shared dev user and reverts the previous persona to their own permanent `profiles.user_id`, so the recipient's row is permanently disconnected from the id the notification was keyed to the moment you switch to them. One persona always kicks the other out of the seat; this is not an app bug and shouldn't be debugged as one unless the DB row itself is wrong.
+
+   **Classify minor vs. substantial** and state the classification with a one-line reason (e.g. "Minor — single existing assertion needs updating." / "Substantial — this needs new test coverage for a state transition that doesn't exist yet."). The user can override in the moment ("actually just fix it" / "actually defer that") — treat that as final.
+
+   - **Minor** (a self-contained tweak: copy, style, an off-by-one, updating one existing test's assertion): fix inline as before.
+     - Run coverage: `cd {worktree-path} && bash scripts/check-coverage.sh`. If it fails, write tests to cover the gaps and re-run until it passes.
+     - Commit and push:
+       ```
+       git -C {worktree-path} add {changed-files}
+       git -C {worktree-path} commit -m "[#{N}] {short description}"
+       git -C {worktree-path} push
+       ```
+     - The dev server hot-reloads on save — wait a few seconds for the recompile, then refresh.
+     - Re-present the same item (not the next one) for re-verification.
+   - **Substantial** (needs new test cases for new logic/behavior, touches DB schema/RPC, spans multiple files or introduces a new abstraction, or is better described as a design gap than a bug): **do not modify code.** Also decide **in-scope vs. out-of-scope**, and state which with a one-line reason:
+     - **In-scope**: the fix belongs to resolving issue #{N} itself.
+     - **Out-of-scope**: the root cause is a separate, pre-existing problem unrelated to this PR's own changes (e.g. a bug in code this PR doesn't touch, surfaced incidentally by the new test/feature). Check the PR diff's file list if it's not obvious — if the failing behavior lives entirely outside the files the diff touches, it's out-of-scope.
+
+     The user can override either classification in the moment — treat that as final. See "Deferring a substantial fix" below, then move on to the next item (do not re-present this one this round).
+
+**Deferring a substantial fix:**
+
+- **In-scope:** append an entry (in memory) to this round's deferred list: `{problem description} — found verifying: "{AC item text}". Why deferred: {one-line reason}`. Goes into `specs/issue-{N}.md`'s `## Open items` per the format below.
+- **Out-of-scope:** append instead to `specs/issue-{N}.md`'s `## Follow-ups (needs own issue)` section: `- {date} {time} — {2-4 sentence paragraph: what's wrong, how it was found (reference the specific AC item), why it's out of scope for #{N}, and a fix direction if apparent}.` This section is never read by Step 5's readiness check and never blocks `gh pr ready` — same purpose as `specs/issue-{N}.md`'s "open a new issue" path in Step 5, but for findings that were never in scope for #{N} to begin with, so they can't wait for that path. It gets turned into a real issue later via `/grillMe specs/issue-{N}.md` (either run any time, or `/finishIssue` will prompt for it if entries remain when the issue is otherwise done).
+
+Before moving on, check whether any *remaining* items in this round's list can't actually be tested because they depend on the thing you just deferred, in-scope or out-of-scope (not "skip it, get to it later" — literally can't verify without the fix). If so, mark each as blocked rather than presenting an unverifiable check to the user: `{AC item text} — blocked by: {the deferred item above}`. Skip straight past blocked items with no prompt. Blocked entries always go in `## Open items` regardless of where their blocker was deferred to — they're about verifying #{N}'s own acceptance criteria even when the root cause lives elsewhere.
+
+**Once the whole list is exhausted** (every item confirmed, deferred, or blocked), update `specs/issue-{N}.md`'s `## Open items` section: keep any entries from a prior round you didn't just resolve, update or remove ones you did, append newly-found in-scope/blocked entries in this format:
+```markdown
+<!-- since_sha: {current HEAD sha} -->
+
+- [ ] {problem description} — found verifying: "{AC item text}". Why deferred: {reason}
+- [ ] {AC item text} — blocked by: {reference to the item above it depends on}
+```
+Always refresh the `since_sha` comment to the current HEAD when writing, and append a `- {date} {time} — /testIssue: {M} item(s) deferred this round.` line to `## Log` (skip the Log line if nothing was deferred this round — that's covered by Step 5's own completion line instead).
+
+Once every item has been confirmed, deferred, or blocked, ask: "Anything else to verify, or are you done?" If the user raises something new **that's still in scope of this issue's acceptance criteria** (a bug in the feature actually under test), handle it like a reported problem (classify, then fix inline or defer per the rules above). Repeat until the user says done.
+
+**Out-of-scope findings — never create GitHub issues from this skill.** If what the user raises is out of scope (a different page, a pre-existing bug unrelated to this PR, a scope-creep ask), do not fix it unprompted and do not run `gh issue create` for it. Say so explicitly and ask how they want to handle it — fix now in this PR (treat as in-scope from here on), or note it in `## Follow-ups (needs own issue)` per the out-of-scope format above and move on. Wait for their answer before taking any action.
+
+---
+
+## Step 5 — Finalize
+
+Check whether `specs/issue-{N}.md`'s `## Open items` section has any unresolved (`- [ ]`) entries.
+
+**First, separate deferred concerns from operational reminders.** Not every `- [ ]` entry is a gap in the work. An entry can also be a *deliberate post-merge action* — something an AC explicitly requires be left undone in this PR (e.g. "remove the originals from `~/.claude/commands/` after merge, because worktrees on older branches still need them"). Such an entry is the AC's *satisfaction*, not a blocker, and is normally marked as such inline. Treat it as non-gating: it does not count toward the unresolved tally below, does not trigger the three-way prompt, and does not hold the PR in draft. Leave it in the file verbatim — do not resolve it, and do not move it to `## Follow-ups`, which is for findings needing their own issue.
+
+You do not need to read `finishIssue.md` to confirm such an entry survives to be acted on — it does, in two places. `/finishIssue`'s Step 0.5 lists unresolved `## Open items` in a confirmation prompt *before* merging, and its Step 6.5/Step 7 capture any surviving entries verbatim and reprint them after the merge under a `STILL TO DO BY HAND` heading, because Step 6.5 deletes the work log itself. The post-merge reprint is the one that matters: Step 0.5's prompt can be many minutes and a full CI wait behind the final output, so a reminder seen only there is effectively lost. Phrase the entry so it stands alone when reprinted with no surrounding context — include the literal command, not a reference to one.
+
+**If the only entries are non-gating reminders of that kind, treat the section as empty** for the purposes of the branch below — mark the PR ready, and note in the `## Log` line which entry was left standing and why.
+
+**If it has none:** mark the PR ready and finish as before:
+```
+gh pr ready
+```
+Append `- {date} {time} — /testIssue: all AC verified, marked ready.` to `## Log` and set the status marker to `ready`. Print exactly:
+```
+Ready for you to run /finishIssue
+```
+
+**If unresolved entries remain:** print a summary of the gaps (each deferred/blocked entry, one line each), then ask:
+
+> "There are {count} deferred concern(s) from this testing round: {list}. How do you want to handle them — fix now, save to issue-{N}.md for a later /grillMe session, or start a fresh session later?"
+
+Wait for the answer, then:
+
+- **Fix now:** for each deferred entry (skip blocked-only entries individually — they'll get re-verified once their blocker is fixed), run a proper TDD loop right in this session:
+  1. Write a failing test covering the gap. Confirm it's red: `cd {worktree-path} && npx vitest run {test-file}`. Commit: `git -C {worktree-path} add {test-files} && git -C {worktree-path} commit -m "[#{N}] Add failing tests: {short description}"`.
+  2. Implement the fix. Confirm the test is green (same `npx vitest run` command). Commit: `git -C {worktree-path} add {changed-files} && git -C {worktree-path} commit -m "[#{N}] {short description}"`.
+  3. Run coverage: `bash scripts/check-coverage.sh`. If it fails, write tests to cover the gaps and re-run until it passes.
+  4. Run lint: `npm run lint`. Fix any issues and re-run until clean.
+  5. Push: `git -C {worktree-path} push`.
+  6. Remove the entry from `## Open items`.
+
+  Once every deferred entry is fixed, re-present any blocked entries for a quick confirm (same single-item flow as Step 4) now that their blocker is resolved — remove them from `## Open items` once confirmed. Once that section is empty, proceed with `gh pr ready`, the `## Log`/status update, and the "Ready for you to run /finishIssue" message above.
+
+- **Save to issue-{N}.md for a later /grillMe session:** for each remaining entry, move it to `## Follow-ups (needs own issue)` using the same format as Step 4's out-of-scope path: `- {date} {time} — {2-4 sentence paragraph: what's wrong, how it was found (reference the specific AC item), and a fix direction if apparent}.` Remove the corresponding entries from `## Open items`. This skill never runs `gh issue create` directly — turning these into real issues is `/grillMe`'s job (run any time, or `/finishIssue` will prompt for it if entries remain when the issue is otherwise done). Then run `gh pr ready`, the `## Log`/status update, and print the "Ready for you to run /finishIssue" message above, plus the count of entries saved to Follow-ups.
+
+- **Start a fresh session later:** leave `## Open items` as-is — it already has everything needed (the `since_sha` marker lets `/reviewIssue` scope its next pass to just the fix commits). Do **not** run `gh pr ready`. Append `- {date} {time} — /testIssue: {count} concern(s) deferred, PR staying in draft — resume via /beginIssue {N}.` to `## Log` (status marker stays `testing`, not `ready`). Print:
+  ```
+  PR #{pr} stays in draft. Start a separate session and run /beginIssue {N} to resolve the deferred concerns in specs/issue-{N}.md via proper TDD, then re-run /reviewIssue and /testIssue.
+  ```
+  Stop — do not run any further steps.
+
+`specs/issue-{N}.md` itself is never deleted by this skill — that's `/finishIssue`'s job, once the whole issue (not just this testing round) is done.
