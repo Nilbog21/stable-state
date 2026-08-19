@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
 // covers: src/components/calendar/**
+// covers: src/components/AmPmWarning.tsx
 // covers: src/components/ui/date-nav.ts
 //
 // The manager's expense form and both delete confirmations: recipient-driven expense-type
@@ -1513,4 +1514,46 @@ test.describe.serial('deleting an expense that has an amount', () => {
 
     await expect(unattributedRowCells(page)).toHaveText(UNATTRIBUTED_ROW_WITH_KEEPER)
   })
+})
+
+// ---------------------------------------------------------------------------
+// The AM/PM warning under the Time field
+// ---------------------------------------------------------------------------
+
+/**
+ * "#1646 — set the expense Time to 6:30 AM: an amber line under the field reads
+ * `Check AM/PM — this is 6:30 AM, not 6:30 PM.`"
+ *
+ * The rule — the 8 PM–8 AM window, its four boundary minutes, the 12-hour rendering — is
+ * `AmPmWarning.test.tsx`'s, in-process and free. This test exists for the one thing no unit
+ * test reaches: that the warning is wired under the *real* `#expense-time` field, which unlike
+ * the lesson form's start time is optional and is removed outright on a past date.
+ *
+ * `hydrateExpenseForm` first for the same reason every `fill` in this file needs it: an
+ * unhydrated `fill` writes the DOM value and is then discarded by React's first render (fact
+ * 10), which here would show no warning and read as a wiring regression.
+ */
+test('an_off_hours_expense_time_warns_that_the_am_pm_may_be_inverted @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+
+  await page.locator('#expense-time').fill('06:30')
+
+  await expect(page.getByText('Check AM/PM — this is 6:30 AM, not 6:30 PM.')).toBeVisible()
+})
+
+/**
+ * The empty half of the same checkbox pair: the expense Time is optional, so a form nobody has
+ * touched must stay silent rather than warn about a time that isn't set.
+ *
+ * An absence assertion is only honest on a form already proven hydrated — before that, "no
+ * warning" is what an unrendered page looks like too. `hydrateExpenseForm` is what settles it
+ * (fact 10), and it drives the calendar rather than the Time field, so the field is still
+ * untouched when the read is taken.
+ */
+test('an_empty_expense_time_shows_no_am_pm_warning @manager', async ({ page }) => {
+  await page.goto(newExpensePath())
+  await hydrateExpenseForm(page)
+
+  await expect(page.getByText(/Check AM\/PM/)).toHaveCount(0)
 })

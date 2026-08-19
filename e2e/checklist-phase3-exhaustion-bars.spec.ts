@@ -1,5 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/**
 // covers: src/components/ExhaustionBar.tsx
+// covers: src/components/AmPmWarning.tsx
+// covers: src/components/calendar/StartTimeField.tsx
 // covers: src/components/calendar/MonthCalendarPicker.tsx
 // covers: src/lib/month-calendar.ts
 // covers: src/app/actions/lessons.ts
@@ -899,5 +901,31 @@ test.describe('Edit Lesson — a lesson is excluded from its own exhaustion wind
         ghostPct: trackPct(CLOVER_DAY_A_EXERTION),
       },
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The AM/PM warning under the start time
+// ---------------------------------------------------------------------------
+
+test.describe('New Lesson — the AM/PM warning', () => {
+  // "#1646 — set the Start Time to 8:00 PM: an amber line under the field reads
+  // `Check AM/PM — this is 8:00 PM, not 8:00 AM.`"
+  //
+  // The warning is `StartTimeField`'s, not the lesson form's, so this spec is here for the
+  // wiring rather than the rule: the window boundaries, the 12-hour rendering and the silence
+  // in barn hours are all pinned by `AmPmWarning.test.tsx` in-process, where the four boundary
+  // minutes cost nothing. What no unit test can show is that the shared field actually reaches
+  // the real New Lesson page with a live value behind it.
+  //
+  // Deliberately one positive assertion and no absence: the disappearance on edit into barn
+  // hours is unit-tested, and asserting it here would put a "text is gone" wait on a form the
+  // rest of this file has to keep hydration-settled (fact 18, spec-maintenance rule 4).
+  test('an_off_hours_start_time_warns_that_the_am_pm_may_be_inverted @manager', async ({ page }) => {
+    await openFormOnDayA(page)
+
+    await page.locator('#lesson-start-time').fill('20:00')
+
+    await expect(page.getByText('Check AM/PM — this is 8:00 PM, not 8:00 AM.')).toBeVisible()
   })
 })

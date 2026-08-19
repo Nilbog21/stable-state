@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { wallClockToInstant } from '@/lib/barn-timezone'
+import { AmPmWarning } from '@/components/AmPmWarning'
 
 /**
  * The start-time field of a form whose date half is a `MonthCalendarPicker` (#1021), replacing
@@ -76,6 +77,9 @@ export function StartTimeField({
         required
         className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
       />
+      {/* Inside the field rather than beside it at each call site (#1646), so the lesson and
+        * barn-event forms are both covered without either one wiring it up. */}
+      <AmPmWarning value={time} />
       {combinedValue && <input type="hidden" name={name} value={combinedValue} />}
     </div>
   )

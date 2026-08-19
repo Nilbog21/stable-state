@@ -201,6 +201,8 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e: manager_appointment_page_shows_the_barn_calendar_checkbox) (#1640) That edit form carries a **Show on barn calendar** checkbox
 - [ ] (e2e: manager_appointment_page_reflects_the_stored_calendar_flag) (#1640) That checkbox reflects the appointment's stored setting
 - [ ] (e2e: manager_new_appointment_form_starts_with_the_calendar_checkbox_unticked) (#1640) On the new-expense form the checkbox starts unticked
+- [ ] (e2e: an_empty_expense_time_shows_no_am_pm_warning) (#1646) Nothing appears under that form's **Time** while the optional field is still empty
+- [ ] (e2e: an_off_hours_expense_time_warns_that_the_am_pm_may_be_inverted) (#1646) Set that form's **Time** to 6:30 AM — an amber line under the field reads `Check AM/PM — this is 6:30 AM, not 6:30 PM.`
 - [ ] (e2e: manager_setting_a_time_ticks_the_barn_calendar_checkbox) (#1640) Setting a **Time** on that form ticks the checkbox for you
 - [ ] (e2e: manager_clearing_the_time_leaves_the_barn_calendar_checkbox_ticked) (#1640) Clearing the Time again leaves it ticked — the tick is yours once made
 - [ ] (e2e: changing_the_recipient_and_saving_updates_the_card) Change the recipient and save → the card shows the new recipient

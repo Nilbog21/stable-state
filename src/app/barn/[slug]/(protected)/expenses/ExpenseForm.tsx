@@ -6,6 +6,7 @@ import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays } from '@/lib/local-day'
 import { wallClockToInstant } from '@/lib/barn-timezone'
+import { AmPmWarning } from '@/components/AmPmWarning'
 import { Button } from '@/components/ui/Button'
 import { useUnsavedChangesGuard } from '../NavigationBlocker'
 import type { CalendarDate, PaymentType, ScheduleItem } from '@/lib/db/types'
@@ -307,6 +308,7 @@ export function ExpenseForm({
             onChange={(e) => handleTimeChange(e.target.value)}
             className={inputClassName}
           />
+          <AmPmWarning value={expenseTime} />
         </div>
       )}
 
