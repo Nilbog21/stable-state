@@ -72,13 +72,14 @@ Creates or refreshes the shared demo auth user `demo@stable-state.app` plus a fu
 | `emery-photo.jpg` | ~8KB | seeded on Emery's profile by `seed-barn.ts` |
 | `clover-photo.png` | ~8KB | upload source — Clover is the horse with no photo seeded |
 | `harper-photo.png` | ~7KB | upload source — Harper Test is the managed rider the member-photo steps use |
+| `portrait-photo.png` | ~10KB | the only **portrait** asset (260×900); seeded on Hazel and Finley by `seed-barn.ts` |
 | `test_1_kb.pdf` | 1,024 B | default upload fixture; `seed-test-barn.ts` uploads it as Bella's past-due `insurance_binder` |
 | `test_4_4_mb.pdf` | 4,400,000 B | largest accepted upload — exercises the upload progress bar |
 | `test_4_6_mb.pdf` | 4,600,000 B | over `document-storage.ts`'s `MAX_FILE_SIZE` (4,500,000) — exercises the rejection path |
 
-Two JPEGs and two PNGs deliberately: the upload paths accept both (`PHOTO_EXTENSIONS` in `src/lib/db/document-storage.ts`), and the **Replace Photo** checklist steps need two *different* images on the same entity — upload the PNG, replace with the JPEG, and both formats are exercised without a fifth file.
+Two JPEGs and three PNGs deliberately: the upload paths accept both (`PHOTO_EXTENSIONS` in `src/lib/db/document-storage.ts`), and the **Replace Photo** checklist steps need two *different* images on the same entity — upload the PNG, replace with the JPEG, and both formats are exercised without a fifth file.
 
-Each image is a 900×260 (deliberately non-square) black-on-white word bracketed by edge markers, `|------- butter -------|`. The checklist asserts an uploaded photo displays *"scaled to a fixed height with its aspect ratio preserved (not cropped to a square)"* — with edge bars, a square crop visibly eats them, so a regression is obvious instead of needing a proportion judgment. The word does the same job for the **Replace Photo** steps: the assertion is that the displayed word changes, not that "a new photo" appeared.
+Each image is a black-on-white word bracketed by edge markers, `|------- butter -------|` — 900×260 (deliberately non-square) for all but `portrait-photo.png`, which is the same construction rotated 90° to 260×900 (#1639). Every other asset is landscape, so "landscape" was an untested assumption everywhere until this one existed: the horse identity header stretched a photo to the full content width below the `sm` breakpoint, and a *landscape* file survives that almost intact — its height follows to within a few percent of the right value, wrong only in arithmetic. A portrait file makes the same bug unmissable, which is the whole reason the asset is here, and `scripts/data.test.ts` asserts its orientation from the PNG IHDR rather than trusting the filename. The checklist asserts an uploaded photo displays *"scaled to fit within a maximum height with its aspect ratio preserved (not cropped to a square)"* — with edge bars, a square crop visibly eats them, so a regression is obvious instead of needing a proportion judgment. The word does the same job for the **Replace Photo** steps: the assertion is that the displayed word changes, not that "a new photo" appeared.
 
 Every `checklists/pre-release/phase-*.md` step that uploads a file names the specific asset it wants, so keep the two in sync when adding or renaming one. `POST_RELEASE_TEST_CHECKLIST.md`'s self-photo steps deliberately stay generic — they're performed by a second real person on their own device, who has no checkout.
 
@@ -113,4 +114,4 @@ while len(data := build("stable-state test fixture (4.4 MB)", pad)) != 4_400_000
 open("scripts/data/test_4_4_mb.pdf", "wb").write(data)
 ```
 
-Verify the result with `gs -q -dNOPAUSE -dBATCH -sDEVICE=nullpage scripts/data/*.pdf` — silent output means every PDF parses. The images come from Pillow: a 900×260 white canvas, `ImageFont.load_default(size=…)` grown until the bracketed text nearly fills the width, drawn centred with `anchor="mm"`.
+Verify the result with `gs -q -dNOPAUSE -dBATCH -sDEVICE=nullpage scripts/data/*.pdf` — silent output means every PDF parses. The images come from Pillow: a 900×260 white canvas, `ImageFont.load_default(size=…)` grown until the bracketed text nearly fills the width, drawn centred with `anchor="mm"`. `portrait-photo.png` is that same canvas with a final `.rotate(90, expand=True)`, which is what puts its edge markers on the short edges.

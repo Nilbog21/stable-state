@@ -157,10 +157,10 @@ export default async function HorseDetailPage({
     <main className="mx-auto max-w-3xl px-4 py-12">
       {/* Identity header (#1390) — always visible, above the accordions. It carries everything a
           visitor needs to know they're on the right horse's page: photo, name, status, owner. */}
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+      <header className="mb-8 flex flex-col items-start gap-4 sm:flex-row sm:gap-6">
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset
-          <img src={photoUrl} alt={horse.name} className="h-32 w-auto shrink-0 rounded-md" />
+          <img src={photoUrl} alt={horse.name} className="max-h-32 w-auto max-w-full shrink-0 rounded-md" />
         ) : (
           <PhotoPlaceholder />
         )}

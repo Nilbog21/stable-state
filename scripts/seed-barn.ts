@@ -444,6 +444,18 @@ export async function seedBarn(
     await replaceProfilePhoto(riderProfileIds[1], barnId, emeryPhotoFile, 'jpg', supabase)
   }
 
+  // #1639: Finley carries the portrait asset, so the seed has one member photo taller than it is
+  // wide. Every other seeded photo is 900x260, which is why the member page's missing width cap
+  // went unnoticed on a phone for as long as it did — there was nothing to look at but landscape.
+  // Finley over Dana or Emery: neither of those is photo-less, and no checklist line depends on
+  // Finley having none. Same existsSync guard, for the same #505 reason.
+  const finleyPhotoPath = join(DATA_DIR, 'portrait-photo.png')
+  if (existsSync(finleyPhotoPath)) {
+    const finleyPhotoBytes = readFileSync(finleyPhotoPath)
+    const finleyPhotoFile = new File([finleyPhotoBytes], 'portrait-photo.png', { type: 'image/png' })
+    await replaceProfilePhoto(riderProfileIds[2], barnId, finleyPhotoFile, 'png', supabase)
+  }
+
   mustSucceed(
     await supabase.from('barn_memberships').insert(
       trainerIds.map((id, i) => ({ user_id: id, profile_id: trainerProfileIds[i], barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true }))
@@ -521,6 +533,17 @@ export async function seedBarn(
     }).eq('id', unavailableHorse.id),
     'mark seed horse unavailable'
   )
+
+  // #1639: the horse half of the same thing — Hazel is the one seeded horse whose photo is
+  // portrait, which is the orientation the identity header used to stretch on a phone. Hazel
+  // rather than Clover or Apple: phase-4-manager-verification.md's photo block depends on both
+  // of those having none, and Butter already has one.
+  const hazelPhotoPath = join(DATA_DIR, 'portrait-photo.png')
+  if (existsSync(hazelPhotoPath)) {
+    const hazelPhotoBytes = readFileSync(hazelPhotoPath)
+    const hazelPhotoFile = new File([hazelPhotoBytes], 'portrait-photo.png', { type: 'image/png' })
+    await replaceHorsePhoto(unavailableHorse.id, barnId, hazelPhotoFile, 'png', supabase)
+  }
 
   // #1413 — see the DEV_CALENDAR_BAND_* constants above. Available and active, unlike the two
   // horses either side of it: the manual line selects it on the New Lesson form, which offers
