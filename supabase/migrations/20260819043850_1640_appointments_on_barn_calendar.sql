@@ -1,3 +1,40 @@
+-- #1640 — Show appointments on the barn calendar and .ics feed.
+--
+-- One file, per the patch-migration convention (CLAUDE.md's Patch Workflow) -- a patch ships
+-- as one indivisible fix, so its schema, functions and grants have no separate life to
+-- justify the separate files a feature's migrations get.
+--
+-- 1. `appointments.shows_on_calendar` + backfill
+-- 2. `get_calendar_feed` unions appointments; both expense writers persist the flag
+-- 3. re-grant the two writers after their signature change
+
+-- ---------------------------------------------------------------------------------------
+-- 1. Schema
+-- ---------------------------------------------------------------------------------------
+
+-- #1640: one explicit flag governing whether an appointment appears on a calendar.
+--
+-- `appointments` holds both genuine visits (Veterinary, Farrier) and pure bills (Insurance,
+-- Tack, Feed), and `expense_type` is free text with no flag distinguishing them. The in-app
+-- calendar had been standing in a proxy rule -- getScheduleForRange dropped any appointment
+-- with a null expense_time -- which both misfiled a time-less farrier day as a bill and gave
+-- the .ics feed nothing safe to union in. This column replaces that proxy everywhere.
+ALTER TABLE public.appointments
+  ADD COLUMN shows_on_calendar BOOLEAN NOT NULL DEFAULT false;
+
+-- Backfill is the retired proxy rule verbatim, so no appointment that was on a calendar the
+-- day before this deploys is off one the day after. Deliberately *not* narrowed to future
+-- rows: the dashboard takes an unrestricted `date` param with an always-enabled Previous
+-- link, so a past timed appointment still renders on its own historical day, and a
+-- future-only backfill would have hidden every one of them permanently.
+UPDATE public.appointments
+SET shows_on_calendar = true
+WHERE expense_time IS NOT NULL;
+
+-- ---------------------------------------------------------------------------------------
+-- 2. Functions
+-- ---------------------------------------------------------------------------------------
+
 -- #1640: appointments reach the .ics feed, and both expense writers persist the new flag.
 --
 -- get_calendar_feed (#1018) unioned lessons and barn_events only -- it shipped before #1148
@@ -193,7 +230,7 @@ $$;
 -- rather than slotted in beside p_expense_time: the DAL calls these by named parameter, so
 -- position is free, and appending keeps the diff to one line each. A new parameter is still a
 -- new signature, so DROP and CREATE -- the #829/#935/#1148-era grants are re-applied in the
--- companion ..._appointments_calendar_grants.sql.
+-- Grants section at the foot of this file.
 DROP FUNCTION IF EXISTS create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz);
 
 CREATE FUNCTION create_expense_with_horses(
@@ -312,3 +349,16 @@ BEGIN
   RETURN v_appointment;
 END;
 $$;
+
+-- ---------------------------------------------------------------------------------------
+-- 3. Grants
+-- ---------------------------------------------------------------------------------------
+
+-- #1640: re-apply the two expense writers' grants after the p_shows_on_calendar signature
+-- change dropped and recreated them. Same REVOKE-then-GRANT pair as the release-4 set, with
+-- the trailing boolean added to each signature.
+REVOKE EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz, boolean) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz, boolean) TO authenticated, service_role;

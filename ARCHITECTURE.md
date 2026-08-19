@@ -70,7 +70,7 @@ Policy-helper functions — all `SECURITY DEFINER` SQL, each existing to break a
 - `auth_has_horse_lesson_read_privilege(p_horse_id, p_barn_id)` — backs `lesson_horses_select_horse_privilege` and `get_horse_projected_exhaustion`'s check
 - `auth_lesson_has_privileged_horse(p_lesson_id, p_barn_id)` — backs `lessons_select_horse_privilege`/`lesson_riders_select_horse_privilege`
 
-RLS policies always go in a **separate migration file** from schema changes. `service_role` has blanket grants on all tables and all functions, plus a default-privileges rule covering future ones of both kinds (#1546; detail in [`docs/architecture/rls.md`](docs/architecture/rls.md)).
+RLS policies always go in a **separate migration file** from schema changes — except on a patch branch, where the whole migration is one file (`CLAUDE.md`'s Patch Workflow). `service_role` has blanket grants on all tables and all functions, plus a default-privileges rule covering future ones of both kinds (#1546; detail in [`docs/architecture/rls.md`](docs/architecture/rls.md)).
 
 ## Routes
 
@@ -109,11 +109,13 @@ Canonical file-touch sequence for any new feature:
 
 1. Schema migration (`supabase/migrations/`)
 2. RLS migration (separate file in `supabase/migrations/`)
-3. RPC migration, if the feature needs one (separate file again — no migration in this repo both creates a table and defines a function)
+3. RPC migration, if the feature needs one (separate file again — no feature migration in this repo both creates a table and defines a function)
 4. `src/lib/db/<domain>.ts` — data access function(s)
 5. Action (`src/app/actions/` or co-located `actions.ts`)
 6. Component / page
 7. Tests (written first — TDD)
+
+Steps 1–3 collapse to a **single** migration named `{timestamp}_{issue-number}_{short-description}.sql` on a patch branch — the rule and its rationale are in [`CLAUDE.md`](CLAUDE.md)'s Patch Workflow section. Steps 4–7 are the same either way.
 
 ## Timezone convention
 
