@@ -6,6 +6,9 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ## v4.0.0 — August 2026
 
+### Later updates
+- **v4.0.1 — August 2026.** Horse and member photos no longer look stretched or squashed on a phone — they now scale to fit while keeping their proper shape.
+
 ### Calendar
 
 - **The dashboard now has a real calendar.** Day, Week and Month views show lessons, vet and farrier appointments, and barn events together.
